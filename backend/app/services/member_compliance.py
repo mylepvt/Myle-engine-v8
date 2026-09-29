@@ -35,6 +35,8 @@ ComplianceLevel = Literal[
 
 _ELIGIBLE_ROLES = {"team", "leader"}
 _DISCIPLINE_WINDOW_DAYS = 4
+# Days a member gets to practise after unlocking the app before call/report rules apply.
+PRACTICE_WINDOW_DAYS = 4
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,19 @@ def discipline_warning_pause_note(today: date | None = None) -> str | None:
         "Development pause active. "
         f"Inactivity warnings are muted through {muted_through.isoformat()}."
     )
+
+
+def start_practice_window(user: User, today: date | None = None) -> None:
+    """Give a freshly unlocked member ``PRACTICE_WINDOW_DAYS`` rule-free days.
+
+    The unlock day counts as practice day 1. ``training_gate_until`` keeps the
+    member out of every reporting / discipline surface through the last practice
+    day, and ``discipline_reset_on`` makes streaks start counting only from the
+    first day after it, so training / practice days are never counted as misses.
+    """
+    current_day = today or today_ist()
+    user.training_gate_until = current_day + timedelta(days=PRACTICE_WINDOW_DAYS - 1)
+    user.discipline_reset_on = current_day + timedelta(days=PRACTICE_WINDOW_DAYS)
 
 
 def _completed_business_days(today: date, *, count: int = _DISCIPLINE_WINDOW_DAYS) -> list[date]:
@@ -402,8 +417,15 @@ async def build_compliance_snapshots(
 
         if not snapshot.eligible:
             snapshot.compliance_level = "not_applicable"
-            snapshot.compliance_title = "Not applicable"
-            snapshot.compliance_summary = "Performance rules apply only to approved leader and team accounts."
+            if user.training_gate_until is not None and user.training_gate_until >= today_date:
+                rules_start = user.training_gate_until + timedelta(days=1)
+                snapshot.compliance_title = "Practice period"
+                snapshot.compliance_summary = (
+                    f"Practice period after training. Daily report and call rules start on {rules_start.isoformat()}."
+                )
+            else:
+                snapshot.compliance_title = "Not applicable"
+                snapshot.compliance_summary = "Performance rules apply only to approved leader and team accounts."
             snapshots[user.id] = snapshot
             continue
 

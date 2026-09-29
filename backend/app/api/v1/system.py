@@ -31,6 +31,7 @@ from app.schemas.training_test import (
     TrainingTestSubmitBody,
 )
 from app.core.realtime_hub import notify_topics
+from app.services.member_compliance import start_practice_window
 from app.services.shell_insights import build_decision_engine_snapshot
 from app.services.training_certificate_storage import save_training_certificate_bytes
 from app.services.training_surface import build_training_surface
@@ -292,6 +293,8 @@ async def upload_training_certificate(
 
     cert_url = result
     urow.certificate_url = cert_url
+    if urow.training_status != "completed":
+        start_practice_window(urow)
     urow.training_status = "completed"
     urow.training_required = False
     await session.commit()
@@ -364,6 +367,8 @@ async def training_test_submit(
     if passed:
         urow = await session.get(User, user.user_id)
         if urow is not None:
+            if urow.training_status != "completed":
+                start_practice_window(urow)
             urow.training_status = "completed"
             urow.training_required = False
             training_completed = True
