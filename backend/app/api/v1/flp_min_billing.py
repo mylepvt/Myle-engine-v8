@@ -659,33 +659,36 @@ async def mark_watch_completed(
         if lead.status == _VIDEO_SENT_STATUS:
             lead.status = "video_watched"
             advanced = True
-            # Auto-handoff: prospect watched the video → reassign to nearest upline leader
-            # so the lead surfaces on the leader's workboard for Day 1.
-            owner_id = resolved_owner_user_id(lead)
-            if owner_id:
-                leader = await nearest_leader_for_user(session, owner_id)
-                if leader is not None and lead.assigned_to_user_id != leader.id:
-                    from_uid = lead.assigned_to_user_id
-                    lead.assigned_to_user_id = leader.id
-                    lead.is_reassigned = True
-                    lead.reassigned_at = now
-                    session.add(
-                        ActivityLog(
-                            user_id=owner_id,
-                            action="leader_handoff_video_watched",
-                            entity_type="lead",
-                            entity_id=lead.id,
-                            meta={
-                                "from_user_id": from_uid,
-                                "to_user_id": leader.id,
-                                "leader_id": leader.id,
-                                "source": "auto_watch_complete",
-                            },
+            # Enrollment gate: without the ₹149–200 screenshot the lead stays with the
+            # member at video_watched; "Send to Day 1" (upload) does the handoff later.
+            if (lead.enrollment_proof_url or "").strip():
+                # Auto-handoff: prospect watched the video → reassign to nearest upline leader
+                # so the lead surfaces on the leader's workboard for Day 1.
+                owner_id = resolved_owner_user_id(lead)
+                if owner_id:
+                    leader = await nearest_leader_for_user(session, owner_id)
+                    if leader is not None and lead.assigned_to_user_id != leader.id:
+                        from_uid = lead.assigned_to_user_id
+                        lead.assigned_to_user_id = leader.id
+                        lead.is_reassigned = True
+                        lead.reassigned_at = now
+                        session.add(
+                            ActivityLog(
+                                user_id=owner_id,
+                                action="leader_handoff_video_watched",
+                                entity_type="lead",
+                                entity_id=lead.id,
+                                meta={
+                                    "from_user_id": from_uid,
+                                    "to_user_id": leader.id,
+                                    "leader_id": leader.id,
+                                    "source": "auto_watch_complete",
+                                },
+                            )
                         )
-                    )
-            # Auto-advance to Day 1 so the watched lead lands directly on the
-            # leader's workboard Day 1 instead of resting at video_watched.
-            lead.status = "day1"
+                # Auto-advance to Day 1 so the watched lead lands directly on the
+                # leader's workboard Day 1 instead of resting at video_watched.
+                lead.status = "day1"
     lead.last_action_at = now
 
     await session.commit()
@@ -698,7 +701,11 @@ async def mark_watch_completed(
                     session,
                     owner_id,
                     title="Enrollment-Live watched 🎬",
-                    body=f"{lead.name} ne Day 1 video dekh li — ab Day 1 me aapke workboard par.",
+                    body=(
+                        f"{lead.name} watched the video — now on Day 1 with your leader."
+                        if lead.status == "day1"
+                        else f"{lead.name} watched the video. Upload the enrollment screenshot to send to Day 1."
+                    ),
                     url="/dashboard/work/leads",
                 )
             except Exception:

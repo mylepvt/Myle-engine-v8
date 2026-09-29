@@ -88,6 +88,9 @@ class LeadPublic(BaseModel):
     payment_status: Optional[str] = None
     payment_amount_cents: Optional[int] = None
     payment_proof_url: Optional[str] = None
+    enrollment_amount_cents: Optional[int] = None
+    enrollment_proof_url: Optional[str] = None
+    enrollment_proof_uploaded_at: Optional[datetime] = None
     payment_proof_uploaded_at: Optional[datetime] = None
     mindset_started_at: Optional[datetime] = None
     mindset_completed_at: Optional[datetime] = None

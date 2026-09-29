@@ -3,6 +3,7 @@ import { Check, ChevronRight, Link2, MessageCircle, MoreHorizontal, Phone, UserR
 
 import { cn } from '@/lib/utils'
 import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
+import { SendToDay1Button } from '@/components/leads/SendToDay1Button'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
 import { currentSectionForLead, nextSectionForLead } from '@/lib/lead-section'
 import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
@@ -10,7 +11,12 @@ import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/t
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
-import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus } from '@/hooks/use-leads-query'
+import {
+  ENROLLMENT_SENDABLE_STATUSES,
+  LEAD_STATUS_OPTIONS,
+  type LeadPublic,
+  type LeadStatus,
+} from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
@@ -337,6 +343,9 @@ export function CtcsLeadCard({
               </span>
             )}
             {lead.status === 'converted' ? <RegisterLinkButton lead={lead} /> : null}
+            {currentRole !== 'admin' && ENROLLMENT_SENDABLE_STATUSES.includes(lead.status) ? (
+              <SendToDay1Button lead={lead} />
+            ) : null}
             {showEnrollLink && onCopyEnrollLink ? (
               <button
                 type="button"

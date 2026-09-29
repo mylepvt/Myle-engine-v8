@@ -11,6 +11,7 @@ from starlette import status as http_status
 from app.core.config import settings
 from app.services.avatar_storage import _ALLOWED_SUFFIX
 from app.services.capture_poster_storage import capture_poster_disk_path
+from app.services.enrollment_proof_storage import enrollment_proof_disk_path
 from app.services.payment_proof_storage import payment_proof_disk_path
 from app.services.sale_invoice_storage import sale_invoice_disk_path
 from app.services.training_certificate_storage import training_certificate_disk_path
@@ -59,6 +60,22 @@ async def get_payment_proof(filename: str) -> FileResponse:
         path=str(path),
         media_type=_guess_media_type(path.suffix),
         headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@router.get("/enrollment-proofs/{filename}", include_in_schema=True)
+async def get_enrollment_proof(filename: str) -> FileResponse:
+    """Serve uploaded enrollment payment screenshots."""
+    safe_name = Path(filename).name
+    if safe_name != filename:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
+    path = enrollment_proof_disk_path(safe_name)
+    if not path.is_file():
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
+    return FileResponse(
+        path=str(path),
+        media_type=_guess_media_type(path.suffix),
+        headers={"Cache-Control": "private, no-store"},
     )
 
 

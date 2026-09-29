@@ -151,6 +151,14 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    # Enrollment proof (₹149–200 screenshot) — required before a team lead goes to Day 1.
+    enrollment_amount_cents: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    enrollment_proof_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    enrollment_proof_uploaded_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    enrollment_proof_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     mindset_started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
