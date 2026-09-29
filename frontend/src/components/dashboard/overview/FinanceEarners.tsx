@@ -85,7 +85,7 @@ function TrendChart({ points }: { points: SaleTrendPoint[] }) {
       {!hasData && (
         <p className="-mt-24 mb-16 text-center text-ds-caption text-muted-foreground">No approved sales in this window.</p>
       )}
-      <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground/70">
+      <div className="mt-1 flex items-center justify-between text-ds-micro text-muted-foreground/70">
         <span>{firstLabel}</span>
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded-full bg-emerald-500" />Cheque</span>
@@ -129,7 +129,7 @@ export function CaseCreditCheque({
                 type="button"
                 onClick={() => setDays(r.days)}
                 className={cn(
-                  'rounded-md px-2 py-0.5 text-[11px] font-semibold transition',
+                  'rounded-md px-2 py-0.5 text-ds-micro font-semibold transition',
                   days === r.days ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -151,19 +151,19 @@ export function CaseCreditCheque({
                 <p className="text-lg font-bold tabular-nums text-foreground">
                   {Number(data?.total_case_credits ?? 0).toFixed(2)}
                 </p>
-                <p className="text-[11px] text-muted-foreground">Total CC</p>
+                <p className="text-ds-micro text-muted-foreground">Total CC</p>
               </div>
               <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
                 <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-300">
                   {inr(chequeTotal)}
                 </p>
-                <p className="text-[11px] text-muted-foreground">Cheque total</p>
+                <p className="text-ds-micro text-muted-foreground">Cheque total</p>
               </div>
               <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
                 <p className={cn('text-lg font-bold tabular-nums', (data?.pending_count ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')}>
                   {data?.pending_count ?? 0}
                 </p>
-                <p className="text-[11px] text-muted-foreground">Pending</p>
+                <p className="text-ds-micro text-muted-foreground">Pending</p>
               </div>
             </div>
 
@@ -252,7 +252,7 @@ export function TopEarners({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{ownerName(r)}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-ds-micro text-muted-foreground">
                     {Number(r.total_case_credits).toFixed(2)} CC · {r.sale_count} sale{r.sale_count === 1 ? '' : 's'}
                   </p>
                 </div>

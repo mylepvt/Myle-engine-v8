@@ -48,7 +48,7 @@ const ICON_BY_TYPE: Record<string, string> = {
 function FileTypeBadge({ mime }: { mime: string }) {
   const label = ICON_BY_TYPE[mime] ?? 'FILE'
   return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-[10px] font-bold tracking-wide text-primary">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-ds-micro font-bold tracking-wide text-primary">
       {label}
     </span>
   )
@@ -136,7 +136,7 @@ export function DownloadsPage({ title }: Props) {
               .sort((a, b) => a.day_number - b.day_number)
               .map((v) => (
                 <li key={`day-${v.day_number}`} className="flex items-center gap-3">
-                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-bold tracking-wide text-primary">
+                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-primary/15 text-ds-micro font-bold tracking-wide text-primary">
                     Day {v.day_number}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">{v.title}</span>
@@ -155,7 +155,7 @@ export function DownloadsPage({ title }: Props) {
               if (!url) return null
               return (
                 <li key={key} className="flex items-center gap-3">
-                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-amber-500/15 text-[10px] font-bold tracking-wide text-amber-400">
+                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-amber-500/15 text-ds-micro font-bold tracking-wide text-amber-400">
                     Link
                   </span>
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>

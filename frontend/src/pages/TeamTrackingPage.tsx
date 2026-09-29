@@ -333,12 +333,12 @@ function MetricPanel({ icon: Icon, label, value, tone = 'default', to }: MetricP
       >
         <Icon className="size-4" />
       </div>
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+      <p className="text-ds-micro font-semibold uppercase tracking-[0.1em] text-muted-foreground">
         {label}
       </p>
       <p
         className={cn(
-          'mt-3 text-[2rem] font-bold leading-none tabular-nums',
+          'mt-3 text-ds-display font-bold leading-none tabular-nums',
           tone === 'success' && 'text-emerald-600 dark:text-emerald-300',
           tone === 'warning' && 'text-amber-600 dark:text-amber-300',
           tone === 'danger' && 'text-rose-600 dark:text-rose-300',
@@ -882,7 +882,7 @@ export function TeamTrackingPage({ title }: Props) {
                                   type="button"
                                   disabled={isSending}
                                   onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true })}
-                                  className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-ds-micro text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] disabled:opacity-50"
                                 >
                                   {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
                                   {isSending ? 'Sending…' : 'Resend'}
@@ -898,13 +898,13 @@ export function TeamTrackingPage({ title }: Props) {
                                     placeholder="10-digit mobile number"
                                     value={stubPhones[item.user_id] ?? ''}
                                     onChange={(e) => setStubPhones((prev) => ({ ...prev, [item.user_id]: e.target.value }))}
-                                    className="flex-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                                    className="flex-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-ds-micro text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                                   />
                                   <button
                                     type="button"
                                     disabled={isSending || !(stubPhones[item.user_id] ?? '').trim()}
                                     onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true, phone: stubPhones[item.user_id] })}
-                                    className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
+                                    className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-ds-micro font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
                                   >
                                     {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
                                     {isSending ? 'Sending…' : 'Send'}
@@ -1040,13 +1040,13 @@ export function TeamTrackingPage({ title }: Props) {
                     <CardContent className="space-y-3 text-sm">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="rounded bg-muted/40 px-3 py-2">
-                          <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+                          <p className="text-ds-micro uppercase tracking-[0.18em] text-muted-foreground">
                             Live
                           </p>
                           <p className="mt-1 text-lg font-semibold text-foreground">{leader.liveCount}</p>
                         </div>
                         <div className="rounded bg-muted/40 px-3 py-2">
-                          <p className="text-[0.68rem] uppercase tracking-[0.18em] text-muted-foreground">
+                          <p className="text-ds-micro uppercase tracking-[0.18em] text-muted-foreground">
                             Avg score
                           </p>
                           <p className="mt-1 text-lg font-semibold text-foreground">

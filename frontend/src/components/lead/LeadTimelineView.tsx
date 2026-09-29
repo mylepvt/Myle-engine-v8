@@ -67,14 +67,14 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className={`text-xs font-semibold ${isOutcome ? 'text-current' : 'text-foreground'}`}>{event.label}</span>
-          <span className="text-[10px] text-muted-foreground">{new Date(event.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+          <span className="text-ds-micro text-muted-foreground">{new Date(event.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[11px] text-muted-foreground">{event.actor}</span>
+          <span className="text-ds-micro text-muted-foreground">{event.actor}</span>
           {event.detail && (
             <>
-              <span className="text-[10px] text-muted-foreground/50">·</span>
-              <span className="text-[11px] text-muted-foreground/70 truncate">{event.detail}</span>
+              <span className="text-ds-micro text-muted-foreground/50">·</span>
+              <span className="text-ds-micro text-muted-foreground/70 truncate">{event.detail}</span>
             </>
           )}
         </div>
@@ -122,7 +122,7 @@ export function LeadTimelineView({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-sm font-semibold">{data.lead_name}</CardTitle>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-ds-micro text-muted-foreground">
               Owner: {data.owner} · Worker: {data.assigned_to}
             </p>
           </div>
@@ -130,7 +130,7 @@ export function LeadTimelineView({
             <Badge variant={data.outcome === 'converted' ? 'default' : data.outcome === 'dead' ? 'destructive' : data.outcome === 'recycle' ? 'secondary' : 'outline'}>
               {data.outcome}
             </Badge>
-            <Badge variant="secondary" className="text-[10px]">{data.events.length} events</Badge>
+            <Badge variant="secondary" className="text-ds-micro">{data.events.length} events</Badge>
             {onClose && (
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onClose}>Close</Button>
             )}

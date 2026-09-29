@@ -21,8 +21,8 @@ export function LiveFunnel() {
           <div key={stage.key} className="group relative flex items-center gap-3 px-2 py-1.5 transition-colors hover:bg-muted/20 dark:hover:bg-white/[0.02]">
             {/* Stage icon + label */}
             <div className="flex w-32 shrink-0 items-center gap-1.5">
-              <span className="text-[13px]">{stage.icon}</span>
-              <span className="truncate text-[11px] font-medium text-muted-foreground/80 group-hover:text-foreground/90">{stage.label}</span>
+              <span className="text-ds-caption">{stage.icon}</span>
+              <span className="truncate text-ds-micro font-medium text-muted-foreground/80 group-hover:text-foreground/90">{stage.label}</span>
             </div>
 
             {/* Funnel bar */}
@@ -36,7 +36,7 @@ export function LiveFunnel() {
                 }}
               >
                 {stage.count > 0 && (
-                  <span className="text-[11px] font-bold tabular-nums text-foreground/80">{stage.count}</span>
+                  <span className="text-ds-micro font-bold tabular-nums text-foreground/80">{stage.count}</span>
                 )}
               </div>
 
@@ -45,7 +45,7 @@ export function LiveFunnel() {
                 {stage.dots.slice(0, 6).map((dot) => (
                   <div
                     key={dot.id}
-                    className="relative flex size-6 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-lg transition-all duration-500 hover:z-10 hover:scale-125 animate-dot-in"
+                    className="relative flex size-6 items-center justify-center rounded-full text-ds-micro font-bold text-white shadow-lg transition-all duration-500 hover:z-10 hover:scale-125 animate-dot-in"
                     style={{ backgroundColor: dot.color }}
                     title={`${dot.name} — ${dot.stageLabel}`}
                   >
@@ -58,7 +58,7 @@ export function LiveFunnel() {
                   </div>
                 ))}
                 {stage.dots.length > 6 && (
-                  <div className="flex size-6 items-center justify-center rounded-full bg-muted/50 text-[9px] font-bold text-muted-foreground">
+                  <div className="flex size-6 items-center justify-center rounded-full bg-muted/50 text-ds-micro font-bold text-muted-foreground">
                     +{stage.dots.length - 6}
                   </div>
                 )}
@@ -73,7 +73,7 @@ export function LiveFunnel() {
         {Array.from(useFunnelActivityStore.getState().actors.values())
           .slice(0, 8)
           .map((dot) => (
-            <div key={dot.id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+            <div key={dot.id} className="flex items-center gap-1.5 text-ds-micro text-muted-foreground/60">
               <span
                 className="inline-block size-2.5 rounded-full"
                 style={{ backgroundColor: dot.color }}

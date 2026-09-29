@@ -84,7 +84,7 @@ function StageBlock({
           <Badge variant="outline">not billed</Badge>
         )}
         {sale?.auto_verified ? (
-          <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+          <span className="text-ds-micro font-medium uppercase tracking-wide text-emerald-400">
             auto-verified
           </span>
         ) : null}
@@ -125,10 +125,10 @@ function StageBlock({
       ) : null}
 
       {sale?.status === 'pending' && sale.verify_notes ? (
-        <p className="text-[11px] text-amber-300/90">{sale.verify_notes}</p>
+        <p className="text-ds-micro text-amber-300/90">{sale.verify_notes}</p>
       ) : null}
       {sale?.status === 'rejected' && sale.rejection_reason ? (
-        <p className="text-[11px] text-destructive">Rejected: {sale.rejection_reason}</p>
+        <p className="text-ds-micro text-destructive">Rejected: {sale.rejection_reason}</p>
       ) : null}
 
       {canUpload ? (
@@ -157,9 +157,9 @@ function StageBlock({
         </div>
       ) : null}
 
-      {notice ? <p className="text-[11px] text-emerald-300">{notice}</p> : null}
+      {notice ? <p className="text-ds-micro text-emerald-300">{notice}</p> : null}
       {localErr ? (
-        <p className="text-[11px] text-destructive" role="alert">
+        <p className="text-ds-micro text-destructive" role="alert">
           {localErr}
         </p>
       ) : null}
@@ -214,7 +214,7 @@ export function LeadBillingCard({ leadId, surfaceRole }: Props) {
             />
           ))}
           {surfaceRole !== 'admin' ? (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-ds-micro text-muted-foreground">
               Clear invoice scan auto-approve ho jata hai; warna admin approval pending rehti hai.
             </p>
           ) : null}

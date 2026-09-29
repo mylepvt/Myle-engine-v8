@@ -45,13 +45,13 @@ function OnlinePanel({ users }: { users: OnlineUserItem[] }) {
         className={cn('size-1.5 shrink-0 rounded-full', u.presence_status === 'online' ? 'bg-success' : 'bg-warning')}
       />
       <span className="min-w-0 flex-1 truncate text-xs text-foreground">{u.name}</span>
-      <span className="shrink-0 text-[10px] capitalize text-muted-foreground/60">{u.role}</span>
+      <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/60">{u.role}</span>
       {u.is_working ? (
-        <span className="shrink-0 text-[10px] text-success">
+        <span className="shrink-0 text-ds-micro text-success">
           {u.calls_today > 0 ? `${u.calls_today}c` : ''}{u.leads_today > 0 ? ` ${u.leads_today}l` : ''}
         </span>
       ) : (
-        <span className="shrink-0 text-[10px] text-muted-foreground/40">idle</span>
+        <span className="shrink-0 text-ds-micro text-muted-foreground/40">idle</span>
       )}
     </div>
   )
@@ -59,7 +59,7 @@ function OnlinePanel({ users }: { users: OnlineUserItem[] }) {
     <div className="max-h-72 divide-y divide-border/40 overflow-y-auto">
       {working.length > 0 && (
         <div className="pb-1">
-          <p className="sticky top-0 bg-popover px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-success">
+          <p className="sticky top-0 bg-popover px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-success">
             Working ({working.length})
           </p>
           <div className="px-3">{working.map((u) => <Row key={u.user_id} u={u} />)}</div>
@@ -67,7 +67,7 @@ function OnlinePanel({ users }: { users: OnlineUserItem[] }) {
       )}
       {idle.length > 0 && (
         <div className="pb-1">
-          <p className="sticky top-0 bg-popover px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+          <p className="sticky top-0 bg-popover px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-muted-foreground/60">
             Not working ({idle.length})
           </p>
           <div className="px-3">{idle.map((u) => <Row key={u.user_id} u={u} />)}</div>
@@ -153,8 +153,8 @@ function HeroBand({
               {onlineOpen && (
                 <div className="absolute left-0 top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-border/60 bg-popover shadow-xl">
                   <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
-                    <span className="text-[11px] font-semibold text-foreground">Online now</span>
-                    <span className="text-[10px] text-muted-foreground/60">{workingCount} working</span>
+                    <span className="text-ds-micro font-semibold text-foreground">Online now</span>
+                    <span className="text-ds-micro text-muted-foreground/60">{workingCount} working</span>
                   </div>
                   <OnlinePanel users={users} />
                 </div>

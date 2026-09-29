@@ -206,7 +206,7 @@ export function MemberProfileModal({
                     ) : null}
                   </div>
                 </div>
-                <div className="text-right text-[0.7rem] text-muted-foreground">
+                <div className="text-right text-ds-micro text-muted-foreground">
                   <p>Calls streak: {currentMember.calls_short_streak ?? 0}d</p>
                   <p>Report streak: {currentMember.missing_report_streak ?? 0}d</p>
                 </div>
@@ -215,14 +215,14 @@ export function MemberProfileModal({
                 {currentMember.compliance_summary ?? 'No active discipline note.'}
               </p>
               {currentMember.grace_request_end_date ? (
-                <p className="text-[0.72rem] text-primary">
+                <p className="text-ds-micro text-primary">
                   Pending grace request till {formatMemberDate(currentMember.grace_request_end_date)}
                   {currentMember.grace_request_reason ? ` · ${currentMember.grace_request_reason}` : ''}
                 </p>
               ) : null}
 
               {currentMember.role === 'admin' ? (
-                <p className="text-[0.72rem] text-muted-foreground">
+                <p className="text-ds-micro text-muted-foreground">
                   Admin accounts are excluded from call/report discipline rules.
                 </p>
               ) : (
@@ -483,7 +483,7 @@ export function MemberProfileModal({
                   </span>
                 </p>
                 {currentMember.training_status ? (
-                  <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
+                  <p className="mt-0.5 text-ds-micro text-muted-foreground">
                     Progress: {currentMember.training_status}
                   </p>
                 ) : null}

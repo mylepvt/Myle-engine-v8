@@ -24,7 +24,7 @@ function CampaignProgressRow({
       <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 p-2">
         <CheckCircle2 className="size-3.5 shrink-0 text-success" />
         <span className="text-ds-caption font-medium">{item.label}</span>
-        <Badge className="ml-auto text-[10px]" variant="success">Done</Badge>
+        <Badge className="ml-auto text-ds-micro" variant="success">Done</Badge>
       </div>
     )
   }
@@ -33,15 +33,15 @@ function CampaignProgressRow({
     <div className="flex items-center justify-between gap-2 rounded-md border border-border/40 p-2">
       <div className="min-w-0 flex-1">
         <p className="text-ds-caption font-medium">{item.label}</p>
-        <p className="text-[10px] text-muted-foreground">{item.achieved}/{item.target}</p>
+        <p className="text-ds-micro text-muted-foreground">{item.achieved}/{item.target}</p>
       </div>
       {isSubmitted ? (
-        <Badge className="text-[10px]" variant="secondary">Submitted</Badge>
+        <Badge className="text-ds-micro" variant="secondary">Submitted</Badge>
       ) : (
         <Button
           size="sm"
           variant="outline"
-          className="h-7 px-2 text-[10px]"
+          className="h-7 px-2 text-ds-micro"
           disabled={ticking}
           onClick={() => onTick(item.campaign_mission_id, item.target)}
         >
@@ -88,7 +88,7 @@ export function CampaignProgressCard() {
           <div key={enrollment.id} className="space-y-1.5">
             <p className="text-xs font-semibold text-foreground">
               Campaign #{enrollment.campaign_id}
-              <Badge variant="outline" className="ml-2 text-[10px]">{enrollment.status}</Badge>
+              <Badge variant="outline" className="ml-2 text-ds-micro">{enrollment.status}</Badge>
             </p>
             <div className="space-y-1">
               {enrollment.progress.map((p: CampaignEnrollmentPublic['progress'][0]) => (

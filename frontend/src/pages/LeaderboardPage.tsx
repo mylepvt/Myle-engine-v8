@@ -98,7 +98,7 @@ export function LeaderboardPage({ title }: Props) {
               <table className="w-full min-w-[28rem] border-collapse text-left">
                 <caption className="sr-only">Full leaderboard</caption>
                 <thead>
-                  <tr className="border-b border-border/60 text-[0.7rem] text-muted-foreground">
+                  <tr className="border-b border-border/60 text-ds-micro text-muted-foreground">
                     <th scope="col" className="px-4 py-2.5 font-medium">#</th>
                     <th scope="col" className="px-4 py-2.5 font-medium">Member</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden sm:table-cell">Level</th>
@@ -116,7 +116,7 @@ export function LeaderboardPage({ title }: Props) {
                       <td className="px-4 py-2.5 font-medium">
                         <div className="min-w-0">
                           <p className="truncate">{r.name}</p>
-                          <p className="truncate text-[0.65rem] text-muted-foreground md:hidden">{r.email}</p>
+                          <p className="truncate text-ds-micro text-muted-foreground md:hidden">{r.email}</p>
                         </div>
                       </td>
                       <td className="px-4 py-2.5 hidden sm:table-cell">

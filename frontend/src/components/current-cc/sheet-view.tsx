@@ -216,7 +216,7 @@ function PersonTable({ rows }: { rows: PersonRow[] }) {
 
 function RowHeader({ cols, grid }: { cols: string[]; grid: string }) {
   return (
-    <div className={cn('hidden gap-1.5 text-[11px] text-muted-foreground sm:grid', grid)}>
+    <div className={cn('hidden gap-1.5 text-ds-micro text-muted-foreground sm:grid', grid)}>
       {cols.map((c, i) => (
         <span key={i}>{c}</span>
       ))}
@@ -328,7 +328,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
       <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
         {value}
       </p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
   )
 }

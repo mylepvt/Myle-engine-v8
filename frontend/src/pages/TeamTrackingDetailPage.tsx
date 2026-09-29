@@ -204,8 +204,8 @@ function ScoreRing({ score, band }: { score: number; band: 'low' | 'medium' | 'h
       </svg>
       {/* Center label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[22px] font-bold tabular-nums leading-none text-foreground">{score}</span>
-        <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/60">score</span>
+        <span className="text-ds-h2 font-bold tabular-nums leading-none text-foreground">{score}</span>
+        <span className="mt-0.5 text-ds-micro font-semibold uppercase tracking-widest text-muted-foreground/60">score</span>
       </div>
     </div>
   )
@@ -219,7 +219,7 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
   return (
     <div className="space-y-3">
       {/* Legend */}
-      <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-4 text-ds-micro text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="inline-block size-2 rounded-full bg-emerald-400" />Calls
         </span>
@@ -254,7 +254,7 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
                 role="img"
                 aria-label={`Consistency: ${point.consistency_band}`}
               />
-              <span className="text-[9px] leading-none text-muted-foreground/50">{weekdayShort(point.date)}</span>
+              <span className="text-ds-micro leading-none text-muted-foreground/50">{weekdayShort(point.date)}</span>
             </div>
           )
         })}
@@ -265,7 +265,7 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
         {trend.map((point) => (
           <div key={point.date} className="flex flex-1 justify-center">
             <span className={cn(
-              'text-[10px] font-bold tabular-nums',
+              'text-ds-micro font-bold tabular-nums',
                 point.consistency_band === 'high' ? 'text-emerald-600 dark:text-emerald-400' :
                   point.consistency_band === 'medium' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
             )}>
@@ -310,7 +310,7 @@ function ActivityFunnel({ member }: { member: TeamTrackingMemberSummary }) {
     <div className="space-y-2">
       {steps.map((step) => (
         <div key={step.label}>
-          <div className="mb-1 flex items-center justify-between text-[11px]">
+          <div className="mb-1 flex items-center justify-between text-ds-micro">
             <span className="text-muted-foreground">{step.label}</span>
             <span className={cn('font-bold tabular-nums', step.textClass)}>{step.value}</span>
           </div>
@@ -343,11 +343,11 @@ function WeeklyHeatmap({ trend }: { trend: TeamTrackingTrendPoint[] }) {
               )}
               title={`${formatShortDate(point.date)}: Score ${point.consistency_score}`}
             />
-            <span className="text-[9px] text-muted-foreground/50">{weekdayShort(point.date)}</span>
+            <span className="text-ds-micro text-muted-foreground/50">{weekdayShort(point.date)}</span>
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
+      <div className="flex items-center gap-3 text-ds-micro text-muted-foreground/60">
         <span className="flex items-center gap-1">
           <span className="inline-block size-2 rounded-sm bg-emerald-400/50 border border-emerald-400/40" />High
         </span>
@@ -369,7 +369,7 @@ function ActivityTimeline({ items }: { items: TeamTrackingActivityItem[] }) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center">
         <Activity className="size-6 text-muted-foreground/25" />
-        <p className="text-[12px] text-muted-foreground/50">No activity recorded for this date</p>
+        <p className="text-xs text-muted-foreground/50">No activity recorded for this date</p>
       </div>
     )
   }
@@ -397,20 +397,20 @@ function ActivityTimeline({ items }: { items: TeamTrackingActivityItem[] }) {
               {/* Content */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-[12.5px] font-medium leading-snug text-foreground">{label}</p>
-                  <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/50">
+                  <p className="text-ds-caption font-medium leading-snug text-foreground">{label}</p>
+                  <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/50">
                     {formatRelativeTimeShort(item.occurred_at)}
                   </span>
                 </div>
                 {(item.entity_type || item.entity_id) ? (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground/50">
+                  <p className="mt-0.5 text-ds-micro text-muted-foreground/50">
                     {item.entity_type && <span className="capitalize">{item.entity_type}</span>}
                     {item.entity_id ? ` #${item.entity_id}` : ''}
                     {' · '}
                     {formatTime(item.occurred_at)}
                   </p>
                 ) : (
-                  <p className="mt-0.5 text-[10px] text-muted-foreground/40">{formatTime(item.occurred_at)}</p>
+                  <p className="mt-0.5 text-ds-micro text-muted-foreground/40">{formatTime(item.occurred_at)}</p>
                 )}
               </div>
             </div>
@@ -460,7 +460,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
           <span className="truncate font-medium text-foreground">{title}</span>
         </div>
 
-        <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="size-3.5" />
           <input
             type="date"
@@ -507,7 +507,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                 {/* Avatar with presence dot */}
                 <div className="relative shrink-0">
                   <div
-                    className="flex size-[52px] items-center justify-center rounded-full text-[17px] font-bold text-white"
+                    className="flex size-[52px] items-center justify-center rounded-full text-ds-h3 font-bold text-white"
                     style={{ backgroundColor: avatarColor(data.member.member_name) }}
                   >
                     {initials(data.member.member_name)}
@@ -524,25 +524,25 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
 
                 {/* Name + meta + badges */}
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-[15px] font-bold leading-tight text-foreground">
+                  <h2 className="truncate text-ds-body font-bold leading-tight text-foreground">
                     {data.member.member_name}
                   </h2>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  <p className="mt-0.5 text-ds-micro text-muted-foreground">
                     {data.member.member_fbo_id}
                     {data.member.leader_name && (
                       <> · <span className="text-foreground/60">{data.member.leader_name}</span></>
                     )}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Badge variant={presenceVariant(data.member.presence_status)} className="text-[10px]">
+                    <Badge variant={presenceVariant(data.member.presence_status)} className="text-ds-micro">
                       {data.member.presence_status === 'online' ? '● Online' :
                        data.member.presence_status === 'idle' ? '◌ Idle' : '○ Offline'}
                     </Badge>
-                    <Badge variant="secondary" className="text-[10px] capitalize">
+                    <Badge variant="secondary" className="text-ds-micro capitalize">
                       {data.member.member_role}
                     </Badge>
                     {data.member.compliance_title && (
-                      <Badge variant={complianceVariant(data.member.compliance_level)} className="text-[10px]">
+                      <Badge variant={complianceVariant(data.member.compliance_level)} className="text-ds-micro">
                         {data.member.compliance_title}
                       </Badge>
                     )}
@@ -554,7 +554,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                   <ScoreRing score={data.member.consistency_score} band={data.member.consistency_band} />
                   {todayVsAvg !== 0 && (
                     <div className={cn(
-                      'flex items-center gap-0.5 text-[10px] font-medium',
+                      'flex items-center gap-0.5 text-ds-micro font-medium',
                       todayVsAvg > 0 ? 'text-emerald-400' : 'text-rose-400'
                     )}>
                       {todayVsAvg > 0
@@ -578,21 +578,21 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                   { label: 'Logins',     value: data.member.login_count,          color: 'text-muted-foreground' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex flex-col items-center gap-0.5 py-3">
-                    <span className={cn('text-[20px] font-bold tabular-nums leading-none', color)}>{value}</span>
-                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground/55">{label}</span>
+                    <span className={cn('text-ds-h2 font-bold tabular-nums leading-none', color)}>{value}</span>
+                    <span className="text-ds-micro uppercase tracking-wider text-muted-foreground/55">{label}</span>
                   </div>
                 ))}
               </div>
 
               {/* Last active + streak footer */}
               <div className="flex items-center justify-between border-t border-border/40 px-4 py-2">
-                <span className="text-[10px] text-muted-foreground/55">
+                <span className="text-ds-micro text-muted-foreground/55">
                   {data.member.last_activity_at
                     ? <>Active {formatRelativeTimeShort(data.member.last_activity_at)}</>
                     : 'No recent activity'}
                 </span>
                 {(data.member.calls_short_streak > 0 || data.member.missing_report_streak > 0) && (
-                  <span className="flex items-center gap-1 text-[10px] text-amber-400/80">
+                  <span className="flex items-center gap-1 text-ds-micro text-amber-400/80">
                     <Clock className="size-3" />
                     {data.member.calls_short_streak > 0
                       ? `${data.member.calls_short_streak}d low calls`
@@ -612,7 +612,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                   <CardTitle className="text-sm">7-Day Activity Trend</CardTitle>
                   <Badge
                     variant={scoreVariant(avgScore >= 70 ? 'high' : avgScore >= 40 ? 'medium' : 'low')}
-                    className="text-[10px]"
+                    className="text-ds-micro"
                   >
                     Avg {avgScore}
                   </Badge>
@@ -642,7 +642,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               <CardContent>
                 {data.trend.length > 0
                   ? <WeeklyHeatmap trend={data.trend} />
-                  : <p className="text-[12px] text-muted-foreground">No trend data available.</p>}
+                  : <p className="text-xs text-muted-foreground">No trend data available.</p>}
               </CardContent>
             </Card>
           </div>
@@ -660,13 +660,13 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                 {data.member.insights.map((insight) => (
                   <div key={insight} className="flex items-start gap-2.5 rounded border border-amber-600/15 bg-amber-600/[0.05] px-3 py-2.5 dark:border-amber-400/15 dark:bg-amber-400/[0.05]">
                     <span className="mt-px shrink-0 text-xs text-amber-600 dark:text-amber-400">!</span>
-                    <p className="text-[12.5px] text-foreground">{insight}</p>
+                    <p className="text-ds-caption text-foreground">{insight}</p>
                   </div>
                 ))}
                 {computedInsights.map((insight, i) => (
                   <div key={i} className="flex items-start gap-2.5 rounded border border-border/40 bg-muted/20 px-3 py-2.5">
-                    <span className="mt-px shrink-0 text-[10px] text-primary">→</span>
-                    <p className="text-[12.5px] text-muted-foreground">{insight}</p>
+                    <span className="mt-px shrink-0 text-ds-micro text-primary">→</span>
+                    <p className="text-ds-caption text-muted-foreground">{insight}</p>
                   </div>
                 ))}
               </CardContent>
@@ -678,7 +678,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">Activity Feed</CardTitle>
-                <span className="text-[10px] text-muted-foreground/50">{data.recent_activity.length} events</span>
+                <span className="text-ds-micro text-muted-foreground/50">{data.recent_activity.length} events</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -692,7 +692,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               <CardTitle className="text-sm">Member Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-2 text-[12.5px] sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 text-ds-caption sm:grid-cols-2">
                 {([
                   ['Email',     data.member.member_email],
                   ['Phone',     data.member.member_phone || '—'],

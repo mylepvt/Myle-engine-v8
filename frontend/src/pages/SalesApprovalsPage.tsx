@@ -148,7 +148,7 @@ export function SalesApprovalsPage({ title }: Props) {
                     {isAdmin ? (
                       <div className="flex flex-wrap items-end gap-3 pt-1">
                         <label className="flex flex-col gap-0.5">
-                          <span className="text-[11px] font-medium text-muted-foreground">Case credits</span>
+                          <span className="text-ds-micro font-medium text-muted-foreground">Case credits</span>
                           <input
                             type="number"
                             step="0.001"
@@ -161,7 +161,7 @@ export function SalesApprovalsPage({ title }: Props) {
                           />
                         </label>
                         <label className="flex flex-col gap-0.5">
-                          <span className="text-[11px] font-medium text-muted-foreground">Amount (₹)</span>
+                          <span className="text-ds-micro font-medium text-muted-foreground">Amount (₹)</span>
                           <input
                             type="number"
                             step="0.01"
@@ -174,7 +174,7 @@ export function SalesApprovalsPage({ title }: Props) {
                           />
                         </label>
                         {row.invoice_number ? (
-                          <span className="pb-2 text-[11px] text-muted-foreground">#{row.invoice_number}</span>
+                          <span className="pb-2 text-ds-micro text-muted-foreground">#{row.invoice_number}</span>
                         ) : null}
                       </div>
                     ) : (
@@ -185,7 +185,7 @@ export function SalesApprovalsPage({ title }: Props) {
                       </div>
                     )}
                     {isAdmin && (!ccValue(row).trim() || !amountValue(row).trim()) ? (
-                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                      <p className="text-ds-micro text-amber-600 dark:text-amber-400">
                         Enter CC and amount to book this invoice.
                       </p>
                     ) : null}
@@ -193,7 +193,7 @@ export function SalesApprovalsPage({ title }: Props) {
                       <p className="text-xs text-amber-600/90 dark:text-amber-300/90">{row.verify_notes}</p>
                     ) : null}
                     {row.ocr_confidence ? (
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-ds-micro text-muted-foreground">
                         OCR confidence: {(Number(row.ocr_confidence) * 100).toFixed(0)}%
                       </p>
                     ) : null}

@@ -322,12 +322,12 @@ export function WatchPage() {
         <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
+              <p className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
               <h1 className="mt-1 text-ds-h2">Your private introduction</h1>
             </div>
             <div className="flex items-center gap-3">
               {data?.access_granted ? (
-                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
                   <span className="relative flex size-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex size-2 rounded-full bg-red-400" />

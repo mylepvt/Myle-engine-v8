@@ -17,7 +17,7 @@ export function WatchLiveGauge() {
           </span>
           Live
         </span>
-        <span className="text-[0.65rem] tabular-nums text-[color-mix(in_srgb,var(--foreground)_40%,transparent)]">Session</span>
+        <span className="text-ds-micro tabular-nums text-[color-mix(in_srgb,var(--foreground)_40%,transparent)]">Session</span>
       </div>
 
       <div className="relative aspect-[2/1] w-full">

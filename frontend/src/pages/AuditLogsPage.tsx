@@ -76,7 +76,7 @@ function LogRow({ entry }: { entry: AuditLogEntry }) {
       </td>
       <td className="px-4 py-2.5 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">{entry.actor}</td>
       <td className="px-4 py-2.5">
-        <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', chip.bg, chip.text, chip.border)}>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-medium', chip.bg, chip.text, chip.border)}>
           {friendlyAction(entry.action)}
         </span>
       </td>
@@ -97,10 +97,10 @@ function LogCard({ entry }: { entry: AuditLogEntry }) {
   return (
     <div className="rounded-xl border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] p-3 space-y-1.5">
       <div className="flex items-start justify-between gap-2">
-        <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', chip.bg, chip.text, chip.border)}>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-medium', chip.bg, chip.text, chip.border)}>
           {friendlyAction(entry.action)}
         </span>
-        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/50">
+        <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/50">
           {date} {time}
         </span>
       </div>
@@ -232,7 +232,7 @@ export function AuditLogsPage({ title }: Props) {
               type="button"
               onClick={() => handleActionFilter(action)}
               className={cn(
-                'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-all',
+                'rounded-full border px-2.5 py-0.5 text-ds-micro font-medium transition-all',
                 active ? cn(chip.bg, chip.text, chip.border) : 'border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] text-muted-foreground hover:text-foreground',
               )}
             >
@@ -294,7 +294,7 @@ export function AuditLogsPage({ title }: Props) {
               <thead>
                 <tr className="border-b border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03]">
                   {['Time', 'Who', 'Action', 'Entity', 'Details'].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                    <th key={h} className="px-4 py-2.5 text-ds-micro font-medium uppercase tracking-wider text-muted-foreground/60">
                       {h}
                     </th>
                   ))}

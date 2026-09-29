@@ -363,7 +363,7 @@ export function WhatsAppPanelPage({ title }: Props) {
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card>
             <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
-              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+              <CardTitle className="text-ds-micro sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Sent Today
               </CardTitle>
             </CardHeader>
@@ -373,7 +373,7 @@ export function WhatsAppPanelPage({ title }: Props) {
           </Card>
           <Card>
             <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
-              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+              <CardTitle className="text-ds-micro sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Failed Today
               </CardTitle>
             </CardHeader>
@@ -385,7 +385,7 @@ export function WhatsAppPanelPage({ title }: Props) {
           </Card>
           <Card>
             <CardHeader className="pb-1 px-3 pt-3 sm:px-6">
-              <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+              <CardTitle className="text-ds-micro sm:text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 Received Today
               </CardTitle>
             </CardHeader>
@@ -421,7 +421,7 @@ export function WhatsAppPanelPage({ title }: Props) {
                 <div key={def.key} className="space-y-1.5">
                   <div>
                     <p className="text-xs font-medium text-foreground">{def.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{def.desc}</p>
+                    <p className="text-ds-micro text-muted-foreground">{def.desc}</p>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -774,7 +774,7 @@ export function WhatsAppPanelPage({ title }: Props) {
           </div>
 
           {/* Preview */}
-          <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-muted-foreground font-mono whitespace-pre-line">
+          <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 text-ds-micro text-muted-foreground font-mono whitespace-pre-line">
             {insightsPeriod === 7
               ? `Hi Rahul,\n\nHere's your performance summary for the last 7 days:\n✅ Reports submitted: 5/7\n🔥 Current streak: 3 days\n📞 Total calls made: 42\n⚠️ Days missed: Sat, Sun\n💪 Best day: Mon (12 calls)\n\nKeep it up — consistency is everything.\n\n— Myle Team`
               : `Hi Rahul,\n\nHere's your 30-day performance analysis:\n✅ Reports submitted: 22/30\n🔥 Best streak: 8 days\n📞 Average calls/day: 9\n\n📊 Weekly breakdown (oldest → recent):\n  Week 1: 38 calls · 6/7 reports\n  Week 2: 44 calls · 7/7 reports\n  Week 3: 31 calls · 4/7 reports\n  Week 4: 42 calls · 5/7 reports\n⚠️ Pattern noticed: Reports were missed on Saturday in 3 out of the last 4 weeks.\n💡 Try to stay consistent on that day — small habits make big results.\n\n— Myle Team`}
@@ -830,7 +830,7 @@ export function WhatsAppPanelPage({ title }: Props) {
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <Settings className="h-4 w-4 text-rose-600" />
             Management WhatsApp Updates
-            <span className="ml-2 text-[10px] font-normal text-muted-foreground">(to Shikha / configured phone)</span>
+            <span className="ml-2 text-ds-micro font-normal text-muted-foreground">(to Shikha / configured phone)</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pb-4">
@@ -891,7 +891,7 @@ export function WhatsAppPanelPage({ title }: Props) {
                     <span className="truncate">{u.label}</span>
                   </Button>
                   {result && (
-                    <p className={cn('px-1 text-[10px] leading-tight', result.sent ? 'text-green-700' : 'text-red-600')}>
+                    <p className={cn('px-1 text-ds-micro leading-tight', result.sent ? 'text-green-700' : 'text-red-600')}>
                       {result.sent ? `✓ ${result.info || 'Sent'}` : `✗ ${result.error || 'Failed'}`}
                     </p>
                   )}
@@ -899,7 +899,7 @@ export function WhatsAppPanelPage({ title }: Props) {
               )
             })}
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-ds-micro text-muted-foreground">
             {MGMT_UPDATE_TYPES.map((u) => (
               <span key={u.type} className="mr-3">
                 <span className="font-medium text-rose-600">{u.label}</span>: {u.desc}

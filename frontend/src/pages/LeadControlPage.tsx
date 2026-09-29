@@ -356,7 +356,7 @@ export function LeadControlPage({ title }: Props) {
                               <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
-                                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                <span className="rounded-full border border-border px-2 py-0.5 text-ds-micro uppercase tracking-wide text-muted-foreground">
                                   {statusLabel(lead.status)}
                                 </span>
                               </div>

@@ -34,7 +34,7 @@ export function AutomationPanel({ className }: { className?: string }) {
         <div className="flex items-center gap-2">
           <Cog className="size-5 text-primary" />
           <h2 className="text-ds-label font-bold">Automation Engine</h2>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-ds-micro">
             {rules.data ? `${rules.data.filter(r => r.is_active).length} active / ${rules.data.length} total` : '...'}
           </Badge>
         </div>
@@ -98,7 +98,7 @@ export function AutomationPanel({ className }: { className?: string }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-foreground">{rule.name}</span>
-                      <Badge variant={rule.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                      <Badge variant={rule.is_active ? 'default' : 'secondary'} className="text-ds-micro">
                         {rule.is_active ? 'Active' : 'Paused'}
                       </Badge>
                     </div>
@@ -110,7 +110,7 @@ export function AutomationPanel({ className }: { className?: string }) {
                   <Button
                     size="sm"
                     variant={rule.is_active ? 'outline' : 'secondary'}
-                    className="h-7 text-[10px] px-2"
+                    className="h-7 text-ds-micro px-2"
                     onClick={() => toggleRule.mutate({ id: rule.id, is_active: !rule.is_active })}
                     disabled={toggleRule.isPending}
                   >
@@ -131,7 +131,7 @@ export function AutomationPanel({ className }: { className?: string }) {
               <Clock className="size-4 text-primary" />
               Action Log
             </CardTitle>
-            <Badge variant="secondary" className="text-[10px]">{logs.data?.length ?? 0} recent</Badge>
+            <Badge variant="secondary" className="text-ds-micro">{logs.data?.length ?? 0} recent</Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -159,11 +159,11 @@ export function AutomationPanel({ className }: { className?: string }) {
                     <p className="text-xs font-medium text-foreground">
                       {TRIGGER_LABELS[log.trigger_type] ?? log.trigger_type} → {ACTION_LABELS[log.action_type] ?? log.action_type}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-ds-micro text-muted-foreground">
                       {log.trigger_entity_type} #{log.trigger_entity_id} · {new Date(log.created_at).toLocaleString('en-IN')}
                     </p>
                     {log.action_result && (
-                      <p className="text-[10px] text-muted-foreground/70 truncate">
+                      <p className="text-ds-micro text-muted-foreground/70 truncate">
                         {JSON.stringify(log.action_result).slice(0, 120)}
                       </p>
                     )}

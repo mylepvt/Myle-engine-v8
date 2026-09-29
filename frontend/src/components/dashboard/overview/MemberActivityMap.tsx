@@ -36,8 +36,8 @@ function Stat({ label, value, sub }: { label: string; value: string | number; su
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
       <p className="text-lg font-bold tabular-nums leading-none text-foreground">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{label}</p>
-      {sub ? <p className="text-[10px] text-muted-foreground/60">{sub}</p> : null}
+      <p className="mt-1 text-ds-micro text-muted-foreground">{label}</p>
+      {sub ? <p className="text-ds-micro text-muted-foreground/60">{sub}</p> : null}
     </div>
   )
 }
@@ -72,7 +72,7 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
             <Activity className="size-4 text-primary" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-foreground">{name}</h2>
-              <p className="text-[11px] text-muted-foreground">Activity map</p>
+              <p className="text-ds-micro text-muted-foreground">Activity map</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
                   type="button"
                   onClick={() => setDays(r.days)}
                   className={cn(
-                    'rounded-md px-2 py-0.5 text-[11px] font-semibold transition',
+                    'rounded-md px-2 py-0.5 text-ds-micro font-semibold transition',
                     days === r.days ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -114,7 +114,7 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
               {data.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {data.tags.map((t) => (
-                    <span key={t} className="rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                    <span key={t} className="rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-0.5 text-ds-micro font-medium text-primary">
                       {t}
                     </span>
                   ))}
@@ -140,7 +140,7 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
                         <span className="w-28 shrink-0 truncate text-right text-ds-caption text-muted-foreground">{CATEGORY_LABEL[cat] ?? cat}</span>
                         <div className="relative h-5 flex-1 overflow-hidden rounded bg-muted/50">
                           <div className="flex h-full items-center justify-end rounded bg-primary px-2" style={{ width: `${pct}%` }}>
-                            <span className="text-[10px] font-bold text-primary-foreground">{count}</span>
+                            <span className="text-ds-micro font-bold text-primary-foreground">{count}</span>
                           </div>
                         </div>
                       </div>
@@ -168,7 +168,7 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
                     )
                   })}
                 </div>
-                <div className="mt-1 flex justify-between text-[10px] text-muted-foreground/60">
+                <div className="mt-1 flex justify-between text-ds-micro text-muted-foreground/60">
                   <span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>11 PM</span>
                 </div>
               </div>
@@ -182,14 +182,14 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
                       <div className="flex h-16 w-full items-end">
                         <div className="w-full rounded-t bg-violet-500/70" style={{ height: `${Math.max((c / maxDow) * 100, 3)}%` }} title={`${DOW[i]}: ${c}`} />
                       </div>
-                      <span className="text-[10px] text-muted-foreground">{DOW[i]}</span>
+                      <span className="text-ds-micro text-muted-foreground">{DOW[i]}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {data.last_at ? (
-                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-ds-micro text-muted-foreground">
                   <Flame className="size-3.5 text-amber-500" aria-hidden />
                   Last active {new Date(data.last_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </p>

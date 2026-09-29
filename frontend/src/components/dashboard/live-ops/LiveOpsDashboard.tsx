@@ -15,10 +15,10 @@ export function LiveOpsDashboard() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-60" />
               <span className="relative inline-flex size-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
             </span>
-            <h2 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground dark:text-white/40">
+            <h2 className="text-ds-micro font-bold uppercase tracking-widest text-muted-foreground dark:text-white/40">
               Live Pipeline
             </h2>
-            <span className="ml-auto text-[10px] font-medium text-emerald-600/70 dark:text-emerald-400/60">Live</span>
+            <span className="ml-auto text-ds-micro font-medium text-emerald-600/70 dark:text-emerald-400/60">Live</span>
           </div>
           <LiveFunnelColumn />
         </div>

@@ -108,15 +108,15 @@ function Metric({ name, current, pct }: { name: string; current: string; pct: nu
   const down = pct != null && pct < 0
   return (
     <div className="flex flex-col">
-      <span className="text-[11px] text-muted-foreground">{name}</span>
+      <span className="text-ds-micro text-muted-foreground">{name}</span>
       <span className="flex items-baseline gap-1.5">
         <span className="text-base font-bold tabular-nums text-foreground">{current}</span>
         {pct == null ? (
-          <span className="text-[11px] text-muted-foreground">new</span>
+          <span className="text-ds-micro text-muted-foreground">new</span>
         ) : (
           <span
             className={cn(
-              'text-[11px] font-semibold tabular-nums',
+              'text-ds-micro font-semibold tabular-nums',
               up ? 'text-emerald-600 dark:text-emerald-400' : down ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
             )}
           >
@@ -187,7 +187,7 @@ export function LineChart({ labels, series }: { labels: string[]; series: Series
       </svg>
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {series.map((s) => (
-          <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span key={s.label} className="flex items-center gap-1.5 text-ds-micro text-muted-foreground">
             <span className="inline-block h-2 w-3 rounded-sm" style={{ backgroundColor: s.color }} />
             {s.label}
           </span>

@@ -286,7 +286,7 @@ export function RegisterPage() {
                   placeholder="Your name as it should appear"
                   icon={User}
                 />
-                <p className="mt-1.5 text-[0.7rem] text-muted-foreground/80">
+                <p className="mt-1.5 text-ds-micro text-muted-foreground/80">
                   Spaces allowed — special characters will be auto-removed.
                 </p>
               </div>

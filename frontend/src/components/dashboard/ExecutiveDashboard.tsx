@@ -34,7 +34,7 @@ function Gauge({ value, label, size = 120 }: { value: number; label: string; siz
           strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
           transform="rotate(-90 60 60)" style={{ transition: 'stroke-dashoffset 0.8s ease' }} />
         <text x="60" y="56" textAnchor="middle" className="fill-foreground text-2xl font-bold" dy="0">{value}</text>
-        <text x="60" y="76" textAnchor="middle" className="fill-muted-foreground text-[10px]" dy="0">{label}</text>
+        <text x="60" y="76" textAnchor="middle" className="fill-muted-foreground text-ds-micro" dy="0">{label}</text>
       </svg>
     </div>
   )
@@ -97,7 +97,7 @@ export function ExecutiveDashboard() {
               <TrendingUp className="size-4 text-primary" />
               <span className="text-base font-bold text-foreground">EOS Health Index</span>
               <Badge className={cn(
-                'text-[10px]',
+                'text-ds-micro',
                 eos.data.band === 'excellent' ? 'bg-green-100 text-green-800' :
                 eos.data.band === 'good' ? 'bg-blue-100 text-blue-800' :
                 eos.data.band === 'fair' ? 'bg-amber-100 text-amber-800' :

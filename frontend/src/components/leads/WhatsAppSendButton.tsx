@@ -95,7 +95,7 @@ export function WhatsAppSendButton({
                     <span>WhatsApp Personal</span>
                   </div>
                   {prefillMessage && (
-                    <div className="text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] text-[0.65rem] mt-1 line-clamp-2">
+                    <div className="text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] text-ds-micro mt-1 line-clamp-2">
                       {prefillMessage}
                     </div>
                   )}
@@ -114,7 +114,7 @@ export function WhatsAppSendButton({
                     <span>WhatsApp Business</span>
                   </div>
                   {prefillMessage && (
-                    <div className="text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] text-[0.65rem] mt-1 line-clamp-2">
+                    <div className="text-[color-mix(in_srgb,var(--foreground)_50%,transparent)] text-ds-micro mt-1 line-clamp-2">
                       {prefillMessage}
                     </div>
                   )}

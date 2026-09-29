@@ -424,7 +424,7 @@ export function DashboardLayout() {
           />
         ) : null}
         {debugViewport && viewportDebug ? (
-          <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-amber-300/60 bg-black/80 px-2 py-1 text-[10px] leading-tight text-amber-200 md:hidden">
+          <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-amber-300/60 bg-black/80 px-2 py-1 text-ds-micro leading-tight text-amber-200 md:hidden">
             <div>inner:{viewportDebug.innerH} vv:{viewportDebug.vvH} client:{viewportDebug.clientH}</div>
             <div>shell:{viewportDebug.shellH} main:{viewportDebug.mainH} nav:{viewportDebug.navH}</div>
             <div>gap:{viewportDebug.navBottomGap} safeB:{viewportDebug.safeBottom} kb:{keyboardInset}</div>
@@ -433,7 +433,7 @@ export function DashboardLayout() {
         {shellProbe && androidShellProbe ? (
           <div
             className={cn(
-              'fixed right-2 top-[60px] z-[120] rounded-md border px-2 py-1 text-[10px] leading-tight md:hidden',
+              'fixed right-2 top-[60px] z-[120] rounded-md border px-2 py-1 text-ds-micro leading-tight md:hidden',
               androidShellProbe.navBottomGap > 0
                 ? 'border-rose-300/70 bg-rose-950/85 text-rose-100'
                 : 'border-emerald-300/70 bg-emerald-950/85 text-emerald-100',

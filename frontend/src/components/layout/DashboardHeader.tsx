@@ -160,7 +160,7 @@ export function DashboardHeader({
             </Link>
             {noticeBoardUnread > 0 ? (
               <span
-                className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-[10px] font-bold leading-4 text-white"
+                className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-ds-micro font-bold leading-4 text-white"
                 aria-hidden
               >
                 {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}

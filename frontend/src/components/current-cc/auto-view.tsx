@@ -66,7 +66,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
 
       {/* Exact counts from app logs (activity_log + call_events) — cannot be inflated. */}
       <div className="space-y-1.5">
-        <p className="text-[11px] uppercase text-muted-foreground">
+        <p className="text-ds-micro uppercase text-muted-foreground">
           Aaj ka actual kaam (app logs se ginaa — claim nahi)
         </p>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -118,7 +118,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
                   </div>
                 ))}
                 {auto.enrollment_split_approx ? (
-                  <p className="text-[11px] text-muted-foreground/70">Fresh/old split approximate (phone match).</p>
+                  <p className="text-ds-micro text-muted-foreground/70">Fresh/old split approximate (phone match).</p>
                 ) : null}
               </>
             )}
@@ -164,7 +164,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
         </div>
       </div>
 
-      <p className="text-[11px] text-muted-foreground/70">
+      <p className="text-ds-micro text-muted-foreground/70">
         Process Check &amp; Improvement Area system se nahi aate — wo leader khud bharta hai.
       </p>
     </div>
@@ -177,7 +177,7 @@ function Section({ title, right, children }: { title: string; right?: React.Reac
   return (
     <section className="space-y-2 rounded-lg border border-border/40 bg-background/40 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-medium uppercase text-muted-foreground">{title}</h3>
+        <h3 className="text-ds-micro font-medium uppercase text-muted-foreground">{title}</h3>
         {right}
       </div>
       {children}
@@ -219,7 +219,7 @@ function PersonRows({ rows }: { rows: PersonRow[] }) {
 
 function Head({ cols, grid }: { cols: string[]; grid: string }) {
   return (
-    <div className={cn('hidden gap-1.5 text-[10px] text-muted-foreground sm:grid', grid)}>
+    <div className={cn('hidden gap-1.5 text-ds-micro text-muted-foreground sm:grid', grid)}>
       {cols.map((c, i) => (
         <span key={i}>{c}</span>
       ))}
@@ -255,7 +255,7 @@ function ReadLine({ label, value }: { label: string; value: string | null }) {
 
 function Total({ label, value }: { label: string; value: number }) {
   return (
-    <span className="text-[11px] text-muted-foreground">
+    <span className="text-ds-micro text-muted-foreground">
       {label}: <span className="font-semibold tabular-nums text-foreground">{value}</span>
     </span>
   )
@@ -278,7 +278,7 @@ function Metric({ label, value, accent }: { label: string; value: number; accent
       <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
         {value}
       </p>
-      <p className="text-[10px] leading-tight text-muted-foreground">{label}</p>
+      <p className="text-ds-micro leading-tight text-muted-foreground">{label}</p>
     </div>
   )
 }

@@ -66,11 +66,11 @@ function ActionCard({ action }: { action: ActionItem }) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-foreground">{action.member_name}</span>
           {action.severity === 'critical' && (
-            <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold text-red-600">URGENT</span>
+            <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-ds-micro font-bold text-red-600">URGENT</span>
           )}
         </div>
         <p className="mt-0.5 text-ds-caption">{action.issue}</p>
-        <p className="mt-0.5 text-[10px] text-muted-foreground/70">{action.detail}</p>
+        <p className="mt-0.5 text-ds-micro text-muted-foreground/70">{action.detail}</p>
       </div>
       <Button size="sm" variant={btn.variant} className="shrink-0 h-8 px-3 text-xs gap-1.5">
         <BtnIcon className="size-3.5" />
@@ -132,8 +132,8 @@ export function LeaderActionCenter() {
       <div>
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-ds-label font-bold">Team Overview</h2>
-          <Badge variant="outline" className="text-[10px] ml-auto">{data.team_size} members</Badge>
-          <Badge className={cn('text-[10px]',
+          <Badge variant="outline" className="text-ds-micro ml-auto">{data.team_size} members</Badge>
+          <Badge className={cn('text-ds-micro',
             h.leader_band === 'elite' ? 'bg-green-100 text-green-800' :
             h.leader_band === 'average' ? 'bg-amber-100 text-amber-800' :
             'bg-red-100 text-red-800'
@@ -172,7 +172,7 @@ export function LeaderActionCenter() {
           <HealthBar label="Zombie Score (inverted)" value={h.zombie_score} />
           <HealthBar label="Blocker Resolution" value={h.blocker_resolution_pct} />
           {f.blockers_waiting > 0 && (
-            <p className="text-[11px] text-muted-foreground pt-1">
+            <p className="text-ds-micro text-muted-foreground pt-1">
               {f.blockers_waiting} blocker(s) currently unresolved.
             </p>
           )}
@@ -187,9 +187,9 @@ export function LeaderActionCenter() {
               <AlertTriangle className="size-4 text-amber-500" />
               Action Queue
             </h2>
-            <Badge variant="secondary" className="text-[10px]">{data.actions.length} items</Badge>
+            <Badge variant="secondary" className="text-ds-micro">{data.actions.length} items</Badge>
             {totalCritical > 0 && (
-              <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-600">
+              <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-ds-micro font-bold text-red-600">
                 <span className="relative flex size-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
