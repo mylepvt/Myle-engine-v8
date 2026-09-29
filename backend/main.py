@@ -41,6 +41,7 @@ from app.services.scheduled_jobs import (
     job_flp_min_billing_proof_alert,
     job_integrity_audit,
     job_general_pipeline_maintenance,
+    job_lead_booking_fulfillment,
     job_leader_basics_enforcement,
     job_management_updates,
     job_management_weekly_report,
@@ -125,6 +126,13 @@ async def lifespan(_app: FastAPI):
             job_general_pipeline_maintenance,
             IntervalTrigger(minutes=30),
             id="general_pipeline_maintenance",
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        _scheduler.add_job(
+            job_lead_booking_fulfillment,
+            IntervalTrigger(minutes=10),
+            id="lead_booking_fulfillment",
             replace_existing=True,
             misfire_grace_time=120,
         )

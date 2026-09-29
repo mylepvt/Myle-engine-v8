@@ -24,7 +24,9 @@ import {
   useFreePoolBatchClaimMutation,
   useFreePoolBatchPreviewQuery,
 } from '@/hooks/use-free-lead-pool-query'
+import { AdminLeadBookingsCard } from '@/components/leads/AdminLeadBookingsCard'
 import { ClaimGateBanner } from '@/components/leads/ClaimGateBanner'
+import { LeadBookingCard } from '@/components/leads/LeadBookingCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -313,6 +315,8 @@ export function LeadPoolWorkPage({ title }: Props) {
         </div>
       ) : null}
 
+      {canManagePool ? <AdminLeadBookingsCard /> : null}
+
       {canManagePool ? (
         <div className="surface-inset space-y-3 p-4 text-sm">
           <p className="font-medium text-foreground">Default claim price (new pool leads)</p>
@@ -436,6 +440,7 @@ export function LeadPoolWorkPage({ title }: Props) {
       {canClaimPool ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
           {claimGate ? <ClaimGateBanner gate={claimGate} /> : null}
+          {signedInRole === 'team' || signedInRole === 'leader' ? <LeadBookingCard /> : null}
           <p className="mb-3 font-medium text-foreground">
             In pool: {batchPreview?.available_count ?? (canViewPoolList ? data?.total ?? 0 : 0)}
           </p>

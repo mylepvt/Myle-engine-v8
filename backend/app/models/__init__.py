@@ -1,3 +1,4 @@
+from app.models.lead_booking import LeadBooking
 from app.models.member_removal_outreach import MemberRemovalOutreach
 from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.admin_activity_feed import AdminActivityFeed
@@ -95,4 +96,5 @@ __all__ = [
     "WhatsAppLog",
     "AutomationRule",
     "AutomationActionLog",
+    "LeadBooking",
 ]

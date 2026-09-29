@@ -43,6 +43,7 @@ from app.api.v1 import (
     gate_assistant,
     hello,
     lead_notes,
+    lead_bookings,
     lead_pool,
     leads,
     meta,
@@ -103,6 +104,7 @@ api_router.include_router(
 api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(invoices.router, tags=["invoices"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
+api_router.include_router(lead_bookings.router, prefix="/lead-bookings", tags=["lead-bookings"])
 api_router.include_router(free_lead_pool.router, prefix="/free-lead-pool", tags=["free-lead-pool"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(pending_as.router, prefix="/pending-as", tags=["pending-as"])
