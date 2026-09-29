@@ -21,9 +21,19 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
-/** Native `<select>` — fills its half of the status row; long labels truncate. */
-const pillSelectInner =
-  'w-full min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
+/** Pill wrapper for a status dropdown; the visible text is a truncating label. */
+const pillShell =
+  'relative flex h-9 min-w-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2.5 pr-6 focus-within:ring-2 focus-within:ring-primary/50'
+
+/**
+ * The real `<select>` sits invisibly over the whole pill: tapping anywhere opens the
+ * native picker, while the visible label truncates cleanly with "…". Global dashboard
+ * `select` styles (grey fill, 16px font) never show, so Android + iOS look identical.
+ */
+const pillSelectOverlay =
+  'absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 disabled:cursor-not-allowed'
+
+const pillLabel = 'min-w-0 flex-1 truncate text-ds-caption font-medium leading-none text-foreground'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
@@ -105,6 +115,11 @@ export function CtcsLeadCard({
   const statusOptions = leadStatusSelectOptionsForLead(currentRole, lead.status as LeadStatus, LEAD_STATUS_OPTIONS)
   const callOpts = callStatusSelectOptions(currentRole, lead.status as LeadStatus)
   const callVal = normalizeCallStatus(lead.call_status)
+  const statusLabel =
+    statusOptions.find((o) => o.value === lead.status)?.label ??
+    LEAD_STATUS_OPTIONS.find((o) => o.value === lead.status)?.label ??
+    lead.status
+  const callLabel = callOpts.find((o) => o.value === callVal)?.label ?? callVal
   const currentSection = currentSectionForLead(lead, currentRole)
   const nextSection = nextSectionForLead(lead, currentRole)
   const timerEndingSoon = overdue || remainingSec <= 2 * 60 * 60
@@ -176,10 +191,11 @@ export function CtcsLeadCard({
               <span className="hidden shrink-0 text-ds-caption text-muted-foreground min-[380px]:inline">· Leader</span>
             </div>
           ) : (
-            <div className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2.5 pr-6">
+            <div className={cn(pillShell, selectBusy && 'opacity-50')}>
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
+              <span className={pillLabel}>{statusLabel}</span>
               <select
-                className={pillSelectInner}
+                className={pillSelectOverlay}
                 disabled={selectBusy}
                 value={lead.status}
                 title="Lead status"
@@ -198,10 +214,11 @@ export function CtcsLeadCard({
               />
             </div>
           )}
-          <div className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2.5 pr-6">
+          <div className={cn(pillShell, selectBusy && 'opacity-50')}>
             <Phone className="hidden size-3.5 shrink-0 text-muted-foreground min-[380px]:block" aria-hidden />
+            <span className={pillLabel}>{callLabel}</span>
             <select
-              className={pillSelectInner}
+              className={pillSelectOverlay}
               disabled={selectBusy}
               value={callVal}
               title={currentRole === 'team' ? 'Call / line — dial outcome' : 'Call classification'}

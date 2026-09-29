@@ -12,7 +12,6 @@
   "work/lead-pool-admin": ["admin"],
   "work/recycle-bin": ["admin", "leader", "team"],
   "team/members": ["admin"],
-  "team/attendance": ["admin", "leader", "team"],
   "team/tracking": ["admin", "leader"],
   "team/current-cc": ["admin", "leader", "team"],
   "team/cc-board": ["admin", "leader"],

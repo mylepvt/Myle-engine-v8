@@ -41,7 +41,6 @@ from app.models.verification_task import VerificationTask
 from app.models.task_assignment import TaskAssignment
 from app.models.daily_mission import MissionTemplate, DailyMission, MissionBlocker
 from app.models.grace_history import GraceHistory
-from app.models.user_location import UserLocation
 from app.models.whatsapp_log import WhatsAppLog
 from app.models.automation import AutomationRule, AutomationActionLog
 from app.models.landing_inquiry import LandingInquiry
@@ -92,7 +91,6 @@ __all__ = [
     "DailyMission",
     "MissionBlocker",
     "GraceHistory",
-    "UserLocation",
     "WhatsAppLog",
     "AutomationRule",
     "AutomationActionLog",
