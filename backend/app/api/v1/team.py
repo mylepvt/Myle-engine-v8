@@ -45,7 +45,7 @@ from app.schemas.team import (
 from app.db.session import AsyncSessionLocal
 from app.services.downline import is_user_in_downline_of
 from app.services.lead_owner import lead_owner_clause
-from app.services.member_compliance import build_compliance_snapshots
+from app.services.member_compliance import build_compliance_snapshots, start_practice_window
 from app.services.grace_intelligence import (
     get_grace_contexts_batch,
     record_grace_outcome,
@@ -767,6 +767,8 @@ async def decide_pending_registration(
         )
     if body.action == "approve":
         row.registration_status = "approved"
+        # Days spent waiting for approval must not count as missed reports/calls.
+        start_practice_window(row)
     else:
         row.registration_status = "rejected"
     await session.commit()
@@ -1276,6 +1278,8 @@ async def toggle_training_lock(
             target.training_status = "pending"
     else:
         # Unlock: skip training entirely
+        if target.training_required:
+            start_practice_window(target)
         target.training_required = False
         target.training_status = "not_required"
     await session.commit()

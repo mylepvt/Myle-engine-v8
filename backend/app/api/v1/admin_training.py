@@ -15,6 +15,7 @@ from app.models.training_progress import TrainingProgress
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.training_video import TrainingVideo
 from app.models.user import User
+from app.services.member_compliance import start_practice_window
 from app.services.training_overview import get_training_overview
 from app.services.training_uploads import (
     normalize_training_audio_url,
@@ -126,6 +127,7 @@ async def admin_toggle_training_requirement(
     if target.training_required:
         target.training_required = False
         target.training_status = "not_required"
+        start_practice_window(target)
     else:
         target.training_required = True
         if target.training_status == "not_required":
