@@ -12,7 +12,7 @@ vi.mock('@/hooks/use-dashboard-shell-role', () => ({
 
 function renderCard(
   lead: LeadPublic,
-  extra?: { showEnrollLink?: boolean; onCopyEnrollLink?: () => void },
+  extra?: Record<string, never>,
 ) {
   const client = new QueryClient()
   render(
@@ -110,16 +110,7 @@ describe('CtcsLeadCard proof gating', () => {
     vi.clearAllMocks()
   })
 
-  it('shows the secure enrollment WhatsApp button for video_sent', () => {
-    renderCard(makeLead('video_sent'), {
-      showEnrollLink: true,
-      onCopyEnrollLink: () => {},
-    })
-
-    expect(screen.getByTitle('Send secure enrollment link on WhatsApp')).toBeInTheDocument()
-  })
-
-  it('hides the secure enrollment WhatsApp button when showEnrollLink is not set', () => {
+  it('has no separate secure-link button (merged into the Enrollment Video status)', () => {
     renderCard(makeLead('video_sent'))
 
     expect(screen.queryByTitle('Send secure enrollment link on WhatsApp')).not.toBeInTheDocument()

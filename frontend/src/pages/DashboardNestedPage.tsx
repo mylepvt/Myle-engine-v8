@@ -10,11 +10,9 @@ import {
 } from '@/config/dashboard-registry'
 import { PageTransition } from '@/components/ui/motion'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardPlaceholderPage } from '@/pages/DashboardPlaceholderPage'
 import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
-import { EnrollmentAdminPage } from '@/pages/EnrollmentAdminPage'
 import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
 import { LeadFlowPage } from '@/pages/LeadFlowPage'
 import { LeadGenPage } from '@/pages/LeadGenPage'
@@ -67,8 +65,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
     case 'leads':
       return <LeadsWorkPage title={title} listMode={ui.listMode} />
-    case 'enroll-link':
-      return <EnrollmentAdminPage pageTitle={title} />
     case 'workboard':
       return <WorkboardPage title={title} />
     case 'follow-ups':
@@ -176,8 +172,6 @@ export function DashboardNestedPage() {
   const { '*': splat } = useParams()
   const path = (splat ?? '').replace(/^\/+|\/+$/g, '')
   const { role: navRole, isPending: rolePending } = useDashboardShellRole()
-  const { data: me } = useAuthMeQuery()
-  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
 
   const leadDetailMatch = /^work\/leads\/(\d+)$/.exec(path)
   if (leadDetailMatch) {
@@ -188,6 +182,11 @@ export function DashboardNestedPage() {
   // Retarget moved into the Calling Board as a tab — keep old links working.
   if (path === 'work/retarget') {
     return <Navigate to="/dashboard/work/leads?tab=retarget" replace />
+  }
+
+  // Enrollment Link page merged into the Calling Board "Enrollment Video" status.
+  if (path === 'work/enroll-link') {
+    return <Navigate to="/dashboard/work/leads" replace />
   }
 
   const ccBoardDetailMatch = /^team\/cc-board\/(\d+)$/.exec(path)
@@ -244,11 +243,6 @@ export function DashboardNestedPage() {
   }
 
   if (!navRole || !routeDefAccessible(def, navRole)) {
-    return <Navigate to="/dashboard" replace />
-  }
-
-  // Per-user capability gate: enrollment-link page needs the admin-granted flag.
-  if (def.surface === 'full' && def.ui.kind === 'enroll-link' && !enrollAllowed) {
     return <Navigate to="/dashboard" replace />
   }
 

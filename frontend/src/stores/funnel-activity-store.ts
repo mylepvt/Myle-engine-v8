@@ -23,7 +23,7 @@ const FUNNEL_STAGES: { key: string; label: string; icon: string }[] = [
   { key: 'new_lead', label: 'New Lead', icon: '📥' },
   { key: 'contacted', label: 'Contacted', icon: '📞' },
   { key: 'invited', label: 'Invited', icon: '✉️' },
-  { key: 'video_sent', label: 'Enrollment Live', icon: '▶️' },
+  { key: 'video_sent', label: 'Enrollment Video', icon: '▶️' },
   { key: 'video_watched', label: 'Video Watched', icon: '👀' },
   { key: 'day1', label: 'Day 1', icon: '🎯' },
   { key: 'day2', label: 'Day 2', icon: '📚' },

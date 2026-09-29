@@ -30,7 +30,7 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'new_lead',       label: 'New Lead' },
   { value: 'contacted',      label: 'Contacted' },
   { value: 'invited',        label: 'Invited' },
-  { value: 'video_sent',     label: 'Enrollment Live' },
+  { value: 'video_sent',     label: 'Enrollment Video' },
   { value: 'video_watched',  label: 'Video Watched' },
   { value: 'day1',           label: 'Day 1' },
   { value: 'day2',           label: 'Day 2' },

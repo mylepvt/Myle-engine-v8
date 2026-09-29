@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Check, ChevronRight, Link2, MessageCircle, MoreHorizontal, Phone, UserRoundCog } from 'lucide-react'
+import { ChevronRight, MessageCircle, MoreHorizontal, Phone, UserRoundCog } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
@@ -59,11 +59,6 @@ type Props = {
   onCall: (lead: LeadPublic) => void
   onFollowUp: (id: number) => void
   onReassign?: (lead: LeadPublic) => void
-  /** Granted users only: show a "copy secure enrollment link" button. */
-  showEnrollLink?: boolean
-  enrollLinkCopied?: boolean
-  enrollLinkBusy?: boolean
-  onCopyEnrollLink?: (lead: LeadPublic) => void
 }
 
 export function CtcsLeadCard({
@@ -77,10 +72,6 @@ export function CtcsLeadCard({
   onCall,
   onFollowUp,
   onReassign,
-  showEnrollLink,
-  enrollLinkCopied,
-  enrollLinkBusy,
-  onCopyEnrollLink,
 }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const selectBusy = patchBusy || actionBusy
@@ -345,23 +336,6 @@ export function CtcsLeadCard({
             {lead.status === 'converted' ? <RegisterLinkButton lead={lead} /> : null}
             {currentRole !== 'admin' && ENROLLMENT_SENDABLE_STATUSES.includes(lead.status) ? (
               <SendToDay1Button lead={lead} />
-            ) : null}
-            {showEnrollLink && onCopyEnrollLink ? (
-              <button
-                type="button"
-                disabled={enrollLinkBusy}
-                onClick={() => onCopyEnrollLink(lead)}
-                className={cn(
-                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95 disabled:opacity-50',
-                  enrollLinkCopied
-                    ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
-                    : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
-                )}
-                title="Send secure enrollment link on WhatsApp"
-                aria-label="Send secure enrollment link on WhatsApp"
-              >
-                {enrollLinkCopied ? <Check className="size-3.5" aria-hidden /> : <Link2 className="size-3.5" aria-hidden />}
-              </button>
             ) : null}
             <button
               type="button"

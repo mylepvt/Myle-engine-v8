@@ -282,7 +282,7 @@ const LeadCard = memo(function LeadCard({
         const digits = whatsappDigits(lead.phone ?? '')
         const msg =
           `Hi ${lead.name || 'there'},\n\n` +
-          `Aapki Enrollment-Live video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
+          `Aapki enrollment video ready hai. Ye private link sirf aapke liye hai — apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
         const waUrl = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(msg)}` : null
         if (waUrl) openExternalShareUrl(waUrl)
       }
@@ -424,7 +424,7 @@ const LeadCard = memo(function LeadCard({
               <>
                 <LeadContactActions phone={lead.phone} />
                 {!stageOpsCard ? (
-                  <IconBtn title="Send Enrollment-Live video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
+                  <IconBtn title="Send enrollment video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
                     onClick={() => void handleSendFlpMinBillingVideo()}>
                     <Video className="h-3.5 w-3.5"/>
                   </IconBtn>

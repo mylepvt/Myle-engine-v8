@@ -40,6 +40,7 @@ from app.models.activity_log import ActivityLog
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.observation_logger import observe_event
+from app.services.enrollment_video import presigned_r2_upstream
 from app.services.flp_min_billing_video import (
     absolute_video_source_url,
     build_flp_min_billing_stream_source_candidates,
@@ -700,7 +701,7 @@ async def mark_watch_completed(
                 await send_push_to_user(
                     session,
                     owner_id,
-                    title="Enrollment-Live watched 🎬",
+                    title="Enrollment video watched 🎬",
                     body=(
                         f"{lead.name} watched the video — now on Day 1 with your leader."
                         if lead.status == "day1"
@@ -725,8 +726,17 @@ async def stream_watch_video(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
 
     configured_source = await get_flp_min_billing_video_source(session)
-    source_candidates = build_flp_min_billing_stream_source_candidates(link.youtube_url, configured_source)
-    if not source_candidates:
+    # (raw source, upstream URL): private R2 keys / R2 URLs get a short-lived presigned
+    # URL first; plain hosted URLs and local uploads follow.
+    upstream_candidates: list[tuple[str, str]] = []
+    for raw_source in (link.youtube_url, configured_source):
+        presigned = await presigned_r2_upstream(raw_source)
+        if presigned:
+            upstream_candidates.append(((raw_source or "").strip(), presigned))
+    for source_url in build_flp_min_billing_stream_source_candidates(link.youtube_url, configured_source):
+        if not is_youtube_like_url(source_url):
+            upstream_candidates.append((source_url, absolute_video_source_url(request, source_url)))
+    if not upstream_candidates:
         await require_secure_flp_min_billing_video_source(session)
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video file is not available.")
 
@@ -738,10 +748,7 @@ async def stream_watch_video(
     upstream: httpx.Response | None = None
     resolved_source: str | None = None
 
-    for source_url in source_candidates:
-        if is_youtube_like_url(source_url):
-            continue
-        upstream_url = absolute_video_source_url(request, source_url)
+    for source_url, upstream_url in upstream_candidates:
         try:
             candidate_upstream = await client.send(
                 client.build_request("GET", upstream_url, headers=forward_headers),
@@ -762,7 +769,7 @@ async def stream_watch_video(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video file is not available.")
 
     normalized_link_source = normalize_video_source_url(link.youtube_url)
-    if resolved_source != normalized_link_source:
+    if resolved_source not in {normalized_link_source, (link.youtube_url or "").strip()}:
         link.youtube_url = resolved_source
         await session.commit()
 

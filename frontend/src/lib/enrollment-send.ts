@@ -31,6 +31,6 @@ export async function sendEnrollmentLiveLink(lead: EnrollmentLead): Promise<void
   if (!digits) throw new Error('Phone number missing for WhatsApp share.')
   const msg =
     `Hi ${lead.name || 'there'},\n\n` +
-    `Aapki Enrollment-Live video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
+    `Aapki enrollment video ready hai. Ye private link sirf aapke liye hai — apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
   openExternalShareUrl(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`)
 }

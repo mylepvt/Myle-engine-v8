@@ -132,7 +132,7 @@ STATUS_FLOW_ORDER = [
     "New Lead",          # new_lead
     "Contacted",         # contacted
     "Invited",           # invited
-    "Enrollment Live",   # video_sent  (single open token link, replaces enrollment)
+    "Enrollment Video",  # video_sent  (single secure token link — watermarked enrollment video)
     "Video Watched",     # video_watched  ← team forward boundary
     "Day 1",             # day1   (post-handoff / leader)
     "Day 2",             # day2   (admin advances)
@@ -191,7 +191,7 @@ def is_valid_forward_status_transition(
     - Backward / same / statuses outside STATUS_FLOW_ORDER: allowed.
     - Admin & Leader (admin_may_skip_fsm=True): any forward jump.
     - Team: forward jumps only up to and including Video Watched; blocked beyond.
-    Flow: New Lead → … → Enrollment Live → Video Watched →
+    Flow: New Lead → … → Enrollment Video → Video Watched →
           Day 1 → Day 2 → Day 3 → Fully Converted
     """
     cur = normalize_flow_status(current_status)

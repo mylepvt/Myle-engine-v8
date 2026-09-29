@@ -98,9 +98,6 @@ export function SettingsAppPage({ title }: Props) {
 
   const [q, setQ] = useState('')
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
-  const [enrollmentUrlValue, setEnrollmentUrlValue] = useState('')
-  const [enrollmentSaveMsg, setEnrollmentSaveMsg] = useState<string | null>(null)
-  const [enrollmentErrorMsg, setEnrollmentErrorMsg] = useState<string | null>(null)
   const [secureEnrollUrlValue, setSecureEnrollUrlValue] = useState('')
   const [secureEnrollSaveMsg, setSecureEnrollSaveMsg] = useState<string | null>(null)
   const [secureEnrollErrorMsg, setSecureEnrollErrorMsg] = useState<string | null>(null)
@@ -123,15 +120,13 @@ export function SettingsAppPage({ title }: Props) {
   const settingsSource = appSettingsData?.settings ?? {}
 
   useEffect(() => {
-    if (!enrollmentUrlValue && settingsSource.flp_min_billing_video_source_url) {
-      setEnrollmentUrlValue(settingsSource.flp_min_billing_video_source_url)
+    // One enrollment video now. Show the older Enrollment-Live URL until a new one is saved.
+    const current =
+      settingsSource.enrollment_video_source_url || settingsSource.flp_min_billing_video_source_url
+    if (!secureEnrollUrlValue && current) {
+      setSecureEnrollUrlValue(current)
     }
-  }, [settingsSource.flp_min_billing_video_source_url])
-  useEffect(() => {
-    if (!secureEnrollUrlValue && settingsSource.enrollment_video_source_url) {
-      setSecureEnrollUrlValue(settingsSource.enrollment_video_source_url)
-    }
-  }, [settingsSource.enrollment_video_source_url])
+  }, [settingsSource.enrollment_video_source_url, settingsSource.flp_min_billing_video_source_url])
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>
@@ -201,21 +196,6 @@ export function SettingsAppPage({ title }: Props) {
     }
   }
 
-  const handleSaveEnrollmentUrl = async () => {
-    setEnrollmentSaveMsg(null)
-    setEnrollmentErrorMsg(null)
-    try {
-      await updateAppSetting.mutateAsync({
-        key: 'flp_min_billing_video_source_url',
-        value: enrollmentUrlValue.trim(),
-      })
-      setEnrollmentSaveMsg('Enrollment video URL saved.')
-      void refetchAppSettings()
-    } catch (error) {
-      setEnrollmentErrorMsg(error instanceof Error ? error.message : 'Could not save enrollment video URL.')
-    }
-  }
-
   const handleSaveSecureEnrollUrl = async () => {
     setSecureEnrollSaveMsg(null)
     setSecureEnrollErrorMsg(null)
@@ -224,7 +204,7 @@ export function SettingsAppPage({ title }: Props) {
         key: 'enrollment_video_source_url',
         value: secureEnrollUrlValue.trim(),
       })
-      setSecureEnrollSaveMsg('Secure enrollment link video saved.')
+      setSecureEnrollSaveMsg('Enrollment video saved.')
       void refetchAppSettings()
     } catch (error) {
       setSecureEnrollErrorMsg(error instanceof Error ? error.message : 'Could not save secure enrollment video URL.')
@@ -557,51 +537,11 @@ export function SettingsAppPage({ title }: Props) {
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Enrollment Live Video</h2>
+          <h2 className="text-sm font-semibold text-foreground">Enrollment Video</h2>
           <p className="text-xs text-muted-foreground">
-            When "Send Enrollment-Live video" is sent from the calling board, the lead receives a token link. Set the video URL here.
-          </p>
-        </div>
-
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <label className="block text-sm">
-            <span className="mb-1 block text-ds-caption text-muted-foreground">Video URL</span>
-            <input
-              type="text"
-              value={enrollmentUrlValue}
-              onChange={(e) => setEnrollmentUrlValue(e.target.value)}
-              placeholder="https://pub-xxxx.r2.dev/enrollment.mp4"
-              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-            />
-            <span className="mt-1 block text-muted-foreground/80">Direct hosted URL (R2 / .mp4 / HLS) — YouTube nahi.</span>
-          </label>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveEnrollmentUrl()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video URL'}
-          </button>
-          {enrollmentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{enrollmentSaveMsg}</p> : null}
-          {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
-        </div>
-      </section>
-
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">New Enrollment Link (Secure Video)</h2>
-          <p className="text-xs text-muted-foreground">
-            Secure enrollment link (Today tab 🔗 button + Enrollment Link page) sends this video. Set Cloudflare R2 link/key.
+            Sent from the Calling Board when a lead is moved to &quot;Enrollment Video&quot;. The prospect opens a private
+            link with their name + registered number; the video plays with a moving name/number watermark. Set the
+            Cloudflare R2 link/key.
           </p>
         </div>
 
@@ -632,7 +572,7 @@ export function SettingsAppPage({ title }: Props) {
             onClick={() => void handleSaveSecureEnrollUrl()}
             className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
           >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment link video'}
+            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video'}
           </button>
           {secureEnrollSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{secureEnrollSaveMsg}</p> : null}
           {secureEnrollErrorMsg ? <p className="text-xs text-destructive">{secureEnrollErrorMsg}</p> : null}

@@ -151,10 +151,13 @@ async def get_flp_min_billing_video_title(session: AsyncSession) -> str:
 
 
 async def get_flp_min_billing_video_source(session: AsyncSession) -> str:
-    source = await get_app_setting(session, "flp_min_billing_video_source_url")
-    if not source:
-        source = await get_app_setting(session, "flp_min_billing_video_url")
-    return source
+    """The one enrollment video: Settings → "Enrollment Video" (R2 key/URL) wins; the
+    older Enrollment-Live keys stay as fallback so existing setups keep working."""
+    for key in ("enrollment_video_source_url", "flp_min_billing_video_source_url", "flp_min_billing_video_url"):
+        source = await get_app_setting(session, key)
+        if source:
+            return source
+    return ""
 
 
 async def require_secure_flp_min_billing_video_source(session: AsyncSession) -> str:
