@@ -21,9 +21,9 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
-/** Native `<select>` — compact so Call + Lead sit one row beside Dial/WA. */
+/** Native `<select>` — fills its half of the status row; long labels truncate. */
 const pillSelectInner =
-  'max-w-[min(11rem,46vw)] min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
+  'w-full min-w-0 h-full flex-1 cursor-pointer appearance-none rounded-full border-0 bg-transparent py-0 pl-0.5 pr-5 text-left text-ds-caption font-medium leading-none text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 disabled:opacity-40'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
@@ -111,6 +111,7 @@ export function CtcsLeadCard({
   const showCurrentSectionHint =
     lead.archived_at != null || currentSection.path !== '/dashboard/work/leads'
   const showNextSectionHint = timerEndingSoon && nextSection != null
+  const showSendToDay1 = currentRole !== 'admin' && ENROLLMENT_SENDABLE_STATUSES.includes(lead.status)
 
   return (
     <div
@@ -143,7 +144,7 @@ export function CtcsLeadCard({
                 >
                   {assigneeInitials}
                 </div>
-                <span className="max-w-[7.5rem] truncate text-ds-caption text-muted-foreground" title={assigneeName}>
+                <span className="max-w-[5.5rem] truncate text-ds-caption text-muted-foreground min-[380px]:max-w-[7.5rem]" title={assigneeName}>
                   {assigneeName}
                 </span>
               </div>
@@ -164,24 +165,18 @@ export function CtcsLeadCard({
           ) : null}
         </div>
 
-        {/* Keep call + lead status compact on one row. */}
-        <div
-          className={cn(
-            'mb-1.5 flex min-h-[2.25rem] items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-            'rounded-lg border border-border/40 bg-muted/20 px-1 py-1',
-          )}
-        >
+        {/* Lead status + call status: two equal halves, never clipped. */}
+        <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-lg border border-border/40 bg-muted/20 p-1">
           {pipelineReadonly ? (
-            <div className="flex h-8 min-w-[6.5rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
+            <div className="flex h-9 min-w-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 px-2.5">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
               <span className="truncate text-ds-caption text-foreground">
                 {LEAD_STATUS_OPTIONS.find((o) => o.value === lead.status)?.label ?? lead.status}
               </span>
-              <span className="text-ds-caption text-muted-foreground">·</span>
-              <span className="text-ds-caption text-muted-foreground">Leader</span>
+              <span className="hidden shrink-0 text-ds-caption text-muted-foreground min-[380px]:inline">· Leader</span>
             </div>
           ) : (
-            <div className="relative flex h-8 min-w-[7rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
+            <div className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2.5 pr-6">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
               <select
                 className={pillSelectInner}
@@ -203,8 +198,8 @@ export function CtcsLeadCard({
               />
             </div>
           )}
-          <div className="relative flex h-8 min-w-[7.25rem] max-w-[52%] shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2 pr-6">
-            <Phone className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <div className="relative flex h-9 min-w-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2.5 pr-6">
+            <Phone className="hidden size-3.5 shrink-0 text-muted-foreground min-[380px]:block" aria-hidden />
             <select
               className={pillSelectInner}
               disabled={selectBusy}
@@ -227,8 +222,8 @@ export function CtcsLeadCard({
 
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             <div className={cn('relative size-8 shrink-0 rounded-full', timeColors.glow)}>
             <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
               <circle
@@ -273,15 +268,15 @@ export function CtcsLeadCard({
               <circle cx="20" cy="20" r="2" fill={timeColors.stroke} />
             </svg>
             </div>
-            <div>
-              <p className={cn('text-ds-caption font-semibold leading-tight', timeColors.text)}>
+            <div className="whitespace-nowrap">
+              <p className={cn('text-ds-caption font-semibold tabular-nums leading-tight', timeColors.text)}>
                 {overdue ? formatCountdown(ms) : formatLeadSlaTime(remainingSec)}
               </p>
-              <p className="text-ds-caption text-muted-foreground">{overdue ? 'SLA' : 'remaining'}</p>
+              <p className="text-[10px] leading-tight text-muted-foreground">{overdue ? 'SLA over' : 'left'}</p>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex items-center gap-1 min-[380px]:gap-1.5">
             {!dialBlocked ? (
               <a
                 href={tel}
@@ -289,7 +284,7 @@ export function CtcsLeadCard({
                   void onCall(lead)
                 }}
                 className={cn(
-                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95',
+                  'flex size-9 items-center justify-center rounded-full border-2 transition active:scale-95 min-[380px]:size-10',
                   'border-emerald-600/50 bg-emerald-500/15 text-emerald-900',
                   'shadow-[0_0_10px_rgba(52,211,153,0.35)] ring-1 ring-emerald-500/25',
                   'hover:border-emerald-500 hover:bg-emerald-500/25',
@@ -304,7 +299,7 @@ export function CtcsLeadCard({
               </a>
             ) : (
               <span
-                className="flex size-8 cursor-not-allowed items-center justify-center rounded-full border border-border bg-muted/50 opacity-40"
+                className="flex size-9 min-[380px]:size-10 cursor-not-allowed items-center justify-center rounded-full border border-border bg-muted/50 opacity-40"
                 title="No phone"
               >
                 <Phone className="size-3.5 text-muted-foreground" aria-hidden />
@@ -316,7 +311,7 @@ export function CtcsLeadCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  'flex size-10 items-center justify-center rounded-full border-2 transition active:scale-95',
+                  'flex size-9 items-center justify-center rounded-full border-2 transition active:scale-95 min-[380px]:size-10',
                   'border-[#128C7E]/60 bg-[#25D366]/15 text-[#065f46]',
                   'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/25',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]/70',
@@ -329,30 +324,26 @@ export function CtcsLeadCard({
                 <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
               </a>
             ) : (
-              <span className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/40 opacity-40">
+              <span className="flex size-9 min-[380px]:size-10 items-center justify-center rounded-full border border-border bg-muted/40 opacity-40">
                 <MessageCircle className="size-3.5 text-muted-foreground" aria-hidden />
               </span>
             )}
-            {lead.status === 'converted' ? <RegisterLinkButton lead={lead} /> : null}
-            {currentRole !== 'admin' && ENROLLMENT_SENDABLE_STATUSES.includes(lead.status) ? (
-              <SendToDay1Button lead={lead} />
-            ) : null}
             <button
               type="button"
               disabled={selectBusy}
               onClick={() => onFollowUp(lead.id)}
-              className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:bg-muted active:scale-95 disabled:opacity-40"
+              className="flex size-9 min-[380px]:size-10 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:bg-muted active:scale-95 disabled:opacity-40"
               title="Follow-up +24h"
               aria-label="Schedule follow-up"
             >
-              <MoreHorizontal className="size-3" aria-hidden />
+              <MoreHorizontal className="size-4" aria-hidden />
             </button>
             {onReassign ? (
               <button
                 type="button"
                 disabled={selectBusy}
                 onClick={() => onReassign(lead)}
-                className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:border-primary/40 hover:text-foreground active:scale-95 disabled:opacity-40"
+                className="flex size-9 min-[380px]:size-10 items-center justify-center rounded-full border border-border bg-muted/70 text-muted-foreground transition hover:border-primary/40 hover:text-foreground active:scale-95 disabled:opacity-40"
                 title="Reassign to top performer"
                 aria-label="Reassign lead"
               >
@@ -361,6 +352,16 @@ export function CtcsLeadCard({
             ) : null}
           </div>
         </div>
+
+        {/* Primary next step gets its own full-width row — easy to tap, never crowds the icons. */}
+        {showSendToDay1 || lead.status === 'converted' ? (
+          <div className="mt-2 flex flex-col gap-1.5">
+            {showSendToDay1 ? <SendToDay1Button lead={lead} className="h-10 w-full justify-center text-sm" /> : null}
+            {lead.status === 'converted' ? (
+              <RegisterLinkButton lead={lead} className="h-10 w-full justify-center text-sm" />
+            ) : null}
+          </div>
+        ) : null}
 
         {showCurrentSectionHint || showNextSectionHint ? (
           <div className="mt-1.5 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2 text-ds-caption">
