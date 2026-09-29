@@ -61,8 +61,6 @@ export function applyCtcsOptimisticToLead(
         status: 'lost',
         heat_score: 0,
         last_action_at: stageAnchorForStatusChange(lead, 'lost', now),
-        archived_at: now,
-        is_archived: true,
         in_pool: false,
       }
     case 'paid': {
