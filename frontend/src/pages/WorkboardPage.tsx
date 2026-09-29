@@ -19,6 +19,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
+import { EnrollmentProofRow } from '@/components/leads/EnrollmentProofRow'
 import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -451,6 +452,9 @@ const LeadCard = memo(function LeadCard({
             onMoveNext={onMoveNext}
             nextLabel={nextLabel}
           />
+        ) : null}
+        {lead.status === 'day1' ? (
+          <EnrollmentProofRow lead={lead} canSendBack={surfaceRole === 'leader' || surfaceRole === 'admin'} />
         ) : null}
         {showClosingActions && (
           <div className="flex gap-2">

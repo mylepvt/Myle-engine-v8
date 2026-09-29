@@ -109,6 +109,9 @@ export type LeadPublic = {
   payment_status: string | null
   payment_amount_cents: number | null
   payment_proof_url: string | null
+  enrollment_amount_cents?: number | null
+  enrollment_proof_url?: string | null
+  enrollment_proof_uploaded_at?: string | null
   payment_proof_uploaded_at: string | null
   mindset_started_at?: string | null
   mindset_completed_at?: string | null
@@ -882,6 +885,54 @@ export function useLeadCallLogMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => postLeadCallLog(id),
+    onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+
+/** Team stages from which "Send to Day 1" (enrollment screenshot upload) is allowed. */
+export const ENROLLMENT_SENDABLE_STATUSES: readonly string[] = [
+  'new_lead',
+  'contacted',
+  'invited',
+  'video_sent',
+  'video_watched',
+]
+export const ENROLLMENT_MIN_RUPEES = 149
+export const ENROLLMENT_MAX_RUPEES = 200
+
+async function postSendToDay1(leadId: number, amountRupees: number, screenshot: File): Promise<LeadPublic> {
+  const fd = new FormData()
+  fd.append('amount_rupees', String(amountRupees))
+  fd.append('screenshot', screenshot)
+  const res = await apiFetch(`/api/v1/leads/${leadId}/send-to-day1`, { method: 'POST', body: fd })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useSendToDay1Mutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leadId, amountRupees, screenshot }: { leadId: number; amountRupees: number; screenshot: File }) =>
+      postSendToDay1(leadId, amountRupees, screenshot),
+    onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+async function postSendBack(leadId: number, reason: string): Promise<LeadPublic> {
+  const res = await apiFetch(`/api/v1/leads/${leadId}/send-back`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: reason.trim() || null }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useSendBackFromDay1Mutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leadId, reason }: { leadId: number; reason: string }) => postSendBack(leadId, reason),
     onSuccess: () => invalidateLeadRelated(qc),
   })
 }

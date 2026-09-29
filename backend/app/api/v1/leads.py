@@ -19,7 +19,7 @@ from app.models.batch_day_submission import BatchDaySubmission
 from app.models.batch_share_link import BatchShareLink
 from app.models.lead import Lead
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.schemas.leads import (
     AllLeadsResponse,
     BatchShareUrlRequest,
@@ -394,6 +394,40 @@ async def import_leads_file(
         skipped=result.skipped,
         warnings=result.warnings,
     )
+
+
+class SendBackRequest(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=300)
+
+
+@router.post("/{lead_id}/send-to-day1", response_model=LeadPublic)
+async def send_to_day1(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+    amount_rupees: int = Form(..., description="Enrollment amount paid (₹149–200)"),
+    screenshot: UploadFile = File(..., description="Enrollment payment screenshot"),
+) -> LeadPublic:
+    """Upload the enrollment screenshot → lead goes to the nearest leader's Day 1."""
+    lead = await service.send_to_day1_with_enrollment(
+        lead_id=lead_id,
+        user=user,
+        amount_rupees=amount_rupees,
+        screenshot=await screenshot.read(),
+    )
+    return await service.serialize_lead_public(lead)
+
+
+@router.post("/{lead_id}/send-back", response_model=LeadPublic)
+async def send_back_from_day1(
+    lead_id: int,
+    body: SendBackRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+) -> LeadPublic:
+    """Leader/admin: enrollment proof looks wrong → return the lead to the member."""
+    lead = await service.send_back_from_day1(lead_id=lead_id, user=user, reason=body.reason)
+    return await service.serialize_lead_public(lead)
 
 
 @router.post("/{lead_id}/claim", response_model=LeadPublic)

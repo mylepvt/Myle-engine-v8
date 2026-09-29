@@ -52,6 +52,7 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
+from app.services.enrollment_proof_storage import save_enrollment_proof_bytes
 from app.services.claim_gate import TODAY_WORKING_STATUSES, ensure_claim_allowed, pool_claim_exists
 from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
 from app.services.observation_logger import (
@@ -70,7 +71,14 @@ from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
+logger = logging.getLogger(__name__)
+
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
+
+# Enrollment proof gate (team → leader Day 1 handoff).
+ENROLLMENT_MIN_RUPEES = 149
+ENROLLMENT_MAX_RUPEES = 200
+ENROLLMENT_SENDABLE_STATUSES = frozenset({"new_lead", "contacted", "invited", "video_sent", "video_watched"})
 _POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
 _PHONE_DIGIT_RE = re.compile(r"\D")
 
@@ -930,6 +938,128 @@ class LeadsService:
         await self._notifier("leads", "workboard")
         return lead
 
+    async def _handoff_to_leader_day1(self, lead: Lead, *, actor: AuthUser, now: datetime) -> None:
+        """Reassign to the owner's nearest upline leader and advance to Day 1."""
+        owner_id = lead.owner_user_id or lead.assigned_to_user_id or lead.created_by_user_id
+        leader = await self._nearest_leader(owner_id) if owner_id else None
+        if leader is not None and lead.assigned_to_user_id != leader[0]:
+            from_uid = lead.assigned_to_user_id
+            lead.assigned_to_user_id = leader[0]
+            lead.is_reassigned = True
+            lead.reassigned_at = now
+            await self._repository.add_lead_activity(
+                user_id=actor.user_id,
+                action="leader_handoff_video_watched",
+                lead_id=lead.id,
+                meta={"from_user_id": from_uid, "to_user_id": leader[0], "leader_id": leader[0]},
+            )
+        # Auto-advance to Day 1 so the handed-off lead lands directly on the
+        # leader's workboard Day 1 instead of resting at video_watched on the
+        # calling board. video_watched stays a transient record of the watch.
+        previous = lead.status
+        lead.status = "day1"
+        _apply_status_side_effects(lead, previous_status=previous, new_status="day1", now=now)
+        await self._repository.add_lead_activity(
+            user_id=actor.user_id,
+            action="auto_advance_day1_on_video_watched",
+            lead_id=lead.id,
+            meta={"from_status": previous, "to_status": "day1"},
+        )
+
+    async def send_to_day1_with_enrollment(
+        self,
+        *,
+        lead_id: int,
+        user: AuthUser,
+        amount_rupees: int,
+        screenshot: bytes,
+    ) -> Lead:
+        """Member uploads the enrollment screenshot (₹149–200) → lead goes to the leader's Day 1."""
+        lead = await self._get_lead_or_404(lead_id)
+        if lead.deleted_at is not None or lead.archived_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Restore the lead first")
+        if not await self._repository.can_mutate_lead(user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if lead.status not in ENROLLMENT_SENDABLE_STATUSES:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Only leads before Day 1 can be sent to Day 1",
+            )
+        if not (ENROLLMENT_MIN_RUPEES <= int(amount_rupees) <= ENROLLMENT_MAX_RUPEES):
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail=f"Enrollment amount must be between ₹{ENROLLMENT_MIN_RUPEES} and ₹{ENROLLMENT_MAX_RUPEES}.",
+            )
+        ok, result = await save_enrollment_proof_bytes(data=screenshot, lead_id=lead.id)
+        if not ok:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=result)
+
+        now = datetime.now(timezone.utc)
+        lead.enrollment_amount_cents = int(amount_rupees) * 100
+        lead.enrollment_proof_url = result
+        lead.enrollment_proof_uploaded_at = now
+        lead.enrollment_proof_by_user_id = user.user_id
+        lead.last_action_at = now
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="lead.enrollment_proof_uploaded",
+            lead_id=lead.id,
+            meta={"amount_cents": lead.enrollment_amount_cents, "proof_url": result, "from_status": lead.status},
+        )
+        await self._handoff_to_leader_day1(lead, actor=user, now=now)
+        lead = await self._commit_with_shadow_upsert(lead)
+        await self._notifier("leads", "workboard")
+        return lead
+
+    async def send_back_from_day1(self, *, lead_id: int, user: AuthUser, reason: str | None) -> Lead:
+        """Leader/admin rejects the enrollment proof: lead returns to the member, proof cleared."""
+        if user.role not in ("leader", "admin"):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        lead = await self._get_lead_or_404(lead_id)
+        if not await self._repository.can_mutate_lead(user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if lead.status != "day1":
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Only Day 1 leads can be sent back")
+        member_id = lead.enrollment_proof_by_user_id or lead.owner_user_id
+        now = datetime.now(timezone.utc)
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="lead.enrollment_proof_rejected",
+            lead_id=lead.id,
+            meta={
+                "reason": (reason or "").strip() or None,
+                "amount_cents": lead.enrollment_amount_cents,
+                "proof_url": lead.enrollment_proof_url,
+                "returned_to_user_id": member_id,
+            },
+        )
+        lead.status = "video_watched"
+        _apply_status_side_effects(lead, previous_status="day1", new_status="video_watched", now=now)
+        if member_id:
+            lead.assigned_to_user_id = member_id
+        lead.enrollment_amount_cents = None
+        lead.enrollment_proof_url = None
+        lead.enrollment_proof_uploaded_at = None
+        lead.enrollment_proof_by_user_id = None
+        lead.last_action_at = now
+        lead = await self._commit_with_shadow_upsert(lead)
+        await self._notifier("leads", "workboard")
+        if member_id:
+            from app.services.push_service import send_push_to_user
+
+            why = f" Reason: {reason.strip()}" if reason and reason.strip() else ""
+            try:
+                await send_push_to_user(
+                    self._session,
+                    member_id,
+                    title="Enrollment screenshot sent back",
+                    body=f"{lead.name}: your leader sent this lead back from Day 1.{why} Upload a correct screenshot.",
+                    url="/dashboard/work/leads?tab=today",
+                )
+            except Exception:
+                logger.exception("send-back push failed for lead %s", lead.id)
+        return lead
+
     async def update_lead(self, *, lead_id: int, body: LeadUpdate, user: AuthUser) -> Lead:
         lead = await self._get_lead_or_404(lead_id)
         if lead.deleted_at is not None and body.restored is not True:
@@ -1029,48 +1159,17 @@ class LeadsService:
                 drop_notes=body.drop_notes,
                 drop_recorded_by_user_id=user.user_id,
             )
-            # Team → leader handoff: marking the Enrollment-Live video watched is the team's
-            # last step. Reassign the lead to the owner's nearest upline leader so it surfaces
-            # on the leader's board for Day 1 (replaces the removed mindset-lock handoff).
-            # Admin is exempt — they have full status control.
-            if body.status == "video_watched" and prev_status != "video_watched" and user.role != "admin":
-                owner_id = (
-                    lead.owner_user_id
-                    or lead.assigned_to_user_id
-                    or lead.created_by_user_id
-                )
-                leader = await self._nearest_leader(owner_id) if owner_id else None
-                if leader is not None and lead.assigned_to_user_id != leader[0]:
-                    from_uid = lead.assigned_to_user_id
-                    lead.assigned_to_user_id = leader[0]
-                    lead.is_reassigned = True
-                    lead.reassigned_at = now
-                    await self._repository.add_lead_activity(
-                        user_id=user.user_id,
-                        action="leader_handoff_video_watched",
-                        lead_id=lead.id,
-                        meta={
-                            "from_user_id": from_uid,
-                            "to_user_id": leader[0],
-                            "leader_id": leader[0],
-                        },
-                    )
-                # Auto-advance to Day 1 so the handed-off lead lands directly on the
-                # leader's workboard Day 1 instead of resting at video_watched on the
-                # calling board. video_watched stays a transient record of the watch.
-                lead.status = "day1"
-                _apply_status_side_effects(
-                    lead,
-                    previous_status="video_watched",
-                    new_status="day1",
-                    now=now,
-                )
-                await self._repository.add_lead_activity(
-                    user_id=user.user_id,
-                    action="auto_advance_day1_on_video_watched",
-                    lead_id=lead.id,
-                    meta={"from_status": "video_watched", "to_status": "day1"},
-                )
+            # Team → leader handoff happens only with the enrollment screenshot (₹149–200).
+            # Without it, a team member marking video_watched keeps the lead at
+            # video_watched with them; "Send to Day 1" (upload) does the handoff later.
+            # Leader (own leads) keeps the old instant handoff; admin is exempt.
+            if (
+                body.status == "video_watched"
+                and prev_status != "video_watched"
+                and user.role != "admin"
+                and (user.role != "team" or (lead.enrollment_proof_url or "").strip())
+            ):
+                await self._handoff_to_leader_day1(lead, actor=user, now=now)
         if body.archived is True:
             lead.archived_at = now
             lead.in_pool = False
