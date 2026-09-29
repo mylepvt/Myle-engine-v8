@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Bell, Lock, Mail, Shield, User } from 'lucide-react'
+import { ArrowRight, Bell, Lock, Mail, RotateCcw, Shield, User } from 'lucide-react'
 
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
 import { Badge } from '@/components/ui/badge'
@@ -506,7 +506,11 @@ function ShowTutorialButton() {
       onClick={handleClick}
       disabled={resetTutorial.isPending}
     >
-      {resetTutorial.isPending ? 'Loading…' : '🔄 Show Tutorial Again'}
+      {resetTutorial.isPending ? 'Loading…' : (
+        <>
+          <RotateCcw className="size-3.5" aria-hidden /> Show Tutorial Again
+        </>
+      )}
     </Button>
   )
 }

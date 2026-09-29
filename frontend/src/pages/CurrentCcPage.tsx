@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -322,7 +323,7 @@ export function CurrentCcPage({ title }: Props) {
       {autoQ.data ? (
         <details open className="space-y-2">
           <summary className="cursor-pointer text-sm font-semibold text-primary">
-            🔎 System ne aaj kya detect kiya — apni entry se milao (reference)
+            <Search className="mr-1.5 inline size-4" aria-hidden />What the system detected today — compare with your entry (reference)
           </summary>
           <div className="mt-2">
             <AutoView auto={autoQ.data} />

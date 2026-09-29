@@ -3,18 +3,10 @@ import { Zap } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
+import { LIVE_ACTIVITY_ICONS, type LiveActivityKind } from '@/lib/activity-icons'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
 
-type Kind = 'new' | 'claim' | 'conversion' | 'money' | 'handoff' | 'stage'
-
-const ICONS: Record<Kind, string> = {
-  new: '✨',
-  claim: '🙋',
-  conversion: '🏆',
-  money: '💰',
-  handoff: '🔄',
-  stage: '📌',
-}
+type Kind = LiveActivityKind
 
 const COLORS: Record<Kind, { box: string; boxText: string; chip: string }> = {
   new:        { box: 'bg-blue-500/15', boxText: 'text-blue-400', chip: 'text-blue-400' },
@@ -103,7 +95,7 @@ function Metric({ label, value, cls }: { label: string; value: number; cls: stri
 
 function Row({ entry, kind }: { entry: AdminActivityEntry; kind: Kind }) {
   const c = COLORS[kind]
-  const icon = ICONS[kind]
+  const Icon = LIVE_ACTIVITY_ICONS[kind]
   const desc = cleanDesc(kind, entry.description)
 
   return (
@@ -111,7 +103,7 @@ function Row({ entry, kind }: { entry: AdminActivityEntry; kind: Kind }) {
       <span
         className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg text-sm font-medium', c.box, c.boxText)}
       >
-        {icon}
+        <Icon className="size-4" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm leading-snug text-foreground">

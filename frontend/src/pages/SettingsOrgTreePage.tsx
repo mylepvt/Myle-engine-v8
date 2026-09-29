@@ -206,7 +206,7 @@ export function SettingsOrgTreePage({ title }: Props) {
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: 13.5 }}>{leader.node.name}</div>
                         <div style={{ color: C.mut2, fontSize: 11 }}>
-                          Leader{underMember ? ' · under a member ⚠' : ''}
+                          Leader{underMember ? ' · under a member (check)' : ''}
                         </div>
                       </div>
                       <span style={cntStyle}>{count}</span>

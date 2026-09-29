@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Flame, Zap } from 'lucide-react'
 import { useXpMeQuery, useXpHistoryQuery, LEVEL_COLORS } from '@/hooks/use-xp-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,7 +43,7 @@ export function XpBadge() {
                 colors.bg, colors.text, colors.border,
               )}
             >
-              ⚡ {data.level_label?.toUpperCase() ?? data.level?.toUpperCase() ?? '???'}
+              <Zap className="size-3" aria-hidden /> {data.level_label?.toUpperCase() ?? data.level?.toUpperCase() ?? '???'}
             </span>
             {seasonLabel && (
               <span className="text-ds-label text-muted-foreground/70 font-medium">
@@ -79,8 +80,8 @@ export function XpBadge() {
             <span>{data.daily_cap} XP today</span>
           </span>
           {data.streak >= 2 && (
-            <span className="font-medium text-amber-400">
-              🔥 {data.streak} day streak
+            <span className="inline-flex items-center gap-1 font-medium text-amber-400">
+              <Flame className="size-3.5" aria-hidden /> {data.streak} day streak
             </span>
           )}
         </div>

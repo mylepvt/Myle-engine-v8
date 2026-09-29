@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Brain } from 'lucide-react'
 import { useXpLeaderboardQuery, LEVEL_COLORS } from '@/hooks/use-xp-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,7 +13,7 @@ export function XpLeaderboard() {
     return (
       <Card className="border-primary/20">
         <CardHeader className="pb-2">
-          <CardTitle className="text-ds-h3">🧠 Top Performers · 7-Day Effort</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-ds-h3"><Brain className="size-4 text-primary" aria-hidden />Top Performers · 7-Day Effort</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -34,7 +35,7 @@ export function XpLeaderboard() {
   return (
     <Card className="border-primary/20">
       <CardHeader className="pb-2">
-        <CardTitle className="text-ds-h3">🧠 Top Performers · 7-Day Effort</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-ds-h3"><Brain className="size-4 text-primary" aria-hidden />Top Performers · 7-Day Effort</CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5">
         {top10.map((entry, idx) => {

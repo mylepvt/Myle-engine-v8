@@ -6,17 +6,20 @@ import {
   ArrowUp,
   CheckCircle2,
   ClipboardList,
+  Megaphone,
   MessageSquare,
   Phone,
   RefreshCw,
   Send,
   Settings,
   Smartphone,
+  UserCog,
   Users,
   WifiOff,
   XCircle,
 } from 'lucide-react'
 
+import { DeliverySummary } from '@/components/ui/delivery-summary'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -570,7 +573,13 @@ export function WhatsAppPanelPage({ title }: Props) {
                       : 'border-border text-muted-foreground hover:border-indigo-400 hover:text-foreground',
                   )}
                 >
-                  {r === 'leaders' ? '👔 All Leaders' : r === 'team' ? '👥 All Team' : '📢 Everyone'}
+                  {r === 'leaders' ? (
+                    <><UserCog className="mr-1 inline size-3.5" aria-hidden />All Leaders</>
+                  ) : r === 'team' ? (
+                    <><Users className="mr-1 inline size-3.5" aria-hidden />All Team</>
+                  ) : (
+                    <><Megaphone className="mr-1 inline size-3.5" aria-hidden />Everyone</>
+                  )}
                 </button>
               ))}
             </div>
@@ -606,11 +615,7 @@ export function WhatsAppPanelPage({ title }: Props) {
             </Button>
 
             {broadcastSummary && (
-              <div className="flex flex-wrap gap-3 text-xs">
-                <span className="font-medium text-green-700">✓ {broadcastSummary.sent} sent</span>
-                {broadcastSummary.failed > 0 && <span className="font-medium text-red-600">✗ {broadcastSummary.failed} failed</span>}
-                {broadcastSummary.no_phone > 0 && <span className="text-muted-foreground">📵 {broadcastSummary.no_phone} no phone</span>}
-              </div>
+              <DeliverySummary sent={broadcastSummary.sent} failed={broadcastSummary.failed} noPhone={broadcastSummary.no_phone} />
             )}
 
             {broadcastResults && broadcastResults.length > 0 && (
@@ -694,18 +699,7 @@ export function WhatsAppPanelPage({ title }: Props) {
               <p className="text-xs text-red-600">✗ {reminderError}</p>
             )}
             {reminderSummary && (
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="font-medium text-green-700">✓ {reminderSummary.sent} sent</span>
-                {reminderSummary.failed > 0 && (
-                  <span className="font-medium text-red-600">✗ {reminderSummary.failed} failed</span>
-                )}
-                {reminderSummary.no_phone > 0 && (
-                  <span className="text-muted-foreground">📵 {reminderSummary.no_phone} no phone</span>
-                )}
-                {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
-                  <span className="text-muted-foreground">Nothing pending</span>
-                )}
-              </div>
+              <DeliverySummary sent={reminderSummary.sent} failed={reminderSummary.failed} noPhone={reminderSummary.no_phone} emptyText="Nothing pending" />
             )}
             {reminderResults && reminderResults.length > 0 && (
               <div className="max-h-48 overflow-y-auto rounded border border-border/50 bg-muted/30">
@@ -799,11 +793,7 @@ export function WhatsAppPanelPage({ title }: Props) {
           </Button>
 
           {insightsSummary && (
-            <div className="flex flex-wrap gap-3 text-xs">
-              <span className="font-medium text-green-700">✓ {insightsSummary.sent} sent</span>
-              {insightsSummary.failed > 0 && <span className="font-medium text-red-600">✗ {insightsSummary.failed} failed</span>}
-              {insightsSummary.no_phone > 0 && <span className="text-muted-foreground">📵 {insightsSummary.no_phone} no phone</span>}
-            </div>
+            <DeliverySummary sent={insightsSummary.sent} failed={insightsSummary.failed} noPhone={insightsSummary.no_phone} />
           )}
 
           {insightsResults && insightsResults.length > 0 && (

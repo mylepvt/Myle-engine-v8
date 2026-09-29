@@ -1,6 +1,7 @@
 import { type HTMLAttributes, useEffect, useMemo, useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
 
+import { DeliverySummary } from '@/components/ui/delivery-summary'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useAppSettingUpdateMutation,
@@ -378,7 +379,7 @@ export function SettingsAppPage({ title }: Props) {
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">🔴 Daily Live Session (2 PM)</h2>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><span className="size-2 rounded-full bg-red-500" aria-hidden />Daily Live Session (2 PM)</h2>
           <p className="text-xs text-muted-foreground">
             Roz ka naya Zoom link yahan paste karo. Ye turant sabhi members ke Home aur Live Session screen par dikhega.
           </p>
@@ -729,18 +730,13 @@ export function SettingsAppPage({ title }: Props) {
           ) : null}
 
           {reminderSummary ? (
-            <div className="mt-3 flex flex-wrap gap-3">
-              <span className="text-ds-micro font-semibold text-emerald-600 dark:text-emerald-400">✅ {reminderSummary.sent} sent</span>
-              {reminderSummary.failed > 0 && (
-                <span className="text-ds-micro font-semibold text-red-600 dark:text-red-400">❌ {reminderSummary.failed} failed</span>
-              )}
-              {reminderSummary.no_phone > 0 && (
-                <span className="text-ds-micro font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
-              )}
-              {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
-                <span className="text-ds-micro text-muted-foreground">No pending — everyone submitted or already reminded.</span>
-              )}
-            </div>
+            <DeliverySummary
+              sent={reminderSummary.sent}
+              failed={reminderSummary.failed}
+              noPhone={reminderSummary.no_phone}
+              emptyText="No pending — everyone submitted or already reminded."
+              className="mt-3"
+            />
           ) : null}
 
           {reminderResults && reminderResults.length > 0 ? (

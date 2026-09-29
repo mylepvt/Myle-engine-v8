@@ -10,6 +10,7 @@ import {
   type ReminderResult,
   type SendRemindersResponse,
 } from '@/hooks/use-today-pulse-query'
+import { DeliverySummary } from '@/components/ui/delivery-summary'
 
 function KpiCard({
   label,
@@ -97,15 +98,12 @@ function ReportsPopoverContent({
     return (
       <div className="max-h-80 overflow-y-auto">
         {sendSummary && (
-          <div className="sticky top-0 flex items-center gap-3 border-b border-border/40 bg-card px-3 py-2">
-            <span className="text-ds-micro font-semibold text-emerald-600 dark:text-emerald-400">✅ {sendSummary.sent} sent</span>
-            {sendSummary.failed > 0 && (
-              <span className="text-ds-micro font-semibold text-red-600 dark:text-red-400">❌ {sendSummary.failed} failed</span>
-            )}
-            {sendSummary.no_phone > 0 && (
-              <span className="text-ds-micro font-semibold text-muted-foreground/50">📵 {sendSummary.no_phone} no phone</span>
-            )}
-          </div>
+          <DeliverySummary
+            sent={sendSummary.sent}
+            failed={sendSummary.failed}
+            noPhone={sendSummary.no_phone}
+            className="sticky top-0 border-b border-border/40 bg-card px-3 py-2"
+          />
         )}
         {sendLog.length === 0 ? (
           <p className="px-3 py-3 text-xs text-muted-foreground/50">No pending members.</p>
