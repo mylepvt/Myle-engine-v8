@@ -173,16 +173,24 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   // After a reload (dialer round-trip), scroll the restored active lead back into
   // view once it has rendered — so the user lands on the same card, not the top.
+  // Also, in calling mode, scroll the next active lead into view after each call so
+  // the user doesn't lose their place when the list re-sorts on refetch.
   const scrollRestoredRef = useRef(false)
   useEffect(() => {
-    if (scrollRestoredRef.current) return
     if (activeLeadId == null || items.length === 0) return
     const el = document.querySelector(`[data-ctcs-lead="${activeLeadId}"]`)
-    if (el) {
+    if (!el) return
+    // First mount after reload — restore once, no animation.
+    if (!scrollRestoredRef.current) {
       el.scrollIntoView({ block: 'center' })
       scrollRestoredRef.current = true
+      return
     }
-  }, [activeLeadId, items])
+    // Calling-mode auto-advance — keep the next lead in view.
+    if (callMode) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [activeLeadId, items, callMode])
 
   const outcomeLead = useMemo(
     () => items.find((x) => x.id === outcomeLeadId) ?? null,
