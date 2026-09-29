@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
-import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 export type UserProfileResponse = {
   id: number
