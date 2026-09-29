@@ -73,48 +73,6 @@ type Props = {
   firstName: string
 }
 
-type PremiereViewerRow = {
-  viewer_id: string
-  name: string
-  masked_phone: string
-  phone: string | null
-  city: string
-  session_date: string
-  session_hour: number
-  session_day: number
-  percentage_watched: number
-  current_time_sec: number
-  first_seen_at: string | null
-  last_seen_at: string | null
-  lead_score: number
-  watch_completed: boolean
-  rejoined: boolean
-  referred_by_name: string | null
-}
-
-async function fetchPremiereViewers(date?: string): Promise<PremiereViewerRow[]> {
-  const params = date ? `?date=${encodeURIComponent(date)}` : ''
-  const res = await apiFetch(`/api/v1/other/premiere/viewers${params}`)
-  const body = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(messageFromApiErrorPayload(body, `HTTP ${res.status}`))
-  return body as PremiereViewerRow[]
-}
-
-function usePremiereViewersQuery(enabled: boolean, date?: string) {
-  return useQuery({
-    queryKey: ['premiere', 'viewers', date ?? 'today'],
-    queryFn: () => fetchPremiereViewers(date),
-    enabled,
-    refetchInterval: date ? false : 15_000,
-  })
-}
-
-function isActiveNow(lastSeenAt: string | null): boolean {
-  if (!lastSeenAt) return false
-  return Date.now() - new Date(lastSeenAt).getTime() < 45_000
-}
-
-
 type PendingRegistrationRow = {
   id: number
   fbo_id: string
@@ -732,7 +690,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   })
   const appSettings = useAppSettingsQuery(activeTab === 'system')
   const leaderHealth = useLeaderHealthQuery(activeTab === 'people')
-  const premiereViewers = usePremiereViewersQuery(true)
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -1532,14 +1489,6 @@ export function AdminCommandCenter({ firstName }: Props) {
             {/* Automation Panel */}
             <AutomationPanel />
           </section>
-
-          <ReportsSection title="Live Attendee Monitoring">
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <StatCard label="Total Attendees Today" value={(premiereViewers.data ?? []).length} hint="Unique viewers across Day 1, Day 2, Day 3 live sessions." />
-              <StatCard label="Watching Now" value={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length} hint="Active in last 45 seconds." variant={(premiereViewers.data ?? []).some((v) => isActiveNow(v.last_seen_at)) ? 'danger' : 'default'} />
-              <StatCard label="Completed" value={(premiereViewers.data ?? []).filter((v) => v.watch_completed).length} hint="Marked watch complete." variant="success" />
-            </section>
-          </ReportsSection>
 
           <ReportsSection title="Audit & Finance Reports">
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.05fr]">

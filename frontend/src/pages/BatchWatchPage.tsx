@@ -163,7 +163,7 @@ export function BatchWatchPage() {
       })
   }, [slot, token, version])
 
-  // Heartbeat every 20s so admin Premiere tab shows live viewers
+  // Heartbeat every 20s so admin sees live batch viewers
   useEffect(() => {
     if (!slot || !token) return
     const beat = () => {
