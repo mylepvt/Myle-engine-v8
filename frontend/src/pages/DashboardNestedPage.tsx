@@ -29,6 +29,7 @@ import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
 import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
 import { PendingAsProcessPage } from '@/pages/PendingAsProcessPage'
 import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
+import { TrainingHubPage } from '@/pages/TrainingHubPage'
 import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
 import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
 import { WorkboardPage } from '@/pages/WorkboardPage'
@@ -48,7 +49,6 @@ import AnalyticsPage from '@/pages/AnalyticsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { LiveSessionPage } from '@/pages/LiveSessionPage'
-import { CommunityTrainingPage } from '@/pages/CommunityTrainingPage'
 import { TrainingProgressPage } from '@/pages/TrainingProgressPage'
 import { BudgetExportPage } from '@/pages/BudgetExportPage'
 import { LeadControlPage } from '@/pages/LeadControlPage'
@@ -141,8 +141,10 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LeaderboardPage title={title} />
     case 'live-session':
       return <LiveSessionPage title={title} />
-    case 'community-training':
-      return <CommunityTrainingPage title={title} />
+    case 'training-hub':
+      return <TrainingHubPage title={title} />
+    case 'redirect':
+      return <Navigate to={ui.to} replace />
     case 'training-progress':
       return <TrainingProgressPage title={title} />
     case 'downloads':

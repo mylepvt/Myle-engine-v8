@@ -57,6 +57,7 @@ from app.api.v1 import (
     sales,
     settings_enhanced,
     settings_pages,
+    skill_training,
     system,
     team,
     team_tracking,
@@ -87,6 +88,7 @@ api_router.include_router(leads.watch_router, tags=["watch"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])
 api_router.include_router(team_tracking.router, prefix="/team", tags=["team-tracking"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
+api_router.include_router(skill_training.router, prefix="/system", tags=["skills-training"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(execution.router, prefix="/execution", tags=["execution"])
 api_router.include_router(org.router, prefix="/org", tags=["org"])
