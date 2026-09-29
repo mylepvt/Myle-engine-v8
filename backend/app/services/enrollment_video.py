@@ -53,16 +53,8 @@ async def _app_setting(session: AsyncSession, key: str) -> str:
 
 
 async def resolve_default_video_source(session: AsyncSession) -> str:
-    """Default enrollment video for per-lead quick links.
-
-    Prefers a dedicated key, then reuses the already-configured Enrollment-Live
-    video so no extra setup is needed.
-    """
-    for key in ("enrollment_video_source_url", "flp_min_billing_video_source_url", "flp_min_billing_video_url"):
-        value = await _app_setting(session, key)
-        if value:
-            return value
-    return ""
+    """The one enrollment video (Settings → General → "Enrollment Video")."""
+    return await _app_setting(session, "enrollment_video_source_url")
 
 
 def sanitize_public_token(raw_token: str) -> str:

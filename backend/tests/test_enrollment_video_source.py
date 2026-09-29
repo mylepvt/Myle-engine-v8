@@ -1,4 +1,4 @@
-"""One enrollment video: Settings "Enrollment Video" wins, old Enrollment-Live keys are fallback."""
+"""One enrollment video: only Settings "Enrollment Video" (secure) is used — no old Enrollment-Live fallback."""
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -21,20 +21,22 @@ async def _session_with(settings: dict[str, str]):
     return engine, Session
 
 
-async def test_new_enrollment_video_setting_wins():
+async def test_only_the_secure_enrollment_video_setting_is_used():
     engine, Session = await _session_with({
         "enrollment_video_source_url": "videos/enrollment/master.mp4",
         "flp_min_billing_video_source_url": "https://old.example/enroll.mp4",
     })
     async with Session() as s:
         assert await get_flp_min_billing_video_source(s) == "videos/enrollment/master.mp4"
+        assert await ev.resolve_default_video_source(s) == "videos/enrollment/master.mp4"
     await engine.dispose()
 
 
-async def test_falls_back_to_old_enrollment_live_setting():
+async def test_old_enrollment_live_video_is_not_a_fallback():
     engine, Session = await _session_with({"flp_min_billing_video_source_url": "https://old.example/enroll.mp4"})
     async with Session() as s:
-        assert await get_flp_min_billing_video_source(s) == "https://old.example/enroll.mp4"
+        assert await get_flp_min_billing_video_source(s) == ""
+        assert await ev.resolve_default_video_source(s) == ""
     await engine.dispose()
 
 

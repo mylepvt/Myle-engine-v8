@@ -120,13 +120,10 @@ export function SettingsAppPage({ title }: Props) {
   const settingsSource = appSettingsData?.settings ?? {}
 
   useEffect(() => {
-    // One enrollment video now. Show the older Enrollment-Live URL until a new one is saved.
-    const current =
-      settingsSource.enrollment_video_source_url || settingsSource.flp_min_billing_video_source_url
-    if (!secureEnrollUrlValue && current) {
-      setSecureEnrollUrlValue(current)
+    if (!secureEnrollUrlValue && settingsSource.enrollment_video_source_url) {
+      setSecureEnrollUrlValue(settingsSource.enrollment_video_source_url)
     }
-  }, [settingsSource.enrollment_video_source_url, settingsSource.flp_min_billing_video_source_url])
+  }, [settingsSource.enrollment_video_source_url])
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedWaValue = (key: string): string =>

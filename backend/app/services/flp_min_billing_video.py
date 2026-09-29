@@ -151,13 +151,12 @@ async def get_flp_min_billing_video_title(session: AsyncSession) -> str:
 
 
 async def get_flp_min_billing_video_source(session: AsyncSession) -> str:
-    """The one enrollment video: Settings → "Enrollment Video" (R2 key/URL) wins; the
-    older Enrollment-Live keys stay as fallback so existing setups keep working."""
-    for key in ("enrollment_video_source_url", "flp_min_billing_video_source_url", "flp_min_billing_video_url"):
-        source = await get_app_setting(session, key)
-        if source:
-            return source
-    return ""
+    """The one enrollment video: Settings → General → "Enrollment Video" (R2 key/URL).
+
+    The old Enrollment-Live keys (``flp_min_billing_video_*``) are intentionally NOT
+    used any more — only the secure enrollment video plays.
+    """
+    return await get_app_setting(session, "enrollment_video_source_url")
 
 
 async def require_secure_flp_min_billing_video_source(session: AsyncSession) -> str:
@@ -165,12 +164,12 @@ async def require_secure_flp_min_billing_video_source(session: AsyncSession) -> 
     if not source:
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Min. FLP Billing video source is not configured.",
+            detail="Enrollment video is not configured. Set it in Settings → General → Enrollment Video.",
         )
     if is_youtube_like_url(source):
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Min. FLP Billing video must be a direct hosted video URL, not YouTube.",
+            detail="Enrollment video must be an R2 key or direct hosted video URL, not YouTube.",
         )
     return source
 

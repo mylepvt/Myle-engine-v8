@@ -726,14 +726,14 @@ async def stream_watch_video(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
 
     configured_source = await get_flp_min_billing_video_source(session)
-    # (raw source, upstream URL): private R2 keys / R2 URLs get a short-lived presigned
-    # URL first; plain hosted URLs and local uploads follow.
+    # Always the CURRENT Settings video (never the source snapshotted on an older link),
+    # so only the secure enrollment video ever plays. (raw source, upstream URL):
+    # private R2 keys / R2 URLs get a short-lived presigned URL first.
     upstream_candidates: list[tuple[str, str]] = []
-    for raw_source in (link.youtube_url, configured_source):
-        presigned = await presigned_r2_upstream(raw_source)
-        if presigned:
-            upstream_candidates.append(((raw_source or "").strip(), presigned))
-    for source_url in build_flp_min_billing_stream_source_candidates(link.youtube_url, configured_source):
+    presigned = await presigned_r2_upstream(configured_source)
+    if presigned:
+        upstream_candidates.append(((configured_source or "").strip(), presigned))
+    for source_url in build_flp_min_billing_stream_source_candidates(configured_source):
         if not is_youtube_like_url(source_url):
             upstream_candidates.append((source_url, absolute_video_source_url(request, source_url)))
     if not upstream_candidates:

@@ -100,12 +100,6 @@ export type AppSettingUpdateRequest = {
   value: string
 }
 
-export type FlpMinBillingVideoUploadResponse = {
-  source_url: string
-  file_name: string
-  message: string
-}
-
 export type PasswordChangeRequest = {
   current_password: string
   new_password: string
@@ -231,20 +225,6 @@ async function updateAppSetting(request: AppSettingUpdateRequest): Promise<{ mes
   })
   if (!res.ok) {
     throw new Error(`Update app setting HTTP ${res.status}`)
-  }
-  return res.json()
-}
-
-async function uploadFlpMinBillingVideo(file: File): Promise<FlpMinBillingVideoUploadResponse> {
-  const form = new FormData()
-  form.append('file', file)
-  const res = await apiFetch('/api/v1/settings-enhanced/system/app-settings/enrollment-video/upload', {
-    method: 'POST',
-    body: form,
-  })
-  if (!res.ok) {
-    const raw: unknown = await res.json().catch(() => null)
-    throw new Error(messageFromApiErrorPayload(raw, `Upload enrollment video HTTP ${res.status}`))
   }
   return res.json()
 }
@@ -377,18 +357,6 @@ export function useAppSettingUpdateMutation() {
   
   return useMutation({
     mutationFn: updateAppSetting,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'app-settings'] })
-      queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'configuration'] })
-    },
-  })
-}
-
-export function useFlpMinBillingVideoUploadMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: uploadFlpMinBillingVideo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'app-settings'] })
       queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'configuration'] })
