@@ -261,7 +261,7 @@ export function SettingsAppPage({ title }: Props) {
       key: 'whatsapp.daily_team_summary_template_name',
       label: 'Daily Team Summary Template',
       placeholder: 'daily_team_summary',
-      help: 'Leader ko daily report summary — jab kuch members ne submit nahi kiya ho.',
+      help: 'Daily report summary to the leader when some members have not submitted.',
     },
     {
       key: 'whatsapp.daily_team_summary_template_lang',
@@ -285,7 +285,7 @@ export function SettingsAppPage({ title }: Props) {
       key: 'whatsapp.leader_member_removed_template_name',
       label: 'Member Removed (Leader Alert) Template',
       placeholder: 'leader_member_removed',
-      help: 'Leader ko alert jab uske team se koi member remove kiya jaye.',
+      help: 'Alert the leader when a member is removed from their team.',
     },
     {
       key: 'whatsapp.leader_member_removed_template_lang',
@@ -297,7 +297,7 @@ export function SettingsAppPage({ title }: Props) {
       key: 'whatsapp.leader_new_member_template_name',
       label: 'New Member (Leader Alert) Template',
       placeholder: 'leader_new_member',
-      help: 'Leader ko alert jab naya member approve hoke team mein add ho.',
+      help: 'Alert the leader when a new member is approved and added to their team.',
     },
     {
       key: 'whatsapp.leader_new_member_template_lang',
@@ -558,7 +558,7 @@ export function SettingsAppPage({ title }: Props) {
               placeholder="videos/enrollment/master.mp4  ya  https://pub-xxxx.r2.dev/enrollment.mp4"
               className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
-            <span className="mt-1 block text-muted-foreground/80">R2 object key (recommended — private + signed) ya direct R2 URL. YouTube nahi.</span>
+            <span className="mt-1 block text-muted-foreground/80">R2 object key (recommended — private + signed) or a direct R2 URL. YouTube links are not supported.</span>
           </label>
         )}
 

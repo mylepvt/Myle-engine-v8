@@ -197,11 +197,11 @@ export function WhatsAppPanelPage({ title }: Props) {
 
   const MGMT_UPDATE_TYPES = [
     { type: 'bundle', label: 'Full Daily Bundle', desc: 'Top 5 + integrity alerts + inactive list + lead activity ek saath' },
-    { type: 'daily', label: 'Daily Top 5', desc: 'Aaj ke top 5 performers send karo' },
-    { type: 'leads', label: 'Lead Activity', desc: 'Kisne kitne leads claim ki, kisne nahi, kisne call nahi ki' },
+    { type: 'daily', label: 'Daily Top 5', desc: "Send today's top 5 performers" },
+    { type: 'leads', label: 'Lead Activity', desc: 'Who claimed how many leads, who did not, and who has not called' },
     { type: 'integrity', label: 'Integrity Alerts', desc: 'Low trust-score members ki alert' },
     { type: 'inactive', label: 'Inactive Members', desc: 'Members with no recent reports' },
-    { type: 'elite_alert', label: 'Elite-at-Risk', desc: 'Elite members jo risk mein hain' },
+    { type: 'elite_alert', label: 'Elite-at-Risk', desc: 'Elite members who are at risk' },
     { type: 'weekly', label: 'Weekly Report', desc: 'Weekly performance roundup' },
   ] as const
 
@@ -703,7 +703,7 @@ export function WhatsAppPanelPage({ title }: Props) {
                   <span className="text-muted-foreground">📵 {reminderSummary.no_phone} no phone</span>
                 )}
                 {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
-                  <span className="text-muted-foreground">Koi pending nahi</span>
+                  <span className="text-muted-foreground">Nothing pending</span>
                 )}
               </div>
             )}

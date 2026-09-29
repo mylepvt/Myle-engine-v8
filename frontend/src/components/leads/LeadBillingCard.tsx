@@ -16,8 +16,8 @@ type Props = {
 }
 
 const STAGES: { key: BillingStage; label: string; hint: string }[] = [
-  { key: 'day3', label: 'Day 3 Billing', hint: 'Pehli FLP billing — invoice upload karo.' },
-  { key: 'day6', label: 'Day 6 Closing Billing', hint: 'Closing billing — invoice upload karo.' },
+  { key: 'day3', label: 'Day 3 Billing', hint: 'First FLP billing — upload the invoice.' },
+  { key: 'day6', label: 'Day 6 Closing Billing', hint: 'Closing billing — upload the invoice.' },
 ]
 
 function inr(cents: number | null): string {

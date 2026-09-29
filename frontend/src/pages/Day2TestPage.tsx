@@ -268,7 +268,7 @@ export function Day2TestPage() {
           >
             <div className="mb-4 flex items-center gap-2">
               <Lock className="size-5 text-cyan-200" />
-              <h1 className="text-xl font-semibold">Apni details verify kariye</h1>
+              <h1 className="text-xl font-semibold">Verify your details</h1>
             </div>
             <p className="mb-5 text-sm text-white/62">
               Test sirf ek baar de sakte ho. Apne hi phone par, bina kisi ki madad ke complete kariye.
@@ -281,7 +281,7 @@ export function Day2TestPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Aapka pura naam"
+                placeholder="Your full name"
                 className="mt-2 w-full rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
               />
             </label>
@@ -379,7 +379,7 @@ export function Day2TestPage() {
               <XCircle className="mx-auto size-14 text-red-400" />
             )}
             <h1 className="mt-4 text-2xl font-semibold">
-              {state.passed ? 'Congratulations! Aap pass ho gaye 🎉' : 'Aap pass nahi ho paaye'}
+              {state.passed ? 'Congratulations! You passed 🎉' : 'You did not pass this time'}
             </h1>
             <p className="mt-2 text-sm text-white/65">
               Aapka score: <span className="font-bold text-white">{state.score ?? 0}</span> / {state.total}
@@ -387,8 +387,8 @@ export function Day2TestPage() {
             </p>
             <p className="mt-4 text-sm text-white/55">
               {state.passed
-                ? 'Aapki team aapse Day 3 ke liye contact karegi.'
-                : 'Aapki team aapse contact karegi. Dhanyavaad.'}
+                ? 'Your team will contact you for Day 3.'
+                : 'Your team will contact you. Thank you.'}
             </p>
             {state.passed ? (
               <a

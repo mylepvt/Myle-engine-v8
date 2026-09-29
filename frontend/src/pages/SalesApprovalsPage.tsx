@@ -88,8 +88,8 @@ export function SalesApprovalsPage({ title }: Props) {
       </div>
       <p className="text-sm text-muted-foreground">
         {isAdmin
-          ? 'CC/sale invoices jo auto-verify nahi hui — yahan approve ya reject karo.'
-          : 'Aapke downline ki pending CC/sale invoices. Admin in ko approve/reject karta hai.'}
+          ? 'CC/sale invoices that were not auto-verified — approve or reject them here.'
+          : 'Pending CC/sale invoices from your downline. The admin approves or rejects them.'}
       </p>
 
       {isPending ? (

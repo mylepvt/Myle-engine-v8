@@ -267,7 +267,7 @@ function Chip({ label, value }: { label: string; value: string }) {
 }
 
 function Empty() {
-  return <p className="text-sm text-muted-foreground/60">— Kuch nahi bhara —</p>
+  return <p className="text-sm text-muted-foreground/60">— Nothing filled in —</p>
 }
 
 const MATCH_STYLE: Record<string, { dot: string; text: string; label: string }> = {

@@ -284,5 +284,5 @@ function Metric({ label, value, accent }: { label: string; value: number; accent
 }
 
 function Empty() {
-  return <p className="text-sm text-muted-foreground/60">— System mein kuch nahi —</p>
+  return <p className="text-sm text-muted-foreground/60">— Nothing recorded by the system —</p>
 }
