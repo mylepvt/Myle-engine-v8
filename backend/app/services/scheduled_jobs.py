@@ -838,3 +838,21 @@ async def job_integrity_audit() -> None:
             source="scheduler",
             detail={"job": "integrity_audit", "error": str(exc)},
         )
+
+
+# ---------------------------------------------------------------------------
+# Lead bookings — fill today's bookings from the paid pool (backup to the
+# immediate fill that runs after a pool import). Every 10 min.
+# ---------------------------------------------------------------------------
+
+async def job_lead_booking_fulfillment() -> None:
+    """Auto-assign pool leads to members who booked them for today."""
+    from app.services.lead_booking_service import fulfill_open_bookings
+
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await fulfill_open_bookings(session)
+            if result["leads_assigned"] or result["skipped"]:
+                logger.info("lead_booking_fulfillment: %s", result)
+    except Exception as exc:
+        logger.error("job_lead_booking_fulfillment failed: %s", exc)

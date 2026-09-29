@@ -1,5 +1,6 @@
 """Shared lead pool: unclaimed rows with ``in_pool`` set by an admin."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
@@ -157,6 +158,16 @@ async def claim_lead_pool_batch(
 _MAX_IMPORT_BYTES = 12 * 1024 * 1024
 
 
+async def _fulfill_bookings_bg() -> None:
+    from app.services.lead_booking_service import fulfill_open_bookings
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await fulfill_open_bookings(session)
+    except Exception:
+        logging.getLogger(__name__).exception("lead booking fulfilment after import failed")
+
+
 @router.post("/import", response_model=LeadPoolImportResponse)
 async def import_lead_pool_xlsx(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -220,6 +231,8 @@ async def import_lead_pool_xlsx(
     )
     await session.commit()
     await notify_topics("leads")
+    # Booked members get their leads first, straight onto their Calling Board.
+    background_tasks.add_task(_fulfill_bookings_bg)
     background_tasks.add_task(
         send_push_to_roles_bg,
         AsyncSessionLocal,
