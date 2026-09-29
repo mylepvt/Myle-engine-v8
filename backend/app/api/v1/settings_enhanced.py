@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Dict
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,14 +21,11 @@ from app.schemas.settings import (
     SystemConfigurationUpdateRequest,
     AppSettingsResponse,
     AppSettingUpdateRequest,
-    FlpMinBillingVideoUploadResponse,
     SystemUsersSummaryResponse,
     AuditLogResponse,
 )
 from app.services.flp_min_billing_video_uploads import (
     cleanup_replaced_managed_flp_min_billing_video,
-    remove_managed_flp_min_billing_video_file,
-    save_flp_min_billing_video_file,
 )
 from app.services.flp_min_billing_video import normalize_video_source_url
 from app.services.settings_service import SettingsService
@@ -263,40 +260,6 @@ async def create_or_update_app_setting(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update app setting: {str(e)}",
         )
-
-
-@router.post("/system/app-settings/enrollment-video/upload", response_model=FlpMinBillingVideoUploadResponse)
-async def upload_flp_min_billing_video(
-    file: Annotated[UploadFile, File()],
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> FlpMinBillingVideoUploadResponse:
-    """Upload enrollment video into backend/uploads and update the app setting automatically."""
-    _require_admin(user)
-
-    service = SettingsService(session)
-    previous_source = await service.get_app_setting("flp_min_billing_video_source_url")
-
-    ok, message, source_url = await save_flp_min_billing_video_file(file)
-    if not ok or not source_url:
-        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
-
-    success, update_message = await service.update_app_setting(
-        "flp_min_billing_video_source_url",
-        source_url,
-        user.user_id,
-    )
-    if not success:
-        remove_managed_flp_min_billing_video_file(source_url)
-        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=update_message)
-
-    cleanup_replaced_managed_flp_min_billing_video(previous_source, source_url)
-
-    return FlpMinBillingVideoUploadResponse(
-        source_url=source_url,
-        file_name=source_url.rsplit("/", 1)[-1],
-        message=message,
-    )
 
 
 @router.delete("/system/app-settings/{key}", response_model=Dict[str, str])

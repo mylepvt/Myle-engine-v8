@@ -13,7 +13,7 @@ const PIPELINE: Stage[] = [
   { key: 'claimed',       label: 'Just Claimed',    color: '#7c3aed' },
   { key: 'contacted',     label: 'Contacted',        color: '#4f86f7' },
   { key: 'invited',       label: 'Invited',          color: '#38bdf8' },
-  { key: 'video_sent',    label: 'Enrollment Live',  color: '#22d3ee' },
+  { key: 'video_sent',    label: 'Enrollment Video', color: '#22d3ee' },
   { key: 'video_watched', label: 'Video Watched',    color: '#6ee7b7' },
   { key: 'day1',          label: 'Day 1',            color: '#84cc16' },
   { key: 'day2',          label: 'Day 2',            color: '#eab308' },

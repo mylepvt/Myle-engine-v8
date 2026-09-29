@@ -69,7 +69,7 @@ export function LeadFlowPage({ title }: Props) {
           ))}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Team scope ends at <span className="font-medium text-foreground">Video Watched</span> (Enrollment-Live link watched).
+          Team scope ends at <span className="font-medium text-foreground">Video Watched</span> (enrollment video watched).
           Leader/admin then run <span className="font-medium text-foreground">Day 1 → Day 2 → Day 3</span>. Day 2 → Day 3 needs all
           Day-2 batches done plus a passed business test (admin-only). The{' '}
           <span className="font-medium text-foreground">Day 3</span> close runs Interview → 2CC → Blueprint → Stage 1/2/3 → Seat-hold →

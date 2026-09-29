@@ -27,7 +27,7 @@ const COLUMNS: { title: string; color: string; stages: StageDef[] }[] = [
     title: 'Engagement',
     color: '#22d3ee',
     stages: [
-      { key: 'video_sent', label: 'Enrollment Live', color: '#22d3ee' },
+      { key: 'video_sent', label: 'Enrollment Video', color: '#22d3ee' },
       { key: 'video_watched', label: 'Video Watched', color: '#6ee7b7' },
       { key: 'day1', label: 'Day 1', color: '#84cc16' },
     ],

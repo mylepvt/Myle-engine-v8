@@ -5,6 +5,8 @@ import { LockKeyhole, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiUrl } from '@/lib/api'
+import { VideoWatermarkOverlay } from '@/components/watch/VideoProtection'
+import { useAntiCapture } from '@/hooks/use-anti-capture'
 
 type WatchPageData = {
   token: string
@@ -107,6 +109,7 @@ export function WatchPage() {
   const completionRequestedRef = useRef(false)
 
   const [data, setData] = useState<WatchPageData | null>(null)
+  const obscured = useAntiCapture(videoRef)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [phone, setPhone] = useState('')
@@ -182,6 +185,14 @@ export function WatchPage() {
   const heroGreeting = greetingName ? `${wish}, ${greetingName}` : wish
   const heroHeading = useMemo(() => resolveProspectHeading(data?.title), [data?.title])
   const videoSrc = data?.stream_url ? apiUrl(data.stream_url) : null
+  // Same identity watermark as the old secure link: name · masked number · link id.
+  const watermarkLabel = [
+    (data?.viewer_name || data?.lead_name || '').trim(),
+    data?.masked_phone ?? '',
+    data?.token ? `#${data.token.slice(0, 6)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
   const playerStatusTitle = watchCompleted ? 'Thanks for watching' : playMarked ? 'Now playing' : 'Press play to begin'
   const playerStatusBody = watchCompleted
     ? 'You can replay this introduction anytime while this private access window is active.'
@@ -458,7 +469,8 @@ export function WatchPage() {
                             }}
                             onPause={() => {
                               setPlaying(false)
-                              videoRef.current?.play()
+                              // Pausing is not allowed — except while blacked out (tab hidden / focus lost).
+                              if (!obscured) videoRef.current?.play()
                             }}
                             onTimeUpdate={(e) => {
                               const nextTime = e.currentTarget.currentTime || 0
@@ -487,6 +499,7 @@ export function WatchPage() {
                             }}
                           />
                           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-[1.4rem] bg-gradient-to-t from-[#030806] to-transparent" />
+                          <VideoWatermarkOverlay label={watermarkLabel} obscured={obscured} />
                         </div>
 
                         <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 text-white/90">
