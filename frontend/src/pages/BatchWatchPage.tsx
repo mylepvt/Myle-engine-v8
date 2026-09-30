@@ -1,12 +1,6 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import {
-  CheckCircle2,
-  CloudUpload,
-  Headphones,
-  NotebookPen,
-  Video,
-} from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,16 +26,6 @@ type BatchWatchData = {
   video_id: string | null
   watch_complete: boolean
   day2_evaluation_ready: boolean
-  submission_enabled: boolean
-  submission: BatchWatchSubmission | null
-}
-
-type BatchWatchSubmission = {
-  notes_url: string | null
-  voice_note_url: string | null
-  video_url: string | null
-  notes_text: string | null
-  submitted_at: string | null
 }
 
 function toAbsoluteUrl(url: string | null | undefined): string | null {
@@ -56,52 +40,6 @@ async function readJsonError(res: Response): Promise<string> {
     return body.detail
   }
   return res.statusText || `HTTP ${res.status}`
-}
-
-function UploadCard({
-  icon,
-  title,
-  accept,
-  hint,
-  file,
-  onChange,
-}: {
-  icon: ReactNode
-  title: string
-  accept: string
-  hint: string
-  file: File | null
-  onChange: (file: File | null) => void
-}) {
-  return (
-    <label className="rounded-[1.5rem] border border-white/10 bg-muted/40 p-4 text-left transition hover:border-cyan-300/20 hover:bg-muted/60">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-md border border-white/10 bg-muted/60 p-2 text-cyan-200">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">{title}</p>
-          <p className="mt-1 text-ds-caption text-white/55">{hint}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-white/72">
-              <CloudUpload className="size-3.5" />
-              Choose file
-            </span>
-            <span className="min-w-0 truncate text-xs text-white/55">
-              {file ? file.name : 'Nothing selected yet'}
-            </span>
-          </div>
-        </div>
-      </div>
-      <input
-        key={file?.name ?? 'empty'}
-        type="file"
-        accept={accept}
-        className="sr-only"
-        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
-      />
-    </label>
-  )
 }
 
 function formatGateTime(value: string | null): string {
@@ -124,14 +62,6 @@ export function BatchWatchPage() {
   const [error, setError] = useState<string | null>(null)
   const [completionBusy, setCompletionBusy] = useState(false)
   const [completionError, setCompletionError] = useState<string | null>(null)
-  const [submissionBusy, setSubmissionBusy] = useState(false)
-  const [submissionError, setSubmissionError] = useState<string | null>(null)
-  const [submissionMessage, setSubmissionMessage] = useState<string | null>(null)
-
-  const [notesFile, setNotesFile] = useState<File | null>(null)
-  const [voiceFile, setVoiceFile] = useState<File | null>(null)
-  const [videoFile, setVideoFile] = useState<File | null>(null)
-  const [notesText, setNotesText] = useState('')
 
   const isDay6 = slot?.startsWith('d6_') ?? false
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -195,7 +125,6 @@ export function BatchWatchPage() {
 
   const watchComplete = !!data?.watch_complete
   const accessOpen = data?.access_open !== false
-  const submission = data?.submission
 
   const opensAtMs = data?.opens_at ? new Date(data.opens_at).getTime() : null
   const msUntilOpen = opensAtMs != null ? Math.max(0, opensAtMs - nowMs) : null
@@ -229,49 +158,6 @@ export function BatchWatchPage() {
     }
   }
 
-  const handleSubmission = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!slot || !token) return
-
-    const text = notesText.trim()
-    if (!text && !notesFile && !voiceFile && !videoFile) {
-      setSubmissionError('Upload at least one: notes, a voice note, or a video.')
-      return
-    }
-
-    setSubmissionBusy(true)
-    setSubmissionError(null)
-    setSubmissionMessage(null)
-
-    try {
-      const form = new FormData()
-      if (text) form.append('notes_text', text)
-      if (notesFile) form.append('notes_file', notesFile)
-      if (voiceFile) form.append('voice_file', voiceFile)
-      if (videoFile) form.append('video_file', videoFile)
-
-      const res = await fetch(
-        apiUrl(`/api/v1/watch/batch/${slot}/submission?token=${encodeURIComponent(token)}`),
-        {
-          method: 'POST',
-          body: form,
-        },
-      )
-      if (!res.ok) throw new Error(await readJsonError(res))
-      const nextSubmission = (await res.json()) as BatchWatchSubmission
-
-      setData((current) => (current ? { ...current, submission: nextSubmission } : current))
-      setSubmissionMessage('Upload received. Team isi batch ke against isse dekh sakti hai.')
-      setNotesFile(null)
-      setVoiceFile(null)
-      setVideoFile(null)
-      setNotesText('')
-    } catch (err) {
-      setSubmissionError(err instanceof Error ? err.message : 'Could not submit right now.')
-    } finally {
-      setSubmissionBusy(false)
-    }
-  }
   const greetingCopy = data
     ? buildBatchGreetingCopy({
         leadName: data.lead_name,
@@ -280,9 +166,6 @@ export function BatchWatchPage() {
         slotLabel: data.slot_label,
       })
     : null
-  const noteUrl = toAbsoluteUrl(submission?.notes_url)
-  const voiceUrl = toAbsoluteUrl(submission?.voice_note_url)
-  const submittedVideoUrl = toAbsoluteUrl(submission?.video_url)
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-room-base text-white">
@@ -392,152 +275,7 @@ export function BatchWatchPage() {
                 Finished watching? Message your coach and reply ✅ to confirm.
               </p>
             ) : null}
-
-              {data.submission_enabled ? (
-                <section className="order-3 rounded-[2rem] border border-white/10 bg-muted/50 p-5 backdrop-blur-xl md:p-6">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="primary">Post-batch upload</Badge>
-                    <Badge variant="outline" className="border-white/15 bg-muted/40 text-white/75">
-                      Notes + voice + video + message
-                    </Badge>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold text-white">Upload after this batch</h2>
-                      <p className="mt-2 max-w-2xl text-ds-body text-white/62">
-                        Is batch ke baad notes, voice note, practice video, ya short message isi page se bhej sakte ho.
-                      </p>
-                    </div>
-                    {submission?.submitted_at ? (
-                      <div className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-2 text-xs text-emerald-100">
-                        Last uploaded {new Date(submission.submitted_at).toLocaleString()}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {(noteUrl || voiceUrl || submittedVideoUrl || submission?.notes_text) && (
-                    <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                      <p className="text-sm font-semibold text-white">Latest upload for this batch</p>
-                      <div className="mt-3 grid gap-3 md:grid-cols-3">
-                        <a
-                          href={noteUrl ?? undefined}
-                          target={noteUrl ? '_blank' : undefined}
-                          rel="noreferrer"
-                          className={`rounded-[1.25rem] border px-4 py-3 text-left ${
-                            noteUrl
-                              ? 'border-cyan-300/20 bg-cyan-300/[0.08] text-white'
-                              : 'border-white/10 bg-muted/30 text-white/42'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <NotebookPen className="size-4" />
-                            Notes
-                          </div>
-                          <p className="mt-2 text-ds-caption">
-                            {noteUrl ? 'Open uploaded notes' : 'No notes uploaded yet'}
-                          </p>
-                        </a>
-                        <a
-                          href={voiceUrl ?? undefined}
-                          target={voiceUrl ? '_blank' : undefined}
-                          rel="noreferrer"
-                          className={`rounded-[1.25rem] border px-4 py-3 text-left ${
-                            voiceUrl
-                              ? 'border-cyan-300/20 bg-cyan-300/[0.08] text-white'
-                              : 'border-white/10 bg-muted/30 text-white/42'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Headphones className="size-4" />
-                            Voice note
-                          </div>
-                          <p className="mt-2 text-ds-caption">
-                            {voiceUrl ? 'Play uploaded voice note' : 'No voice note uploaded yet'}
-                          </p>
-                        </a>
-                        <a
-                          href={submittedVideoUrl ?? undefined}
-                          target={submittedVideoUrl ? '_blank' : undefined}
-                          rel="noreferrer"
-                          className={`rounded-[1.25rem] border px-4 py-3 text-left ${
-                            submittedVideoUrl
-                              ? 'border-cyan-300/20 bg-cyan-300/[0.08] text-white'
-                              : 'border-white/10 bg-muted/30 text-white/42'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Video className="size-4" />
-                            Practice video
-                          </div>
-                          <p className="mt-2 text-ds-caption">
-                            {submittedVideoUrl ? 'Open uploaded video' : 'No practice video uploaded yet'}
-                          </p>
-                        </a>
-                      </div>
-                      {submission?.notes_text ? (
-                        <div className="mt-4 rounded-[1.25rem] border border-white/10 bg-muted/40 px-4 py-3 text-sm text-white/72">
-                          {submission.notes_text}
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-
-                  <form className="mt-5 space-y-4" onSubmit={(event) => void handleSubmission(event)}>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <UploadCard
-                        icon={<NotebookPen className="size-4" />}
-                        title="Notes"
-                        accept="image/*,.pdf"
-                        hint="Photo ya PDF dono chalega."
-                        file={notesFile}
-                        onChange={setNotesFile}
-                      />
-                      <UploadCard
-                        icon={<Headphones className="size-4" />}
-                        title="Voice note"
-                        accept="audio/*,.m4a,.mp3,.ogg,.wav,.webm"
-                        hint="Upload a short explanation or reflection."
-                        file={voiceFile}
-                        onChange={setVoiceFile}
-                      />
-                      <UploadCard
-                        icon={<Video className="size-4" />}
-                        title="Practice video"
-                        accept="video/*,.mp4,.mov,.webm,.m4v"
-                        hint="Short demo ya response video record karke bhejiye."
-                        file={videoFile}
-                        onChange={setVideoFile}
-                      />
-                    </div>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-white">Message</span>
-                      <textarea
-                        rows={4}
-                        value={notesText}
-                        onChange={(event) => setNotesText(event.target.value)}
-                        placeholder="Short update, summary, ya question likh sakte ho..."
-                        className="mt-2 w-full rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
-                      />
-                    </label>
-
-                    {submissionError ? <p className="text-sm text-red-300">{submissionError}</p> : null}
-                    {submissionMessage ? <p className="text-sm text-emerald-200">{submissionMessage}</p> : null}
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-4">
-                      <p className="text-sm text-white/62">
-                        {greetingCopy?.mentorLine ??
-                          'Team ko is batch ka upload clean way me mil jayega aur final test step alag rahega.'}
-                      </p>
-                      <Button type="submit" disabled={submissionBusy}>
-                        {submissionBusy ? 'Uploading...' : 'Upload to team'}
-                      </Button>
-                    </div>
-                  </form>
-                </section>
-              ) : null}
-            </div>
+          </div>
         ) : null}
       </main>
     </div>

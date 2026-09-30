@@ -56,7 +56,6 @@ import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { RiskDashboard } from '@/components/dashboard/RiskDashboard'
 import { BlockerIntelligencePanel } from '@/components/dashboard/BlockerIntelligencePanel'
 import { CreateTaskModal } from '@/components/dashboard/CreateTaskModal'
-import { DashboardFeedbackCard } from '@/components/dashboard/DashboardFeedbackCard'
 import { OverviewTab } from '@/components/dashboard/overview/OverviewTab'
 import { AutomationPanel } from '@/components/dashboard/AutomationPanel'
 import { apiFetch } from '@/lib/api'
@@ -1551,10 +1550,6 @@ export function AdminCommandCenter({ firstName }: Props) {
           </ReportsSection>
         </TabsContent>
       </Tabs>
-
-      <div className="mt-6">
-        <DashboardFeedbackCard />
-      </div>
 
       <CreateTaskModal open={showCreateTask} onClose={() => setShowCreateTask(false)} />
 

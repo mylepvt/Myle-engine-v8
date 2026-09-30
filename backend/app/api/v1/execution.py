@@ -20,7 +20,6 @@ from app.services.lead_owner import lead_owner_clause
 from app.services.lead_payloads import build_lead_public_payloads
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
-    Day2ReviewOut,
     DownlineExecutionStatsOut,
     FollowUpAttackRow,
     LeadControlBulkReassignIn,
@@ -255,17 +254,6 @@ async def execution_lead_control(
         queue_limit=queue_limit,
         history_limit=history_limit,
     )
-
-
-@router.get("/day2-review", response_model=Day2ReviewOut)
-async def execution_day2_review(
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = Query(default=40, ge=1, le=150),
-) -> Day2ReviewOut:
-    """Admin: recent Day 2 notes, voice notes, and videos in a dedicated review surface."""
-    _require_admin(user)
-    return await enf.admin_day2_review_snapshot(session, limit=limit)
 
 
 @router.post("/lead-control/reassign", response_model=LeadControlManualReassignOut)
