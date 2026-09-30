@@ -102,7 +102,7 @@ export function LiveTeamActivity() {
       </CardHeader>
       <CardContent className="space-y-2">
         {activeNow.length === 0 && recentActivity.length === 0 ? (
-          <p className="py-4 text-center text-xs text-muted-foreground/50">Waiting for team activity...</p>
+          <p className="py-4 text-center text-xs text-muted-foreground">Waiting for team activity...</p>
         ) : (
           <>
             {activeNow.length > 0 && (
@@ -127,7 +127,7 @@ export function LiveTeamActivity() {
             )}
             {recentActivity.length > 0 && (
               <div>
-                <p className="mb-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground/50">Recently Active</p>
+                <p className="mb-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground">Recently Active</p>
                 <div className="space-y-0.5">
                   {recentActivity.slice(0, 8).map((item) => (
                     <Link key={item.name} to="/dashboard/team/tracking" className="flex min-h-[44px] items-center gap-2 rounded px-2 py-1 no-underline text-ds-micro text-muted-foreground/70 transition-colors hover:bg-muted/30 active:bg-muted/50 cursor-pointer">

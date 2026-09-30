@@ -50,7 +50,7 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
     return (
       <Card className={className}>
         <CardContent className="py-8 text-center">
-          <BarChart3 className="mx-auto size-8 text-muted-foreground/50" />
+          <BarChart3 className="mx-auto size-8 text-muted-foreground" />
           <p className="mt-2 text-sm font-semibold text-foreground">No blockers this period</p>
           <p className="text-xs text-muted-foreground mt-1">Blocker data will appear as members report mission blockers.</p>
         </CardContent>

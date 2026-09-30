@@ -477,7 +477,7 @@ export function LoginPage() {
           <Shield className="size-3.5 shrink-0 opacity-80" aria-hidden />
           Secure internal access · Credentials sent over HTTPS only.
         </p>
-        <p className="mt-1 text-center text-ds-micro text-muted-foreground/60">
+        <p className="mt-1 text-center text-ds-micro text-muted-foreground">
           {t('appTitle')} — {t('appTagline')}
         </p>
       </div>

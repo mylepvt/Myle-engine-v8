@@ -178,7 +178,7 @@ export function NotificationsBell() {
                       {r.count}
                     </span>
                   ) : (
-                    <span className="text-ds-micro text-muted-foreground/60">0</span>
+                    <span className="text-ds-micro text-muted-foreground">0</span>
                   )}
                 </Link>
               )

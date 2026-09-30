@@ -262,7 +262,7 @@ export function KanbanPipeline() {
                               style={{ width: `${pct}%`, backgroundColor: stage.color }}
                             />
                           </div>
-                          <span className="text-ds-micro font-semibold text-muted-foreground/60 tabular-nums">
+                          <span className="text-ds-micro font-semibold text-muted-foreground tabular-nums">
                             {sharePct}%
                           </span>
                         </div>

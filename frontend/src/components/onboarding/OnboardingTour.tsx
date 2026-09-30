@@ -218,7 +218,7 @@ function StepCardContent({
         <button
           type="button"
           onClick={onSkip}
-          className="shrink-0 rounded-md p-1 text-muted-foreground/50 transition hover:bg-muted hover:text-muted-foreground"
+          className="shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-muted-foreground"
           aria-label="Skip tutorial"
           tabIndex={0}
         >

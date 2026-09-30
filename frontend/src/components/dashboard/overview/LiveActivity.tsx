@@ -111,7 +111,7 @@ function Row({ entry, kind }: { entry: AdminActivityEntry; kind: Kind }) {
           <span className="text-muted-foreground/70">{desc}</span>
         </p>
       </div>
-      <span className="shrink-0 pt-0.5 text-ds-micro tabular-nums text-muted-foreground/40">{timeAgo(entry.timestamp)}</span>
+      <span className="shrink-0 pt-0.5 text-ds-micro tabular-nums text-muted-foreground">{timeAgo(entry.timestamp)}</span>
     </div>
   )
 }
@@ -176,13 +176,13 @@ export function LiveActivity() {
         {/* Feed header */}
         <div className="flex items-center justify-between border-t border-border/50 px-5 pb-1 pt-2">
           <span className="text-ds-micro font-medium text-muted-foreground">Activity</span>
-          <span className="text-ds-micro font-medium text-muted-foreground/50">{pulse.total} events · Last hour</span>
+          <span className="text-ds-micro font-medium text-muted-foreground">{pulse.total} events · Last hour</span>
         </div>
 
         {/* Feed */}
         <div className="max-h-80 overflow-y-auto">
           {feed.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground/50">
+            <p className="py-12 text-center text-sm text-muted-foreground">
               {!initialized ? 'Connecting to live stream…' : 'No activity in the last hour.'}
             </p>
           ) : (
@@ -202,10 +202,10 @@ export function LiveActivity() {
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-border/50 px-5 py-2.5">
-          <span className="text-ds-micro font-medium text-muted-foreground/50">Updated in real-time</span>
+          <span className="text-ds-micro font-medium text-muted-foreground">Updated in real-time</span>
           <div className="flex items-center gap-3">
             {feed.length > 0 && (
-              <span className="text-ds-micro font-medium text-muted-foreground/40">{feed.length} events</span>
+              <span className="text-ds-micro font-medium text-muted-foreground">{feed.length} events</span>
             )}
             {meaningful.length > 30 && (
               <button

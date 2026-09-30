@@ -2,7 +2,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { SidebarSkeleton } from '@/components/ui/skeleton-premium'
+import { Skeleton } from '@/components/ui/skeleton'
 import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
 import { resolveItemLabel } from '@/config/dashboard-nav'
@@ -62,14 +62,18 @@ export function DashboardSidebar({
       {/* Nav */}
       <nav aria-label="Sidebar navigation" className="scroll-ios flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 py-2">
         {rolePending && shellRole == null ? (
-          <SidebarSkeleton />
+          <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-11 rounded-[0.625rem]" />
+            ))}
+          </div>
         ) : null}
 
         {shellRole != null
           ? sections.map((section) => (
               <div key={section.id} className="mb-1">
                 {section.label ? (
-                  <p className="mb-1 mt-3 px-2 text-ds-label uppercase tracking-wider text-muted-foreground/60">
+                  <p className="mb-1 mt-3 px-2 text-ds-label uppercase tracking-wider text-muted-foreground">
                     {section.label}
                   </p>
                 ) : null}

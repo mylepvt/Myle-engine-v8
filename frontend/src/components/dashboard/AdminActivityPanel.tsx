@@ -207,10 +207,10 @@ function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
             {friendlyLabel(entry.action)}
           </span>
         </div>
-        <p className="mt-0.5 truncate text-ds-micro text-muted-foreground/65">{entry.description}</p>
+        <p className="mt-0.5 truncate text-ds-micro text-muted-foreground">{entry.description}</p>
       </div>
 
-      <span className="mt-0.5 shrink-0 text-ds-micro tabular-nums text-muted-foreground/40">{time}</span>
+      <span className="mt-0.5 shrink-0 text-ds-micro tabular-nums text-muted-foreground">{time}</span>
     </Link>
   )
 }
@@ -287,16 +287,16 @@ export function AdminActivityPanel() {
       <CardContent className="space-y-2">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/50" />
+          <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search activity..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-input/60 bg-muted/20 pl-7 pr-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground/40 focus:border-primary/40 focus:bg-muted/30"
+            className="w-full rounded-lg border border-input/60 bg-muted/20 pl-7 pr-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground focus:border-primary/40 focus:bg-muted/30"
           />
           {search && (
-            <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground">
+            <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="h-3 w-3" />
             </button>
           )}
@@ -320,7 +320,7 @@ export function AdminActivityPanel() {
         {/* Feed */}
         <div className="max-h-[400px] space-y-1.5 overflow-y-auto pr-0.5">
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground/50">
+            <p className="py-8 text-center text-xs text-muted-foreground">
               {!initialized ? 'Connecting to live stream...' : entries.length === 0 ? 'No activity yet' : 'No matching activity'}
             </p>
           ) : (

@@ -83,7 +83,7 @@ function LogRow({ entry }: { entry: AuditLogEntry }) {
       <td className="px-4 py-2.5 text-xs text-muted-foreground/70">
         {entry.entity_type ? `${entry.entity_type}${entry.entity_id ? ` #${entry.entity_id}` : ''}` : '—'}
       </td>
-      <td className="px-4 py-2.5 text-xs text-muted-foreground/60">{summary || '—'}</td>
+      <td className="px-4 py-2.5 text-xs text-muted-foreground">{summary || '—'}</td>
     </tr>
   )
 }
@@ -100,13 +100,13 @@ function LogCard({ entry }: { entry: AuditLogEntry }) {
         <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-medium', chip.bg, chip.text, chip.border)}>
           {friendlyAction(entry.action)}
         </span>
-        <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/50">
+        <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground">
           {date} {time}
         </span>
       </div>
       <p className="text-sm font-medium text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">{entry.actor}</p>
       {(entry.entity_type || summary) ? (
-        <p className="text-xs text-muted-foreground/60">
+        <p className="text-xs text-muted-foreground">
           {entry.entity_type ? `${entry.entity_type}${entry.entity_id ? ` #${entry.entity_id}` : ''}` : ''}
           {entry.entity_type && summary ? ' · ' : ''}
           {summary}
@@ -198,7 +198,7 @@ export function AuditLogsPage({ title }: Props) {
       </div>
 
       {!isAdmin && (
-        <p className="text-xs text-muted-foreground/60">Showing your own activity only.</p>
+        <p className="text-xs text-muted-foreground">Showing your own activity only.</p>
       )}
 
       {/* Filters */}
@@ -246,7 +246,7 @@ export function AuditLogsPage({ title }: Props) {
           <button
             type="button"
             onClick={() => { setFilterAction(undefined); setPage(1) }}
-            className="text-xs text-muted-foreground/60 hover:text-muted-foreground"
+            className="text-xs text-muted-foreground hover:text-muted-foreground"
           >
             Clear filter ×
           </button>
@@ -294,7 +294,7 @@ export function AuditLogsPage({ title }: Props) {
               <thead>
                 <tr className="border-b border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03]">
                   {['Time', 'Who', 'Action', 'Entity', 'Details'].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-ds-micro font-medium uppercase tracking-wider text-muted-foreground/60">
+                    <th key={h} className="px-4 py-2.5 text-ds-micro font-medium uppercase tracking-wider text-muted-foreground">
                       {h}
                     </th>
                   ))}
@@ -315,7 +315,7 @@ export function AuditLogsPage({ title }: Props) {
 
       {/* Empty */}
       {data && filteredItems.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground/50">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           {qText.trim() ? 'No activity matches your search.' : `No activity in the last ${days} days.`}
         </p>
       ) : null}
@@ -323,7 +323,7 @@ export function AuditLogsPage({ title }: Props) {
       {/* Pagination */}
       {data && totalPages > 1 ? (
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-xs text-muted-foreground/60">
+          <span className="text-xs text-muted-foreground">
             Page {data.page} of {data.pages} · {data.total} total
           </span>
           <div className="flex items-center gap-1">

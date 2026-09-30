@@ -34,9 +34,8 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
-import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ErrorState } from '@/components/ui/states'
+import { EmptyState, ErrorState } from '@/components/ui/states'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
@@ -207,7 +206,7 @@ function StatCard({
     <div title={hint} className="flex h-[68px] items-center gap-3 px-4">
       <div className={`h-7 w-[3px] shrink-0 rounded-full ${styles.accent}`} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-ds-micro font-medium tracking-[0.08em] text-muted-foreground/60" style={{ textTransform: 'none' }}>{label}</p>
+        <p className="truncate text-ds-micro font-medium tracking-[0.08em] text-muted-foreground" style={{ textTransform: 'none' }}>{label}</p>
         <p className={`mt-0.5 font-heading text-ds-display font-semibold leading-none tabular-nums ${styles.value}`}>{value}</p>
       </div>
     </div>
@@ -252,7 +251,7 @@ function DeskShortcut({
         </div>
         <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
       </div>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
     </Link>
   )
 }
@@ -869,7 +868,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       <span className={cn(
                         'shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums',
                         active && item.urgent ? 'bg-red-400/20 text-red-400' :
-                        active ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground/40'
+                        active ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground'
                       )}>
                         {item.count}
                       </span>
@@ -970,11 +969,11 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <input value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} placeholder="Search any lead across active, archived, retarget, and more" className="w-full rounded border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40" />
               </label>
               {deferredLeadSearch.length === 0 ? (
-                <EmptyStatePremium title="Start typing to search" description="This search is meant for admin jump-and-review across sections." />
+                <EmptyState title="Start typing to search" description="This search is meant for admin jump-and-review across sections." />
               ) : leadSearchResults.isError ? (
                 <ErrorState title="Lead search failed" message={leadSearchResults.error instanceof Error ? leadSearchResults.error.message : 'Please try again.'} onRetry={() => void leadSearchResults.refetch()} />
               ) : (leadSearchResults.data?.items ?? []).length === 0 ? (
-                <EmptyStatePremium variant="search" title="No leads matched" description="Try a broader phone, name, city, or note fragment." />
+                <EmptyState variant="search" title="No leads matched" description="Try a broader phone, name, city, or note fragment." />
               ) : (
                 <div className="space-y-3">
                   {(leadSearchResults.data?.items ?? []).slice(0, 8).map((lead) => (<LeadResultRow key={lead.id} lead={lead} />))}
@@ -1014,7 +1013,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 {zombieLeads.isPending ? (
                   <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                 ) : (zombieLeads.data?.leads ?? []).length === 0 ? (
-                  <EmptyStatePremium variant="default" title="No zombies" description="All active leads have been touched recently." />
+                  <EmptyState variant="default" title="No zombies" description="All active leads have been touched recently." />
                 ) : (
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {(zombieLeads.data?.leads ?? []).slice(0, 20).map((lead) => (
@@ -1047,7 +1046,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   {deadReasons.isPending ? (
                     <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                   ) : (deadReasons.data?.members ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="default" title="No dead leads" description="Dead leads with reasons will appear here." />
+                    <EmptyState variant="default" title="No dead leads" description="Dead leads with reasons will appear here." />
                   ) : (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                       {(deadReasons.data?.members ?? []).slice(0, 20).map((m) => (
@@ -1089,7 +1088,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {recycleLeads.isPending ? (<div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
-                  ) : (recycleLeads.data?.leads ?? []).length === 0 ? (<EmptyStatePremium variant="default" title="No recycle leads" description="Leads in recycle bucket will appear here." />
+                  ) : (recycleLeads.data?.leads ?? []).length === 0 ? (<EmptyState variant="default" title="No recycle leads" description="Leads in recycle bucket will appear here." />
                   ) : (
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {(recycleLeads.data?.leads ?? []).slice(0, 15).map((lead) => (
@@ -1131,7 +1130,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               ) : leaderHealth.isError ? (
                 <ErrorState title="Could not load leader health" message={leaderHealth.error instanceof Error ? leaderHealth.error.message : 'Please try again.'} onRetry={() => void leaderHealth.refetch()} />
               ) : (leaderHealth.data?.leaders ?? []).length === 0 ? (
-                <EmptyStatePremium variant="analytics" title="No leaders found" description="Approved leaders will appear here with their daily health metrics." />
+                <EmptyState variant="analytics" title="No leaders found" description="Approved leaders will appear here with their daily health metrics." />
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {leaderHealth.data!.leaders.map((leader) => (<LeaderRingCard key={leader.leader_id} leader={leader} />))}
@@ -1165,7 +1164,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {flaggedMembers.length === 0 ? (
-                    <EmptyStatePremium variant="notifications" title="No urgent member flags" description="Training locks, access blocks, and compliance warnings will surface here." />
+                    <EmptyState variant="notifications" title="No urgent member flags" description="Training locks, access blocks, and compliance warnings will surface here." />
                   ) : (
                     <div className="space-y-3">
                       {flaggedMembers.map((member) => (
@@ -1208,7 +1207,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 ) : effectiveness.isError ? (
                   <ErrorState title="Could not load effectiveness" message={effectiveness.error instanceof Error ? effectiveness.error.message : 'Please try again.'} onRetry={() => effectiveness.refetch()} />
                 ) : (effectiveness.data?.leaders ?? []).length === 0 ? (
-                  <EmptyStatePremium variant="default" title="No leader data" description="Leaders with team members will appear once they have activity." />
+                  <EmptyState variant="default" title="No leader data" description="Leaders with team members will appear once they have activity." />
                 ) : (
                   <div className="space-y-4">
                     {effectiveness.data!.leaders.map((leader) => {
@@ -1317,7 +1316,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 {vSummary.isPending ? (
                   <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                 ) : (vSummary.data?.leader_ranking ?? []).length === 0 ? (
-                  <EmptyStatePremium variant="default" title="No data yet" description="Assign tasks to start tracking verification." />
+                  <EmptyState variant="default" title="No data yet" description="Assign tasks to start tracking verification." />
                 ) : (
                   <div className="space-y-2">
                     {(vSummary.data?.leader_ranking ?? []).map((l) => (
@@ -1350,7 +1349,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       <p className="text-sm font-semibold text-foreground">Create Task</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Define a new verification task</p>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
                   </button>
                   <DeskShortcut to="#" title="Bulk Assign" description="Assign a task to multiple members" icon={<Users className="size-4" />} />
                   <DeskShortcut to="#" title="Pending Review" description={`${vSummary.data?.pending_verifications ?? 0} tasks awaiting verification`} icon={<ClipboardCheck className="size-4" />} badge={vSummary.data?.pending_verifications ?? 0} />
@@ -1385,7 +1384,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   {missionSummary.isPending ? (
                     <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                   ) : (missionSummary.data?.leader_breakdown ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="default" title="No data yet" description="Create templates to start tracking daily missions." />
+                    <EmptyState variant="default" title="No data yet" description="Create templates to start tracking daily missions." />
                   ) : (
                     <div className="space-y-2">
                       {(missionSummary.data?.leader_breakdown ?? []).map((l) => (
@@ -1414,7 +1413,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             ) : campaignList.isError ? (
               <ErrorState title="Failed to load" message="Could not load campaigns" onRetry={() => campaignList.refetch()} />
             ) : (campaignList.data ?? []).length === 0 ? (
-              <EmptyStatePremium variant="default" title="No campaigns yet" description="Create a campaign after a webinar to track training implementation." />
+              <EmptyState variant="default" title="No campaigns yet" description="Create a campaign after a webinar to track training implementation." />
             ) : (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {campaignList.data!.map((camp) => (
@@ -1511,7 +1510,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   {invoices.isError ? (
                     <ErrorState title="Invoices failed" message={invoices.error instanceof Error ? invoices.error.message : 'Please try again.'} onRetry={() => void invoices.refetch()} />
                   ) : (invoices.data?.items ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="wallet" title="No invoices yet" description="Recent invoice documents will show here." />
+                    <EmptyState variant="wallet" title="No invoices yet" description="Recent invoice documents will show here." />
                   ) : (
                     <div className="space-y-3">{invoices.data?.items.map((invoice) => (
                       <div key={invoice.invoice_number} className="surface-inset rounded-md p-4">
@@ -1533,7 +1532,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {(leadControl.data?.history ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="default" title="No movement yet" description="Auto and manual reassignment rows will appear here." />
+                    <EmptyState variant="default" title="No movement yet" description="Auto and manual reassignment rows will appear here." />
                   ) : (
                     <div className="space-y-3">
                       {leadControl.data?.history.slice(0, 6).map((row) => (

@@ -110,7 +110,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold text-foreground">{leader.leader_name}</p>
         <div className="flex items-center gap-1.5">
-          <span className={cn('text-ds-micro font-medium', isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60')}>
+          <span className={cn('text-ds-micro font-medium', isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
             {isOnline ? 'Live' : 'Offline'}
           </span>
         </div>
@@ -121,7 +121,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         <ActivityChip label="Team Calls" value={leader.team_calls_today} icon={Users} />
         <ActivityChip label="Day 2" value={leader.day2_leads_count} icon={BookOpen} />
       </div>
-      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-150 group-hover:translate-x-0.5" />
+      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5" />
     </Link>
   )
 }
@@ -167,7 +167,7 @@ function LiveActivityFeed() {
 
   if (!visible.length) {
     return (
-      <div className="flex items-center justify-center py-6 text-ds-micro text-muted-foreground/60">
+      <div className="flex items-center justify-center py-6 text-ds-micro text-muted-foreground">
         Waiting for activity…
       </div>
     )
@@ -203,7 +203,7 @@ function LiveActivityFeed() {
               )}
             </div>
             {/* Time */}
-            <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/60">
+            <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground">
               {timeAgo(entry.timestamp)}
             </span>
           </Link>
@@ -229,7 +229,7 @@ export function PeopleOpsPanel() {
     <div className="flex flex-col gap-0 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-card">
       {/* Section header */}
       <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] px-4 py-3">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
           People Operations
         </h2>
       </div>

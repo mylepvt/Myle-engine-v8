@@ -1,5 +1,15 @@
 import tailwindcssAnimate from 'tailwindcss-animate'
 
+/**
+ * Theme colours are CSS variables (hex / oklch). Tailwind can only apply an opacity
+ * modifier (`bg-muted/60`, `border-border/50`) when the colour exposes
+ * `<alpha-value>`, so wrap each variable in color-mix. Without this every
+ * `<token>/<n>` class compiled to nothing.
+ */
+function themeColor(name) {
+  return `color-mix(in srgb, var(--${name}) calc(<alpha-value> * 100%), transparent)`
+}
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ['class'],
@@ -72,70 +82,70 @@ export default {
       colors: {
         /* oklch tokens from CSS variables (shadcn / v0 export compatible) */
         palette: {
-          ink: 'var(--palette-ink)',
-          blue: 'var(--palette-blue)',
-          'blue-light': 'var(--palette-blue-light)',
-          mist: 'var(--palette-mist)',
-          'cyan-neon': 'var(--palette-cyan-neon)',
-          'cyan-dull': 'var(--palette-cyan-dull)',
+          ink: themeColor('palette-ink'),
+          blue: themeColor('palette-blue'),
+          'blue-light': themeColor('palette-blue-light'),
+          mist: themeColor('palette-mist'),
+          'cyan-neon': themeColor('palette-cyan-neon'),
+          'cyan-dull': themeColor('palette-cyan-dull'),
         },
         urgency: {
-          safe: 'var(--urgency-safe)',
-          watch: 'var(--urgency-watch)',
-          caution: 'var(--urgency-caution)',
-          warning: 'var(--urgency-warning)',
-          danger: 'var(--urgency-danger)',
-          critical: 'var(--urgency-critical)',
+          safe: themeColor('urgency-safe'),
+          watch: themeColor('urgency-watch'),
+          caution: themeColor('urgency-caution'),
+          warning: themeColor('urgency-warning'),
+          danger: themeColor('urgency-danger'),
+          critical: themeColor('urgency-critical'),
         },
-        border: 'var(--border)',
-        input: 'var(--input)',
-        ring: 'var(--ring)',
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
-        surface: 'var(--surface)',
-        subtle: 'var(--subtle)',
+        border: themeColor('border'),
+        input: themeColor('input'),
+        ring: themeColor('ring'),
+        background: themeColor('background'),
+        foreground: themeColor('foreground'),
+        surface: themeColor('surface'),
+        subtle: themeColor('subtle'),
         primary: {
-          DEFAULT: 'var(--primary)',
-          foreground: 'var(--primary-foreground)',
+          DEFAULT: themeColor('primary'),
+          foreground: themeColor('primary-foreground'),
         },
         secondary: {
-          DEFAULT: 'var(--secondary)',
-          foreground: 'var(--secondary-foreground)',
+          DEFAULT: themeColor('secondary'),
+          foreground: themeColor('secondary-foreground'),
         },
         destructive: {
-          DEFAULT: 'var(--destructive)',
-          foreground: 'var(--destructive-foreground)',
+          DEFAULT: themeColor('destructive'),
+          foreground: themeColor('destructive-foreground'),
         },
         muted: {
-          DEFAULT: 'var(--muted)',
-          foreground: 'var(--muted-foreground)',
+          DEFAULT: themeColor('muted'),
+          foreground: themeColor('muted-foreground'),
         },
         accent: {
-          DEFAULT: 'var(--accent)',
-          foreground: 'var(--accent-foreground)',
+          DEFAULT: themeColor('accent'),
+          foreground: themeColor('accent-foreground'),
         },
         popover: {
-          DEFAULT: 'var(--popover)',
-          foreground: 'var(--popover-foreground)',
+          DEFAULT: themeColor('popover'),
+          foreground: themeColor('popover-foreground'),
         },
         card: {
-          DEFAULT: 'var(--card)',
-          foreground: 'var(--card-foreground)',
+          DEFAULT: themeColor('card'),
+          foreground: themeColor('card-foreground'),
         },
         success: {
-          DEFAULT: 'var(--success)',
-          foreground: 'var(--success-foreground)',
+          DEFAULT: themeColor('success'),
+          foreground: themeColor('success-foreground'),
         },
         warning: {
-          DEFAULT: 'var(--warning)',
-          foreground: 'var(--warning-foreground)',
+          DEFAULT: themeColor('warning'),
+          foreground: themeColor('warning-foreground'),
         },
         chart: {
-          1: 'var(--chart-1)',
-          2: 'var(--chart-2)',
-          3: 'var(--chart-3)',
-          4: 'var(--chart-4)',
-          5: 'var(--chart-5)',
+          1: themeColor('chart-1'),
+          2: themeColor('chart-2'),
+          3: themeColor('chart-3'),
+          4: themeColor('chart-4'),
+          5: themeColor('chart-5'),
         },
       },
       animation: {
@@ -177,18 +187,18 @@ export default {
         'ios-bar': 'var(--shadow-ios-bar)',
         'ios-card': 'var(--shadow-card)',
         'glass-inset': 'inset 0 1px 1px color-mix(in srgb, var(--palette-ink) 35%, transparent)',
-        'urgency-safe': 'var(--urgency-safe-glow)',
-        'urgency-safe-card': 'var(--urgency-safe-card-glow)',
-        'urgency-watch': 'var(--urgency-watch-glow)',
-        'urgency-watch-card': 'var(--urgency-watch-card-glow)',
-        'urgency-caution': 'var(--urgency-caution-glow)',
-        'urgency-caution-card': 'var(--urgency-caution-card-glow)',
-        'urgency-warning': 'var(--urgency-warning-glow)',
-        'urgency-warning-card': 'var(--urgency-warning-card-glow)',
-        'urgency-danger': 'var(--urgency-danger-glow)',
-        'urgency-danger-card': 'var(--urgency-danger-card-glow)',
-        'urgency-critical': 'var(--urgency-critical-glow)',
-        'urgency-critical-card': 'var(--urgency-critical-card-glow)',
+        'urgency-safe': themeColor('urgency-safe-glow'),
+        'urgency-safe-card': themeColor('urgency-safe-card-glow'),
+        'urgency-watch': themeColor('urgency-watch-glow'),
+        'urgency-watch-card': themeColor('urgency-watch-card-glow'),
+        'urgency-caution': themeColor('urgency-caution-glow'),
+        'urgency-caution-card': themeColor('urgency-caution-card-glow'),
+        'urgency-warning': themeColor('urgency-warning-glow'),
+        'urgency-warning-card': themeColor('urgency-warning-card-glow'),
+        'urgency-danger': themeColor('urgency-danger-glow'),
+        'urgency-danger-card': themeColor('urgency-danger-card-glow'),
+        'urgency-critical': themeColor('urgency-critical-glow'),
+        'urgency-critical-card': themeColor('urgency-critical-card-glow'),
       },
     },
   },

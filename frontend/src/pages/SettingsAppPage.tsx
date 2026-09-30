@@ -319,7 +319,7 @@ export function SettingsAppPage({ title }: Props) {
                         const field = BATCH_VIDEO_FIELDS.find((f) => f.key === key)
                         return (
                           <label key={key} className="block text-sm">
-                            <span className="mb-0.5 block text-ds-caption text-muted-foreground/60">Video {v}</span>
+                            <span className="mb-0.5 block text-ds-caption text-muted-foreground">Video {v}</span>
                             <input
                               type="text"
                               value={resolvedBatchValue(key)}

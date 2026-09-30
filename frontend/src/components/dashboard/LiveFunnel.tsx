@@ -73,7 +73,7 @@ export function LiveFunnel() {
         {Array.from(useFunnelActivityStore.getState().actors.values())
           .slice(0, 8)
           .map((dot) => (
-            <div key={dot.id} className="flex items-center gap-1.5 text-ds-micro text-muted-foreground/60">
+            <div key={dot.id} className="flex items-center gap-1.5 text-ds-micro text-muted-foreground">
               <span
                 className="inline-block size-2.5 rounded-full"
                 style={{ backgroundColor: dot.color }}

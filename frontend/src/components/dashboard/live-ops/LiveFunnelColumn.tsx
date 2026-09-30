@@ -80,7 +80,7 @@ export function LiveFunnelColumn() {
             title={`View ${stage.label} leads`}
             className="flex min-h-[44px] items-center gap-2 px-3 py-2.5 no-underline transition-colors hover:bg-muted/30 dark:hover:bg-white/[0.04] active:bg-muted/50 dark:active:bg-white/[0.07] cursor-pointer sm:gap-3 sm:px-4"
           >
-            <span className="hidden w-5 shrink-0 text-ds-micro tabular-nums text-muted-foreground/50 dark:text-white/25 sm:inline">
+            <span className="hidden w-5 shrink-0 text-ds-micro tabular-nums text-muted-foreground dark:text-white/25 sm:inline">
               {String(i + 1).padStart(2, '0')}
             </span>
 
@@ -115,7 +115,7 @@ export function LiveFunnelColumn() {
 
             <span
               className={`w-7 shrink-0 text-right text-ds-micro font-semibold tabular-nums sm:w-8 ${
-                isUp ? 'text-emerald-600 dark:text-emerald-400' : movement < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/30 dark:text-white/15'
+                isUp ? 'text-emerald-600 dark:text-emerald-400' : movement < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground dark:text-white/15'
               }`}
             >
               {movement !== 0 ? `${isUp ? '↑' : '↓'}${Math.abs(movement)}` : '–'}

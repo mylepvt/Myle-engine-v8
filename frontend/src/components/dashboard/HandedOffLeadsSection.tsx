@@ -61,7 +61,7 @@ function LeadProgressCard({ lead }: { lead: LeadPublic }) {
                   {done ? (
                     <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-hidden />
                   ) : (
-                    <Circle className="size-4 shrink-0 text-muted-foreground/50" aria-hidden />
+                    <Circle className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   )}
                   <span className={done ? 'text-foreground' : 'text-muted-foreground'}>
                     {task.label}

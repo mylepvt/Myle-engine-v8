@@ -81,7 +81,7 @@ export function AutomationPanel({ className }: { className?: string }) {
             <p className="text-sm text-muted-foreground">Failed to load rules.</p>
           ) : (rules.data ?? []).length === 0 ? (
             <div className="py-6 text-center">
-              <Cog className="mx-auto size-8 text-muted-foreground/40" />
+              <Cog className="mx-auto size-8 text-muted-foreground" />
               <p className="mt-2 text-sm font-semibold text-foreground">No automation rules</p>
               <p className="text-xs text-muted-foreground mt-1">Rules will be seeded automatically on migration.</p>
             </div>
@@ -141,7 +141,7 @@ export function AutomationPanel({ className }: { className?: string }) {
             </div>
           ) : (logs.data ?? []).length === 0 ? (
             <div className="py-6 text-center">
-              <AlertTriangle className="mx-auto size-6 text-muted-foreground/40" />
+              <AlertTriangle className="mx-auto size-6 text-muted-foreground" />
               <p className="mt-1 text-xs text-muted-foreground">No actions triggered yet. Run rules to see results.</p>
             </div>
           ) : (

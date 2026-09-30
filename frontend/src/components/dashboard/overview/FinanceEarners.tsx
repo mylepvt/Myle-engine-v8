@@ -232,7 +232,7 @@ export function TopEarners({
           </div>
         ) : earners.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <Wallet className="size-6 text-muted-foreground/40" aria-hidden />
+            <Wallet className="size-6 text-muted-foreground" aria-hidden />
             <p className="text-ds-caption text-muted-foreground">No cheque earnings yet.</p>
           </div>
         ) : (

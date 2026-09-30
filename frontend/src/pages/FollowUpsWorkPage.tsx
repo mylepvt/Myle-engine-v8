@@ -1,9 +1,9 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { ListChecks, Search } from 'lucide-react'
 
+import { EmptyState } from '@/components/ui/states'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
-import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useCreateFollowUpMutation,
@@ -180,7 +180,7 @@ export function FollowUpsWorkPage({ title }: Props) {
             Total: {fuSearch.trim() ? filteredFuItems.length : fuQ.data.total}
           </p>
           {filteredFuItems.length === 0 ? (
-            <EmptyStatePremium
+            <EmptyState
               variant="tasks"
               title="No follow-ups"
               description={fuSearch.trim() ? 'No follow-ups match your search.' : openOnly ? 'All follow-ups are completed. Uncheck "Open only" to see them.' : 'Create a follow-up above to get started.'}

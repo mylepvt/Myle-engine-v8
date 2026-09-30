@@ -62,7 +62,7 @@ const TIER_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
   },
   inactive: {
     icon: <Zap className="w-4 h-4" />,
-    cls: 'bg-muted/40 text-muted-foreground/50 border-muted/20',
+    cls: 'bg-muted/40 text-muted-foreground border-muted/20',
   },
 }
 
@@ -519,7 +519,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                   <div key={p.user_id} className="rounded border border-dashed border-muted-300/50 p-2 text-center">
                     <p className="text-xs font-medium truncate">{p.name}</p>
                     <p className="text-ds-micro text-muted-foreground truncate">{p.fbo_id}</p>
-                    {p.phone && <p className="text-ds-micro text-muted-foreground/60 font-mono">{p.phone}</p>}
+                    {p.phone && <p className="text-ds-micro text-muted-foreground font-mono">{p.phone}</p>}
                   </div>
                 ))}
               {data.tier_distribution.inactive > 24 && (
@@ -580,7 +580,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                             {p.fbo_id} · {p.role}
                           </p>
                           {p.phone && (
-                            <p className="text-xs text-muted-foreground/60 font-mono">{p.phone}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{p.phone}</p>
                           )}
                         </div>
                       </div>
