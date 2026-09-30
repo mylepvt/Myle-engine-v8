@@ -22,7 +22,6 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.core.time_ist import IST, today_ist
 from app.core.auth_cookies import display_name_from_user
 from app.models.activity_log import ActivityLog
-from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.call_event import CallEvent
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
@@ -37,8 +36,6 @@ from app.services.live_metrics import (
 from app.services.user_hierarchy import nearest_leader_username_for_user_id
 from app.schemas.execution_enforcement import (
     AtRiskLeadRow,
-    Day2ReviewOut,
-    Day2ReviewSubmissionRow,
     LeakMapOut,
     LeadControlAssignableUser,
     LeadControlBulkReassignOut,
@@ -149,15 +146,6 @@ def _coerce_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
-
-
-def _preview_text(value: str | None, *, limit: int = 160) -> str | None:
-    text = (value or "").strip()
-    if not text:
-        return None
-    if len(text) <= limit:
-        return text
-    return f"{text[: limit - 1].rstrip()}…"
 
 
 def _lead_last_activity_ts():
@@ -1999,116 +1987,6 @@ async def admin_lead_control_snapshot(
         history_summary=history_summary,
         history=history_rows,
         history_total=history_total,
-    )
-
-
-async def admin_day2_review_snapshot(
-    session: AsyncSession,
-    *,
-    limit: int = 40,
-) -> Day2ReviewOut:
-    total = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(BatchDaySubmission)
-                .where(BatchDaySubmission.day_number == 2)
-            )
-        ).scalar_one()
-        or 0
-    )
-    notes_count = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(BatchDaySubmission)
-                .where(
-                    BatchDaySubmission.day_number == 2,
-                    or_(
-                        BatchDaySubmission.notes_url.is_not(None),
-                        func.length(func.trim(func.coalesce(BatchDaySubmission.notes_text, ""))) > 0,
-                    ),
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
-    voice_count = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(BatchDaySubmission)
-                .where(
-                    BatchDaySubmission.day_number == 2,
-                    BatchDaySubmission.voice_note_url.is_not(None),
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
-    video_count = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(BatchDaySubmission)
-                .where(
-                    BatchDaySubmission.day_number == 2,
-                    BatchDaySubmission.video_url.is_not(None),
-                )
-            )
-        ).scalar_one()
-        or 0
-    )
-    rows = (
-        await session.execute(
-            select(BatchDaySubmission, Lead)
-            .join(Lead, Lead.id == BatchDaySubmission.lead_id)
-            .where(BatchDaySubmission.day_number == 2)
-            .order_by(BatchDaySubmission.submitted_at.desc(), BatchDaySubmission.id.desc())
-            .limit(max(1, int(limit)))
-        )
-    ).all()
-    user_ids: set[int] = set()
-    for _submission, lead in rows:
-        if lead.assigned_to_user_id is not None:
-            user_ids.add(int(lead.assigned_to_user_id))
-        if lead.owner_user_id is not None:
-            user_ids.add(int(lead.owner_user_id))
-    users = await _load_users_by_ids(session, user_ids)
-    submissions = [
-        Day2ReviewSubmissionRow(
-            submission_id=int(submission.id),
-            lead_id=int(lead.id),
-            lead_name=lead.name,
-            slot=submission.slot,
-            submitted_at=_ensure_utc_datetime(submission.submitted_at) or datetime.now(timezone.utc),
-            assigned_to_user_id=int(lead.assigned_to_user_id) if lead.assigned_to_user_id is not None else None,
-            assigned_to_name=_user_label(
-                users.get(int(lead.assigned_to_user_id)) if lead.assigned_to_user_id is not None else None,
-                lead.assigned_to_user_id,
-            ),
-            owner_user_id=int(lead.owner_user_id) if lead.owner_user_id is not None else None,
-            owner_name=_user_label(
-                users.get(int(lead.owner_user_id)) if lead.owner_user_id is not None else None,
-                lead.owner_user_id,
-            ),
-            notes_text_preview=_preview_text(submission.notes_text),
-            notes_url=submission.notes_url,
-            voice_note_url=submission.voice_note_url,
-            video_url=submission.video_url,
-        )
-        for submission, lead in rows
-    ]
-    return Day2ReviewOut(
-        note=(
-            "Admin-only Day 2 review surface. Use this to inspect recent notes, voice notes, and videos "
-            "without mixing it into reassignment controls."
-        ),
-        submissions=submissions,
-        total=total,
-        notes_count=notes_count,
-        voice_count=voice_count,
-        video_count=video_count,
     )
 
 

@@ -176,22 +176,6 @@ class LeadControlHistoryRow(BaseModel):
     reason: Optional[str] = None
 
 
-class Day2ReviewSubmissionRow(BaseModel):
-    submission_id: int
-    lead_id: int
-    lead_name: str
-    slot: str
-    submitted_at: datetime
-    assigned_to_user_id: Optional[int] = None
-    assigned_to_name: str = ""
-    owner_user_id: Optional[int] = None
-    owner_name: str = ""
-    notes_text_preview: Optional[str] = None
-    notes_url: Optional[str] = None
-    voice_note_url: Optional[str] = None
-    video_url: Optional[str] = None
-
-
 class LeadControlOut(BaseModel):
     note: Optional[str] = None
     queue: list[LeadControlQueueLead] = Field(default_factory=list)
@@ -202,15 +186,6 @@ class LeadControlOut(BaseModel):
     history_summary: list[LeadControlHistorySummaryRow] = Field(default_factory=list)
     history: list[LeadControlHistoryRow] = Field(default_factory=list)
     history_total: int = 0
-
-
-class Day2ReviewOut(BaseModel):
-    note: Optional[str] = None
-    submissions: list[Day2ReviewSubmissionRow] = Field(default_factory=list)
-    total: int = 0
-    notes_count: int = 0
-    voice_count: int = 0
-    video_count: int = 0
 
 
 class LeadControlManualReassignIn(BaseModel):

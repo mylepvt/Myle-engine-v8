@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
-from app.models.lead_note import LeadNote
 from app.models.lead_sale import LeadSale
 from app.models.user import User
 from app.schemas.lead_timeline import LeadTimelineResponse, TimelineEvent
@@ -232,23 +231,6 @@ async def get_lead_timeline(
             timestamp=ts.isoformat(),
             actor=await _actor_name(session, lead.drop_recorded_by_user_id) if lead.drop_recorded_by_user_id else assigned_name,
             detail=" · ".join(detail_parts),
-        ))
-
-    # 14 — Notes
-    notes = (
-        await session.execute(
-            select(LeadNote)
-            .where(LeadNote.lead_id == lead_id)
-            .order_by(LeadNote.created_at.asc())
-        )
-    ).scalars().all()
-    for note in notes:
-        events.append(TimelineEvent(
-            type="note",
-            label="Note Added",
-            timestamp=note.created_at.isoformat(),
-            actor=await _actor_name(session, note.user_id),
-            detail=note.body[:200],
         ))
 
     # 15 — Activity log entries (general lead actions)

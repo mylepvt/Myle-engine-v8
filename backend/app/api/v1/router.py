@@ -5,7 +5,6 @@ Aggregate all v1 routers here. New domains: add `your_module.router` + `include_
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    landing_inquiries,
     admin_activity,
     admin_dashboard,
     admin_performer_insights,
@@ -32,15 +31,12 @@ from app.api.v1 import (
     certificate,
     downloads,
     enrollment,
-    feedback,
     flp_min_billing,
     execution,
     finance_surfaces,
     follow_ups,
-    free_lead_pool,
     gate_assistant,
     hello,
-    lead_notes,
     lead_bookings,
     lead_pool,
     leads,
@@ -101,14 +97,11 @@ api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(invoices.router, tags=["invoices"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
 api_router.include_router(lead_bookings.router, prefix="/lead-bookings", tags=["lead-bookings"])
-api_router.include_router(free_lead_pool.router, prefix="/free-lead-pool", tags=["free-lead-pool"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(pending_as.router, prefix="/pending-as", tags=["pending-as"])
 api_router.include_router(follow_ups.router, prefix="/follow-ups", tags=["follow-ups"])
-api_router.include_router(lead_notes.router, prefix="/leads", tags=["lead-notes"])
 api_router.include_router(workboard.router, prefix="/workboard", tags=["workboard"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
-api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(current_cc.router, prefix="/current-cc", tags=["current-cc"])
 api_router.include_router(
     gate_assistant.router, prefix="/gate-assistant", tags=["gate-assistant"]
@@ -137,4 +130,3 @@ api_router.include_router(org_execution.router, tags=["org-execution"])
 api_router.include_router(predictive_risk.router, tags=["predictive-risk"])
 api_router.include_router(training_campaign.router, tags=["training-campaign"])
 api_router.include_router(capture_links.router, tags=["capture-links"])
-api_router.include_router(landing_inquiries.router, prefix="/landing-inquiries", tags=["landing-inquiries"])

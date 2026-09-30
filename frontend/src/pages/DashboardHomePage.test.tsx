@@ -40,10 +40,6 @@ vi.mock('@/components/dashboard/VerificationHomePanel', () => ({
   VerificationHomePanel: () => <div data-testid="verification-home-panel" />,
 }))
 
-vi.mock('@/components/dashboard/DashboardFeedbackCard', () => ({
-  DashboardFeedbackCard: () => <div data-testid="dashboard-feedback-card" />,
-}))
-
 vi.mock('@/hooks/use-dashboard-shell-role', () => ({
   useDashboardShellRole: () => mockUseDashboardShellRole(),
 }))

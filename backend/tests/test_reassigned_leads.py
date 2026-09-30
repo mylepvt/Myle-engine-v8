@@ -333,57 +333,6 @@ async def test_new_assignee_single_lead_get_200(team_client: AsyncClient, engine
     assert resp.json()["id"] == lead_id
 
 
-# ── Notes/follow-up write gate follows assignment (require_visible_lead) ───────
-
-@pytest.mark.asyncio
-async def test_old_owner_cannot_create_note_after_reassign(team_client: AsyncClient, engine):
-    """Old owner can NOT write a note on a reassigned-away lead → 403."""
-    async with AsyncSession(engine, expire_on_commit=False) as session:
-        await _seed_user(session, 201)
-        await _seed_user(session, 777, role="team")
-        lead = await _seed_lead(
-            session, owner_id=201, assigned_to_id=777,
-            is_reassigned=True, reassigned_at=_now_utc(),
-        )
-        await session.commit()
-        lead_id = lead.id
-
-    resp = await team_client.post(f"/api/v1/leads/{lead_id}/notes", json={"body": "hi"})
-    assert resp.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_new_assignee_can_create_note(team_client: AsyncClient, engine):
-    """New assignee CAN write a note even though they are not the owner → 201."""
-    async with AsyncSession(engine, expire_on_commit=False) as session:
-        await _seed_user(session, 201)  # assignee
-        await _seed_user(session, 777, role="team")  # owner
-        lead = await _seed_lead(
-            session, owner_id=777, assigned_to_id=201,
-            is_reassigned=True, reassigned_at=_now_utc(),
-        )
-        await session.commit()
-        lead_id = lead.id
-
-    resp = await team_client.post(f"/api/v1/leads/{lead_id}/notes", json={"body": "mine now"})
-    assert resp.status_code == 201
-
-
-@pytest.mark.asyncio
-async def test_owner_can_create_note_on_unassigned_lead(team_client: AsyncClient, engine):
-    """Owner still writes notes while the lead is not assigned away → 201."""
-    async with AsyncSession(engine, expire_on_commit=False) as session:
-        await _seed_user(session, 201)
-        lead = await _seed_lead(session, owner_id=201, assigned_to_id=None)
-        await session.commit()
-        lead_id = lead.id
-
-    resp = await team_client.post(f"/api/v1/leads/{lead_id}/notes", json={"body": "still mine"})
-    assert resp.status_code == 201
-
-
-# ── Full manual-reassign round trip via real PATCH API ────────────────────────
-
 @pytest.mark.asyncio
 async def test_manual_reassign_transfers_visibility_end_to_end(engine):
     """Admin reassigns 201→777 via the real PATCH API; old owner then loses
