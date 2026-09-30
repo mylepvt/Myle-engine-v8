@@ -54,7 +54,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
         {/* Online indicator */}
         <span
           className={cn(
-            'absolute bottom-0 right-0 block size-3 rounded-full border-2 border-background dark:border-[#111214]',
+            'absolute bottom-0 right-0 block size-3 rounded-full border-2 border-background dark:border-card',
             isOnline ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-500 dark:bg-gray-600',
           )}
         />
@@ -101,7 +101,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         </div>
         <span
           className={cn(
-            'absolute -bottom-0.5 -right-0.5 block size-2.5 rounded-full border-[1.5px] border-background dark:border-[#1a1c22]',
+            'absolute -bottom-0.5 -right-0.5 block size-2.5 rounded-full border-[1.5px] border-background dark:border-card',
             isOnline ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-muted-foreground/40 dark:bg-gray-600',
           )}
         />

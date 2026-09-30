@@ -329,16 +329,16 @@ export function CtcsLeadCard({
                 rel="noopener noreferrer"
                 className={cn(
                   'flex size-9 items-center justify-center rounded-full border-2 transition active:scale-95 min-[380px]:size-10',
-                  'border-[#128C7E]/60 bg-[#25D366]/15 text-[#065f46]',
-                  'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/25',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#128C7E]/70',
-                  'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#dcf8c6] dark:shadow-[0_0_12px_rgba(37,211,102,0.45)] dark:ring-[#25D366]/35',
-                  'dark:hover:border-[#34eb75] dark:hover:bg-[#25D366]/30',
+                  'border-whatsapp-teal/60 bg-whatsapp/15 text-whatsapp-ink',
+                  'shadow-[0_0_10px_rgba(37,211,102,0.28)] ring-1 ring-whatsapp/25 hover:bg-whatsapp/25',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-whatsapp-teal/70',
+                  'dark:border-whatsapp/75 dark:bg-whatsapp/20 dark:text-whatsapp-ink-dark dark:shadow-[0_0_12px_rgba(37,211,102,0.45)] dark:ring-whatsapp/35',
+                  'dark:hover:border-whatsapp-light dark:hover:bg-whatsapp/30',
                 )}
                 title="WhatsApp"
                 aria-label="Open WhatsApp chat"
               >
-                <MessageCircle className="size-3.5 text-[#047857] dark:text-[#b8f5c4]" aria-hidden />
+                <MessageCircle className="size-3.5 text-whatsapp-ink dark:text-whatsapp-ink-dark" aria-hidden />
               </a>
             ) : (
               <span className="flex size-9 min-[380px]:size-10 items-center justify-center rounded-full border border-border bg-muted/40 opacity-40">

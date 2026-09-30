@@ -47,7 +47,7 @@ export function WhatsAppSendButton({
           rel="noopener noreferrer"
           className={cn(
             sizeClasses,
-            'inline-flex items-center gap-1.5 rounded-md border border-[#25D366]/30 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 disabled:opacity-50 disabled:cursor-not-allowed'
+            'inline-flex items-center gap-1.5 rounded-md border border-whatsapp/30 bg-whatsapp/10 text-whatsapp hover:bg-whatsapp/20 disabled:opacity-50 disabled:cursor-not-allowed'
           )}
         >
           <MessageCircle className="h-4 w-4" />
@@ -62,7 +62,7 @@ export function WhatsAppSendButton({
             disabled={disabled || !personalHref}
             className={cn(
               sizeClasses,
-              'inline-flex items-center gap-1.5 rounded-l-md border border-[#25D366]/30 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 disabled:opacity-50 disabled:cursor-not-allowed border-r-0'
+              'inline-flex items-center gap-1.5 rounded-l-md border border-whatsapp/30 bg-whatsapp/10 text-whatsapp hover:bg-whatsapp/20 disabled:opacity-50 disabled:cursor-not-allowed border-r-0'
             )}
             title={prefillMessage ? `Message: ${prefillMessage.substring(0, 50)}...` : label}
           >
@@ -75,7 +75,7 @@ export function WhatsAppSendButton({
             className={cn(
               'px-1',
               sizeClasses,
-              'rounded-r-md border border-[#25D366]/30 bg-[#1ea34b]/10 text-[#1ea34b] hover:bg-[#1ea34b]/20 disabled:opacity-50 disabled:cursor-not-allowed border-l-0'
+              'rounded-r-md border border-whatsapp/30 bg-whatsapp-dark/10 text-whatsapp-dark hover:bg-whatsapp-dark/20 disabled:opacity-50 disabled:cursor-not-allowed border-l-0'
             )}
           >
             <ChevronDown className="h-4 w-4" />

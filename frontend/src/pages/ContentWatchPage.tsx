@@ -35,7 +35,7 @@ export function ContentWatchPage() {
       : null
 
   return (
-    <div className="min-h-dvh bg-[#060f20] text-white">
+    <div className="min-h-dvh bg-room-surface text-white">
       <div className="mx-auto max-w-3xl px-4 py-10 md:py-16">
         <div className="mb-8">
           <p className="text-ds-caption font-semibold uppercase tracking-[0.28em] text-cyan-300/70">

@@ -117,8 +117,8 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
                   rel="noopener noreferrer"
                   className={cn(
                     'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
-                    'border-2 border-[#128C7E]/55 bg-[#25D366]/14 text-[#065f46] shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-[#25D366]/22',
-                    'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#e8ffe8] dark:shadow-[0_0_12px_rgba(37,211,102,0.35)] dark:hover:bg-[#25D366]/30',
+                    'border-2 border-whatsapp-teal/55 bg-whatsapp/15 text-whatsapp-ink shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-whatsapp/20',
+                    'dark:border-whatsapp/75 dark:bg-whatsapp/20 dark:text-whatsapp-ink-dark dark:shadow-[0_0_12px_rgba(37,211,102,0.35)] dark:hover:bg-whatsapp/30',
                   )}
                 >
                   <MessageCircle className="size-4 shrink-0" aria-hidden />

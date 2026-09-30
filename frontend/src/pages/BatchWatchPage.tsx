@@ -285,7 +285,7 @@ export function BatchWatchPage() {
   const submittedVideoUrl = toAbsoluteUrl(submission?.video_url)
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#040915] text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-room-base text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-8rem] top-[-10rem] h-[24rem] w-[24rem] rounded-full bg-cyan-400/18 blur-3xl" />
         <div className="absolute right-[-10rem] top-[4rem] h-[28rem] w-[28rem] rounded-full bg-blue-500/16 blur-3xl" />
