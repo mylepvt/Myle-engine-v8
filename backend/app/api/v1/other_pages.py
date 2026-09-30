@@ -379,6 +379,7 @@ async def other_live_session(
                 "title": title,
                 "detail": sched,
                 "external_href": url.strip(),
+                "updated_at": (await _get("live_session_updated_at")) or None,
             }
         )
     else:

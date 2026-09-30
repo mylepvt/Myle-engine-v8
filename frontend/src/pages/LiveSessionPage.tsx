@@ -1,11 +1,18 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check, Copy } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
+import { buildLiveSessionMessage, formatLiveSessionUpdatedAt } from '@/lib/live-session-message'
 
 type LiveSessionStub = {
-  items: { title: string; detail?: string | null; external_href?: string | null }[]
+  items: {
+    title: string
+    detail?: string | null
+    external_href?: string | null
+    updated_at?: string | null
+  }[]
 }
 
 async function fetchLiveSession(): Promise<LiveSessionStub> {
@@ -25,6 +32,30 @@ export function LiveSessionPage({ title }: Props) {
   })
   const liveCard = liveSession.data?.items?.[0]
   const joinHref = liveCard?.external_href?.trim() || null
+  const [copied, setCopied] = useState(false)
+
+  const updatedLabel = formatLiveSessionUpdatedAt(liveCard?.updated_at)
+
+  async function copyMessage() {
+    if (!joinHref || !liveCard) return
+    const text = buildLiveSessionMessage(liveCard, joinHref)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Clipboard API blocked (older WebView / non-secure context) — fall back to a hidden textarea.
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -49,14 +80,35 @@ export function LiveSessionPage({ title }: Props) {
           {liveCard?.detail ? (
             <p className="mt-1 whitespace-pre-line text-ds-caption text-muted-foreground">{liveCard.detail}</p>
           ) : null}
-          <a
-            href={joinHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-500"
-          >
-            Join Now <ArrowRight className="ml-1.5 size-4" aria-hidden />
-          </a>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={joinHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-500"
+            >
+              Join Now <ArrowRight className="ml-1.5 size-4" aria-hidden />
+            </a>
+            <button
+              type="button"
+              onClick={() => void copyMessage()}
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-500/40 bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-red-500/10"
+            >
+              {copied ? (
+                <>
+                  <Check className="mr-1.5 size-4 text-emerald-500" aria-hidden /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1.5 size-4" aria-hidden /> Copy message
+                </>
+              )}
+            </button>
+          </div>
+          <p className="mt-2 break-all text-ds-caption text-muted-foreground">{joinHref}</p>
+          {updatedLabel ? (
+            <p className="mt-1 text-ds-caption text-muted-foreground">Link updated: {updatedLabel}</p>
+          ) : null}
         </div>
       ) : liveSession.data ? (
         <p className="text-sm text-muted-foreground">No live session link has been published yet.</p>
