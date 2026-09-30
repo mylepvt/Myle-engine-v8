@@ -25,11 +25,13 @@ export function buildLiveSessionMessage(
   href: string,
   today: Date = new Date(),
 ): string {
+  // emoji-ok: WhatsApp message text shared by the member
   const lines = [`🔴 *Today's Live Session* — ${IST_DATE.format(today)}`]
   const title = item.title?.trim()
   if (title && title !== "Today's Live Session") lines.push(`*${title}*`)
   const detail = item.detail?.trim()
   if (detail) lines.push(detail)
+  // emoji-ok: WhatsApp message text shared by the member
   lines.push('', `👉 Join here: ${href}`)
   return lines.join('\n')
 }
