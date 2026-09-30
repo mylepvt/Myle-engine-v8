@@ -59,13 +59,11 @@ from app.services.flp_min_billing_video import (
     normalize_video_source_url,
     normalize_phone_for_match,
     require_secure_flp_min_billing_video_source,
-    resolve_public_app_url,
     sanitize_public_token,
 )
 from app.services.lead_scope import user_can_mutate_lead
 from app.services.lead_owner import resolved_owner_user_id
 from app.services.push_service import send_push_to_user
-from app.services.whatsapp_flp_min_billing import send_flp_min_billing_video_whatsapp
 
 router = APIRouter()
 watch_router = APIRouter()
@@ -338,11 +336,11 @@ async def get_session_slots(
 @router.post("/send", response_model=FlpMinBillingVideoSendResponse, status_code=http_status.HTTP_201_CREATED)
 async def send_flp_min_billing_video(
     body: FlpMinBillingShareLinkCreate,
-    request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> FlpMinBillingVideoSendResponse:
-    """Create a secure link, send it over WhatsApp, and move the lead to video_sent."""
+    """Create the secure link and move the lead to video_sent. The member shares the
+    link on WhatsApp from their own phone (the response carries the link)."""
     lead = await _get_lead_or_404(session, body.lead_id)
     await _assert_lead_access(session, user, lead)
     if normalize_phone_for_match(lead.phone) is None:
@@ -360,25 +358,6 @@ async def send_flp_min_billing_video(
             title=selected_title,
             session_hour=slot_hour or body.session_hour,
         )
-        public_app_url = await resolve_public_app_url(session, request)
-        watch_url = f"{public_app_url}/watch/{link.token}"
-
-        delivery_meta = await send_flp_min_billing_video_whatsapp(
-            lead_id=lead.id,
-            phone=lead.phone,
-            lead_name=lead.name,
-            watch_url=watch_url,
-            expires_at=link.expires_at,
-            title=link.title or "Min. FLP Billing video",
-        )
-
-        if not delivery_meta.get("ok") and delivery_meta.get("channel") != "whatsapp_stub":
-            await session.rollback()
-            raise HTTPException(
-                status_code=http_status.HTTP_502_BAD_GATEWAY,
-                detail="WhatsApp delivery failed, so lead status was not changed.",
-            )
-
         should_sync_lead = _sync_lead_for_send(lead, now=now)
         await session.flush()
         if should_sync_lead:
@@ -389,7 +368,7 @@ async def send_flp_min_billing_video(
         await notify_topics("enroll", "leads", "workboard")
         return FlpMinBillingVideoSendResponse(
             link=_build_public_link(link),
-            delivery=FlpMinBillingVideoSendDelivery.model_validate(delivery_meta),
+            delivery=FlpMinBillingVideoSendDelivery(ok=True, channel="manual_share"),
         )
     except HTTPException:
         raise

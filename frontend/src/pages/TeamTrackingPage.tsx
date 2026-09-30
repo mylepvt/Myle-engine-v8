@@ -4,11 +4,9 @@ import {
   Activity,
   ArrowDownWideNarrow,
   Check,
-  CheckCircle2,
   Clipboard,
   Gauge,
   Layers3,
-  Loader2,
   MessageCircle,
   ShieldAlert,
   Users,
@@ -31,7 +29,6 @@ import {
   useTeamTrackingOverviewQuery,
   type TeamTrackingMemberSummary,
 } from '@/hooks/use-team-tracking-query'
-import { useRemovalOutreachQuery, useSendRemovalOutreachMutation, type RemovalOutreachItem } from '@/hooks/use-removal-outreach-query'
 import { filterCollectionByQuery, type SearchableValue } from '@/lib/search-filter'
 import { cn } from '@/lib/utils'
 
@@ -438,18 +435,6 @@ export function TeamTrackingPage({ title }: Props) {
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const { data, isPending, isError, error, refetch } = useTeamTrackingOverviewQuery(dateIso)
-  const { data: outreachData } = useRemovalOutreachQuery(false, complianceFilter === 'removed')
-  const sendOutreach = useSendRemovalOutreachMutation()
-  const [stubPhones, setStubPhones] = useState<Record<number, string>>({})
-
-  const outreachByUserId = useMemo(() => {
-    const map = new Map<number, RemovalOutreachItem>()
-    outreachData?.items.forEach((item) => {
-      if (!map.has(item.user_id)) map.set(item.user_id, item)
-    })
-    return map
-  }, [outreachData])
-
   const leaderOptions = useMemo(() => {
     const leaderMap = new Map<string, string>()
     data?.items.forEach((item) => {
@@ -856,109 +841,19 @@ export function TeamTrackingPage({ title }: Props) {
                         ) : null}
                       </div>
 
-                      {(() => {
-                        const outreach = outreachByUserId.get(item.user_id)
-                        const isSent = outreach?.send_status === 'sent'
-                        const isStub = outreach?.send_status === 'stub'
-                        const isSending = sendOutreach.isPending && sendOutreach.variables?.userId === item.user_id
-                        const phone = outreach?.phone ?? item.member_phone
-                        const waDigits = phone ? phone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1') : null
-                        const manualUrl = outreach?.manual_share_url ?? (waDigits ? `https://wa.me/${waDigits}` : null)
-                        return (
-                          <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs space-y-2">
-                            {isSent ? (
-                              /* ✓ API sent — but may not arrive due to Meta 24h window */
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                                  <CheckCircle2 className="size-3.5 shrink-0" />
-                                  <span className="font-medium">API sent</span>
-                                  {outreach?.sent_at ? (
-                                    <span className="text-muted-foreground">
-                                      · {new Date(outreach.sent_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <button
-                                  type="button"
-                                  disabled={isSending}
-                                  onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true })}
-                                  className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-ds-micro text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] disabled:opacity-50"
-                                >
-                                  {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
-                                  {isSending ? 'Sending…' : 'Resend'}
-                                </button>
-                              </div>
-                            ) : isStub ? (
-                              /* Phone not in profile — inline input to enter and send */
-                              <div className="space-y-1.5">
-                                <p className="text-amber-600 dark:text-amber-400">No phone saved — enter number to send:</p>
-                                <div className="flex items-center gap-1.5">
-                                  <input
-                                    type="tel"
-                                    placeholder="10-digit mobile number"
-                                    value={stubPhones[item.user_id] ?? ''}
-                                    onChange={(e) => setStubPhones((prev) => ({ ...prev, [item.user_id]: e.target.value }))}
-                                    className="flex-1 rounded border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] px-2 py-0.5 text-ds-micro text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                                  />
-                                  <button
-                                    type="button"
-                                    disabled={isSending || !(stubPhones[item.user_id] ?? '').trim()}
-                                    onClick={() => sendOutreach.mutate({ userId: item.user_id, force: true, phone: stubPhones[item.user_id] })}
-                                    className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-ds-micro font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                                  >
-                                    {isSending ? <Loader2 className="size-2.5 animate-spin" /> : <MessageCircle className="size-2.5" />}
-                                    {isSending ? 'Sending…' : 'Send'}
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              /* Not sent yet — API Send button */
-                              <button
-                                type="button"
-                                disabled={isSending}
-                                onClick={() => sendOutreach.mutate({ userId: item.user_id })}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-                              >
-                                {isSending ? (
-                                  <Loader2 className="size-3 animate-spin" />
-                                ) : (
-                                  <MessageCircle className="size-3" />
-                                )}
-                                {isSending ? 'Sending…' : outreach?.send_status === 'failed' ? 'Retry API' : 'Send via API'}
-                              </button>
-                            )}
-
-                            {/* Manual wa.me link — always show, bypasses Meta 24h window */}
-                            {manualUrl ? (
-                              <a
-                                href={manualUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-500/20 dark:text-blue-400"
-                              >
-                                <MessageCircle className="size-3" />
-                                Send manually (opens WhatsApp)
-                              </a>
-                            ) : null}
-
-                            {outreach?.reply_text ? (
-                              <div className="mt-2 rounded bg-emerald-400/[0.08] px-3 py-2">
-                                <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                                  Member replied:
-                                </p>
-                                <p className="mt-1 text-foreground">{outreach.reply_text}</p>
-                                {outreach.replied_at ? (
-                                  <p className="mt-1 text-muted-foreground">
-                                    {new Date(outreach.replied_at).toLocaleString()}
-                                  </p>
-                                ) : null}
-                              </div>
-                            ) : isSent ? (
-                              <p className="mt-1 text-muted-foreground">No reply yet</p>
-                            ) : null}
-                          </div>
-                        )
-                      })()}
+                      {item.member_phone ? (
+                        <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
+                          <a
+                            href={`https://wa.me/${item.member_phone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-500/20 dark:text-blue-400"
+                          >
+                            <MessageCircle className="size-3" aria-hidden />
+                            Message on WhatsApp
+                          </a>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>

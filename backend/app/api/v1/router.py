@@ -8,7 +8,6 @@ from app.api.v1 import (
     landing_inquiries,
     admin_activity,
     admin_dashboard,
-    admin_management_updates,
     admin_performer_insights,
     admin_training,
     action_queue,
@@ -63,7 +62,6 @@ from app.api.v1 import (
     team_tracking,
     wallet,
     wallet_enhanced,
-    webhooks,
     workboard,
     crm_proxy,
     xp,
@@ -75,7 +73,6 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin_training.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_performer_insights.router, prefix="/admin", tags=["admin"])
-api_router.include_router(admin_management_updates.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_activity.router, prefix="/admin", tags=["admin"])
 api_router.include_router(action_queue.router, tags=["action-queue"])
 api_router.include_router(automation.router, tags=["automation"])
@@ -140,5 +137,4 @@ api_router.include_router(org_execution.router, tags=["org-execution"])
 api_router.include_router(predictive_risk.router, tags=["predictive-risk"])
 api_router.include_router(training_campaign.router, tags=["training-campaign"])
 api_router.include_router(capture_links.router, tags=["capture-links"])
-api_router.include_router(webhooks.router, tags=["webhooks"])
 api_router.include_router(landing_inquiries.router, prefix="/landing-inquiries", tags=["landing-inquiries"])

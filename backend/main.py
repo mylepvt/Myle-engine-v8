@@ -32,9 +32,7 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
     job_closing_pipeline_maintenance,
-    job_daily_leader_team_summary,
     job_daily_report_reminder,
-    job_eos_action_queue_digest,
     job_eos_automation_rules,
     job_eos_mission_pregeneration,
     job_eos_verification_escalations,
@@ -43,8 +41,6 @@ from app.services.scheduled_jobs import (
     job_general_pipeline_maintenance,
     job_lead_booking_fulfillment,
     job_leader_basics_enforcement,
-    job_management_updates,
-    job_management_weekly_report,
     job_tracking_report_reminder,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
@@ -144,27 +140,6 @@ async def lifespan(_app: FastAPI):
             misfire_grace_time=1800,
         )
         _scheduler.add_job(
-            job_daily_leader_team_summary,
-            CronTrigger(hour=22, minute=0, timezone="Asia/Kolkata"),
-            id="daily_leader_team_summary",
-            replace_existing=True,
-            misfire_grace_time=1800,
-        )
-        _scheduler.add_job(
-            job_management_updates,
-            CronTrigger(hour=21, minute=30, timezone="Asia/Kolkata"),
-            id="management_updates",
-            replace_existing=True,
-            misfire_grace_time=1800,
-        )
-        _scheduler.add_job(
-            job_management_weekly_report,
-            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Kolkata"),
-            id="management_weekly_report",
-            replace_existing=True,
-            misfire_grace_time=3600,
-        )
-        _scheduler.add_job(
             job_eos_mission_pregeneration,
             CronTrigger(hour=6, minute=0, timezone="Asia/Kolkata"),
             id="eos_mission_pregeneration",
@@ -182,13 +157,6 @@ async def lifespan(_app: FastAPI):
             job_eos_verification_escalations,
             CronTrigger(hour="11,18", minute=0, timezone="Asia/Kolkata"),
             id="eos_verification_escalations",
-            replace_existing=True,
-            misfire_grace_time=1800,
-        )
-        _scheduler.add_job(
-            job_eos_action_queue_digest,
-            CronTrigger(hour=9, minute=0, timezone="Asia/Kolkata"),
-            id="eos_action_queue_digest",
             replace_existing=True,
             misfire_grace_time=1800,
         )

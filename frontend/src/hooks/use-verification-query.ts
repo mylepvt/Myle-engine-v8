@@ -225,7 +225,7 @@ export function useCreateTask() {
 export function useBulkAssignTask() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (data: { verification_task_id: number; user_ids: number[]; due_at?: string; notify_via_whatsapp?: boolean }) => {
+    mutationFn: async (data: { verification_task_id: number; user_ids: number[]; due_at?: string}) => {
       const res = await apiFetch('/api/v1/verification/admin/task-assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -67,7 +67,6 @@ from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.lead_payloads import build_lead_public_payloads
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.user_hierarchy import nearest_leader_for_user
-from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
@@ -81,10 +80,6 @@ ENROLLMENT_MAX_RUPEES = 200
 ENROLLMENT_SENDABLE_STATUSES = frozenset({"new_lead", "contacted", "invited", "video_sent", "video_watched"})
 _POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
 _PHONE_DIGIT_RE = re.compile(r"\D")
-
-
-async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
-    await send_interested_flp_min_billing_assets(lead_id=lead_id, phone=phone)
 
 
 def _display_name_from_fields(name: str | None, username: str | None, email: str | None) -> str:
@@ -1536,17 +1531,11 @@ class LeadsService:
             lead.heat_score = clamp_ctcs_heat(
                 int(lead.heat_score or 0) + settings.ctcs_heat_interested_bonus,
             )
-            lead.whatsapp_sent_at = now
-            if settings.ctcs_whatsapp_async and background_tasks is not None:
-                background_tasks.add_task(_deliver_ctcs_interested_whatsapp, lead.id, lead.phone)
-                wa_meta: dict[str, Any] = {"queued": True, "channel": "whatsapp"}
-            else:
-                wa_meta = await send_interested_flp_min_billing_assets(lead_id=lead.id, phone=lead.phone)
             await self._repository.add_lead_activity(
                 user_id=user.user_id,
                 action="ctcs.interested",
                 lead_id=lead.id,
-                meta={"whatsapp": wa_meta},
+                meta={"from_status": prev_status},
             )
         elif action == "not_picked":
             advance_lead_status_toward(lead=lead, target_slug="contacted", role=user.role)

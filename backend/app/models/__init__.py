@@ -1,6 +1,4 @@
 from app.models.lead_booking import LeadBooking
-from app.models.member_removal_outreach import MemberRemovalOutreach
-from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.admin_activity_feed import AdminActivityFeed
 from app.models.announcement import Announcement
 from app.models.announcement_reaction import AnnouncementReaction
@@ -41,13 +39,10 @@ from app.models.verification_task import VerificationTask
 from app.models.task_assignment import TaskAssignment
 from app.models.daily_mission import MissionTemplate, DailyMission, MissionBlocker
 from app.models.grace_history import GraceHistory
-from app.models.whatsapp_log import WhatsAppLog
 from app.models.automation import AutomationRule, AutomationActionLog
 from app.models.landing_inquiry import LandingInquiry
 
 __all__ = [
-    "MemberRemovalOutreach",
-    "ReportReminderOutreach",
     "AdminActivityFeed",
     "Announcement",
     "AnnouncementReaction",
@@ -91,7 +86,6 @@ __all__ = [
     "DailyMission",
     "MissionBlocker",
     "GraceHistory",
-    "WhatsAppLog",
     "AutomationRule",
     "AutomationActionLog",
     "LeadBooking",

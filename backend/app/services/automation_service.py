@@ -315,20 +315,15 @@ async def _exec_alert_leader(
     sent = False
     if leader_id is not None:
         leader = await session.get(User, leader_id)
-        if leader is not None and leader.phone:
+        if leader is not None:
             from app.services.messaging_gate import can_receive_automated_message
-            from app.services.whatsapp_leader_alerts import send_system_alert
+            from app.services.push_service import send_push_to_user
             if not can_receive_automated_message(leader):
                 return {"action": "alert_leader", "leader_id": leader_id, "member_id": member_id, "message": message, "status": "skipped", "reason": "ineligible"}
-            wa_text = (
-                f"🚨 *Myle Automation Alert*\n\n"
-                f"{message}\n\n"
-                f"Rule: {rule.name}\n\n"
-                "— Myle Team"
-            )
-            sent = await send_system_alert(
-                leader.phone, wa_text, session,
-                message_type="automation_alert", related_user_id=leader.id,
+            sent = bool(
+                await send_push_to_user(
+                    session, leader.id, title=f"Alert: {rule.name}", body=message, url="/dashboard",
+                )
             )
 
     return {
@@ -347,38 +342,14 @@ def _prettify(value: str | None) -> str:
     return str(value).replace("_", " ").strip().title() or "—"
 
 
-def _digest_line(index: int, rule: AutomationRule, entity: dict) -> str:
-    """One compact line for a leader digest entry."""
-    detail = entity.get("detail") or {}
-    if entity.get("entity_type") == "lead":
-        name = detail.get("lead_name") or f"Lead #{entity.get('entity_id')}"
-        phone = detail.get("phone") or "—"
-        stage = _prettify(detail.get("status"))
-        last_ctx = _prettify(detail.get("call_status"))
-        days = detail.get("days", "?")
-        return f"{index}. {name} · {phone} · now: {stage} · last: {last_ctx} · {days}d idle"
-    # Member-based alert (missed missions / incomplete campaigns): reuse the
-    # rule's message template, falling back gracefully on missing keys.
-    config = rule.action_config or {}
-    template = config.get("message", "Needs attention.")
-    try:
-        text = template.format(**detail)
-    except Exception as exc:
-        logger.warning("Template format failed for rule_id=%s: %s", rule.id, exc)
-        text = template
-    return f"{index}. {text}"
-
-
 async def _exec_alert_leader_batched(
     session: AsyncSession,
     rule: AutomationRule,
     entities: list[dict],
 ) -> dict[int, dict]:
-    """Send one digest per leader (max 50 entries per WhatsApp) instead of one
-    message per entity. Returns a {entity_id: result} map for action logging.
+    """Send one push per leader (with the count of items) instead of one per
+    entity. Returns a {entity_id: result} map for action logging.
     """
-    BATCH_SIZE = 50
-
     # Group entities by their resolved leader.
     groups: dict[int | None, list[dict]] = {}
     for entity in entities:
@@ -390,47 +361,28 @@ async def _exec_alert_leader_batched(
         leader_id = await _get_leader_id(session, member_id) if member_id else None
         groups.setdefault(leader_id, []).append(entity)
 
-    from app.services.whatsapp_leader_alerts import send_system_alert
-
-    # Management sees only a per-leader rollup (leader name + phone + count) so
-    # Shikha can ring the responsible leader — not every lead's number/details.
-    rollup_rows: list[tuple[str, str, int]] = []
-
     results: dict[int, dict] = {}
     for leader_id, group in groups.items():
         leader = await session.get(User, leader_id) if leader_id else None
-        phone = leader.phone if leader else None
 
         from app.services.messaging_gate import can_receive_automated_message
         eligible = leader is not None and can_receive_automated_message(leader)
 
         sent_any = False
-        if phone and eligible:
+        if leader is not None and eligible:
+            from app.services.push_service import send_push_to_user
             total = len(group)
-            parts = (total + BATCH_SIZE - 1) // BATCH_SIZE
-            for part_index in range(parts):
-                chunk = group[part_index * BATCH_SIZE : (part_index + 1) * BATCH_SIZE]
-                lines = [
-                    _digest_line(part_index * BATCH_SIZE + offset + 1, rule, entity)
-                    for offset, entity in enumerate(chunk)
-                ]
-                header = f"🚨 *Myle: {rule.name}*"
-                if parts > 1:
-                    header += f"  ({part_index + 1}/{parts})"
-                body = f"{header}\n\n" + "\n".join(lines) + "\n\n— Myle Team"
-                ok = await send_system_alert(
-                    phone, body, session,
-                    message_type="automation_alert", related_user_id=leader_id,
+            sent_any = bool(
+                await send_push_to_user(
+                    session,
+                    leader.id,
+                    title=f"Alert: {rule.name}",
+                    body=f"{total} item{'s' if total != 1 else ''} in your team need attention.",
+                    url="/dashboard",
                 )
-                sent_any = sent_any or ok
+            )
 
-        lead_count = sum(1 for e in group if e.get("entity_type") == "lead")
-        if lead_count:
-            leader_name = (leader.name or leader.fbo_id) if leader else "Unassigned"
-            leader_phone = (leader.phone if leader else None) or "—"
-            rollup_rows.append((leader_name, leader_phone, lead_count))
-
-        status = "sent" if (phone and sent_any) else "logged"
+        status = "sent" if sent_any else "logged"
         for entity in group:
             results[entity["entity_id"]] = {
                 "action": "alert_leader",
@@ -439,54 +391,7 @@ async def _exec_alert_leader_batched(
                 "batched": True,
             }
 
-    await _send_management_leader_rollup(session, rule, rollup_rows)
     return results
-
-
-async def _send_management_leader_rollup(
-    session: AsyncSession,
-    rule: AutomationRule,
-    rollup_rows: list[tuple[str, str, int]],
-) -> None:
-    """Management (Shikha) gets a leader-level rollup only: each leader's name +
-    phone + how many of their team's leads need attention — so she can call the
-    leader. No individual lead numbers/details. Max 50 leaders per message.
-    """
-    if not rollup_rows:
-        return
-    from app.services.whatsapp_leader_alerts import send_system_alert
-    from app.services.whatsapp_management_updates import get_management_phone
-
-    mgmt_phone = await get_management_phone(session)
-    if not mgmt_phone:
-        return
-
-    rollup_rows.sort(key=lambda r: r[2], reverse=True)
-    BATCH_SIZE = 50
-    total_leaders = len(rollup_rows)
-    total_leads = sum(c for _, _, c in rollup_rows)
-    parts = (total_leaders + BATCH_SIZE - 1) // BATCH_SIZE
-    for part_index in range(parts):
-        chunk = rollup_rows[part_index * BATCH_SIZE : (part_index + 1) * BATCH_SIZE]
-        lines = [
-            f"{part_index * BATCH_SIZE + offset + 1}. {name} 📞 {phone} — "
-            f"{count} lead{'s' if count != 1 else ''}"
-            for offset, (name, phone, count) in enumerate(chunk)
-        ]
-        header = f"🧟 *Leads needing attention — by team* ({total_leads} across {total_leaders} leaders)"
-        if parts > 1:
-            header += f"  ({part_index + 1}/{parts})"
-        body = (
-            f"{header}\n\nCall the leader to action their team's stale leads:\n\n"
-            + "\n".join(lines)
-            + "\n\n— Myle Team"
-        )
-        try:
-            await send_system_alert(
-                mgmt_phone, body, session, message_type="automation_alert_management",
-            )
-        except Exception as exc:
-            logger.warning("Management alert send failed: %s", exc)
 
 
 async def _exec_create_task(
@@ -711,7 +616,7 @@ async def evaluate_rule(
     rule: AutomationRule,
 ) -> list[AutomationActionLog]:
     """Evaluate a single rule and execute actions."""
-    # Zombie-lead WhatsApp alerts are disabled: skip evaluating any zombie_lead
+    # Zombie-lead alerts are disabled: skip evaluating any zombie_lead
     # rule so no automated alert/task fires. Dashboard surfaces stay unaffected.
     if rule.trigger_type == "zombie_lead":
         return []
@@ -735,8 +640,8 @@ async def evaluate_rule(
             continue
         eligible.append(entity)
 
-    # alert_leader is batched: one digest per leader (max 50 entries per
-    # WhatsApp) so leaders get a single list, not one message per entity.
+    # alert_leader is batched: one push per leader so leaders get a single
+    # alert, not one per entity.
     batched_results: dict[int, dict] = {}
     if rule.action_type == "alert_leader":
         batched_results = await _exec_alert_leader_batched(session, rule, eligible)

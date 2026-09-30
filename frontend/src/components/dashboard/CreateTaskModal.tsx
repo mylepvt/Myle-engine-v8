@@ -88,7 +88,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
   const [target, setTarget] = useState<Target>('team')
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [notifyWhatsApp, setNotifyWhatsApp] = useState(true)
   const [assignedCount, setAssignedCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -138,7 +137,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
     setTarget('team')
     setSearch('')
     setSelectedIds(new Set())
-    setNotifyWhatsApp(true)
     setAssignedCount(0)
     setError(null)
   }
@@ -170,7 +168,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
       await bulkAssign.mutateAsync({
         verification_task_id: taskId,
         user_ids: targetIds,
-        notify_via_whatsapp: notifyWhatsApp,
       })
       setAssignedCount(targetIds.length)
       setStep('done')
@@ -343,18 +340,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
                 </div>
               )}
             </div>
-
-            {/* WhatsApp notify */}
-            <label className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
-              <input
-                type="checkbox"
-                checked={notifyWhatsApp}
-                onChange={(e) => setNotifyWhatsApp(e.target.checked)}
-                className="size-4 accent-primary"
-              />
-              <span className="text-sm text-foreground">Notify on WhatsApp</span>
-              <span className="ml-auto text-xs text-muted-foreground">they get an alert</span>
-            </label>
 
             {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
 

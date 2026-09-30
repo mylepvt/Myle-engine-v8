@@ -87,8 +87,7 @@ def test_send_enrollment_video_creates_secure_link_without_starting_expiry_until
         body = res.json()
         assert body["link"]["share_url"].startswith("/watch/")
         assert body["link"]["title"] == "Private Enrollment Brief"
-        assert body["delivery"]["channel"] == "whatsapp_stub"
-        assert "wa.me" in (body["delivery"]["manual_share_url"] or "")
+        assert body["delivery"]["channel"] == "manual_share"
 
         assert body["link"]["expires_at"] is None
 
