@@ -423,7 +423,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     </button>
                   </>
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -431,7 +431,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 {lead.email ? (
                   <span className="text-foreground break-all">{lead.email}</span>
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -750,7 +750,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 {lead.payment_status ? (
                   <PaymentStatusBadge status={lead.payment_status} />
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -760,7 +760,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     ₹{(lead.payment_amount_cents / 100).toFixed(2)}
                   </span>
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex flex-wrap items-start gap-2">

@@ -73,7 +73,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
           <span className="text-ds-micro text-muted-foreground">{event.actor}</span>
           {event.detail && (
             <>
-              <span className="text-ds-micro text-muted-foreground/50">·</span>
+              <span className="text-ds-micro text-muted-foreground">·</span>
               <span className="text-ds-micro text-muted-foreground/70 truncate">{event.detail}</span>
             </>
           )}

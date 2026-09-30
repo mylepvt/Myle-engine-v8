@@ -205,7 +205,7 @@ function ScoreRing({ score, band }: { score: number; band: 'low' | 'medium' | 'h
       {/* Center label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-ds-h2 font-bold tabular-nums leading-none text-foreground">{score}</span>
-        <span className="mt-0.5 text-ds-micro font-semibold uppercase tracking-widest text-muted-foreground/60">score</span>
+        <span className="mt-0.5 text-ds-micro font-semibold uppercase tracking-widest text-muted-foreground">score</span>
       </div>
     </div>
   )
@@ -254,7 +254,7 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
                 role="img"
                 aria-label={`Consistency: ${point.consistency_band}`}
               />
-              <span className="text-ds-micro leading-none text-muted-foreground/50">{weekdayShort(point.date)}</span>
+              <span className="text-ds-micro leading-none text-muted-foreground">{weekdayShort(point.date)}</span>
             </div>
           )
         })}
@@ -343,11 +343,11 @@ function WeeklyHeatmap({ trend }: { trend: TeamTrackingTrendPoint[] }) {
               )}
               title={`${formatShortDate(point.date)}: Score ${point.consistency_score}`}
             />
-            <span className="text-ds-micro text-muted-foreground/50">{weekdayShort(point.date)}</span>
+            <span className="text-ds-micro text-muted-foreground">{weekdayShort(point.date)}</span>
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-3 text-ds-micro text-muted-foreground/60">
+      <div className="flex items-center gap-3 text-ds-micro text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="inline-block size-2 rounded-sm bg-emerald-400/50 border border-emerald-400/40" />High
         </span>
@@ -368,8 +368,8 @@ function ActivityTimeline({ items }: { items: TeamTrackingActivityItem[] }) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center">
-        <Activity className="size-6 text-muted-foreground/25" />
-        <p className="text-xs text-muted-foreground/50">No activity recorded for this date</p>
+        <Activity className="size-6 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">No activity recorded for this date</p>
       </div>
     )
   }
@@ -398,19 +398,19 @@ function ActivityTimeline({ items }: { items: TeamTrackingActivityItem[] }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-ds-caption font-medium leading-snug text-foreground">{label}</p>
-                  <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/50">
+                  <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground">
                     {formatRelativeTimeShort(item.occurred_at)}
                   </span>
                 </div>
                 {(item.entity_type || item.entity_id) ? (
-                  <p className="mt-0.5 text-ds-micro text-muted-foreground/50">
+                  <p className="mt-0.5 text-ds-micro text-muted-foreground">
                     {item.entity_type && <span className="capitalize">{item.entity_type}</span>}
                     {item.entity_id ? ` #${item.entity_id}` : ''}
                     {' · '}
                     {formatTime(item.occurred_at)}
                   </p>
                 ) : (
-                  <p className="mt-0.5 text-ds-micro text-muted-foreground/40">{formatTime(item.occurred_at)}</p>
+                  <p className="mt-0.5 text-ds-micro text-muted-foreground">{formatTime(item.occurred_at)}</p>
                 )}
               </div>
             </div>
@@ -456,7 +456,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
             <ArrowLeft className="size-3.5" />
             Team
           </Link>
-          <span className="text-muted-foreground/30">/</span>
+          <span className="text-muted-foreground">/</span>
           <span className="truncate font-medium text-foreground">{title}</span>
         </div>
 
@@ -579,14 +579,14 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex flex-col items-center gap-0.5 py-3">
                     <span className={cn('text-ds-h2 font-bold tabular-nums leading-none', color)}>{value}</span>
-                    <span className="text-ds-micro uppercase tracking-wider text-muted-foreground/55">{label}</span>
+                    <span className="text-ds-micro uppercase tracking-wider text-muted-foreground">{label}</span>
                   </div>
                 ))}
               </div>
 
               {/* Last active + streak footer */}
               <div className="flex items-center justify-between border-t border-border/40 px-4 py-2">
-                <span className="text-ds-micro text-muted-foreground/55">
+                <span className="text-ds-micro text-muted-foreground">
                   {data.member.last_activity_at
                     ? <>Active {formatRelativeTimeShort(data.member.last_activity_at)}</>
                     : 'No recent activity'}
@@ -678,7 +678,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">Activity Feed</CardTitle>
-                <span className="text-ds-micro text-muted-foreground/50">{data.recent_activity.length} events</span>
+                <span className="text-ds-micro text-muted-foreground">{data.recent_activity.length} events</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -702,13 +702,13 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                   ['Last seen', data.member.last_seen_at ? formatRelativeTimeShort(data.member.last_seen_at) : '—'],
                 ] as [string, string][]).map(([label, value]) => (
                   <div key={label} className="flex gap-2">
-                    <span className="shrink-0 text-muted-foreground/60">{label}:</span>
+                    <span className="shrink-0 text-muted-foreground">{label}:</span>
                     <span className="truncate text-foreground">{value}</span>
                   </div>
                 ))}
                 {data.member.compliance_summary && (
                   <div className="col-span-full flex gap-2">
-                    <span className="shrink-0 text-muted-foreground/60">Compliance:</span>
+                    <span className="shrink-0 text-muted-foreground">Compliance:</span>
                     <span className="text-foreground">{data.member.compliance_summary}</span>
                   </div>
                 )}

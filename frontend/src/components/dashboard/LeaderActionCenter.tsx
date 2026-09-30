@@ -99,7 +99,7 @@ export function LeaderActionCenter() {
     return (
       <Card>
         <CardContent className="py-10 text-center">
-          <AlertCircle className="mx-auto size-8 text-muted-foreground/50" />
+          <AlertCircle className="mx-auto size-8 text-muted-foreground" />
           <p className="mt-2 text-sm text-muted-foreground">Could not load command center.</p>
           <Button size="sm" variant="outline" className="mt-2" onClick={() => refetch()}>Retry</Button>
         </CardContent>
@@ -111,7 +111,7 @@ export function LeaderActionCenter() {
     return (
       <Card>
         <CardContent className="py-10 text-center">
-          <Users className="mx-auto size-8 text-muted-foreground/50" />
+          <Users className="mx-auto size-8 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold text-foreground">No team assigned yet</p>
           <p className="text-xs text-muted-foreground mt-1">Team members will appear here once assigned.</p>
         </CardContent>

@@ -227,7 +227,7 @@ function RowHeader({ cols, grid }: { cols: string[]; grid: string }) {
 function Val({ children, className }: { children: React.ReactNode; className?: string }) {
   const empty = children == null || children === ''
   return (
-    <span className={cn('truncate text-foreground', empty && 'text-muted-foreground/50', className)}>
+    <span className={cn('truncate text-foreground', empty && 'text-muted-foreground', className)}>
       {empty ? '—' : children}
     </span>
   )
@@ -235,7 +235,7 @@ function Val({ children, className }: { children: React.ReactNode; className?: s
 
 function CheckMark({ on }: { on: boolean }) {
   return (
-    <span className={cn('text-center text-sm', on ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/40')}>
+    <span className={cn('text-center text-sm', on ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
       {on ? '✓' : '—'}
     </span>
   )
@@ -245,7 +245,7 @@ function ReadLine({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex items-center gap-2 pt-1 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}:</span>
-      <span className={cn('text-foreground', !value && 'text-muted-foreground/50')}>{value || '—'}</span>
+      <span className={cn('text-foreground', !value && 'text-muted-foreground')}>{value || '—'}</span>
     </div>
   )
 }
@@ -267,7 +267,7 @@ function Chip({ label, value }: { label: string; value: string }) {
 }
 
 function Empty() {
-  return <p className="text-sm text-muted-foreground/60">— Nothing filled in —</p>
+  return <p className="text-sm text-muted-foreground">— Nothing filled in —</p>
 }
 
 const MATCH_STYLE: Record<string, { dot: string; text: string; label: string }> = {

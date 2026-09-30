@@ -31,14 +31,14 @@ function KpiCard({
   )
   const inner = (
     <>
-      <div className="flex items-center gap-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground/50">
-        <span className={urgent ? 'text-amber-600/70 dark:text-amber-400/70' : 'text-muted-foreground/40'}>{icon}</span>
+      <div className="flex items-center gap-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className={urgent ? 'text-amber-600/70 dark:text-amber-400/70' : 'text-muted-foreground'}>{icon}</span>
         {label}
       </div>
       <span className={cn('text-ds-h1 font-bold leading-none tabular-nums', urgent ? 'text-amber-600 dark:text-amber-300' : 'text-foreground')}>
         {value}
       </span>
-      <p className="text-ds-micro text-muted-foreground/40">{sub}</p>
+      <p className="text-ds-micro text-muted-foreground">{sub}</p>
     </>
   )
   if (onClick) {
@@ -67,7 +67,7 @@ function ReportsPopoverContent({ members }: { members: ReportStatusItem[] }) {
                 <div key={r.user_id} className="flex items-center gap-2 py-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
-                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/50">{r.role}</span>
+                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground">{r.role}</span>
                   {r.calls_in_report > 0 && (
                     <span className="shrink-0 text-ds-micro text-emerald-600 dark:text-emerald-400">{r.calls_in_report}c</span>
                   )}
@@ -86,7 +86,7 @@ function ReportsPopoverContent({ members }: { members: ReportStatusItem[] }) {
                 <div key={r.user_id} className="flex items-center gap-2 py-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
-                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/50">{r.role}</span>
+                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground">{r.role}</span>
                 </div>
               ))}
             </div>
@@ -184,7 +184,7 @@ export function OpsKpiBar() {
       {/* Zero-activity — only when members are online with no work */}
       {zeroActivity.length > 0 && (
         <div className="flex items-center gap-2">
-          <span className="text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground/40">
+          <span className="text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground">
             No Activity
           </span>
           <ZeroActivityInline users={zeroActivity} />
@@ -231,7 +231,7 @@ function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
                 <div key={z.user_id} className="flex items-center gap-2 py-1.5">
                   <span className="size-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{z.name}</span>
-                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/50">{z.role}</span>
+                  <span className="shrink-0 text-ds-micro capitalize text-muted-foreground">{z.role}</span>
                 </div>
               ))}
             </div>

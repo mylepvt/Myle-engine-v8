@@ -200,7 +200,7 @@ function Tabs({ tabs, active, onChange }: {
         <button key={t.id} type="button" onClick={() => onChange(t.id)}
           className={cn('-mb-px shrink-0 border-b-2 px-2.5 py-2 text-ds-caption font-medium transition min-[400px]:px-3 sm:px-4 sm:text-sm',
             active === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
-          {t.label}{t.count != null ? <span className="ml-1 tabular-nums text-muted-foreground/60">({t.count})</span> : null}
+          {t.label}{t.count != null ? <span className="ml-1 tabular-nums text-muted-foreground">({t.count})</span> : null}
         </button>
       ))}
     </div>
@@ -670,7 +670,7 @@ function ProcessChecklistSection({
                       Watch
                     </a>
                   ) : (
-                    <span className="text-ds-caption text-muted-foreground/60">No link set</span>
+                    <span className="text-ds-caption text-muted-foreground">No link set</span>
                   )}
                   <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
                     aria-label={done ? `Mark "${task.label}" incomplete` : `Mark "${task.label}" complete`}

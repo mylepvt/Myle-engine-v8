@@ -63,7 +63,7 @@ export function LeadFlowPage({ title }: Props) {
                 {label(s)}
               </span>
               {i < PIPELINE_STAGES.length - 1 ? (
-                <span className="text-muted-foreground/60 text-xs" aria-hidden>→</span>
+                <span className="text-muted-foreground text-xs" aria-hidden>→</span>
               ) : null}
             </span>
           ))}
@@ -103,7 +103,7 @@ export function LeadFlowPage({ title }: Props) {
                 {label(s)}
               </span>
               {i < INTERNAL_COMPAT_STAGES.length - 1 ? (
-                <span className="text-muted-foreground/60 text-xs" aria-hidden>→</span>
+                <span className="text-muted-foreground text-xs" aria-hidden>→</span>
               ) : null}
             </span>
           ))}

@@ -37,7 +37,7 @@ function Stat({ label, value, sub }: { label: string; value: string | number; su
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
       <p className="text-lg font-bold tabular-nums leading-none text-foreground">{value}</p>
       <p className="mt-1 text-ds-micro text-muted-foreground">{label}</p>
-      {sub ? <p className="text-ds-micro text-muted-foreground/60">{sub}</p> : null}
+      {sub ? <p className="text-ds-micro text-muted-foreground">{sub}</p> : null}
     </div>
   )
 }
@@ -168,7 +168,7 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
                     )
                   })}
                 </div>
-                <div className="mt-1 flex justify-between text-ds-micro text-muted-foreground/60">
+                <div className="mt-1 flex justify-between text-ds-micro text-muted-foreground">
                   <span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>11 PM</span>
                 </div>
               </div>

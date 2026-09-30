@@ -113,7 +113,7 @@ function Day1PipelineRow({
             <span className="ml-1 text-ds-caption text-muted-foreground">Pre-Day 1 ✓</span>
           </div>
 
-          <span className="text-muted-foreground/40">|</span>
+          <span className="text-muted-foreground">|</span>
 
           {/* Day 1 batch slots */}
           <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ function WarRoomDashboard({
                                 style={{ width: `${pct}%`, backgroundColor: stage.color }}
                               />
                             </div>
-                            <span className="text-ds-micro font-semibold text-muted-foreground/60 tabular-nums">
+                            <span className="text-ds-micro font-semibold text-muted-foreground tabular-nums">
                               {sharePct}%
                             </span>
                           </div>
