@@ -1,5 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { InsightList } from '@/components/dashboard/InsightList'
 import { Button } from '@/components/ui/button'
 import { ListSearchInput } from '@/components/ui/list-search-input'
@@ -116,7 +117,7 @@ export function FinanceRechargesPage({ title }: Props) {
               <label htmlFor="recharge-user" className="mb-1 block text-xs text-muted-foreground">
                 User
               </label>
-              <select
+              <NativeSelect
                 id="recharge-user"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
@@ -130,7 +131,7 @@ export function FinanceRechargesPage({ title }: Props) {
                     {memberSelectLabel(m)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               {searchActive && filteredMembers.length === 0 && !selectedMember ? (
                 <p className="mt-1 text-xs text-muted-foreground">No members match this search.</p>
               ) : null}

@@ -7,6 +7,7 @@ import {
   Video,
 } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LEAD_STATUS_OPTIONS, type LeadStatus, useAvailableTransitionsQuery } from '@/hooks/use-leads-query'
@@ -467,7 +468,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 >
                   Status
                 </label>
-                <select
+                <NativeSelect
                   id="pipeline-status"
                   value={pipelineStatus}
                   onChange={(e) => setPipelineStatus(e.target.value)}
@@ -478,7 +479,7 @@ export function LeadDetailPage({ leadId }: Props) {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div>
                 <label
@@ -487,7 +488,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 >
                   Call status
                 </label>
-                <select
+                <NativeSelect
                   id="pipeline-call-status"
                   value={pipelineCallStatus}
                   onChange={(e) => setPipelineCallStatus(e.target.value)}
@@ -499,7 +500,7 @@ export function LeadDetailPage({ leadId }: Props) {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <Button
                 type="button"
@@ -602,7 +603,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   >
                     Outcome
                   </label>
-                  <select
+                  <NativeSelect
                     id="call-outcome"
                     value={callOutcome}
                     onChange={(e) => setCallOutcome(e.target.value)}
@@ -613,7 +614,7 @@ export function LeadDetailPage({ leadId }: Props) {
                         {o.label}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </div>
                 <div>
                   <label

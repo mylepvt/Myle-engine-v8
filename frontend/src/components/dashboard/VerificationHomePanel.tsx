@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertCircle, CheckCircle2, Clock, Eye, FileText, ListChecks, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -138,7 +139,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
 
       {showBlock && (
         <div className="flex flex-col gap-2">
-          <select
+          <NativeSelect
             className="rounded border p-2 text-xs"
             value={blockerReason}
             onChange={e => setBlockerReason(e.target.value)}
@@ -147,7 +148,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
             {BLOCKER_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
-          </select>
+          </NativeSelect>
           <textarea
             className="min-h-[50px] w-full resize-none rounded border p-2 text-xs"
             placeholder="Additional notes..."
