@@ -61,19 +61,19 @@ type Col = { status: string; total: number; items: LeadPublic[] }
 // ── Constants ──────────────────────────────────────────────────────────────────
 const BADGE: Record<string, string> = {
   new_lead:       'bg-primary/15 text-primary border-primary/25',
-  contacted:      'bg-sky-400/15 text-sky-300 border-sky-400/25',
-  invited:        'bg-violet-400/15 text-violet-300 border-violet-400/25',
-  whatsapp_sent:  'bg-pink-400/15 text-pink-300 border-pink-400/25',
-  video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
-  video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
-  paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
-  day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
-  day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
-  day3:           'bg-lime-400/15 text-lime-300 border-lime-400/25',
-  day4:           'bg-emerald-400/15 text-emerald-300 border-emerald-400/25',
-  day5:           'bg-teal-400/15 text-teal-300 border-teal-400/25',
-  interview:      'bg-lime-400/15 text-lime-300 border-lime-400/25',
-  converted:      'bg-green-500/15 text-green-300 border-green-500/25',
+  contacted:      'bg-sky-400/15 text-sky-700 dark:text-sky-300 border-sky-400/25',
+  invited:        'bg-violet-400/15 text-violet-700 dark:text-violet-300 border-violet-400/25',
+  whatsapp_sent:  'bg-pink-400/15 text-pink-700 dark:text-pink-300 border-pink-400/25',
+  video_sent:     'bg-indigo-400/15 text-indigo-700 dark:text-indigo-300 border-indigo-400/25',
+  video_watched:  'bg-blue-400/15 text-blue-700 dark:text-blue-300 border-blue-400/25',
+  paid:           'bg-amber-400/15 text-amber-700 dark:text-amber-300 border-amber-400/25',
+  day1:           'bg-orange-400/15 text-orange-700 dark:text-orange-300 border-orange-400/25',
+  day2:           'bg-yellow-400/15 text-yellow-700 dark:text-yellow-300 border-yellow-400/25',
+  day3:           'bg-lime-400/15 text-lime-700 dark:text-lime-300 border-lime-400/25',
+  day4:           'bg-emerald-400/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/25',
+  day5:           'bg-teal-400/15 text-teal-700 dark:text-teal-300 border-teal-400/25',
+  interview:      'bg-lime-400/15 text-lime-700 dark:text-lime-300 border-lime-400/25',
+  converted:      'bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/25',
   lost:           'bg-destructive/15 text-destructive border-destructive/25',
 }
 const CLOSE:  LeadStatus[] = ['converted','lost']
@@ -449,7 +449,7 @@ const LeadCard = memo(function LeadCard({
               type="button"
               disabled={leadPatchBusy || lead.status === 'converted'}
               onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'converted' } })}
-              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-green-500/40 bg-green-500/10 text-ds-caption font-semibold text-green-300 transition hover:bg-green-500/20 disabled:cursor-default disabled:opacity-40"
+              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-green-500/40 bg-green-500/10 text-ds-caption font-semibold text-green-700 dark:text-green-300 transition hover:bg-green-500/20 disabled:cursor-default disabled:opacity-40"
             >
               <Check className="size-3.5" />
               {lead.status === 'converted' ? 'Closed ✓' : 'Mark Closed'}
@@ -619,7 +619,7 @@ function ProcessChecklistSection({
             >
               <div className="flex min-w-0 items-center gap-2">
                 {done && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden />}
-                <p className={cn('text-sm font-medium', done ? 'text-emerald-300/80' : 'text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]')}>
+                <p className={cn('text-sm font-medium', done ? 'text-emerald-700/80 dark:text-emerald-300/80' : 'text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]')}>
                   {task.label}
                 </p>
               </div>
@@ -635,7 +635,7 @@ function ProcessChecklistSection({
                   className={cn(
                     'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
                     done
-                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-700 dark:text-emerald-300'
                       : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
                   )}
                 >
@@ -653,7 +653,7 @@ function ProcessChecklistSection({
                   className={cn(
                     'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
                     done
-                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-700 dark:text-emerald-300'
                       : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20',
                   )}
                 >
@@ -768,7 +768,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               className={cn(
                 'flex flex-col items-center rounded-lg border px-2 py-2 text-center transition disabled:opacity-50',
                 active
-                  ? 'border-cyan-400/50 bg-cyan-400/[0.12] text-cyan-200'
+                  ? 'border-cyan-400/50 bg-cyan-400/[0.12] text-cyan-700 dark:text-cyan-200'
                   : 'border-border/50 bg-card/40 text-[color-mix(in_srgb,var(--foreground)_80%,transparent)] hover:border-cyan-400/30',
               )}
             >
@@ -788,11 +788,11 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               Seat-hold {seatHoldCents != null ? rupees(seatHoldCents) : ''}
             </span>
             {seatHeld ? (
-              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-ds-micro font-bold text-emerald-300">
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-ds-micro font-bold text-emerald-700 dark:text-emerald-300">
                 Held · {countdown}
               </span>
             ) : seatExpired ? (
-              <span className="rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 text-ds-micro font-bold text-amber-300">
+              <span className="rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
                 Expired
               </span>
             ) : null}
@@ -811,7 +811,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               type="button"
               disabled={leadPatchBusy || busy !== null}
               onClick={() => void patch({ collect_seat_hold: true }, 'collect')}
-              className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+              className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
             >
               {busy === 'collect' ? 'Saving…' : seatExpired ? 'Re-collect seat-hold' : 'Collect seat-hold'}
             </button>
@@ -882,8 +882,8 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
   }
 
   const badge = (() => {
-    if (status === 'approved') return ['Paid ✓ (recorded)', 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300']
-    if (status === 'proof_uploaded') return ['Pending review', 'border-amber-400/30 bg-amber-400/15 text-amber-300']
+    if (status === 'approved') return ['Paid ✓ (recorded)', 'border-emerald-400/30 bg-emerald-400/15 text-emerald-700 dark:text-emerald-300']
+    if (status === 'proof_uploaded') return ['Pending review', 'border-amber-400/30 bg-amber-400/15 text-amber-700 dark:text-amber-300']
     if (status === 'rejected') return ['Rejected', 'border-destructive/30 bg-destructive/15 text-destructive']
     return ['Not paid', 'border-border/50 bg-muted text-muted-foreground']
   })()
@@ -927,7 +927,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
             type="button"
             disabled={leadPatchBusy || busy !== null}
             onClick={() => void upload()}
-            className="w-full rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-ds-caption font-semibold text-cyan-300 transition hover:bg-cyan-400/20 disabled:opacity-50"
+            className="w-full rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-ds-caption font-semibold text-cyan-700 dark:text-cyan-300 transition hover:bg-cyan-400/20 disabled:opacity-50"
           >
             {busy === 'upload' ? 'Uploading…' : 'Upload payment screenshot'}
           </button>
@@ -940,7 +940,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
             type="button"
             disabled={busy !== null}
             onClick={() => void review('approve')}
-            className="flex-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+            className="flex-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
           >
             {busy === 'approve' ? '…' : 'Approve'}
           </button>
@@ -967,8 +967,8 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
   const done = status === 'passed' || status === 'failed'
   const badge: Record<string, string> = {
     pending: 'bg-muted text-muted-foreground border-border/50',
-    in_progress: 'bg-amber-400/15 text-amber-300 border-amber-400/30',
-    passed: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/30',
+    in_progress: 'bg-amber-400/15 text-amber-700 dark:text-amber-300 border-amber-400/30',
+    passed: 'bg-emerald-400/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/30',
     failed: 'bg-destructive/15 text-destructive border-destructive/30',
   }
   const label: Record<string, string> = {
@@ -989,7 +989,7 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
         <button type="button"
           disabled={busy}
           onClick={onSend}
-          className="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-400/15 to-emerald-400/10 px-3 text-sm font-bold text-cyan-200 transition hover:border-cyan-400/60 hover:from-cyan-400/20 disabled:opacity-50">
+          className="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-400/15 to-emerald-400/10 px-3 text-sm font-bold text-cyan-700 dark:text-cyan-200 transition hover:border-cyan-400/60 hover:from-cyan-400/20 disabled:opacity-50">
           <Send className="h-4 w-4 shrink-0" />
           <span>{busy ? 'Preparing...' : status === 'in_progress' ? 'Resend test link' : 'Send test link'}</span>
         </button>
@@ -1209,7 +1209,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             type="button"
             disabled={leadPatchBusy || !day3Done}
             onClick={onMoveNext}
-            className="w-full rounded-md border border-green-500/40 bg-green-500/10 px-2 py-1 text-ds-caption font-semibold text-green-300 transition hover:bg-green-500/20 disabled:opacity-50"
+            className="w-full rounded-md border border-green-500/40 bg-green-500/10 px-2 py-1 text-ds-caption font-semibold text-green-700 dark:text-green-300 transition hover:bg-green-500/20 disabled:opacity-50"
           >
             {nextLabel ?? 'Mark Converted'}
           </button>
@@ -1233,9 +1233,9 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
               className={cn(
                 'rounded-full border px-2 py-0.5 text-ds-micro font-semibold',
                 doneCount === 3
-                  ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                  ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-700 dark:text-emerald-300'
                   : doneCount > 0
-                    ? 'border-amber-400/30 bg-amber-400/15 text-amber-300'
+                    ? 'border-amber-400/30 bg-amber-400/15 text-amber-700 dark:text-amber-300'
                     : 'border-border bg-muted/30 text-muted-foreground',
               )}
             >
@@ -1273,7 +1273,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                   className={cn(
                     'flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:opacity-50',
                     slotDone
-                      ? 'border-emerald-400/35 bg-emerald-400/12 text-emerald-300'
+                      ? 'border-emerald-400/35 bg-emerald-400/12 text-emerald-700 dark:text-emerald-300'
                       : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
                   )}
                 >
@@ -1582,8 +1582,8 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
         <div className="space-y-3">
           {/* Day 3 summary chips */}
           <div className="flex flex-wrap gap-2">
-            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25'],
-              ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-amber-400/15 text-amber-300 border-amber-400/25'],
+            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-emerald-400/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/25'],
+              ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-amber-400/15 text-amber-700 dark:text-amber-300 border-amber-400/25'],
               ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'],
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
@@ -1744,7 +1744,7 @@ export function WorkboardPage({ title }: Props) {
         />
       )}
       {toastMsg ? (
-        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
+        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-700 dark:text-emerald-200 shadow-lg">
           {toastMsg}
         </div>
       ) : null}

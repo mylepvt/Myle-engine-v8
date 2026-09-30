@@ -125,7 +125,7 @@ function StageBlock({
       ) : null}
 
       {sale?.status === 'pending' && sale.verify_notes ? (
-        <p className="text-ds-micro text-amber-300/90">{sale.verify_notes}</p>
+        <p className="text-ds-micro text-amber-700/90 dark:text-amber-300/90">{sale.verify_notes}</p>
       ) : null}
       {sale?.status === 'rejected' && sale.rejection_reason ? (
         <p className="text-ds-micro text-destructive">Rejected: {sale.rejection_reason}</p>
@@ -157,7 +157,7 @@ function StageBlock({
         </div>
       ) : null}
 
-      {notice ? <p className="text-ds-micro text-emerald-300">{notice}</p> : null}
+      {notice ? <p className="text-ds-micro text-emerald-700 dark:text-emerald-300">{notice}</p> : null}
       {localErr ? (
         <p className="text-ds-micro text-destructive" role="alert">
           {localErr}
@@ -182,7 +182,7 @@ export function LeadBillingCard({ leadId, surfaceRole }: Props) {
       <div className="flex items-center justify-between">
         <p className="text-ds-label uppercase text-muted-foreground">CC / Billing</p>
         {totalCc > 0 ? (
-          <span className="text-xs font-semibold text-emerald-300">
+          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
             {totalCc.toFixed(3)} CC
           </span>
         ) : null}

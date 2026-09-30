@@ -129,7 +129,7 @@ export function LeadNextStepPanel({ lead, className }: Props) {
         </Button>
       ) : null}
       {paidGateBlocked ? (
-        <div className="rounded border border-amber-400/30 bg-amber-400/10 p-3 text-ds-caption text-amber-200">
+        <div className="rounded border border-amber-400/30 bg-amber-400/10 p-3 text-ds-caption text-amber-700 dark:text-amber-200">
           <p>{paidGateCopy()}</p>
           {role !== 'admin' ? (
             <Link

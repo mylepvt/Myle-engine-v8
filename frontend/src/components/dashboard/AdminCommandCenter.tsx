@@ -36,7 +36,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, ErrorState } from '@/components/ui/states'
-import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
@@ -206,7 +206,7 @@ function StatCard({
     <div title={hint} className="flex h-[68px] items-center gap-3 px-4">
       <div className={`h-7 w-[3px] shrink-0 rounded-full ${styles.accent}`} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-ds-micro font-medium tracking-[0.08em] text-muted-foreground" style={{ textTransform: 'none' }}>{label}</p>
+        <p className="truncate text-ds-caption font-medium text-muted-foreground">{label}</p>
         <p className={`mt-0.5 font-heading text-ds-display font-semibold leading-none tabular-nums ${styles.value}`}>{value}</p>
       </div>
     </div>
@@ -244,7 +244,7 @@ function DeskShortcut({
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{title}</p>
           {badge != null && Number(badge) > 0 ? (
-            <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-ds-micro font-bold text-amber-300">
+            <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
               {badge}
             </span>
           ) : null}
@@ -512,6 +512,58 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
   )
 }
 
+type DoNowItem = {
+  title: string
+  count: number
+  icon: ReactNode
+  urgent: boolean
+  /** route to open, or… */
+  to?: string
+  /** …a command-center view to switch to (no standalone page) */
+  tab?: string
+}
+
+function DoNowTile({ item, onTab }: { item: DoNowItem; onTab: (tab: string) => void }) {
+  const active = item.count > 0
+  const className = cn(
+    'group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition',
+    active && item.urgent
+      ? 'border-red-400/40 bg-red-400/[0.06] hover:bg-red-400/[0.1]'
+      : active
+        ? 'border-amber-400/30 bg-amber-400/[0.06] hover:bg-amber-400/[0.1]'
+        : 'border-border/50 bg-card/40 hover:bg-muted/40',
+  )
+  const body = (
+    <>
+      <span className={cn(
+        'grid size-10 shrink-0 place-items-center rounded-lg',
+        active && item.urgent ? 'bg-red-400/15 text-red-600 dark:text-red-400' :
+        active ? 'bg-amber-400/15 text-amber-700 dark:text-amber-300' : 'bg-muted/50 text-muted-foreground'
+      )}>
+        {item.icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-foreground">{item.title}</span>
+      </span>
+      <span className={cn(
+        'shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums',
+        active && item.urgent ? 'bg-red-400/20 text-red-600 dark:text-red-400' :
+        active ? 'bg-amber-400/20 text-amber-700 dark:text-amber-300' : 'text-muted-foreground'
+      )}>
+        {item.count}
+      </span>
+    </>
+  )
+  if (item.to) {
+    return <Link to={item.to} className={className}>{body}</Link>
+  }
+  return (
+    <button type="button" className={className} onClick={() => item.tab && onTab(item.tab)}>
+      {body}
+    </button>
+  )
+}
+
 const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon }[] = [
   { value: 'overview', label: 'Overview', Icon: LayoutDashboard },
   { value: 'war-room', label: 'War Room', Icon: ShieldAlert },
@@ -582,7 +634,7 @@ function DashboardViewSwitcher({
         <CurrentIcon className="size-4 text-primary" />
         <span>{current.label}</span>
         {totalAlerts > 0 && (
-          <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-300">
+          <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
             {totalAlerts}
           </span>
         )}
@@ -615,7 +667,7 @@ function DashboardViewSwitcher({
                 <Icon className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
                 <span className="flex-1 text-left">{t.label}</span>
                 {badge > 0 && (
-                  <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-300">
+                  <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
                     {badge}
                   </span>
                 )}
@@ -728,20 +780,46 @@ export function AdminCommandCenter({ firstName }: Props) {
     pendingRechargeItems.length +
     pendingGraceCount
 
+  const viewBadges: Record<string, number> = {
+    'war-room': pendingTotal,
+    leads: zombieLeads.data?.leads?.length ?? 0,
+    people: pendingGraceCount,
+    execution: vSummary.data?.pending_verifications ?? 0,
+  }
+
+  const approvalItems: DoNowItem[] = [
+    { title: 'Pending registrations', count: pendingRegistrations.data?.total ?? 0, icon: <Users className="size-4" />, to: '/dashboard/team/approvals', urgent: true },
+    { title: 'Min. FLP Billing', count: enrollmentPending.data?.total ?? 0, icon: <ClipboardCheck className="size-4" />, to: '/dashboard/team/flp-min-billing', urgent: false },
+    { title: 'Recharge requests', count: pendingRechargeItems.length, icon: <Wallet className="size-4" />, to: '/dashboard/finance/recharge-admin', urgent: false },
+    { title: 'Grace requests', count: pendingGraceCount, icon: <Clock className="size-4" />, to: '/dashboard/team/members', urgent: pendingGraceCount > 3 },
+  ]
+  const openApprovals = approvalItems.filter((item) => item.count > 0)
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="mb-5 flex items-center justify-between gap-3">
-          <DashboardViewSwitcher
-            active={activeTab}
-            badges={{
-              'war-room': pendingTotal,
-              leads: zombieLeads.data?.leads?.length ?? 0,
-              people: pendingGraceCount,
-              execution: vSummary.data?.pending_verifications ?? 0,
-            }}
-            onSelect={setActiveTab}
-          />
+          {/* Phone/tablet: one compact switcher. Desktop: every view visible as a tab so
+              War Room / People / Execution are discoverable without opening a menu. */}
+          <div className="lg:hidden">
+            <DashboardViewSwitcher active={activeTab} badges={viewBadges} onSelect={setActiveTab} />
+          </div>
+          <TabsList className="hidden h-auto rounded-lg p-1 lg:flex">
+            {DASHBOARD_TABS.map((t) => {
+              const badge = viewBadges[t.value] ?? 0
+              return (
+                <TabsTrigger key={t.value} value={t.value} className="gap-1.5 rounded-md px-3 py-1.5 text-sm">
+                  <t.Icon className="size-4" aria-hidden />
+                  {t.label}
+                  {badge > 0 ? (
+                    <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
+                      {badge}
+                    </span>
+                  ) : null}
+                </TabsTrigger>
+              )
+            })}
+          </TabsList>
           <Link
             to="/dashboard/team/cc-board"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/25"
@@ -753,6 +831,28 @@ export function AdminCommandCenter({ firstName }: Props) {
 
         {/* ==================== OVERVIEW ==================== */}
         <TabsContent value="overview" className="space-y-6">
+          {openApprovals.length > 0 ? (
+            <section aria-label="Action needed" className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <BellRing className="size-4 text-amber-600 dark:text-amber-400" aria-hidden />
+                  Action needed
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('war-room')}
+                  className="text-ds-caption font-semibold text-primary hover:underline"
+                >
+                  Open War Room
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {openApprovals.map((item) => (
+                  <DoNowTile key={item.title} item={item} onTab={setActiveTab} />
+                ))}
+              </div>
+            </section>
+          ) : null}
           <OverviewTab firstName={firstName} onCreateTask={() => setShowCreateTask(true)} />
         </TabsContent>
 
@@ -831,50 +931,15 @@ export function AdminCommandCenter({ firstName }: Props) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {[
-                  { title: 'Pending registrations', count: pendingRegistrations.data?.total ?? 0, icon: <Users className="size-4" />, to: '/dashboard/team/approvals', urgent: true },
-                  { title: 'Min. FLP Billing', count: enrollmentPending.data?.total ?? 0, icon: <ClipboardCheck className="size-4" />, to: '/dashboard/team/flp-min-billing', urgent: false },
-                  { title: 'Recharge requests', count: pendingRechargeItems.length, icon: <Wallet className="size-4" />, to: '/dashboard/finance/recharge-admin', urgent: false },
-                  { title: 'Grace requests', count: pendingGraceCount, icon: <Clock className="size-4" />, to: '/dashboard/team/members', urgent: pendingGraceCount > 3 },
-                  { title: 'Pending verifications', count: vSummary.data?.pending_verifications ?? 0, icon: <ListChecks className="size-4" />, to: '#', urgent: (vSummary.data?.pending_verifications ?? 0) > 5 },
+                {([
+                  ...approvalItems,
+                  { title: 'Pending verifications', count: vSummary.data?.pending_verifications ?? 0, icon: <ListChecks className="size-4" />, tab: 'execution', urgent: (vSummary.data?.pending_verifications ?? 0) > 5 },
                   { title: 'Zombie leads', count: zombieLeads.data?.leads?.length ?? 0, icon: <ShieldAlert className="size-4" />, to: '/dashboard/work/leads', urgent: (zombieLeads.data?.leads?.length ?? 0) > 10 },
                   { title: 'Reassign ready', count: leadControl.data?.queue_total ?? 0, icon: <ArrowRightLeft className="size-4" />, to: '/dashboard/system/lead-control', urgent: false },
                   { title: 'Archive incubation', count: leadControl.data?.incubation_total ?? 0, icon: <Layers3 className="size-4" />, to: '/dashboard/system/lead-control', urgent: false },
-                ].map((item) => {
-                  const active = item.count > 0
-                  return (
-                    <Link
-                      key={item.title}
-                      to={item.to}
-                      className={cn(
-                        'group flex items-center gap-3 rounded-xl border px-3 py-3 transition',
-                        active && item.urgent
-                          ? 'border-red-400/40 bg-red-400/[0.06] hover:bg-red-400/[0.1]'
-                          : active
-                            ? 'border-amber-400/30 bg-amber-400/[0.06] hover:bg-amber-400/[0.1]'
-                            : 'border-border/50 bg-card/40 hover:bg-muted/40',
-                      )}
-                    >
-                      <span className={cn(
-                        'grid size-10 shrink-0 place-items-center rounded-lg',
-                        active && item.urgent ? 'bg-red-400/15 text-red-400' :
-                        active ? 'bg-amber-400/15 text-amber-300' : 'bg-muted/50 text-muted-foreground'
-                      )}>
-                        {item.icon}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-foreground">{item.title}</span>
-                      </span>
-                      <span className={cn(
-                        'shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums',
-                        active && item.urgent ? 'bg-red-400/20 text-red-400' :
-                        active ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground'
-                      )}>
-                        {item.count}
-                      </span>
-                    </Link>
-                  )
-                })}
+                ] as DoNowItem[]).map((item) => (
+                  <DoNowTile key={item.title} item={item} onTab={setActiveTab} />
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -1347,12 +1412,10 @@ export function AdminCommandCenter({ firstName }: Props) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-foreground">Create Task</p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Define a new verification task</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Define a verification task and assign it to one or many members</p>
                     </div>
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
                   </button>
-                  <DeskShortcut to="#" title="Bulk Assign" description="Assign a task to multiple members" icon={<Users className="size-4" />} />
-                  <DeskShortcut to="#" title="Pending Review" description={`${vSummary.data?.pending_verifications ?? 0} tasks awaiting verification`} icon={<ClipboardCheck className="size-4" />} badge={vSummary.data?.pending_verifications ?? 0} />
                 </CardContent>
               </Card>
               <Card>

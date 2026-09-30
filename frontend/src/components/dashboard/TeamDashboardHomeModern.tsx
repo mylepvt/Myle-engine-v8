@@ -59,7 +59,7 @@ export function TeamDashboardHomeModern({
       : 0
 
   return (
-    <div className="mx-auto w-full max-w-[430px] space-y-4 pb-2">
+    <div className="mx-auto w-full max-w-[430px] space-y-4 pb-2 md:max-w-3xl">
       <section className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--palette-blue)_38%,transparent),transparent_42%),linear-gradient(180deg,color-mix(in_srgb,var(--palette-ink)_92%,var(--palette-blue)_8%)_0%,color-mix(in_srgb,var(--palette-ink)_89%,var(--palette-blue)_11%)_48%,color-mix(in_srgb,var(--palette-ink)_96%,var(--palette-blue)_4%)_100%)] text-white shadow-[0_32px_80px_-44px_rgba(27,48,120,0.9)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-30"
@@ -94,7 +94,7 @@ export function TeamDashboardHomeModern({
               </p>
             </div>
 
-            <div className="shrink-0 rounded-[1.2rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
+            <div className="shrink-0 rounded-[1.2rem] border border-white/10 bg-white/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/68">
                 Min. FLP Billed
               </p>
@@ -107,8 +107,8 @@ export function TeamDashboardHomeModern({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3 py-3 backdrop-blur-sm">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-[1.15rem] border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Today&apos;s leads
               </p>
@@ -116,7 +116,7 @@ export function TeamDashboardHomeModern({
                 {today?.claimed_today ?? 0}
               </p>
             </div>
-            <div className="rounded-[1.15rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3 py-3 backdrop-blur-sm">
+            <div className="rounded-[1.15rem] border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Calls
               </p>
@@ -129,7 +129,7 @@ export function TeamDashboardHomeModern({
           {primaryAction ? (
             <Link
               to={primaryAction.to}
-              className="group flex items-center justify-between rounded-[1.25rem] border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_14%,transparent)] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)]"
+              className="group flex items-center justify-between rounded-[1.25rem] border border-white/10 bg-white/15 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-white/20"
             >
               <div className="min-w-0">
                 <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
@@ -157,7 +157,7 @@ export function TeamDashboardHomeModern({
                 <Link
                   key={action.path}
                   to={action.to}
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-border dark:border-white/10 bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)] px-3.5 py-2 text-xs font-semibold text-blue-50 transition hover:bg-[color-mix(in_srgb,var(--foreground)_13%,transparent)]"
+                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3.5 py-2 text-xs font-semibold text-blue-50 transition hover:bg-white/15"
                 >
                   <action.Icon
                     className="size-3.5 shrink-0 text-blue-100/90"
@@ -165,7 +165,7 @@ export function TeamDashboardHomeModern({
                   />
                   <span>{action.label}</span>
                   {action.badgeCount != null ? (
-                    <span className="rounded-full bg-[color-mix(in_srgb,var(--foreground)_12%,transparent)] px-1.5 py-0.5 text-ds-micro text-blue-50">
+                    <span className="rounded-full bg-white/12 px-1.5 py-0.5 text-ds-micro text-blue-50">
                       {action.badgeCount}
                     </span>
                   ) : null}
@@ -201,12 +201,12 @@ export function TeamDashboardHomeModern({
             <CardContent className="text-sm text-muted-foreground">No leads yet</CardContent>
           </Card>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             {recentLeads.slice(0, 5).map((lead) => (
               <Link
                 key={lead.id}
                 to={`/dashboard/work/leads/${lead.id}`}
-                className="group block rounded-[1.35rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.55))] px-4 py-3.5 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.35)] transition hover:border-primary/25 hover:shadow-[0_24px_48px_-34px_rgba(84,101,255,0.45)] dark:bg-[linear-gradient(180deg,rgba(10,15,26,0.95),rgba(7,10,18,0.98))]"
+                className="group block rounded-[1.35rem] border border-border/70 bg-card px-4 py-3.5 shadow-[var(--shadow-card)] transition hover:border-primary/25 hover:shadow-[var(--shadow-card-hover)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
