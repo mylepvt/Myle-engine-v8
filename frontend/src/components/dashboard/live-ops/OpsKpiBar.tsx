@@ -1,14 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { PhoneCall, TrendingUp, Users, ClipboardList, Send, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
+import { ClipboardList, PhoneCall, TrendingUp, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { apiFetch } from '@/lib/api'
 import {
   useTodayPulseQuery,
   type ReportStatusItem,
   type ZeroActivityItem,
-  type ReminderResult,
-  type SendRemindersResponse,
 } from '@/hooks/use-today-pulse-query'
 
 function KpiCard({
@@ -51,88 +47,11 @@ function KpiCard({
   return <div className={base}>{inner}</div>
 }
 
-// ── Reports popover content — member list + WhatsApp send button ─────────────
+// ── Reports popover content — who submitted today's report ─────────────────
 
-function ReportsPopoverContent({
-  members,
-  onRefresh,
-}: {
-  members: ReportStatusItem[]
-  onRefresh: () => void
-}) {
-  const [sending, setSending] = useState(false)
-  const [sendLog, setSendLog] = useState<ReminderResult[] | null>(null)
-  const [sendSummary, setSendSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
-
+function ReportsPopoverContent({ members }: { members: ReportStatusItem[] }) {
   const submitted = members.filter((r) => r.submitted)
   const pending = members.filter((r) => !r.submitted)
-  const unreminded = pending.filter((r) => !r.reminded)
-
-  const sendReminders = async () => {
-    setSending(true)
-    setSendLog(null)
-    try {
-      const res = await apiFetch('/api/v1/admin/send-report-reminders', { method: 'POST' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: SendRemindersResponse = await res.json()
-      setSendLog(data.results)
-      setSendSummary({ sent: data.sent, failed: data.failed, no_phone: data.no_phone })
-      onRefresh()
-    } catch {
-      setSendLog([])
-      setSendSummary({ sent: 0, failed: 0, no_phone: 0 })
-    } finally {
-      setSending(false)
-    }
-  }
-
-  const statusIcon = (s: ReminderResult['status']) => {
-    if (s === 'sent' || s === 'stub') return <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
-    if (s === 'no_phone') return <Smartphone className="size-3 text-muted-foreground/40" />
-    return <XCircle className="size-3 text-red-600 dark:text-red-400" />
-  }
-
-  // After send: show results log
-  if (sendLog !== null) {
-    return (
-      <div className="max-h-80 overflow-y-auto">
-        {sendSummary && (
-          <div className="sticky top-0 flex items-center gap-3 border-b border-border/40 bg-card px-3 py-2">
-            <span className="text-ds-micro font-semibold text-emerald-600 dark:text-emerald-400">✅ {sendSummary.sent} sent</span>
-            {sendSummary.failed > 0 && (
-              <span className="text-ds-micro font-semibold text-red-600 dark:text-red-400">❌ {sendSummary.failed} failed</span>
-            )}
-            {sendSummary.no_phone > 0 && (
-              <span className="text-ds-micro font-semibold text-muted-foreground/50">📵 {sendSummary.no_phone} no phone</span>
-            )}
-          </div>
-        )}
-        {sendLog.length === 0 ? (
-          <p className="px-3 py-3 text-xs text-muted-foreground/50">No pending members.</p>
-        ) : (
-          <div className="px-3 pb-2">
-            {sendLog.map((r) => (
-              <div key={r.user_id} className="flex items-center gap-2 py-1.5">
-                {statusIcon(r.status)}
-                <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
-                <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground/40">
-                  {r.phone_tail !== '—' ? `···${r.phone_tail}` : 'no ph'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="border-t border-border/40 px-3 py-2">
-          <button
-            onClick={() => { setSendLog(null); setSendSummary(null) }}
-            className="text-ds-micro text-muted-foreground/50 hover:text-foreground"
-          >
-            ← Back to list
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div>
@@ -168,11 +87,6 @@ function ReportsPopoverContent({
                   <span className="size-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
                   <span className="shrink-0 text-ds-micro capitalize text-muted-foreground/50">{r.role}</span>
-                  {r.reminded && (
-                    <span className="shrink-0 rounded bg-emerald-500/10 px-1 py-px text-ds-micro font-medium text-emerald-600 dark:text-emerald-400">
-                      WA ✓
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
@@ -180,35 +94,6 @@ function ReportsPopoverContent({
         )}
       </div>
 
-      {/* Send button — only when there are unreminded pending members */}
-      {unreminded.length > 0 && (
-        <div className="border-t border-border/40 px-3 py-2.5">
-          <button
-            disabled={sending}
-            onClick={sendReminders}
-            className="flex w-full items-center justify-center gap-1.5 rounded border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-1.5 text-ds-micro font-semibold text-emerald-600 dark:text-emerald-300 transition-colors hover:bg-emerald-500/[0.14] disabled:opacity-50"
-          >
-            {sending ? (
-              <>
-                <span className="size-3 animate-spin rounded-full border border-emerald-500 dark:border-emerald-400 border-t-transparent" />
-                Sending…
-              </>
-            ) : (
-              <>
-                <Send className="size-3" />
-                WhatsApp reminder bhejo ({unreminded.length})
-              </>
-            )}
-          </button>
-        </div>
-      )}
-
-      {/* All pending already reminded */}
-      {pending.length > 0 && unreminded.length === 0 && (
-        <div className="border-t border-border/40 px-3 py-2">
-          <p className="text-ds-micro text-emerald-600 dark:text-emerald-400">WhatsApp reminder sabko bhej diya gaya ✓</p>
-        </div>
-      )}
     </div>
   )
 }
@@ -257,17 +142,12 @@ function PopoverCard({
 
 export function OpsKpiBar() {
   const pulse = useTodayPulseQuery()
-  const qc = useQueryClient()
   const data = pulse.data
 
   const reportsSubmitted = data?.reports_submitted ?? 0
   const reportsTotal = data?.reports_total ?? 0
   const reportsPending = reportsTotal - reportsSubmitted
   const zeroActivity = data?.zero_activity ?? []
-
-  const refreshPulse = () => {
-    void qc.invalidateQueries({ queryKey: ['admin', 'today-pulse'] })
-  }
 
   return (
     <div className="space-y-3">
@@ -297,10 +177,7 @@ export function OpsKpiBar() {
           icon={<ClipboardList className="size-3" />}
           urgent={reportsPending > 0}
         >
-          <ReportsPopoverContent
-            members={data?.report_members ?? []}
-            onRefresh={refreshPulse}
-          />
+          <ReportsPopoverContent members={data?.report_members ?? []} />
         </PopoverCard>
       </div>
 

@@ -56,7 +56,6 @@ import { AllMembersPage } from '@/pages/AllMembersPage'
 import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
 import { LeaderOSPage } from '@/pages/LeaderOSPage'
 import { DownloadsPage } from '@/pages/DownloadsPage'
-import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
 import { AuditLogsPage } from '@/pages/AuditLogsPage'
 import PerformerInsightsPage from '@/pages/PerformerInsightsPage'
 
@@ -149,8 +148,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <SettingsOrgTreePage title={title} />
     case 'all-members':
       return <AllMembersPage title={title} />
-    case 'whatsapp-panel':
-      return <WhatsAppPanelPage title={title} />
     case 'performer-insights':
       return <PerformerInsightsPage title={title} />
     case 'shell-api':

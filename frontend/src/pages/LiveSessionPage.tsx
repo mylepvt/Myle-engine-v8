@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { ArrowRight } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
@@ -39,7 +40,8 @@ export function LiveSessionPage({ title }: Props) {
       {joinHref ? (
         <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-4">
           <p className="text-ds-label font-bold uppercase tracking-wider text-red-500 dark:text-red-300">
-            🔴 Today&apos;s Live Session
+            <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500 align-middle" aria-hidden />
+            Today&apos;s Live Session
           </p>
           <p className="mt-1 text-base font-semibold text-foreground">
             {liveCard?.title || "Today's Live Session"}
@@ -53,7 +55,7 @@ export function LiveSessionPage({ title }: Props) {
             rel="noopener noreferrer"
             className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-500"
           >
-            👉 Join Now
+            Join Now <ArrowRight className="ml-1.5 size-4" aria-hidden />
           </a>
         </div>
       ) : liveSession.data ? (

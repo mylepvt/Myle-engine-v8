@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { BookOpen, ChevronRight, type LucideIcon, Phone, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLeaderHealthQuery, type LeaderHealthItem } from '@/hooks/use-admin-leader-health-query'
 import { useAdminFeedStore } from '@/stores/admin-feed-store'
+import { activityIcon } from '@/lib/activity-icons'
 import { cn } from '@/lib/utils'
 
 // ── Rank badge colors ──────────────────────────────────────────────────────
@@ -116,20 +117,20 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
       </div>
       {/* Activity columns */}
       <div className="flex shrink-0 gap-4">
-        <ActivityChip label="Calling" value={leader.personal_calls_today} icon="📞" />
-        <ActivityChip label="Team Calls" value={leader.team_calls_today} icon="👥" />
-        <ActivityChip label="Day 2" value={leader.day2_leads_count} icon="📚" />
+        <ActivityChip label="Calling" value={leader.personal_calls_today} icon={Phone} />
+        <ActivityChip label="Team Calls" value={leader.team_calls_today} icon={Users} />
+        <ActivityChip label="Day 2" value={leader.day2_leads_count} icon={BookOpen} />
       </div>
       <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-150 group-hover:translate-x-0.5" />
     </Link>
   )
 }
 
-function ActivityChip({ label, value, icon }: { label: string; value: number; icon: string }) {
+function ActivityChip({ label, value, icon: Icon }: { label: string; value: number; icon: LucideIcon }) {
   return (
     <div className="flex min-w-[52px] flex-col items-center gap-0.5">
       <div className="flex items-center gap-1 text-ds-micro text-muted-foreground/70">
-        <span className="text-ds-micro">{icon}</span>
+        <Icon className="size-3" aria-hidden />
         <span>{label}</span>
       </div>
       <span className="text-ds-caption font-bold tabular-nums text-foreground">{value}</span>
@@ -158,18 +159,6 @@ const ACTION_COLORS: Record<string, string> = {
   commit_boundary: '#6b7280',
 }
 
-const ACTION_ICONS: Record<string, string> = {
-  'lead:created': '📥',
-  'lead:claimed': '⚑',
-  'lead:batch_claimed': '⚑',
-  'lead:transitioned': '→',
-  lead_state: '→',
-  'lead:closed': '🏆',
-  'wallet:credited': '💰',
-  'wallet:credited_worker': '💰',
-  'lead:assigned': '👤',
-  commit_boundary: '·',
-}
 
 // ── Activity feed ──────────────────────────────────────────────────────────
 function LiveActivityFeed() {
@@ -188,7 +177,7 @@ function LiveActivityFeed() {
     <div className="flex flex-col divide-y divide-border/40 dark:divide-white/[0.04]">
       {visible.map((entry) => {
         const color = ACTION_COLORS[entry.action] ?? '#6b7280'
-        const icon = ACTION_ICONS[entry.action] ?? '·'
+        const Icon = activityIcon(entry.action)
         return (
           <Link
             key={entry.id}
@@ -200,7 +189,7 @@ function LiveActivityFeed() {
               className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-ds-micro"
               style={{ backgroundColor: `${color}22`, color }}
             >
-              {icon}
+              <Icon className="size-3.5" aria-hidden />
             </div>
             {/* Text */}
             <div className="min-w-0 flex-1">

@@ -1,41 +1,10 @@
-import { useMemo, useState } from 'react'
+import { createElement, useMemo, useState } from 'react'
 import { Activity, Pause, Play, RefreshCw, Search, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { activityIcon } from '@/lib/activity-icons'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
-
-// ── Icon per action ──────────────────────────────────────────────────────────
-const ACTION_ICONS: Record<string, string> = {
-  'commit_boundary':        '↻',
-  'lead_state':             '→',
-  'lead:created':           '+',
-  'lead:transitioned':      '→',
-  'lead:assigned':          '⇄',
-  'lead:auto_reassigned':   '!',
-  'lead:closed':            '✓',
-  'lead:claimed':           '⚑',
-  'lead:batch_claimed':     '⚑',
-  'lead:claim_duplicate':   '!!',
-  'lead:shadow_created':    '↑',
-  'lead:shadow_synced':     '↑',
-  'lead:shadow_deleted':    '✕',
-  'shadow_delivery':        '↑',
-  'LEAD_UPSERT':            '↑',
-  'LEAD_DELETE':            '✕',
-  'wallet:credited':        '₹',
-  'wallet:credited_worker': '₹',
-  'wallet.adjustment':      '₹',
-  'wallet.recharge_review': '₹',
-  'enrollment.link_generated': '🔗',
-  'performance:recomputed': '★',
-  'system:ranking_recalc':  '↑',
-  'system:scheduler_tick':  '⏱',
-  'fsm:validation_failed':  '✕',
-  'scheduler.failure':      '✕',
-  'scheduler.watch_archive':'⏱',
-  'scheduler.leader_enforcement': '⚑',
-}
 
 // ── Fun pop colours per action type ───────────────────────────────────────────
 type ActionColors = { bg: string; border: string; pill: string; pillText: string; tag: string }
@@ -202,8 +171,8 @@ function friendlyLabel(action: string): string {
   return part.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function iconLabel(action: string): string {
-  return ACTION_ICONS[action] ?? action.split(':').pop()?.slice(0, 2).toUpperCase() ?? '?'
+function ActionIcon({ action }: { action: string }) {
+  return createElement(activityIcon(action), { className: 'size-3.5', 'aria-hidden': true })
 }
 
 function activityLink(entry: AdminActivityEntry): string {
@@ -226,7 +195,7 @@ function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
     >
       {/* colored icon pill */}
       <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-ds-micro font-bold ${c.pill} ${c.pillText}`}>
-        {iconLabel(entry.action)}
+        <ActionIcon action={entry.action} />
       </div>
 
       <div className="min-w-0 flex-1">

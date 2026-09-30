@@ -57,7 +57,7 @@ class AuditReport:
         return sum(f.fixed for f in self.findings)
 
     def to_message(self) -> str | None:
-        """Build a WhatsApp-friendly summary, or ``None`` when all clean."""
+        """Build a plain-text summary, or ``None`` when all clean."""
         active = [f for f in self.findings if f.count]
         if not active:
             return None

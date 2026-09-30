@@ -10,7 +10,8 @@ import { describe, expect, it } from 'vitest'
 const SRC = join(__dirname)
 const ALLOWED = new Set(['lib/enrollment-send.ts'])
 // Unambiguous Hindi/Hinglish words that never appear in English UI copy.
-const HINGLISH = /\b(kariye|kijiye|dijiye|karo|karein|karega|karegi|nahi|nhi|aapka|aapki|aapke|apna|apni|apne|hoga|hogi|chahiye|kuch|mein)\b/i
+const HINGLISH =
+  /\b(kariye|kijiye|dijiye|karo|karein|karega|karegi|nahi|nhi|aapka|aapki|aapke|apna|apni|apne|hoga|hogi|chahiye|kuch|mein|kya|milao|chuka|sabko|gaya|gayi|hogaya)\b/i
 const STRING_OR_JSX_TEXT = /(['"`])((?:(?!\1)[^\\]|\\.)*)\1|>([^<>{}]+)</g
 
 function sourceFiles(dir: string): string[] {

@@ -1,6 +1,6 @@
 import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { WifiOff, X } from 'lucide-react'
+import { AlertTriangle, WifiOff, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
@@ -364,7 +364,7 @@ export function DashboardLayout() {
             aria-live="assertive"
             className="flex shrink-0 items-center gap-3 border-b border-red-600/40 bg-red-600/10 px-3 py-3 dark:border-red-500/30 dark:bg-red-500/10"
           >
-            <span className="shrink-0 text-lg" aria-hidden>⚠️</span>
+            <AlertTriangle className="size-5 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
             <p className="min-w-0 flex-1 text-sm text-red-900 dark:text-red-100">
               <span className="font-bold">Final Warning — You will be removed tomorrow.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' You have not met your daily targets for 3 days in a row. Complete today\'s calls and daily report before midnight to avoid removal.'}
@@ -376,7 +376,7 @@ export function DashboardLayout() {
             aria-live="polite"
             className="flex shrink-0 items-center gap-3 border-b border-orange-500/40 bg-orange-500/10 px-3 py-2.5 dark:border-orange-400/30 dark:bg-orange-400/10"
           >
-            <span className="shrink-0 text-base" aria-hidden>⚠️</span>
+            <AlertTriangle className="size-4 shrink-0 text-orange-600 dark:text-orange-400" aria-hidden />
             <p className="min-w-0 flex-1 text-sm text-orange-900 dark:text-orange-100">
               <span className="font-semibold">Strong Warning.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}

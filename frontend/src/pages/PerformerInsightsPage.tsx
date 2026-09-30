@@ -1,26 +1,31 @@
 import { useCallback, useMemo, useState } from 'react'
+import { RankBadge } from '@/components/ui/rank-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  Activity,
+  AlertTriangle,
   Calendar,
+  CalendarDays,
+  Check,
+  Copy,
+  DollarSign,
+  Dumbbell,
+  Flame,
+  GitPullRequest,
+  MessageSquare,
+  PhoneCall,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Star,
+  Timer,
   TrendingUp,
   Trophy,
   Users,
-  PhoneCall,
-  GitPullRequest,
-  DollarSign,
-  Copy,
-  MessageSquare,
-  Check,
-  Shield,
-  Star,
   Zap,
-  AlertTriangle,
-  ShieldAlert,
-  ShieldCheck,
-  Activity,
 } from 'lucide-react'
 import {
   usePerformerInsightsQuery,
@@ -99,7 +104,11 @@ function SuggestedCard({ member, isElite }: { member: SuggestedMember; isElite: 
         isElite ? 'border-amber-400/40 bg-amber-500/5' : 'border-violet-400/20 bg-violet-500/5',
       )}
     >
-      <span className="text-lg shrink-0">{isElite ? '🔥' : '💪'}</span>
+      {isElite ? (
+        <Flame className="size-5 shrink-0 text-amber-500" aria-hidden />
+      ) : (
+        <Dumbbell className="size-5 shrink-0 text-violet-500" aria-hidden />
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{member.name}</p>
         <p className="text-xs text-muted-foreground truncate">
@@ -154,11 +163,13 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
     const lines = [
       data.suggested_group.whatsapp_group_intro,
       '',
+      // emoji-ok: WhatsApp broadcast text
       '🔥 *ELITE PERFORMERS*',
       ...data.suggested_group.elite.map(
         (m) => `${m.phone || '—'}  ${m.name} (${m.fbo_id})`,
       ),
       '',
+      // emoji-ok: WhatsApp broadcast text
       '💪 *STRONG PERFORMERS*',
       ...data.suggested_group.strong.map(
         (m) => `${m.phone || '—'}  ${m.name} (${m.fbo_id})`,
@@ -319,9 +330,9 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                       </div>
                       <p className="text-xs text-muted-foreground mt-1.5">{m.suggested_action}</p>
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
-                        <span>⏱ {m.days_since_activity}d inactive</span>
-                        <span>🏆 Score {m.composite_score}</span>
-                        <span>📅 Last active: {m.last_active_date}</span>
+                        <span className="inline-flex items-center gap-1"><Timer className="size-3.5" aria-hidden />{m.days_since_activity}d inactive</span>
+                        <span className="inline-flex items-center gap-1"><Trophy className="size-3.5" aria-hidden />Score {m.composite_score}</span>
+                        <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5" aria-hidden />Last active: {m.last_active_date}</span>
                         <span className={cn(m.grace_risk !== 'low' ? 'text-red-500' : '')}>
                           Grace risk: {m.grace_risk} ({m.grace_count_30d}/30d)
                         </span>
@@ -562,14 +573,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span
-                          className={cn(
-                            'flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0',
-                            p.rank <= 3 ? 'bg-amber-500/20 text-amber-600' : 'bg-muted text-muted-foreground',
-                          )}
-                        >
-                          {p.rank <= 3 ? ['🥇', '🥈', '🥉'][p.rank - 1] : `#${p.rank}`}
-                        </span>
+                        <RankBadge rank={p.rank} />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{p.name}</p>
                           <p className="text-xs text-muted-foreground truncate">

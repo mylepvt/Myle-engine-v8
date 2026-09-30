@@ -702,7 +702,7 @@ async def lead_register_link(
     lead_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
-    resend: bool = Query(default=False, description="Also re-send the WhatsApp invite"),
+    resend: bool = Query(default=False, description="Kept for compatibility; the link is shared manually"),
 ) -> RegisterLinkOut:
     """Get or re-send a converted lead's register link (card copy / resend button)."""
     payload = await service.get_register_link(lead_id=lead_id, user=user, resend=resend)

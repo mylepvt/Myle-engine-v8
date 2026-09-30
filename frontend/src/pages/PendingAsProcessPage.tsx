@@ -44,7 +44,7 @@ export function PendingAsProcessPage({ title }: Props) {
           <p className="text-sm font-medium text-foreground">Pending: {data.total}</p>
           {data.items.length === 0 ? (
             <p className="surface-elevated p-4 text-sm text-muted-foreground">
-              No pending AS process — har converted lead ka FLP invoice approve ho chuka hai. 🎉
+              No pending AS process — every converted lead's FLP invoice is approved.
             </p>
           ) : (
             data.items.map((l) => (

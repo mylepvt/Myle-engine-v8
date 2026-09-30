@@ -131,12 +131,15 @@ function workboardBatchWhatsAppUrl(
   const isDay6 = dayKey === 6
   const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : slot === 'E' ? 'Evening' : slot === '6PM' ? '6 PM' : '8 PM'
   const linkBlock = isDay6
+    // emoji-ok: WhatsApp message text sent to the prospect
     ? (links?.v1 ? `📹 Final Video:\n${links.v1}\n` : '')
+    // emoji-ok: WhatsApp message text sent to the prospect
     : (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') + (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
   const msg =
     `Hi ${name},\n` +
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
+    // emoji-ok: WhatsApp message text sent to the prospect
     (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
   const url = whatsAppChatWithTextHref(lead.phone, msg)
   return url === '#' ? null : url

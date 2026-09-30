@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, SkipForward, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, type LucideIcon, SkipForward, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ export interface OnboardingStep {
   description: string
   selector?: string
   placement?: 'bottom' | 'top' | 'left' | 'right'
-  icon?: string
+  icon?: LucideIcon
 }
 
 interface OnboardingTourProps {
@@ -206,8 +206,8 @@ function StepCardContent({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-3">
           {step.icon ? (
-            <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-lg">
-              {step.icon}
+            <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <step.icon className="size-4" aria-hidden />
             </span>
           ) : null}
           <div>

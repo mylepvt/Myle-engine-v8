@@ -1,3 +1,15 @@
+import {
+  BarChart3,
+  Briefcase,
+  ClipboardList,
+  Hand,
+  IndianRupee,
+  PartyPopper,
+  Settings,
+  TrendingUp,
+  Users,
+} from 'lucide-react'
+
 import type { OnboardingStep } from '@/components/onboarding/OnboardingTour'
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
@@ -6,7 +18,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Welcome to Myle!',
     description:
       'This quick tour will show you around the dashboard so you can start your journey. Let\'s go step by step.',
-    icon: '👋',
+    icon: Hand,
   },
   {
     id: 'dashboard',
@@ -15,7 +27,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       'This is your command center. Track your daily stats — calls made, leads in pipeline, payments collected, and your current rank.',
     selector: '[data-tour="dashboard"]',
     placement: 'bottom',
-    icon: '📊',
+    icon: BarChart3,
   },
   {
     id: 'daily-report',
@@ -24,7 +36,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       'Submit your daily report here. Every day, log your activity so your record stays up to date. A green check means today is done!',
     selector: '[data-tour="daily-report"]',
     placement: 'bottom',
-    icon: '📋',
+    icon: ClipboardList,
   },
   {
     id: 'work',
@@ -33,7 +45,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       'Manage your leads and calls here. Claim new leads, log calls, and track your progress through the pipeline stages.',
     selector: '[data-tour="work"]',
     placement: 'right',
-    icon: '💼',
+    icon: Briefcase,
   },
   {
     id: 'wallet',
@@ -42,7 +54,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       'Track your earnings, request withdrawals, and recharge your wallet. All your financial activity in one place.',
     selector: '[data-tour="wallet"]',
     placement: 'right',
-    icon: '💰',
+    icon: IndianRupee,
   },
   {
     id: 'intelligence',
@@ -51,7 +63,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       'View your performance analytics, trends over time, and insights to help you improve. Data-driven growth starts here.',
     selector: '[data-tour="intelligence"]',
     placement: 'right',
-    icon: '📈',
+    icon: TrendingUp,
   },
   {
     id: 'team',
@@ -60,7 +72,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       'If you are a leader, track your team members, their performance, and manage your downline from this section.',
     selector: '[data-tour="team"]',
     placement: 'right',
-    icon: '👥',
+    icon: Users,
   },
   {
     id: 'profile',
@@ -69,13 +81,13 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       'Manage your account settings, notification preferences, and view your training certificate here.',
     selector: '[data-tour="profile"]',
     placement: 'right',
-    icon: '⚙️',
+    icon: Settings,
   },
   {
     id: 'done',
     title: 'You\'re All Set!',
     description:
       'You now know the key parts of Myle. Start exploring, submit your reports, and keep growing. Good luck!',
-    icon: '🎉',
+    icon: PartyPopper,
   },
 ]

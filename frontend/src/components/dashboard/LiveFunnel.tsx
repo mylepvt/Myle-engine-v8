@@ -21,7 +21,7 @@ export function LiveFunnel() {
           <div key={stage.key} className="group relative flex items-center gap-3 px-2 py-1.5 transition-colors hover:bg-muted/20 dark:hover:bg-white/[0.02]">
             {/* Stage icon + label */}
             <div className="flex w-32 shrink-0 items-center gap-1.5">
-              <span className="text-ds-caption">{stage.icon}</span>
+              <stage.icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
               <span className="truncate text-ds-micro font-medium text-muted-foreground/80 group-hover:text-foreground/90">{stage.label}</span>
             </div>
 

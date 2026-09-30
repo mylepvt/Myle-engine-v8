@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { RankBadge } from '@/components/ui/rank-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { parseLeaderboardStubItem } from '@/lib/leaderboard-row'
@@ -66,7 +67,6 @@ export function LeaderboardPage({ title }: Props) {
           {topThree.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {topThree.map((r) => {
-                const medals = ['🥇', '🥈', '🥉']
                 const golds = [
                   'border-amber-400/40 bg-amber-500/8',
                   'border-slate-400/30 bg-slate-500/8',
@@ -80,7 +80,7 @@ export function LeaderboardPage({ title }: Props) {
                       golds[r.rank - 1] ?? 'border-border bg-card/30',
                     )}
                   >
-                    <span className="text-2xl" aria-label={`Rank ${r.rank}`}>{medals[r.rank - 1] ?? r.rank}</span>
+                    <RankBadge rank={r.rank} size="lg" />
                     <p className="max-w-full truncate text-sm font-semibold text-foreground">{r.name}</p>
                     <LevelBadge level={r.level} />
                     <p className="tabular-nums text-xs text-muted-foreground">

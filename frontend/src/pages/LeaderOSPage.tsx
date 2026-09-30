@@ -250,7 +250,14 @@ export function LeaderOSPage() {
                       : 'text-muted-foreground hover:bg-muted',
                   )}
                 >
-                  {f === 'all' ? 'All' : f === 'active' ? '🟢 Active' : '🔴 Inactive'}
+                  {f === 'all' ? (
+                    'All'
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={cn('size-2 rounded-full', f === 'active' ? 'bg-emerald-500' : 'bg-red-500')} aria-hidden />
+                      {f === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

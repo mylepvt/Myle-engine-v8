@@ -72,7 +72,7 @@ function LeadProgressCard({ lead }: { lead: LeadPublic }) {
           </ul>
         ) : (
           <p className="text-ds-caption text-muted-foreground">
-            {isConverted ? 'Lead converted 🎉' : 'No tasks for this stage yet.'}
+            {isConverted ? 'Lead converted' : 'No tasks for this stage yet.'}
           </p>
         )}
       </CardContent>

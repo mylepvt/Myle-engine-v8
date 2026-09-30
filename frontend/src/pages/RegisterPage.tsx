@@ -9,6 +9,7 @@ import {
   Loader2,
   Lock,
   Mail,
+  PartyPopper,
   Phone,
   Send,
   Sparkles,
@@ -236,7 +237,8 @@ export function RegisterPage() {
                 className="rounded border border-primary/35 bg-primary/[0.08] px-3 py-2 text-center text-sm text-foreground"
                 role="status"
               >
-                🎉 Welcome! Finish signing up to start your 7-day onboarding training.
+                <PartyPopper className="mr-1.5 inline size-4 text-primary" aria-hidden />
+                Welcome! Finish signing up to start your 7-day onboarding training.
               </div>
             ) : null}
             {formError ? (

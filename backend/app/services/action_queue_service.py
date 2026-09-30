@@ -3,7 +3,7 @@
 Aggregates the same signals the automation evaluators watch (zombie leads,
 missed missions, member inactivity, stuck verifications) into a single queue
 sorted by severity, with executable actions wired to the existing engines:
-WhatsApp leader alert, recovery mission, management escalation.
+leader push alert, recovery mission, management escalation.
 
 Every executed action is logged in AutomationActionLog under a dedicated
 inactive "Manual Action Queue" rule, so the audit trail and the
@@ -277,8 +277,6 @@ async def execute_action(
     actor_user_id: int,
     actor_role: str,
 ) -> ActionExecuteResult:
-    from app.services.whatsapp_leader_alerts import send_system_alert
-
     member, lead = await _resolve_member(session, entity_type, entity_id)
 
     if actor_role == "leader":
@@ -304,24 +302,17 @@ async def execute_action(
     if action == "alert_leader":
         leader = await nearest_leader_for_user(session, member.id) if member else None
         leader_user = await session.get(User, leader.id) if leader else None
-        if leader_user is None or not leader_user.phone:
-            result = {"status": "failed", "reason": "no_leader_phone"}
+        if leader_user is None:
+            result = {"status": "failed", "reason": "no_leader"}
         else:
             from app.services.messaging_gate import can_receive_automated_message
+            from app.services.push_service import send_push_to_user
             if not can_receive_automated_message(leader_user):
                 result = {"status": "skipped", "reason": "ineligible", "leader_id": leader_user.id}
             else:
-                msg = (
-                    f"🚨 *Myle Action Required*\n\n"
-                    f"Member: {member_name}\n"
-                    f"{context}"
-                    f"Issue: {reason}\n\n"
-                    "Please follow up today and get this moving.\n\n"
-                    "— Myle Team"
-                )
-                sent = await send_system_alert(
-                    leader_user.phone, msg, session,
-                    message_type="action_queue_alert", related_user_id=leader_user.id,
+                body = f"{member_name}: {reason}." + (f" {context.strip()}" if context else "")
+                sent = await send_push_to_user(
+                    session, leader_user.id, title="Action required", body=body, url="/dashboard",
                 )
                 result = {"status": "sent" if sent else "failed", "leader_id": leader_user.id}
 
@@ -358,60 +349,3 @@ async def execute_action(
         action, entity_type, entity_id, actor_user_id, status,
     )
     return ActionExecuteResult(status=status, action=action, detail=result)
-
-
-# ── DAILY DIGEST ────────────────────────────────────────────────────────────
-
-DIGEST_TOP_N = 8
-
-
-def build_digest_text(items: list[ActionQueueItem], total: int, *, heading: str) -> str | None:
-    """Compact WhatsApp digest of the queue — top items + overflow count."""
-    if not items:
-        return None
-    lines = [f"🔥 *{heading} — {total} item(s)*", ""]
-    for i, item in enumerate(items[:DIGEST_TOP_N], start=1):
-        lines.append(f"{i}. {item.title}")
-    overflow = total - min(len(items), DIGEST_TOP_N)
-    if overflow > 0:
-        lines.append(f"…aur {overflow} more.")
-    lines += ["", "Open the app → Do This Now to act.", "", "— Myle Team"]
-    return "\n".join(lines)
-
-
-async def send_action_queue_digests(session: AsyncSession) -> dict:
-    """Push the queue automatically: org digest to management, scoped digest to each leader."""
-    from app.services.whatsapp_leader_alerts import send_system_alert
-
-    result = {"leaders_sent": 0, "leaders_skipped": 0}
-
-    leaders = (
-        await session.execute(
-            select(User).where(
-                *report_eligibility_conditions(roles=("leader",)),
-                User.phone.isnot(None),
-            )
-        )
-    ).scalars().all()
-
-    for leader in leaders:
-        try:
-            scoped = await get_action_queue(session, leader_user_id=leader.id, limit=50)
-            # Zombie-lead WhatsApp alerts are disabled — exclude them from the
-            # digest. Dashboard Action Queue panel still shows zombie items.
-            non_zombie = [it for it in scoped.items if it.item_type != "zombie_lead"]
-            text = build_digest_text(
-                non_zombie[:DIGEST_TOP_N], len(non_zombie), heading="Team Action Queue"
-            )
-            if not text:
-                result["leaders_skipped"] += 1
-                continue
-            sent = await send_system_alert(
-                leader.phone, text, session,
-                message_type="action_queue_digest", related_user_id=leader.id,
-            )
-            result["leaders_sent"] += 1 if sent else 0
-        except Exception as exc:
-            logger.warning("action queue digest failed leader_id=%s: %s", leader.id, exc)
-
-    return result
