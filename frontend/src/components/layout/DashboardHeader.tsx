@@ -2,6 +2,7 @@ import { type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Bell, Home, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { NotificationsBell } from '@/components/layout/NotificationsBell'
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { Button } from '@/components/ui/button'
@@ -84,11 +85,11 @@ export function DashboardHeader({
             <label htmlFor="header-view-as" className="sr-only">
               Preview dashboard as role
             </label>
-            <select
+            <NativeSelect
               id="header-view-as"
               className={cn(
                 'h-8 min-w-[5rem] max-w-[8rem] shrink-0 rounded border border-border bg-muted/60 py-0 pl-2 pr-6 text-ds-caption font-medium text-foreground',
-                'focus:outline-none focus:ring-2 focus:ring-primary/30',
+                'focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/30',
               )}
               value={viewAsRole ?? 'admin'}
               title="UI preview only — your account stays admin"
@@ -100,7 +101,7 @@ export function DashboardHeader({
               <option value="admin">Admin</option>
               <option value="leader">Leader</option>
               <option value="team">Team</option>
-            </select>
+            </NativeSelect>
           </>
         ) : null}
       </div>

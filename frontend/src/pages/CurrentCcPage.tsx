@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -275,7 +276,7 @@ export function CurrentCcPage({ title }: Props) {
         {isLeaderOrAdmin ? (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Team Member</span>
-            <select
+            <NativeSelect
               value={subjectId ?? ''}
               onChange={(e) => setSubjectId(parseInt(e.target.value, 10))}
               className={inputCls}
@@ -285,7 +286,7 @@ export function CurrentCcPage({ title }: Props) {
                   {m.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
         ) : null}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -432,11 +433,11 @@ export function CurrentCcPage({ title }: Props) {
                 <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem_1.25rem] items-center gap-1.5">
                   <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { name: e.target.value })} className={inputCls} />
                   <input value={r.current_state} placeholder="State" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { current_state: e.target.value })} className={inputCls} />
-                  <select value={r.drop_continue} disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { drop_continue: e.target.value })} className={inputCls}>
+                  <NativeSelect value={r.drop_continue} disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { drop_continue: e.target.value })} className={inputCls}>
                     <option value="">—</option>
                     <option value="continue">Continue</option>
                     <option value="drop">Drop</option>
-                  </select>
+                  </NativeSelect>
                   <input value={r.day1} placeholder="D1" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { day1: e.target.value })} className={inputCls} />
                   <RemoveBtn onClick={() => removeRow('enrollment_tracking_rows', i)} />
                 </div>

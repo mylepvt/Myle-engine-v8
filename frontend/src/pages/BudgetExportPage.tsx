@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useQuery } from '@tanstack/react-query'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { ExitedMembersBudgetCard } from '@/components/finance/ExitedMembersBudgetCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -412,7 +413,7 @@ export function BudgetExportPage({ title }: Props) {
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Window</span>
-            <select
+            <NativeSelect
               value={period}
               onChange={(event) => setPeriod(event.target.value as PeriodMode)}
               className="field-input"
@@ -421,7 +422,7 @@ export function BudgetExportPage({ title }: Props) {
               <option value="week">Week</option>
               <option value="month">Month</option>
               <option value="custom">Custom range</option>
-            </select>
+            </NativeSelect>
           </label>
 
           {period === 'custom' ? (
@@ -446,7 +447,7 @@ export function BudgetExportPage({ title }: Props) {
 
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Leader</span>
-            <select
+            <NativeSelect
               value={leaderUserId}
               onChange={(event) => setLeaderUserId(event.target.value)}
               className="field-input"
@@ -457,12 +458,12 @@ export function BudgetExportPage({ title }: Props) {
                   {leader.label} · {leader.fbo_id}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
 
           <label className="space-y-2">
             <span className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Team member</span>
-            <select
+            <NativeSelect
               value={memberUserId}
               onChange={(event) => setMemberUserId(event.target.value)}
               className="field-input"
@@ -473,7 +474,7 @@ export function BudgetExportPage({ title }: Props) {
                   {member.label} · {member.fbo_id}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
         </CardContent>
       </Card>

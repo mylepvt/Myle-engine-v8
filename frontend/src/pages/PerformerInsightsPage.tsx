@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { NativeSelect } from '@/components/ui/native-select'
 import { RankBadge } from '@/components/ui/rank-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -241,7 +242,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 shrink-0 text-muted-foreground" />
-          <select
+          <NativeSelect
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
             className="px-2 py-1.5 border rounded-md text-sm bg-background"
@@ -252,7 +253,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
             <option value={30}>Last 30 days</option>
             <option value={60}>Last 60 days</option>
             <option value={90}>Last 90 days</option>
-          </select>
+          </NativeSelect>
         </div>
       </div>
 
@@ -538,7 +539,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
           <CardTitle className="text-base flex items-center justify-between">
             <span>Full Ranking ({data.period_days}-day period)</span>
             <div className="flex items-center gap-2">
-              <select
+              <NativeSelect
                 value={filterMode}
                 onChange={(e) => setFilterMode(e.target.value as FilterMode)}
                 className="px-2 py-1 border rounded text-xs bg-background"
@@ -547,7 +548,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                 <option value="active">Active</option>
                 <option value="suggested">Top Performers</option>
                 <option value="inactive">Inactive Only</option>
-              </select>
+              </NativeSelect>
               <Badge variant="outline" className="text-xs font-normal">
                 {sortedPerformers.length} members
               </Badge>

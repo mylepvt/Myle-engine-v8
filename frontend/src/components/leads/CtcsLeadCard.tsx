@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, MessageCircle, MoreHorizontal, Phone, UserRoundCog } from 'lucide-react'
+import { MessageCircle, MoreHorizontal, Phone, UserRoundCog } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { NativeSelect } from '@/components/ui/native-select'
 import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
 import { SendToDay1Button } from '@/components/leads/SendToDay1Button'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
@@ -21,19 +22,9 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
 const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
 
-/** Pill wrapper for a status dropdown; the visible text is a truncating label. */
-const pillShell =
-  'relative flex h-9 min-w-0 items-center gap-1.5 rounded-full border border-border/50 bg-muted/60 pl-2.5 pr-6 focus-within:ring-2 focus-within:ring-primary/50'
-
-/**
- * The real `<select>` sits invisibly over the whole pill: tapping anywhere opens the
- * native picker, while the visible label truncates cleanly with "…". Global dashboard
- * `select` styles (grey fill, 16px font) never show, so Android + iOS look identical.
- */
-const pillSelectOverlay =
-  'absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 disabled:cursor-not-allowed'
-
-const pillLabel = 'min-w-0 flex-1 truncate text-ds-caption font-medium leading-none text-foreground'
+/** Compact status pill (NativeSelect): truncating label, chevron, native picker on tap. */
+const statusPill =
+  'h-9 rounded-full border border-border/50 bg-muted/60 pl-2.5 text-ds-caption font-medium leading-none text-foreground'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-yellow-500'
@@ -191,51 +182,39 @@ export function CtcsLeadCard({
               <span className="hidden shrink-0 text-ds-caption text-muted-foreground min-[380px]:inline">· Leader</span>
             </div>
           ) : (
-            <div className={cn(pillShell, selectBusy && 'opacity-50')}>
-              <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
-              <span className={pillLabel}>{statusLabel}</span>
-              <select
-                className={pillSelectOverlay}
-                disabled={selectBusy}
-                value={lead.status}
-                title="Lead status"
-                aria-label="Lead status"
-                onChange={(e) => onPatchStatus(lead.id, e.target.value as LeadStatus)}
-              >
-                {statusOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronRight
-                className="pointer-events-none absolute right-1.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-            </div>
-          )}
-          <div className={cn(pillShell, selectBusy && 'opacity-50')}>
-            <Phone className="hidden size-3.5 shrink-0 text-muted-foreground min-[380px]:block" aria-hidden />
-            <span className={pillLabel}>{callLabel}</span>
-            <select
-              className={pillSelectOverlay}
+            <NativeSelect
+              className={statusPill}
+              leading={<span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />}
+              placeholder={statusLabel}
               disabled={selectBusy}
-              value={callVal}
-              title={currentRole === 'team' ? 'Call / line — dial outcome' : 'Call classification'}
-              aria-label="Call status"
-              onChange={(e) => onPatchCallStatus(lead.id, e.target.value)}
+              value={lead.status}
+              title="Lead status"
+              aria-label="Lead status"
+              onChange={(e) => onPatchStatus(lead.id, e.target.value as LeadStatus)}
             >
-              {callOpts.map((o) => (
+              {statusOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
-            <ChevronRight
-              className="pointer-events-none absolute right-1.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-          </div>
+            </NativeSelect>
+          )}
+          <NativeSelect
+            className={statusPill}
+            leading={<Phone className="hidden size-3.5 shrink-0 text-muted-foreground min-[380px]:block" aria-hidden />}
+            placeholder={callLabel}
+            disabled={selectBusy}
+            value={callVal}
+            title={currentRole === 'team' ? 'Call / line — dial outcome' : 'Call classification'}
+            aria-label="Call status"
+            onChange={(e) => onPatchCallStatus(lead.id, e.target.value)}
+          >
+            {callOpts.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </NativeSelect>
 
         </div>
 

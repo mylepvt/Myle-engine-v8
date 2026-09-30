@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +47,7 @@ export default function AnalyticsPage() {
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-4 h-4 shrink-0" />
-              <select
+              <NativeSelect
                 value={selectedDays}
                 onChange={(e) => setSelectedDays(Number(e.target.value))}
                 className="px-2 py-1.5 border rounded-md text-xs sm:text-sm"
@@ -54,7 +55,7 @@ export default function AnalyticsPage() {
                 <option value={7}>7 days</option>
                 <option value={30}>30 days</option>
                 <option value={90}>90 days</option>
-              </select>
+              </NativeSelect>
             </div>
             <Badge variant="outline" className="text-xs sm:text-sm">
               {authData?.role?.toUpperCase()}

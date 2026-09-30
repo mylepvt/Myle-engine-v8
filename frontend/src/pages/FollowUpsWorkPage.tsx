@@ -1,6 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { ListChecks, Search } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { EmptyState } from '@/components/ui/states'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
@@ -99,7 +100,7 @@ export function FollowUpsWorkPage({ title }: Props) {
             <label htmlFor="fu-lead" className="mb-1 block text-xs text-muted-foreground">
               Lead
             </label>
-            <select
+            <NativeSelect
               id="fu-lead"
               value={leadId}
               onChange={(e) => setLeadId(e.target.value)}
@@ -112,7 +113,7 @@ export function FollowUpsWorkPage({ title }: Props) {
                   {l.name} (#{l.id})
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="min-w-[10rem] flex-1">
             <label htmlFor="fu-due" className="mb-1 block text-xs text-muted-foreground">

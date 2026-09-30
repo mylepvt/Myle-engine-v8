@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { NativeSelect } from '@/components/ui/native-select'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { EnrollmentProofRow } from '@/components/leads/EnrollmentProofRow'
@@ -342,7 +343,7 @@ const LeadCard = memo(function LeadCard({
           </span>
         ) : null}
         {!stageOpsCard ? (
-          <select
+          <NativeSelect
             value={callValue}
             disabled={leadPatchBusy}
             aria-label={`Call status for ${lead.name}`}
@@ -350,7 +351,7 @@ const LeadCard = memo(function LeadCard({
             className="w-full min-w-0 rounded-md border border-border bg-muted/30 px-2 py-2 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           >
             {callOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          </NativeSelect>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-1.5">

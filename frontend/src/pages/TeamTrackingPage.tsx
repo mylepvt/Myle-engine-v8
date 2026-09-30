@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
@@ -72,7 +73,7 @@ type MetricPanelProps = {
 }
 
 const SELECT_CLASSNAME =
-  'h-10 rounded border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
+  'h-10 rounded border border-border bg-background px-3 text-sm text-foreground outline-none transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20'
 
 function todayIsoLocal() {
   const d = new Date()
@@ -585,7 +586,7 @@ export function TeamTrackingPage({ title }: Props) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Presence</span>
-            <select
+            <NativeSelect
               value={presenceFilter}
               onChange={(event) => updateParam(params, setParams, 'presence', event.target.value)}
               className={SELECT_CLASSNAME}
@@ -594,12 +595,12 @@ export function TeamTrackingPage({ title }: Props) {
               <option value="online">Online</option>
               <option value="idle">Idle</option>
               <option value="offline">Offline</option>
-            </select>
+            </NativeSelect>
           </label>
 
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Consistency</span>
-            <select
+            <NativeSelect
               value={bandFilter}
               onChange={(event) => updateParam(params, setParams, 'band', event.target.value)}
               className={SELECT_CLASSNAME}
@@ -608,12 +609,12 @@ export function TeamTrackingPage({ title }: Props) {
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
-            </select>
+            </NativeSelect>
           </label>
 
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Member status</span>
-            <select
+            <NativeSelect
               value={complianceFilter}
               onChange={(event) => updateParam(params, setParams, 'compliance', event.target.value)}
               className={SELECT_CLASSNAME}
@@ -626,12 +627,12 @@ export function TeamTrackingPage({ title }: Props) {
               <option value="grace_ending">Grace ending</option>
               <option value="grace">Grace</option>
               <option value="clear">Clear</option>
-            </select>
+            </NativeSelect>
           </label>
 
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Leader</span>
-            <select
+            <NativeSelect
               value={leaderFilter}
               onChange={(event) => updateParam(params, setParams, 'leader', event.target.value)}
               className={SELECT_CLASSNAME}
@@ -643,12 +644,12 @@ export function TeamTrackingPage({ title }: Props) {
                   {leader.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
 
           <label className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <span>Sort</span>
-            <select
+            <NativeSelect
               value={sortMode}
               onChange={(event) => updateParam(params, setParams, 'sort', event.target.value)}
               className={SELECT_CLASSNAME}
@@ -659,7 +660,7 @@ export function TeamTrackingPage({ title }: Props) {
               <option value="score-asc">Lowest score</option>
               <option value="last-seen-desc">Latest seen</option>
               <option value="name">Name A-Z</option>
-            </select>
+            </NativeSelect>
           </label>
         </div>
 

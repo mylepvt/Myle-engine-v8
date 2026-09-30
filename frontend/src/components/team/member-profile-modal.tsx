@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -328,7 +329,7 @@ export function MemberProfileModal({
           <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
             <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Change Role</p>
             <div className="flex items-center gap-2">
-              <select
+              <NativeSelect
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value as Role)}
                 disabled={updateRoleMut.isPending}
@@ -337,7 +338,7 @@ export function MemberProfileModal({
                 {ROLES.map((r) => (
                   <option key={r} value={r}>{roleShortLabel(r)}</option>
                 ))}
-              </select>
+              </NativeSelect>
               <Button
                 type="button"
                 size="sm"
@@ -359,7 +360,7 @@ export function MemberProfileModal({
               Handoffs go to this member's nearest upline leader. Move them under the right leader here.
             </p>
             <div className="flex items-center gap-2">
-              <select
+              <NativeSelect
                 value={selectedUpline}
                 onChange={(e) => setSelectedUpline(e.target.value)}
                 disabled={updateUplineMut.isPending}
@@ -373,7 +374,7 @@ export function MemberProfileModal({
                       {(m.username ?? m.email)} · {roleShortLabel(m.role as Role)}
                     </option>
                   ))}
-              </select>
+              </NativeSelect>
               <Button
                 type="button"
                 size="sm"

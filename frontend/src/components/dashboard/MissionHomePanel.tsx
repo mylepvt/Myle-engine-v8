@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle, CheckCircle2, ListChecks, Send } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -190,7 +191,7 @@ export function MissionHomePanel() {
 
         {showBlocker && (
           <div className="flex flex-col gap-2 rounded-md border border-warning/30 bg-warning/5 p-3">
-            <select
+            <NativeSelect
               className="rounded border p-2 text-xs"
               value={blockerReason}
               onChange={e => setBlockerReason(e.target.value)}
@@ -199,7 +200,7 @@ export function MissionHomePanel() {
               {BLOCKER_OPTIONS.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </select>
+            </NativeSelect>
             <textarea
               className="min-h-[50px] w-full resize-none rounded border p-2 text-xs"
               placeholder="Additional notes..."

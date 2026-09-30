@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -217,7 +218,7 @@ export function LeadGenPage({ title }: { title?: string }) {
             <Skeleton className="h-10 w-full" />
           ) : (
             <div className="flex flex-col gap-3 sm:flex-row">
-              <select
+              <NativeSelect
                 aria-label="Category"
                 className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm"
                 value={category}
@@ -229,7 +230,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                     {c.label}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               <Button
                 disabled={!category || createMutation.isPending}
                 onClick={() => createMutation.mutate(category)}

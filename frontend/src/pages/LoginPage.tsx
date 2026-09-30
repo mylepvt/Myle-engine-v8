@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
 import { TerminalBootOverlay } from '@/components/auth/TerminalBootOverlay'
@@ -292,7 +293,7 @@ export function LoginPage() {
               <label className="field-label" htmlFor="login-role">
                 Select role
               </label>
-              <select
+              <NativeSelect
                 id="login-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
@@ -304,7 +305,7 @@ export function LoginPage() {
                     {roleShortLabel(r)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               <Button
                 type="button"
                 variant="secondary"

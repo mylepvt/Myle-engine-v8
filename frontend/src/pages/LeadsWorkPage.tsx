@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { ArchivedLeadCard } from '@/components/leads/ArchivedLeadCard'
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
@@ -437,7 +438,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             <label htmlFor="lead-filter-status-crm" className="mb-1 block text-ds-caption font-medium text-muted-foreground">
               Status
             </label>
-            <select
+            <NativeSelect
               id="lead-filter-status-crm"
               value={filters.status}
               data-ui-silent
@@ -463,7 +464,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   })}
                 </optgroup>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         ) : null}
 
@@ -695,7 +696,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                       <span className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-muted-foreground">
                         <Share2 className="size-4" aria-hidden />
                       </span>
-                      <select
+                      <NativeSelect
                         id="qa-lead-source"
                         value={newSource}
                         onChange={(e) => setNewSource(e.target.value)}
@@ -707,14 +708,14 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                             {o.label}
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </div>
                   </div>
                   <div>
                     <label htmlFor="qa-lead-status" className="mb-1 block text-xs font-semibold text-foreground">
                       Lead status
                     </label>
-                    <select
+                    <NativeSelect
                       id="qa-lead-status"
                       value={newStatus}
                       onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
@@ -726,7 +727,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                           {o.label}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </div>
                 </div>
                 {createHint ? (
