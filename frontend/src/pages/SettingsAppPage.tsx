@@ -132,7 +132,7 @@ export function SettingsAppPage({ title }: Props) {
         await updateAppSetting.mutateAsync({ key: field.key, value })
       }
       setLiveSessionEdits({})
-      setLiveSessionSaveMsg('Live session updated — visible to all members now.')
+      setLiveSessionSaveMsg('Live session updated — visible to all members now. Team & leaders get a notification when the link changes.')
       void refetchAppSettings()
     } catch (error) {
       setLiveSessionErrorMsg(error instanceof Error ? error.message : 'Could not save live session.')
