@@ -1,6 +1,6 @@
 import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { LiveSessionPage } from '@/pages/LiveSessionPage'
@@ -22,6 +22,7 @@ function renderWithProviders(ui: React.ReactElement) {
 
 describe('LiveSessionPage', () => {
   afterEach(() => {
+    cleanup()
     vi.clearAllMocks()
   })
 
@@ -36,6 +37,21 @@ describe('LiveSessionPage', () => {
     expect(screen.getByText('Daily 2 PM Training')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Join Now/ })).toHaveAttribute('href', 'https://zoom.us/j/1')
     expect(screen.queryByText(/Copy D\d WA msg/)).not.toBeInTheDocument()
+  })
+
+  it('copies the live session link to the clipboard', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    mockUseQuery.mockReturnValue({
+      data: { items: [{ title: 'Daily 2 PM Training', external_href: 'https://zoom.us/j/1' }] },
+      isPending: false,
+      isError: false,
+    })
+    renderWithProviders(<LiveSessionPage title="Live session" />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Copy link/ }))
+    expect(writeText).toHaveBeenCalledWith('https://zoom.us/j/1')
+    await waitFor(() => expect(screen.getByRole('button', { name: /Copied/ })).toBeInTheDocument())
   })
 
   it('says when no link is published', () => {
