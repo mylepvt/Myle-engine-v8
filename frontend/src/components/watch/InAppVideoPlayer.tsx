@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, PlayCircle } from 'lucide-react'
+import { ArrowUpRight, PlayCircle, RotateCcw } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { isYouTubeUrl } from '@/lib/youtube'
@@ -71,6 +71,127 @@ function resolvePlaybackSource(rawUrl: string | null): PlaybackSource | null {
   return { kind: 'unsupported' }
 }
 
+type NativeVideoPlayerProps = {
+  src: string
+  mimeType?: string
+  title: string
+  fallbackUrl?: string | null
+  seekPrevention: boolean
+}
+
+function NativeVideoPlayer({ src, mimeType, title, fallbackUrl, seekPrevention }: NativeVideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const maxAllowedTimeRef = useRef(0)
+  const [hasError, setHasError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const isHls = src.includes('.m3u8') || mimeType === 'application/x-mpegURL'
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    setHasError(false)
+    maxAllowedTimeRef.current = 0
+    let cancelled = false
+    let hls: { destroy: () => void } | null = null
+
+    // Safari plays HLS natively; every other browser needs hls.js, which also
+    // gives us adaptive quality (auto switches resolution to match the network).
+    const needsHlsJs = isHls && !video.canPlayType('application/vnd.apple.mpegurl')
+
+    if (needsHlsJs) {
+      import('hls.js')
+        .then(({ default: Hls }) => {
+          if (cancelled) return
+          if (!Hls.isSupported()) {
+            video.src = src
+            return
+          }
+          const instance = new Hls({ enableWorker: true })
+          hls = instance
+          instance.loadSource(src)
+          instance.attachMedia(video)
+          instance.on(Hls.Events.ERROR, (_event, data) => {
+            if (data.fatal) setHasError(true)
+          })
+        })
+        .catch(() => {
+          if (!cancelled) setHasError(true)
+        })
+    } else {
+      video.src = src
+    }
+
+    return () => {
+      cancelled = true
+      hls?.destroy()
+    }
+  }, [src, isHls, reloadKey])
+
+  if (hasError) {
+    return (
+      <div className="flex aspect-video flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
+        <p className="text-ds-h3 text-white">Video could not load.</p>
+        <p className="mt-2 max-w-md text-ds-body text-white/65">
+          This can happen on a slow or unstable connection. Tap retry to try again.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+          <Button
+            type="button"
+            className="inline-flex items-center gap-2"
+            onClick={() => setReloadKey((key) => key + 1)}
+          >
+            <RotateCcw className="size-4" />
+            Retry
+          </Button>
+          {fallbackUrl ? (
+            <a
+              href={fallbackUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-300/25 hover:text-cyan-100"
+            >
+              Open backup video
+              <ArrowUpRight className="size-4" />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
+      <video
+        key={reloadKey}
+        ref={videoRef}
+        className="aspect-video h-full w-full bg-black object-contain"
+        title={title}
+        controls
+        playsInline
+        preload="metadata"
+        controlsList={seekPrevention ? 'nodownload nofullscreen noplaybackrate noremoteplayback' : 'nodownload noplaybackrate'}
+        disablePictureInPicture={seekPrevention}
+        onError={() => setHasError(true)}
+        onContextMenu={seekPrevention ? (e) => e.preventDefault() : undefined}
+        onTimeUpdate={seekPrevention ? (e) => {
+          maxAllowedTimeRef.current = Math.max(maxAllowedTimeRef.current, e.currentTarget.currentTime || 0)
+        } : undefined}
+        onSeeking={seekPrevention ? (e) => {
+          const video = e.currentTarget
+          if (video.currentTime > maxAllowedTimeRef.current + 0.35) {
+            video.currentTime = maxAllowedTimeRef.current
+          }
+        } : undefined}
+      />
+      <div className="border-t border-white/10 bg-muted/30 px-4 py-3 text-xs text-white/55">
+        Playback stays inside Myle with native controls and fullscreen available from the player.
+      </div>
+    </div>
+  )
+}
+
 export function InAppVideoPlayer({
   embedUrl,
   title,
@@ -82,12 +203,12 @@ export function InAppVideoPlayer({
   seekPrevention = false,
 }: InAppVideoPlayerProps) {
   const [playerActivated, setPlayerActivated] = useState(false)
-  const maxAllowedTimeRef = useRef(0)
+  const [iframeReloadKey, setIframeReloadKey] = useState(0)
   const playbackSource = resolvePlaybackSource(embedUrl)
 
   useEffect(() => {
     setPlayerActivated(false)
-    maxAllowedTimeRef.current = 0
+    setIframeReloadKey(0)
   }, [embedUrl, fallbackUrl, title])
 
   if (!playbackSource || playbackSource.kind === 'unsupported') {
@@ -146,44 +267,38 @@ export function InAppVideoPlayer({
     )
   }
 
+  if (playbackSource.kind === 'native') {
+    return (
+      <NativeVideoPlayer
+        src={playbackSource.src}
+        mimeType={playbackSource.mimeType}
+        title={title}
+        fallbackUrl={fallbackUrl}
+        seekPrevention={seekPrevention}
+      />
+    )
+  }
+
   return (
     <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
-      {playbackSource.kind === 'native' ? (
-        <video
-          className="aspect-video h-full w-full bg-black object-contain"
-          src={playbackSource.src}
-          title={title}
-          controls
-          playsInline
-          preload="metadata"
-          controlsList={seekPrevention ? 'nodownload nofullscreen noplaybackrate noremoteplayback' : 'nodownload noplaybackrate'}
-          disablePictureInPicture={seekPrevention}
-          onContextMenu={seekPrevention ? (e) => e.preventDefault() : undefined}
-          onTimeUpdate={seekPrevention ? (e) => {
-            maxAllowedTimeRef.current = Math.max(maxAllowedTimeRef.current, e.currentTarget.currentTime || 0)
-          } : undefined}
-          onSeeking={seekPrevention ? (e) => {
-            const video = e.currentTarget
-            if (video.currentTime > maxAllowedTimeRef.current + 0.35) {
-              video.currentTime = maxAllowedTimeRef.current
-            }
-          } : undefined}
+      <iframe
+        key={iframeReloadKey}
+        className="aspect-video h-full w-full bg-black"
+        src={playbackSource.src}
+        title={title}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+      <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-muted/30 px-4 py-3 text-xs text-white/55">
+        <span>Playback stays inside Myle. If the video pauses, tap once inside the player.</span>
+        <button
+          type="button"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-black/25 px-3 py-1.5 font-medium text-white/80 transition hover:border-cyan-300/25 hover:text-cyan-100"
+          onClick={() => setIframeReloadKey((key) => key + 1)}
         >
-          {playbackSource.mimeType ? <source src={playbackSource.src} type={playbackSource.mimeType} /> : null}
-        </video>
-      ) : (
-        <iframe
-          className="aspect-video h-full w-full bg-black"
-          src={playbackSource.src}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      )}
-      <div className="border-t border-white/10 bg-muted/30 px-4 py-3 text-xs text-white/55">
-        {playbackSource.kind === 'native'
-          ? 'Playback stays inside Myle with native controls and fullscreen available from the player.'
-          : 'Playback stays inside Myle. If the video pauses, tap once inside the player.'}
+          <RotateCcw className="size-3.5" />
+          Retry
+        </button>
       </div>
     </div>
   )
