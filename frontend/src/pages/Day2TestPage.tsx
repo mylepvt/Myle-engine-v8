@@ -228,7 +228,7 @@ export function Day2TestPage() {
 
   return (
     <div
-      className="relative min-h-screen overflow-x-hidden bg-[#040915] text-white"
+      className="relative min-h-screen overflow-x-hidden bg-room-base text-white"
       style={{ userSelect: state?.status === 'active' ? 'none' : 'auto' }}
     >
       <div className="pointer-events-none absolute inset-0">

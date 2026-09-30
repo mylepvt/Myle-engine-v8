@@ -203,38 +203,38 @@ export function EnrollmentWatchPage() {
   const mmss = remaining == null ? null : `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
 
   return (
-    <div className="relative flex min-h-screen select-none flex-col bg-[#04070f] text-[#eaf0ff]">
+    <div className="relative flex min-h-screen select-none flex-col bg-room-base text-room-text">
       <header className="flex items-center justify-between px-4 py-3 sm:px-6">
-        <span className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-[#8aa0cf]">Myle</span>
-        <span className="flex items-center gap-1.5 rounded-full bg-[#14233f] px-3 py-1 text-ds-micro font-semibold text-[#bcd0ff]">
+        <span className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-room-muted">Myle</span>
+        <span className="flex items-center gap-1.5 rounded-full bg-room-raised px-3 py-1 text-ds-micro font-semibold text-room-soft">
           <ShieldCheck className="size-3.5" /> Private &amp; protected
-          {mmss ? <span className="ml-1 tabular-nums text-[#ffd9a0]">· {mmss}</span> : null}
+          {mmss ? <span className="ml-1 tabular-nums text-room-warning">· {mmss}</span> : null}
         </span>
       </header>
 
       <main className="flex flex-1 items-center justify-center px-3 pb-6 sm:px-6">
         {loading ? (
-          <p className="text-sm text-[#8aa0cf]">Loading secure room…</p>
+          <p className="text-sm text-room-muted">Loading secure room…</p>
         ) : error || data?.dead ? (
-          <div className="max-w-md rounded-2xl border border-[#5b2327] bg-[#160a0c] px-6 py-8 text-center">
-            <p className="text-base font-semibold text-[#ffb8bd]">
+          <div className="max-w-md rounded-2xl border border-room-danger-border bg-room-danger-bg px-6 py-8 text-center">
+            <p className="text-base font-semibold text-room-danger">
               {error || data?.dead_reason || 'This link is no longer available.'}
             </p>
-            <p className="mt-2 text-sm text-[#d6c3c7]">Please ask your contact for a fresh link.</p>
+            <p className="mt-2 text-sm text-room-danger-soft">Please ask your contact for a fresh link.</p>
           </div>
         ) : data && !data.access_granted ? (
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-8 text-center">
             <h1 className="text-xl font-semibold">{data.title}</h1>
-            <p className="mt-2 text-sm text-[#a9bbdd]">
+            <p className="mt-2 text-sm text-room-muted">
               This is a one-time private video. It opens once, on this device only, and a {Math.round((data.window_seconds || 0) / 60)}-minute timer
               starts the moment you press play.
             </p>
-            {openError ? <p className="mt-3 text-sm text-[#ffb8bd]">{openError}</p> : null}
+            {openError ? <p className="mt-3 text-sm text-room-danger">{openError}</p> : null}
             <button
               type="button"
               onClick={() => void handleStart()}
               disabled={opening}
-              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:opacity-60"
+              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-room-cta px-5 text-sm font-semibold text-room-cta-ink transition hover:bg-room-cta-hover disabled:opacity-60"
             >
               {opening ? 'Opening…' : 'Start watching'}
             </button>
@@ -288,7 +288,7 @@ export function EnrollmentWatchPage() {
             ) : null}
           </div>
         ) : (
-          <p className="text-sm text-[#8aa0cf]">Preparing your video…</p>
+          <p className="text-sm text-room-muted">Preparing your video…</p>
         )}
       </main>
     </div>

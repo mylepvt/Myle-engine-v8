@@ -45,6 +45,22 @@ export default {
           'sans-serif',
         ],
       },
+      /* Extra opacity steps used across the app (Tailwind only ships multiples of 5,
+         so e.g. `border-white/12` silently compiled to nothing). */
+      opacity: {
+        8: '0.08',
+        12: '0.12',
+        16: '0.16',
+        18: '0.18',
+        42: '0.42',
+        62: '0.62',
+        64: '0.64',
+        68: '0.68',
+        72: '0.72',
+        74: '0.74',
+        88: '0.88',
+        96: '0.96',
+      },
       fontSize: {
         /* 28px — big KPI / stat numbers only (dashboard tiles, scores). */
         'ds-display': ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.03em' }],
@@ -139,6 +155,38 @@ export default {
         warning: {
           DEFAULT: themeColor('warning'),
           foreground: themeColor('warning-foreground'),
+        },
+        /* WhatsApp brand — fixed colours (same in light / dark). */
+        whatsapp: {
+          DEFAULT: '#25D366',
+          teal: '#128C7E',
+          dark: '#1EA34B',
+          light: '#34EB75',
+          ink: '#065F46',
+          'ink-dark': '#DCF8C6',
+        },
+        /* Prospect-facing "private room" pages (watch, Day 1/2/6, enrollment) —
+           always dark navy regardless of the app theme. */
+        room: {
+          base: '#040915',
+          surface: '#0A1120',
+          raised: '#14233F',
+          strong: '#3158A4',
+          border: '#26385D',
+          'border-strong': '#3F537D',
+          text: '#F3F7FF',
+          soft: '#C9D9FF',
+          muted: '#9DB0D6',
+          subtle: '#7A94C4',
+          accent: '#8EB0FF',
+          cta: '#DCE7FF',
+          'cta-hover': '#C6D8FF',
+          'cta-ink': '#0A1530',
+          danger: '#FFB8BD',
+          'danger-soft': '#D6C3C7',
+          'danger-border': '#5B2327',
+          'danger-bg': '#100708',
+          warning: '#FFD9A0',
         },
         chart: {
           1: themeColor('chart-1'),
