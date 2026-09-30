@@ -163,11 +163,13 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
     const lines = [
       data.suggested_group.whatsapp_group_intro,
       '',
+      // emoji-ok: WhatsApp broadcast text
       '🔥 *ELITE PERFORMERS*',
       ...data.suggested_group.elite.map(
         (m) => `${m.phone || '—'}  ${m.name} (${m.fbo_id})`,
       ),
       '',
+      // emoji-ok: WhatsApp broadcast text
       '💪 *STRONG PERFORMERS*',
       ...data.suggested_group.strong.map(
         (m) => `${m.phone || '—'}  ${m.name} (${m.fbo_id})`,

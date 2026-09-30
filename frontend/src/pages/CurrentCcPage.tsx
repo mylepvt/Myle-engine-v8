@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -562,7 +562,7 @@ function AddBtn({ onClick }: { onClick: () => void }) {
 }
 
 function RemoveBtn({ onClick }: { onClick: () => void }) {
-  return <button type="button" onClick={onClick} aria-label="Remove row" className="text-muted-foreground hover:text-destructive">✕</button>
+  return <button type="button" onClick={onClick} aria-label="Remove row" className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="size-4" aria-hidden /></button>
 }
 
 const MATCH_STYLE: Record<string, { dot: string; text: string; label: string }> = {

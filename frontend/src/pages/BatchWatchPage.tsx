@@ -383,10 +383,14 @@ export function BatchWatchPage() {
             ) : watchComplete ? (
               <div className="flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-3 text-sm text-emerald-100">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                {/* emoji-ok: the prospect literally replies with this emoji */}
                 <p>{greetingCopy?.completionMessage ?? 'Batch watched. Reply ✅ to your coach to confirm.'}</p>
               </div>
             ) : accessOpen ? (
-              <p className="text-center text-sm text-white/60">Finished watching? Message your coach and reply ✅ to confirm.</p>
+              <p className="text-center text-sm text-white/60">
+                {/* emoji-ok: the prospect literally replies with this emoji */}
+                Finished watching? Message your coach and reply ✅ to confirm.
+              </p>
             ) : null}
 
               {data.submission_enabled ? (

@@ -7,6 +7,7 @@ import { useNoticeBoardMutations, useNoticeBoardQuery } from '@/hooks/use-notice
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { cn } from '@/lib/utils'
 
+// emoji-ok: user reaction emoji are content
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
 type Props = { title: string }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { PhoneCall, TrendingUp, Users, ClipboardList, Send, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
+import { CheckCircle2, ClipboardList, PhoneCall, Send, Smartphone, TrendingUp, Users, XCircle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { apiFetch } from '@/lib/api'
@@ -204,7 +204,7 @@ function ReportsPopoverContent({
       {/* All pending already reminded */}
       {pending.length > 0 && unreminded.length === 0 && (
         <div className="border-t border-border/40 px-3 py-2">
-          <p className="text-ds-micro text-emerald-600 dark:text-emerald-400">WhatsApp reminder sabko bhej diya gaya ✓</p>
+          <p className="inline-flex items-center gap-1 text-ds-micro text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="size-3.5" aria-hidden />WhatsApp reminder sent to everyone</p>
         </div>
       )}
     </div>

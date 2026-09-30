@@ -361,6 +361,7 @@ export function TerminalBootOverlay({
           await blankLine()
           audioRef.current?.playGlitch()
           await typeLine(
+            // emoji-ok: monospace terminal log glyph
             `> ⚠  ALERT: ${s.followUps} LEAD${s.followUps !== 1 ? 'S' : ''} COOLING DOWN`,
             'red',
           )
