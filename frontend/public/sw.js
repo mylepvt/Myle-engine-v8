@@ -1,5 +1,5 @@
 /* Myle SW — PWA install + Web Push + Offline caching */
-const CACHE_PREFIX = 'myle-v20260521-2'
+const CACHE_PREFIX = 'myle-v20260929-1'
 const STATIC_CACHE = `${CACHE_PREFIX}-static`
 const API_CACHE = `${CACHE_PREFIX}-api`
 
@@ -52,13 +52,15 @@ self.addEventListener('activate', (event) => {
 // ── Offline caching ───────────────────────────────────────────────────────────
 
 // API GET routes that are safe to serve from cache when offline.
+// Never add /api/v1/auth/* here: stale-while-revalidate would hand the app an
+// old `authenticated: false` right after a successful token refresh, which
+// logs the user out every time the short-lived access cookie expires.
 const API_CACHE_PATHS = [
   '/api/v1/leads',
   '/api/v1/follow-ups',
   '/api/v1/workboard',
   '/api/v1/checkin/today',
   '/api/v1/hello',
-  '/api/v1/auth/me',
   '/api/v1/team/tracking',
   '/api/v1/retarget',
 ]
