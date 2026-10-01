@@ -19,8 +19,6 @@ from app.schemas.current_cc import (
     CurrentCcActuals,
     CurrentCcMatch,
     CurrentCcMatchItem,
-    CurrentCcOverviewResponse,
-    CurrentCcOverviewRow,
     CurrentCcSheetPublic,
     CurrentCcSheetUpsert,
     CurrentCcTrendPoint,
@@ -312,73 +310,6 @@ async def upsert_sheet(
     filled_by = await _user(session, actor.user_id)
     public = _to_public(row, subject=subject, filled_by=filled_by, can_edit=True)
     return await _attach_actuals(session, public)
-
-
-async def get_overview(
-    session: AsyncSession, *, actor: AuthUser, day: date
-) -> CurrentCcOverviewResponse:
-    """Admin/leader board — every scoped member: filled today?, CC vs target, match flag."""
-    members = await list_team_members(session, actor=actor)
-    member_ids = [m.user_id for m in members]
-    sheets = (
-        await session.execute(
-            select(CurrentCcSheet).where(
-                CurrentCcSheet.subject_user_id.in_(member_ids),
-                CurrentCcSheet.sheet_date == day,
-            )
-        )
-    ).scalars().all()
-    by_subject = {s.subject_user_id: s for s in sheets}
-
-    rows: list[CurrentCcOverviewRow] = []
-    flagged = 0
-    not_filled = 0
-    for m in members:
-        sheet = by_subject.get(m.user_id)
-        actuals = await compute_actuals(session, subject_user_id=m.user_id, day=day)
-        if sheet is None:
-            not_filled += 1
-            rows.append(
-                CurrentCcOverviewRow(
-                    subject_user_id=m.user_id,
-                    subject_name=m.name,
-                    filled=False,
-                    activity_total=actuals.activity_total,
-                )
-            )
-            continue
-        closed = _person_rows(sheet.closed_persons)
-        enrollment = _enrollment_rows(sheet.enrollment_rows)
-        current_cc = sum(r.ccs for r in closed)
-        target = sheet.target_ccs or 0.0
-        match = build_match(
-            claimed_cc=current_cc,
-            claimed_enrollment=float(sum(r.total for r in enrollment)),
-            actuals=actuals,
-        )
-        if match.flagged:
-            flagged += 1
-        rows.append(
-            CurrentCcOverviewRow(
-                subject_user_id=m.user_id,
-                subject_name=m.name,
-                filled=True,
-                current_ccs=current_cc,
-                target_ccs=target,
-                gap=target - current_cc,
-                activity_total=actuals.activity_total,
-                match_overall=match.overall,
-                flagged=match.flagged,
-            )
-        )
-    # Flagged + not-filled float to the top for the admin's attention.
-    rows.sort(key=lambda r: (not r.flagged, r.filled, r.subject_name.lower()))
-    return CurrentCcOverviewResponse(
-        sheet_date=day,
-        rows=rows,
-        flagged_count=flagged,
-        not_filled_count=not_filled,
-    )
 
 
 async def list_team_members(session: AsyncSession, *, actor: AuthUser) -> list[TeamMemberOption]:

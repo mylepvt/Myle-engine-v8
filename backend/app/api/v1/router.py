@@ -55,7 +55,6 @@ from app.api.v1 import (
     skill_training,
     system,
     team,
-    team_tracking,
     wallet,
     wallet_enhanced,
     workboard,
@@ -79,7 +78,6 @@ api_router.include_router(hello.router, prefix="/hello", tags=["hello"])
 api_router.include_router(leads.router, prefix="/leads", tags=["leads"])
 api_router.include_router(leads.watch_router, tags=["watch"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])
-api_router.include_router(team_tracking.router, prefix="/team", tags=["team-tracking"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(skill_training.router, prefix="/system", tags=["skills-training"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

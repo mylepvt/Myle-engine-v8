@@ -61,7 +61,6 @@ export type FullUiSurface =
   | { kind: 'lead-pool' }
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
-  | { kind: 'team-tracking' }
   | { kind: 'leader-os' }
   | { kind: 'my-team' }
   | { kind: 'team-approvals' }
@@ -87,7 +86,6 @@ export type FullUiSurface =
   | { kind: 'team-reports' }
   | { kind: 'daily-report-form' }
   | { kind: 'current-cc' }
-  | { kind: 'current-cc-board' }
   | { kind: 'analytics' }
   | { kind: 'settings' }
   | { kind: 'leaderboard' }
@@ -269,28 +267,12 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'pending-as' },
   },
   {
-    path: 'team/tracking',
-    section: { id: 'team', label: 'Team' },
-    label: 'Team Tracking',
-    roles: routeRoles('team/tracking'),
-    surface: 'full',
-    ui: { kind: 'team-tracking' },
-  },
-  {
     path: 'team/current-cc',
     section: { id: 'team', label: 'Team' },
     label: 'Tracking Report',
     roles: routeRoles('team/current-cc'),
     surface: 'full',
     ui: { kind: 'current-cc' },
-  },
-  {
-    path: 'team/cc-board',
-    section: { id: 'team', label: 'Team' },
-    label: 'CC Board',
-    roles: routeRoles('team/cc-board'),
-    surface: 'full',
-    ui: { kind: 'current-cc-board' },
   },
   {
     path: 'team/approvals',

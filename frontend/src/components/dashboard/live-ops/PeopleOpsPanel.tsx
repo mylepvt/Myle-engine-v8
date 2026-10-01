@@ -35,7 +35,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
   const color = avatarColor(leader.leader_name)
   const isOnline = leader.presence_status === 'online'
   return (
-    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03] p-3 text-center no-underline transition-all duration-150 hover:border-foreground/10 dark:hover:border-white/20 hover:bg-muted/40 dark:hover:bg-white/[0.07] active:bg-muted/60 dark:active:bg-white/[0.1] cursor-pointer">
+    <div className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03] p-3 text-center">
       {/* Rank badge */}
       <div
         className="flex size-5 items-center justify-center rounded-full text-ds-micro font-bold text-white shadow"
@@ -81,7 +81,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
           <p className="text-ds-micro text-muted-foreground/70">Score</p>
         </div>
       </div>
-    </Link>
+    </div>
   )
 }
 
@@ -90,7 +90,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
   const isOnline = leader.presence_status === 'online'
   const color = avatarColor(leader.leader_name)
   return (
-    <Link to={`/dashboard/team/tracking/${leader.leader_id}`} className="flex items-center gap-3 border-b border-border dark:border-white/[0.04] px-4 py-3 no-underline transition-all duration-150 hover:bg-muted/30 dark:hover:bg-white/[0.05] active:bg-muted/50 dark:active:bg-white/[0.08] cursor-pointer">
+    <div className="flex items-center gap-3 border-b border-border dark:border-white/[0.04] px-4 py-3">
       {/* Avatar + status */}
       <div className="relative shrink-0">
         <div
@@ -122,7 +122,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         <ActivityChip label="Day 2" value={leader.day2_leads_count} icon={BookOpen} />
       </div>
       <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5" />
-    </Link>
+    </div>
   )
 }
 
