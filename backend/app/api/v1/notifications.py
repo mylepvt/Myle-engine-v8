@@ -104,7 +104,19 @@ async def subscribe_push(
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        # Race condition — already inserted, that's fine
+        # Only a concurrent duplicate is fine — anything else must surface,
+        # never a silent 201 for a row that was not saved.
+        raced = (
+            await session.execute(
+                select(PushSubscription.id).where(
+                    PushSubscription.user_id == user.user_id,
+                    PushSubscription.endpoint == body.endpoint,
+                )
+            )
+        ).scalar_one_or_none()
+        if raced is None:
+            raise
+        return {"ok": True, "created": False}
     return {"ok": True, "created": True}
 
 

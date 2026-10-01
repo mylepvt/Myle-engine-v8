@@ -1,5 +1,5 @@
 /* Myle SW — PWA install + Web Push + Offline caching */
-const CACHE_PREFIX = 'myle-v20260521-2'
+const CACHE_PREFIX = 'myle-v20261001-1'
 const STATIC_CACHE = `${CACHE_PREFIX}-static`
 const API_CACHE = `${CACHE_PREFIX}-api`
 
@@ -52,14 +52,13 @@ self.addEventListener('activate', (event) => {
 // ── Offline caching ───────────────────────────────────────────────────────────
 
 // API GET routes that are safe to serve from cache when offline.
+// Never cache /auth/me: a stale 200 kept logged-out users on the dashboard.
 const API_CACHE_PATHS = [
   '/api/v1/leads',
   '/api/v1/follow-ups',
   '/api/v1/workboard',
   '/api/v1/checkin/today',
   '/api/v1/hello',
-  '/api/v1/auth/me',
-  '/api/v1/team/tracking',
   '/api/v1/retarget',
 ]
 

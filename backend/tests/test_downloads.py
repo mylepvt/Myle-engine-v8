@@ -95,3 +95,27 @@ async def test_wiped_disk_file_is_flagged_unavailable(ctx, tmp_path):
     r = await client.get(f"/api/v1/downloads/{items[0]['id']}/file")
     assert r.status_code == 404
     assert "upload it again" in r.text
+
+
+async def test_without_r2_bytes_are_stored_in_postgres(ctx, monkeypatch):
+    client, Session, _who, r2 = ctx
+    monkeypatch.setattr(downloads_api, "r2_enabled", lambda: False)
+    r = await client.post(
+        "/api/v1/downloads",
+        data={"title": "Deck", "description": ""},
+        files={"file": ("Plan v2.pdf", b"%PDF-1.4 db", "application/pdf")},
+    )
+    assert r.status_code == 201, r.text
+    item = r.json()
+    assert item["available"] is True
+    assert r2 == {}
+
+    r = await client.get(f"/api/v1/downloads/{item['id']}/file")
+    assert r.status_code == 200
+    assert r.content == b"%PDF-1.4 db"
+    assert r.headers["content-disposition"] == "attachment; filename*=UTF-8''Plan%20v2.pdf"
+
+    # Listing never needs the blob, and delete removes the row.
+    assert [i["available"] for i in (await client.get("/api/v1/downloads")).json()] == [True]
+    assert (await client.delete(f"/api/v1/downloads/{item['id']}")).status_code == 204
+    assert (await client.get("/api/v1/downloads")).json() == []

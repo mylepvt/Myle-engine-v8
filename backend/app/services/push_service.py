@@ -6,6 +6,7 @@ Push failures NEVER raise — they are logged and swallowed.
 from __future__ import annotations
 
 import base64
+import functools
 import json
 import logging
 from typing import Any
@@ -32,6 +33,7 @@ try:
         PrivateFormat,
         PublicFormat,
     )
+    from py_vapid import Vapid01
     from pywebpush import WebPushException, webpush
 
     _PUSH_AVAILABLE = True
@@ -100,6 +102,17 @@ async def get_vapid_public_key(session: AsyncSession) -> str:
 # Send helpers
 # ---------------------------------------------------------------------------
 
+@functools.lru_cache(maxsize=4)
+def _vapid_signer(private_pem: str) -> "Vapid01":
+    """VAPID signer from the stored PEM.
+
+    pywebpush treats a *string* key as base64url DER, so passing the PEM text
+    raised "Could not deserialize key data" on every send — no push was ever
+    delivered. Hand it a parsed ``Vapid01`` instead.
+    """
+    return Vapid01.from_pem(private_pem.encode())
+
+
 def _do_webpush(sub: PushSubscription, data: str, private_pem: str) -> bool:
     """Send a single push. Returns True on success, False on failure."""
     try:
@@ -109,7 +122,7 @@ def _do_webpush(sub: PushSubscription, data: str, private_pem: str) -> bool:
                 "keys": {"p256dh": sub.keys_p256dh, "auth": sub.keys_auth},
             },
             data=data,
-            vapid_private_key=private_pem,
+            vapid_private_key=_vapid_signer(private_pem),
             vapid_claims={"sub": "mailto:admin@mylecommunity.com"},
         )
         return True
@@ -144,7 +157,7 @@ async def _send_and_cleanup(
                     "keys": {"p256dh": sub.keys_p256dh, "auth": sub.keys_auth},
                 },
                 data=data,
-                vapid_private_key=private_pem,
+                vapid_private_key=_vapid_signer(private_pem),
                 vapid_claims={"sub": "mailto:admin@mylecommunity.com"},
             )
             ok_count += 1
