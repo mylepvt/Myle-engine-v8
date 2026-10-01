@@ -225,9 +225,7 @@ export function DashboardLayout() {
 
   const onTrainingRoute =
     location.pathname === '/dashboard/system/training' ||
-    location.pathname.startsWith('/dashboard/system/training/') ||
-    location.pathname === '/dashboard/other/training' ||
-    location.pathname.startsWith('/dashboard/other/training/')
+    location.pathname.startsWith('/dashboard/system/training/')
 
   const sections = useMemo(() => {
     if (shellRole == null) return []

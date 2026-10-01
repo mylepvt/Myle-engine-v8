@@ -14,31 +14,25 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardPlaceholderPage } from '@/pages/DashboardPlaceholderPage'
 import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
 import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
-import { LeadFlowPage } from '@/pages/LeadFlowPage'
 import { LeadGenPage } from '@/pages/LeadGenPage'
 import { LeadPoolWorkPage } from '@/pages/LeadPoolWorkPage'
 import { RecycleBinWorkPage } from '@/pages/RecycleBinWorkPage'
 import { TeamApprovalsPage } from '@/pages/TeamApprovalsPage'
 import { TeamMembersPage } from '@/pages/TeamMembersPage'
-import { MyTeamPage } from '@/pages/MyTeamPage'
 import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
 import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
 import { PendingAsProcessPage } from '@/pages/PendingAsProcessPage'
-import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
 import { TrainingHubPage } from '@/pages/TrainingHubPage'
-import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
 import { WorkboardPage } from '@/pages/WorkboardPage'
 import { ShellStubPage } from '@/pages/ShellStubPage'
 import { WalletPage } from '@/pages/WalletPage'
-import { FinanceRechargesPage } from '@/pages/FinanceRechargesPage'
 import { LeadDetailPage } from '@/pages/LeadDetailPage'
 import { WalletRechargePage } from '@/pages/WalletRechargePage'
-import { WalletRechargeAdminPage } from '@/pages/WalletRechargeAdminPage'
+import { WalletAdminPage } from '@/pages/WalletAdminPage'
 import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
 import { TeamReportsPage } from '@/pages/TeamReportsPage'
 import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
 import { CurrentCcPage } from '@/pages/CurrentCcPage'
-import AnalyticsPage from '@/pages/AnalyticsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import { LeaderboardPage } from '@/pages/LeaderboardPage'
 import { LiveSessionPage } from '@/pages/LiveSessionPage'
@@ -48,12 +42,9 @@ import { LeadControlPage } from '@/pages/LeadControlPage'
 import { SettingsAppPage } from '@/pages/SettingsAppPage'
 import { SettingsHelpPage } from '@/pages/SettingsHelpPage'
 import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
-import { AllMembersPage } from '@/pages/AllMembersPage'
 import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
-import { LeaderOSPage } from '@/pages/LeaderOSPage'
 import { DownloadsPage } from '@/pages/DownloadsPage'
 import { AuditLogsPage } from '@/pages/AuditLogsPage'
-import PerformerInsightsPage from '@/pages/PerformerInsightsPage'
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
@@ -63,8 +54,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <WorkboardPage title={title} />
     case 'follow-ups':
       return <FollowUpsWorkPage title={title} />
-    case 'lead-flow':
-      return <LeadFlowPage title={title} />
     case 'lead-gen':
       return <LeadGenPage title={title} />
     case 'lead-pool':
@@ -73,41 +62,26 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RecycleBinWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
-    case 'leader-os':
-      return <LeaderOSPage />
     case 'team-approvals':
       return <TeamApprovalsPage title={title} />
-    case 'my-team':
-      return <MyTeamPage title={title} />
     case 'flp-min-billing':
       return <FlpMinBillingApprovalsPage title={title} />
     case 'sales-approvals':
       return <SalesApprovalsPage title={title} />
     case 'pending-as':
       return <PendingAsProcessPage title={title} />
-    case 'system':
-      return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'lead-control':
       return <LeadControlPage title={title} />
-    case 'analytics':
-      if ('surface' in ui && ui.surface === 'activity-log') {
-        return <AuditLogsPage title={title} />
-      }
-      return 'surface' in ui ? (
-        <AnalyticsSurfacePage title={title} surface={ui.surface as 'activity-log'} />
-      ) : (
-        <AnalyticsPage />
-      )
+    case 'activity-log':
+      return <AuditLogsPage title={title} />
     case 'wallet':
       return <WalletPage title={title} />
-    case 'finance-recharges':
-      return <FinanceRechargesPage title={title} />
     case 'admin-invoices':
       return <AdminInvoicesPage title={title} />
     case 'wallet-recharge':
       return <WalletRechargePage title={title} />
-    case 'wallet-recharge-admin':
-      return <WalletRechargeAdminPage title={title} />
+    case 'wallet-admin':
+      return <WalletAdminPage title={title} />
     case 'notice-board':
       return <NoticeBoardPage title={title} />
     case 'team-reports':
@@ -124,8 +98,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LiveSessionPage title={title} />
     case 'training-hub':
       return <TrainingHubPage title={title} />
-    case 'redirect':
-      return <Navigate to={ui.to} replace />
     case 'training-progress':
       return <TrainingProgressPage title={title} />
     case 'downloads':
@@ -138,10 +110,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <SettingsHelpPage title={title} />
     case 'settings-org-tree':
       return <SettingsOrgTreePage title={title} />
-    case 'all-members':
-      return <AllMembersPage title={title} />
-    case 'performer-insights':
-      return <PerformerInsightsPage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {

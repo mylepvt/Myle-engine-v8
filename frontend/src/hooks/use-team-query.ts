@@ -56,13 +56,6 @@ export type TeamMemberListResponse = {
   offset: number
 }
 
-export type TeamMyTeamResponse = {
-  items: TeamMemberPublic[]
-  total: number
-  direct_members?: number
-  total_downline?: number
-}
-
 export type TeamFlpMinBillingListResponse = {
   items: TeamFlpMinBillingRequest[]
   total: number
@@ -135,12 +128,6 @@ export async function fetchTeamMembers(): Promise<TeamMemberListResponse> {
   }
 }
 
-async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
-  const res = await apiFetch('/api/v1/team/my-team')
-  if (!res.ok) await parseError(res)
-  return res.json()
-}
-
 async function fetchFlpMinBillingRequests(): Promise<TeamFlpMinBillingListResponse> {
   const res = await apiFetch('/api/v1/team/flp-min-billing-requests')
   if (!res.ok) await parseError(res)
@@ -207,14 +194,6 @@ export function useTeamMembersQuery(enabled = true) {
     enabled,
     staleTime: 30_000,
     refetchInterval: 60_000,
-  })
-}
-
-export function useMyTeamQuery(enabled = true) {
-  return useQuery({
-    queryKey: ['team', 'my-team'],
-    queryFn: fetchMyTeam,
-    enabled,
   })
 }
 

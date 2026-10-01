@@ -7,7 +7,6 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin_activity,
     admin_dashboard,
-    admin_performer_insights,
     admin_training,
     action_queue,
     automation,
@@ -67,7 +66,6 @@ api_router.include_router(meta.router, prefix="/meta", tags=["meta"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin_training.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["admin"])
-api_router.include_router(admin_performer_insights.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_activity.router, prefix="/admin", tags=["admin"])
 api_router.include_router(action_queue.router, tags=["action-queue"])
 api_router.include_router(automation.router, tags=["automation"])

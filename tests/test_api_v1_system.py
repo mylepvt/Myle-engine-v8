@@ -50,29 +50,6 @@ def test_system_training_ok_for_leader(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.json()["progress"] == []
 
 
-def test_system_decision_engine_admin_only(monkeypatch: pytest.MonkeyPatch) -> None:
-    c = _authed(monkeypatch)
-    assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-    assert c.get("/api/v1/system/decision-engine").status_code == 403
-    c2 = _authed(monkeypatch)
-    assert c2.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    assert c2.get("/api/v1/system/decision-engine").status_code == 200
-
-
-def test_system_coaching_admin_and_leader(monkeypatch: pytest.MonkeyPatch) -> None:
-    c = _authed(monkeypatch)
-    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
-    assert c.get("/api/v1/system/coaching").status_code == 403
-
-    c2 = _authed(monkeypatch)
-    assert c2.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-    assert c2.get("/api/v1/system/coaching").status_code == 200
-
-    c3 = _authed(monkeypatch)
-    assert c3.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    assert c3.get("/api/v1/system/coaching").status_code == 200
-
-
 async def _clear_training_tables() -> None:
     fac = test_conftest.get_test_session_factory()
     async with fac() as session:
