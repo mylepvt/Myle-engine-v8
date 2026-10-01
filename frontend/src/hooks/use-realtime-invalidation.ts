@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 
-import { apiBase } from '@/lib/api'
+import { apiBase, silentAuthRefresh } from '@/lib/api'
 import { isLowEndDevice } from '@/lib/device-performance'
 import {
   clearScrollGatePolling,
@@ -13,6 +13,10 @@ import { mergeTopicBatches } from '@/lib/merge-topic-batches'
 type InvalidateMsg = { v: number; type: 'invalidate'; topics: string[] }
 type RealtimeMsg = InvalidateMsg
 type PresenceAction = 'ping' | 'idle' | 'resume'
+
+/** Server closes with this when the access cookie is missing/expired (see realtime_ws.py). */
+const WS_CLOSE_AUTH_REQUIRED = 4401
+const MAX_RECONNECT_MS = 60_000
 
 function buildWsUrl(): string {
   const path = '/api/v1/ws'
@@ -140,12 +144,24 @@ export function useRealtimeInvalidation(enabled: boolean) {
       flushRealtimeTopicsOrDefer(topics, deliver)
     }
 
+    let failedAttempts = 0
+    const scheduleReconnect = () => {
+      // Exponential backoff so a dead session / outage is not hammered every few seconds.
+      const delay = Math.min(reconnectMs * 2 ** failedAttempts, MAX_RECONNECT_MS)
+      failedAttempts += 1
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined
+        connect()
+      }, delay)
+    }
+
     const connect = () => {
       const url = buildWsUrl()
       const ws = new WebSocket(url)
       wsRef.current = ws
 
       ws.onopen = () => {
+        failedAttempts = 0
         sendPresence(document.visibilityState === 'hidden' ? 'idle' : 'resume')
         startHeartbeat()
       }
@@ -161,11 +177,21 @@ export function useRealtimeInvalidation(enabled: boolean) {
         }
       }
 
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         wsRef.current = null
         clearHeartbeat()
         if (closed) return
-        reconnectTimer = window.setTimeout(connect, reconnectMs)
+        if (ev.code === WS_CLOSE_AUTH_REQUIRED) {
+          // Access cookie expired (e.g. app idle in background): refresh it like
+          // REST calls do, then reconnect. A rejected refresh means the session
+          // is over — stop retrying; the next API call routes to login.
+          void silentAuthRefresh().then((ok) => {
+            if (closed || ok === false) return
+            scheduleReconnect()
+          })
+          return
+        }
+        scheduleReconnect()
       }
 
       ws.onerror = () => {
@@ -174,6 +200,14 @@ export function useRealtimeInvalidation(enabled: boolean) {
     }
 
     const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !wsRef.current && reconnectTimer !== undefined) {
+        // Back in the foreground while waiting out a backoff: reconnect now.
+        window.clearTimeout(reconnectTimer)
+        reconnectTimer = undefined
+        failedAttempts = 0
+        connect()
+        return
+      }
       sendPresence(document.visibilityState === 'hidden' ? 'idle' : 'resume')
     }
     const onFocus = () => sendPresence('resume')

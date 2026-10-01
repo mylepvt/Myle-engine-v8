@@ -19,6 +19,17 @@ from app.services.team_tracking import connect_presence_session, sweep_stale_pre
 
 router = APIRouter()
 
+# Custom close code (4000-4999 range) for "session not valid". Closing *before*
+# accept surfaces to browsers as an opaque 1006 (and a 403 in the access log),
+# so the client could not tell "log in again" from "network blip" and retried
+# every few seconds forever. Accept first, then close with this code.
+WS_CLOSE_AUTH_REQUIRED = 4401
+
+
+async def _reject_auth(websocket: WebSocket) -> None:
+    await websocket.accept()
+    await websocket.close(code=WS_CLOSE_AUTH_REQUIRED)
+
 
 @router.websocket("/ws")
 async def realtime_socket(
@@ -29,7 +40,7 @@ async def realtime_socket(
     raw = websocket.cookies.get(MYLE_ACCESS_COOKIE)
     user = optional_auth_user_from_token(raw)
     if user is None:
-        await websocket.close(code=1008)
+        await _reject_auth(websocket)
         return
     session_key = secrets.token_urlsafe(18)
     async with session_factory() as auth_session:
@@ -38,12 +49,12 @@ async def realtime_socket(
             await auth_session.execute(select(User).where(User.id == user.user_id))
         ).scalar_one_or_none()
         if row is None:
-            await websocket.close(code=1008)
+            await _reject_auth(websocket)
             return
         try:
             ensure_may_issue_session_cookies(row)
         except Exception:
-            await websocket.close(code=1008)
+            await _reject_auth(websocket)
             return
     await hub.register(websocket, user.user_id)
     async with session_factory() as presence_session:
