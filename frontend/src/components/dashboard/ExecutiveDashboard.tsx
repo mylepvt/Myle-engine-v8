@@ -86,10 +86,10 @@ export function ExecutiveDashboard() {
       {eos.data && (
         <div className={cn(
           'rounded-xl border-2 p-4 flex items-center gap-5',
-          eos.data.band === 'excellent' ? 'border-green-300 bg-green-50/50 dark:bg-green-950/10' :
-          eos.data.band === 'good' ? 'border-blue-300 bg-blue-50/50 dark:bg-blue-950/10' :
-          eos.data.band === 'fair' ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10' :
-          'border-red-300 bg-red-50/50 dark:bg-red-950/10'
+          eos.data.band === 'excellent' ? 'border-success/30 bg-success/50' :
+          eos.data.band === 'good' ? 'border-info/30 bg-info/50' :
+          eos.data.band === 'fair' ? 'border-warning/30 bg-warning/50' :
+          'border-destructive/30 bg-destructive/50'
         )}>
           <Gauge value={Math.round(eos.data.health_score)} label="EOS Health" size={100} />
           <div className="flex-1 min-w-0">
@@ -98,10 +98,10 @@ export function ExecutiveDashboard() {
               <span className="text-base font-bold text-foreground">EOS Health Index</span>
               <Badge className={cn(
                 'text-ds-micro',
-                eos.data.band === 'excellent' ? 'bg-green-100 text-green-800' :
-                eos.data.band === 'good' ? 'bg-blue-100 text-blue-800' :
-                eos.data.band === 'fair' ? 'bg-amber-100 text-amber-800' :
-                'bg-red-100 text-red-800'
+                eos.data.band === 'excellent' ? 'bg-success/10 text-success-ink' :
+                eos.data.band === 'good' ? 'bg-info/10 text-info-ink' :
+                eos.data.band === 'fair' ? 'bg-warning/10 text-warning-ink' :
+                'bg-destructive/10 text-destructive-ink'
               )}>{eos.data.band}</Badge>
             </div>
             <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-ds-caption">
@@ -118,15 +118,15 @@ export function ExecutiveDashboard() {
       {/* ── ROW 1: ORG SCORE + LEADER SCORE ────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricBox label="Org Score" value={orgScoreValue} icon={<BarChart3 className="size-4" />}
-          color={orgScoreValue >= 60 ? 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700' :
-                 orgScoreValue >= 30 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700'} />
+          color={orgScoreValue >= 60 ? 'border-success/20 bg-success/10 text-success-ink' :
+                 orgScoreValue >= 30 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-destructive/20 bg-destructive/10 text-destructive-ink'} />
         <MetricBox label="Leader Score" value={avgLeaderScore} icon={<Users className="size-4" />}
-          color={avgLeaderScore >= 60 ? 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700' :
-                 avgLeaderScore >= 30 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700'} />
+          color={avgLeaderScore >= 60 ? 'border-success/20 bg-success/10 text-success-ink' :
+                 avgLeaderScore >= 30 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-destructive/20 bg-destructive/10 text-destructive-ink'} />
         <MetricBox label="Mission Completion" value={c?.mission_completion ?? 0} suffix="%" icon={<ListChecks className="size-4" />}
-          color="border-blue-200 bg-blue-50 dark:bg-blue-950/20 text-blue-700" />
+          color="border-info/20 bg-info/10 text-info-ink" />
         <MetricBox label="Verification Rate" value={c?.verification ?? 0} suffix="%" icon={<CheckCircle2 className="size-4" />}
           color="border-indigo-200 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700" />
       </div>
@@ -134,21 +134,21 @@ export function ExecutiveDashboard() {
       {/* ── ROW 2 ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricBox label="Conversion Rate" value={e?.conversion_rate ?? 0} suffix="%" icon={<TrendingUp className="size-4" />}
-          color={(e?.conversion_rate ?? 0) >= 20 ? 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700' :
-                 (e?.conversion_rate ?? 0) >= 10 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700'} />
+          color={(e?.conversion_rate ?? 0) >= 20 ? 'border-success/20 bg-success/10 text-success-ink' :
+                 (e?.conversion_rate ?? 0) >= 10 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-destructive/20 bg-destructive/10 text-destructive-ink'} />
         <MetricBox label="Zombie Score" value={c?.zombie_leads ?? 0} suffix="%" icon={<Skull className="size-4" />}
-          color={(c?.zombie_leads ?? 100) >= 70 ? 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700' :
-                 (c?.zombie_leads ?? 100) >= 40 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700'} />
+          color={(c?.zombie_leads ?? 100) >= 70 ? 'border-success/20 bg-success/10 text-success-ink' :
+                 (c?.zombie_leads ?? 100) >= 40 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-destructive/20 bg-destructive/10 text-destructive-ink'} />
         <MetricBox label="Critical Members" value={criticalMembers} icon={<AlertCircle className="size-4" />}
-          color={criticalMembers === 0 ? 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700' :
-                 criticalMembers <= 5 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700'} />
+          color={criticalMembers === 0 ? 'border-success/20 bg-success/10 text-success-ink' :
+                 criticalMembers <= 5 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-destructive/20 bg-destructive/10 text-destructive-ink'} />
         <MetricBox label="Critical Leaders" value={criticalLeaders} icon={<AlertTriangle className="size-4" />}
-          color={criticalLeaders === 0 ? 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700' :
-                 criticalLeaders <= 2 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700'} />
+          color={criticalLeaders === 0 ? 'border-success/20 bg-success/10 text-success-ink' :
+                 criticalLeaders <= 2 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-destructive/20 bg-destructive/10 text-destructive-ink'} />
       </div>
 
       {/* ── ROW 3 ────────────────────────────────────────────────────── */}
@@ -156,9 +156,9 @@ export function ExecutiveDashboard() {
         <MetricBox label="Biggest Blocker" value={biggestBlocker} icon={<AlertTriangle className="size-4" />}
           color="border-purple-200 bg-purple-50 dark:bg-purple-950/20 text-purple-700" />
         <MetricBox label="Campaign Success" value={e?.campaign_success_pct ?? 0} suffix="%" icon={<GraduationCap className="size-4" />}
-          color={(e?.campaign_success_pct ?? 0) >= 60 ? 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700' :
-                 (e?.campaign_success_pct ?? 0) >= 30 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700'} />
+          color={(e?.campaign_success_pct ?? 0) >= 60 ? 'border-success/20 bg-success/10 text-success-ink' :
+                 (e?.campaign_success_pct ?? 0) >= 30 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-destructive/20 bg-destructive/10 text-destructive-ink'} />
         <MetricBox label="Active Leaders" value={leaderCount} icon={<Users className="size-4" />}
           color="border-teal-200 bg-teal-50 dark:bg-teal-950/20 text-teal-700" />
       </div>
@@ -171,16 +171,16 @@ export function ExecutiveDashboard() {
           </CardHeader>
           <CardContent className="flex items-center gap-4 px-4 pb-3">
             <div className="flex gap-2 flex-wrap">
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+              <Badge className="bg-success/10 text-success-ink hover:bg-success/10">
                 Low: {rsk.org_stats.low_risk} ({rsk.org_stats.band_pct_low}%)
               </Badge>
-              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+              <Badge className="bg-warning/10 text-warning-ink hover:bg-warning/10">
                 Medium: {rsk.org_stats.medium_risk} ({rsk.org_stats.band_pct_medium}%)
               </Badge>
               <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
                 High: {rsk.org_stats.high_risk} ({rsk.org_stats.band_pct_high}%)
               </Badge>
-              <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+              <Badge className="bg-destructive/10 text-destructive-ink hover:bg-destructive/10">
                 Critical: {rsk.org_stats.critical_risk} ({rsk.org_stats.band_pct_critical}%)
               </Badge>
             </div>

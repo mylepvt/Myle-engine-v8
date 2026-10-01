@@ -14,7 +14,7 @@ export function EnrollmentProofRow({ lead, canSendBack }: { lead: LeadPublic; ca
   const rupees = lead.enrollment_amount_cents != null ? Math.round(lead.enrollment_amount_cents / 100) : null
 
   return (
-    <div className="space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-ds-caption">
+    <div className="space-y-2 rounded-md border border-success/30 bg-success/5 p-2 text-ds-caption">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-foreground">Enrollment{rupees != null ? ` ₹${rupees}` : ''}</span>
         <a

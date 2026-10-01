@@ -88,8 +88,8 @@ function TrendChart({ points }: { points: SaleTrendPoint[] }) {
       <div className="mt-1 flex items-center justify-between text-ds-micro text-muted-foreground/70">
         <span>{firstLabel}</span>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded-full bg-emerald-500" />Cheque</span>
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded-full bg-blue-500" />CC</span>
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded-full bg-success" />Cheque</span>
+          <span className="inline-flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded-full bg-info" />CC</span>
         </div>
         <span>{lastLabel}</span>
       </div>
@@ -119,7 +119,7 @@ export function CaseCreditCheque({
       <CardContent className="p-5">
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Banknote className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <Banknote className="size-4 text-success-ink" aria-hidden />
             <h2 className="font-heading text-ds-h3 font-semibold text-foreground">Case Credit &amp; Cheque</h2>
           </div>
           <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/40 p-0.5">
@@ -154,13 +154,13 @@ export function CaseCreditCheque({
                 <p className="text-ds-micro text-muted-foreground">Total CC</p>
               </div>
               <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-                <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-300">
+                <p className="text-lg font-bold tabular-nums text-success-ink">
                   {inr(chequeTotal)}
                 </p>
                 <p className="text-ds-micro text-muted-foreground">Cheque total</p>
               </div>
               <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-                <p className={cn('text-lg font-bold tabular-nums', (data?.pending_count ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')}>
+                <p className={cn('text-lg font-bold tabular-nums', (data?.pending_count ?? 0) > 0 ? 'text-warning-ink' : 'text-foreground')}>
                   {data?.pending_count ?? 0}
                 </p>
                 <p className="text-ds-micro text-muted-foreground">Pending</p>
@@ -176,7 +176,7 @@ export function CaseCreditCheque({
               <div className="mt-2 flex items-center justify-between text-ds-caption text-muted-foreground">
                 <span>Last {days} days</span>
                 <span className="tabular-nums">
-                  {periodCc.toFixed(2)} CC · <span className="font-semibold text-emerald-600 dark:text-emerald-300">{inrShort(periodCheque)}</span> cheque
+                  {periodCc.toFixed(2)} CC · <span className="font-semibold text-success-ink">{inrShort(periodCheque)}</span> cheque
                 </span>
               </div>
             </div>
@@ -191,7 +191,7 @@ export function CaseCreditCheque({
  * Top Earners — ranked by approx cheque (commission)
  * ────────────────────────────────────────────────────────────────────────── */
 const RANK_STYLE = [
-  'bg-amber-400/20 text-amber-600 dark:text-amber-400',
+  'bg-warning/20 text-warning-ink',
   'bg-slate-400/20 text-slate-600 dark:text-slate-300',
   'bg-orange-500/20 text-orange-600 dark:text-orange-400',
 ]
@@ -213,7 +213,7 @@ export function TopEarners({
       <CardContent className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Trophy className="size-4 text-amber-500" aria-hidden />
+            <Trophy className="size-4 text-warning-ink" aria-hidden />
             <h2 className="font-heading text-ds-h3 font-semibold text-foreground">Top Earners</h2>
           </div>
           <Link
@@ -256,7 +256,7 @@ export function TopEarners({
                     {Number(r.total_case_credits).toFixed(2)} CC · {r.sale_count} sale{r.sale_count === 1 ? '' : 's'}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-300">
+                <span className="shrink-0 text-sm font-bold tabular-nums text-success-ink">
                   {inr(r.commission_cents)}
                 </span>
               </div>

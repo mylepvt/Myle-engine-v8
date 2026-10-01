@@ -60,7 +60,7 @@ export function NotificationsBell() {
       count: registrations.data?.total ?? 0,
       to: '/dashboard/team/members',
       Icon: UserPlus,
-      accent: 'text-amber-600 dark:text-amber-400',
+      accent: 'text-warning-ink',
     },
     {
       key: 'flp',
@@ -68,7 +68,7 @@ export function NotificationsBell() {
       count: flpApprovals.data?.total ?? 0,
       to: '/dashboard/team/flp-min-billing',
       Icon: ClipboardCheck,
-      accent: 'text-emerald-600 dark:text-emerald-400',
+      accent: 'text-success-ink',
     },
     {
       key: 'recharge',
@@ -76,7 +76,7 @@ export function NotificationsBell() {
       count: rechargePending,
       to: '/dashboard/finance/recharge-admin',
       Icon: Banknote,
-      accent: 'text-blue-600 dark:text-blue-400',
+      accent: 'text-info-ink',
     },
     {
       key: 'grace',

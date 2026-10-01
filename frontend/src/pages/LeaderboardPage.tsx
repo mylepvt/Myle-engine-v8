@@ -10,10 +10,10 @@ type Props = { title: string }
 
 const LEVEL_META: Record<string, { label: string; cls: string }> = {
   rookie:    { label: 'Rookie',    cls: 'bg-muted/60 text-muted-foreground' },
-  hustler:   { label: 'Hustler',   cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
+  hustler:   { label: 'Hustler',   cls: 'bg-info/15 text-info-ink' },
   closer:    { label: 'Closer',    cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
-  champion:  { label: 'Champion',  cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
-  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-600 dark:text-amber-300 font-bold' },
+  champion:  { label: 'Champion',  cls: 'bg-warning/15 text-warning-ink' },
+  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-warning/20 to-orange-400/20 text-warning-ink font-bold' },
 }
 
 function LevelBadge({ level }: { level: string }) {
@@ -68,7 +68,7 @@ export function LeaderboardPage({ title }: Props) {
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {topThree.map((r) => {
                 const golds = [
-                  'border-amber-400/40 bg-amber-500/8',
+                  'border-warning/40 bg-warning/8',
                   'border-slate-400/30 bg-slate-500/8',
                   'border-orange-400/30 bg-orange-500/8',
                 ]

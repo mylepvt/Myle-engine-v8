@@ -373,8 +373,8 @@ export function RegisterPage() {
                   <p
                     className={`mt-2 flex items-start gap-2 text-ds-caption ${
                       uplineLookup.is_valid_upline
-                        ? 'text-emerald-600/95 dark:text-emerald-400/95'
-                        : 'text-amber-700/90 dark:text-amber-200/90'
+                        ? 'text-success-ink/95'
+                        : 'text-warning-ink/90'
                     }`}
                   >
                     <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />

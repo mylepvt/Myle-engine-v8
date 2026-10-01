@@ -8,8 +8,8 @@
   "display": "standalone",
   "display_override": ["standalone", "browser"],
   "orientation": "any",
-  "background_color": "#050208",
-  "theme_color": "#050208",
+  "background_color": "#111214",
+  "theme_color": "#111214",
   "categories": ["business", "productivity"],
   "icons": [
     {

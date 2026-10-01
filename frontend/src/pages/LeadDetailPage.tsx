@@ -20,6 +20,7 @@ import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
+import { stageBadgeClass } from '@/lib/stage-colors'
 
 type Props = {
   leadId: number
@@ -38,25 +39,10 @@ function outcomeLabel(v: string): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const cls: Record<string, string> = {
-    new: 'bg-primary/15 text-primary',
-    new_lead: 'bg-primary/15 text-primary',
-    contacted: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400',
-    invited: 'bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400',
-    whatsapp_sent: 'bg-pink-500/10 text-pink-600 dark:bg-pink-400/15 dark:text-pink-400',
-    video_sent: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400',
-    video_watched: 'bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400',
-    paid: 'bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400',
-    day1: 'bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400',
-    day2: 'bg-yellow-500/10 text-yellow-600 dark:bg-yellow-400/15 dark:text-yellow-400',
-    day3: 'bg-lime-500/10 text-lime-600 dark:bg-lime-400/15 dark:text-lime-400',
-    converted: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
-    lost: 'bg-destructive/15 text-destructive',
-  }
-  const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
+  const c = stageBadgeClass(status)
   const label = LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${c}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${c}`}>
       {label}
     </span>
   )
@@ -64,7 +50,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function PaymentStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
-    pending: 'bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400',
+    pending: 'bg-warning/10 text-warning-ink dark:bg-warning/15',
     proof_uploaded: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400',
     approved: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     rejected: 'bg-destructive/15 text-destructive',
@@ -406,7 +392,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 </p>
               ) : null}
               {surfaceRole === 'admin' ? (
-                <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 dark:border-amber-400/20 dark:bg-amber-400/5">
+                <div className="rounded-md border border-warning/20 bg-warning/5 p-3 dark:border-warning/20 dark:bg-warning/5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-medium text-foreground">Stage Clock Control</p>

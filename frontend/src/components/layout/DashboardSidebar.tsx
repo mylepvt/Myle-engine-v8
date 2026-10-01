@@ -64,7 +64,7 @@ export function DashboardSidebar({
         {rolePending && shellRole == null ? (
           <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-11 rounded-[0.625rem]" />
+              <Skeleton key={i} className="h-11 rounded-lg" />
             ))}
           </div>
         ) : null}

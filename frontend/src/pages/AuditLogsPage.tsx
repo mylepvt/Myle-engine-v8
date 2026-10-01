@@ -11,11 +11,11 @@ import { cn } from '@/lib/utils'
 type Chip = { bg: string; text: string; border: string }
 
 function actionChip(action: string): Chip {
-  if (action.startsWith('user.login'))        return { bg: 'bg-blue-500/15',    text: 'text-blue-600 dark:text-blue-300',    border: 'border-blue-500/30' }
-  if (action.startsWith('daily_report'))      return { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-300', border: 'border-emerald-500/30' }
+  if (action.startsWith('user.login'))        return { bg: 'bg-info/15',    text: 'text-info-ink',    border: 'border-info/30' }
+  if (action.startsWith('daily_report'))      return { bg: 'bg-success/15', text: 'text-success-ink', border: 'border-success/30' }
   if (action.startsWith('lead'))              return { bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-600 dark:text-fuchsia-300', border: 'border-fuchsia-500/30' }
-  if (action.startsWith('wallet'))            return { bg: 'bg-amber-500/15',   text: 'text-amber-600 dark:text-amber-300',   border: 'border-amber-500/30' }
-  if (action.startsWith('wa.') || action.startsWith('whatsapp')) return { bg: 'bg-green-500/15', text: 'text-green-600 dark:text-green-300', border: 'border-green-500/30' }
+  if (action.startsWith('wallet'))            return { bg: 'bg-warning/15',   text: 'text-warning-ink',   border: 'border-warning/30' }
+  if (action.startsWith('wa.') || action.startsWith('whatsapp')) return { bg: 'bg-success/15', text: 'text-success-ink', border: 'border-success/30' }
   if (action.startsWith('enrollment'))        return { bg: 'bg-teal-500/15',    text: 'text-teal-600 dark:text-teal-300',    border: 'border-teal-500/30' }
   return { bg: 'bg-slate-500/15', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-500/30' }
 }

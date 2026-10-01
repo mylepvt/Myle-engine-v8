@@ -131,6 +131,7 @@ export default {
         destructive: {
           DEFAULT: themeColor('destructive'),
           foreground: themeColor('destructive-foreground'),
+          ink: themeColor('destructive-ink'),
         },
         muted: {
           DEFAULT: themeColor('muted'),
@@ -148,13 +149,20 @@ export default {
           DEFAULT: themeColor('card'),
           foreground: themeColor('card-foreground'),
         },
+        /* informational blue (status, not brand actions — use primary for those) */
+        info: {
+          DEFAULT: themeColor('info'),
+          ink: themeColor('info-ink'),
+        },
         success: {
           DEFAULT: themeColor('success'),
           foreground: themeColor('success-foreground'),
+          ink: themeColor('success-ink'),
         },
         warning: {
           DEFAULT: themeColor('warning'),
           foreground: themeColor('warning-foreground'),
+          ink: themeColor('warning-ink'),
         },
         /* WhatsApp brand — fixed colours (same in light / dark). */
         whatsapp: {
@@ -187,6 +195,21 @@ export default {
           'danger-border': '#5B2327',
           'danger-bg': '#100708',
           warning: '#FFD9A0',
+        },
+        /* lead-journey phase colours (src/lib/stage-colors.ts) */
+        stage: {
+          early: themeColor('stage-early'),
+          'early-ink': themeColor('stage-early-ink'),
+          engaged: themeColor('stage-engaged'),
+          'engaged-ink': themeColor('stage-engaged-ink'),
+          closing: themeColor('stage-closing'),
+          'closing-ink': themeColor('stage-closing-ink'),
+          won: themeColor('stage-won'),
+          'won-ink': themeColor('stage-won-ink'),
+          lost: themeColor('stage-lost'),
+          'lost-ink': themeColor('stage-lost-ink'),
+          parked: themeColor('stage-parked'),
+          'parked-ink': themeColor('stage-parked-ink'),
         },
         chart: {
           1: themeColor('chart-1'),
@@ -221,12 +244,17 @@ export default {
         'smooth-bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       },
             borderRadius: {
+        /* One scale from --radius (10px). Arbitrary `rounded-[…]` values are
+           blocked by design-tokens-usage.test.ts — pick the nearest step instead. */
+        DEFAULT: 'calc(var(--radius) - 4px)',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
         xl: 'calc(var(--radius) + 2px)',
         '2xl': 'calc(var(--radius) + 4px)',
         '3xl': 'calc(var(--radius) + 8px)',
+        /* hero panels and prospect-room cards */
+        '4xl': 'calc(var(--radius) + 14px)',
       },
       letterSpacing: {
         'label-wide': '0.06em',

@@ -152,10 +152,10 @@ interface TerminalStats {
 }
 
 const COLOR_CLASS: Record<LineColor, string> = {
-  green: 'text-emerald-400',
-  amber: 'text-amber-400',
+  green: 'text-success-ink',
+  amber: 'text-warning-ink',
   cyan: 'text-cyan-400',
-  red: 'text-red-400',
+  red: 'text-destructive-ink',
   dim: 'text-zinc-500',
   white: 'text-zinc-200',
 }

@@ -59,7 +59,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
       </div>
 
       {auto.recruitment_low ? (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+        <p className="rounded-lg border border-warning/30 bg-warning/[0.06] px-3 py-2 text-xs text-warning-ink">
           Direct team chhota hai ({auto.direct_count}) — front recruitment badhane ki zarurat.
         </p>
       ) : null}
@@ -112,7 +112,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
                     <Val>{r.name}</Val>
                     <Val className="tabular-nums">{r.fresh_lead}</Val>
                     <Val className="tabular-nums">{r.old_lead}</Val>
-                    <span className="text-center font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    <span className="text-center font-semibold tabular-nums text-success-ink">
                       {(r.fresh_lead || 0) + (r.old_lead || 0)}
                     </span>
                   </div>
@@ -238,7 +238,7 @@ function Val({ children, className }: { children: React.ReactNode; className?: s
 
 function Check({ on }: { on: boolean }) {
   return (
-    <span className={cn('text-center text-sm', on ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
+    <span className={cn('text-center text-sm', on ? 'text-success-ink' : 'text-muted-foreground')}>
       {on ? '✓' : '—'}
     </span>
   )
@@ -265,7 +265,7 @@ function Chip({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <span className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
       {label}:{' '}
-      <span className={cn('font-semibold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
+      <span className={cn('font-semibold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
       </span>
     </span>
@@ -275,7 +275,7 @@ function Chip({ label, value, accent }: { label: string; value: string; accent?:
 function Metric({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-2 text-center">
-      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
+      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
       </p>
       <p className="text-ds-micro leading-tight text-muted-foreground">{label}</p>

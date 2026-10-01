@@ -12,13 +12,13 @@ export function LiveOpsDashboard() {
         <div className="min-w-0 flex-1 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-card dark:bg-card">
           <div className="flex items-center gap-2 border-b border-border dark:border-white/[0.04] px-4 py-3">
             <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success dark:bg-success opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-success dark:bg-success" />
             </span>
             <h2 className="text-ds-micro font-bold uppercase tracking-widest text-muted-foreground dark:text-white/40">
               Live Pipeline
             </h2>
-            <span className="ml-auto text-ds-micro font-medium text-emerald-600/70 dark:text-emerald-400/60">Live</span>
+            <span className="ml-auto text-ds-micro font-medium text-success-ink/70">Live</span>
           </div>
           <LiveFunnelColumn />
         </div>

@@ -319,7 +319,7 @@ export function WatchPage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(160,195,255,0.18),transparent_58%)]" />
       <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-room-strong/15 blur-3xl" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+        <header className="rounded-4xl border border-white/10 bg-muted/40 px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-room-muted">Myle</p>
@@ -343,12 +343,12 @@ export function WatchPage() {
         <main className="flex flex-1 flex-col gap-5 py-5">
           {loading ? (
             <>
-              <Skeleton className="h-28 w-full rounded-[2rem] bg-muted/60" />
-              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-muted/60" />
+              <Skeleton className="h-28 w-full rounded-4xl bg-muted/60" />
+              <Skeleton className="h-[24rem] w-full rounded-4xl bg-muted/60" />
             </>
           ) : error ? (
             <section
-              className="rounded-[2rem] border border-room-danger-border bg-[linear-gradient(180deg,rgba(34,12,14,0.98),rgba(16,7,8,0.98))] px-6 py-8 text-center shadow-[0_32px_110px_-70px_rgba(0,0,0,0.9)]"
+              className="rounded-4xl border border-room-danger-border bg-[linear-gradient(180deg,rgba(34,12,14,0.98),rgba(16,7,8,0.98))] px-6 py-8 text-center shadow-[0_32px_110px_-70px_rgba(0,0,0,0.9)]"
               role="alert"
             >
               <p className="text-base font-semibold text-room-danger">{error}</p>
@@ -358,7 +358,7 @@ export function WatchPage() {
             </section>
           ) : data ? (
             <>
-              <section className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] px-5 py-6 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-8 sm:py-7">
+              <section className="rounded-4xl border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] px-5 py-6 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-8 sm:py-7">
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-2xl">
                     <p className="text-base font-medium text-room-muted">{heroGreeting}</p>
@@ -382,7 +382,7 @@ export function WatchPage() {
               </section>
 
               {!data.access_granted ? (
-                <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
+                <section className="mx-auto w-full max-w-xl rounded-4xl border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
                   <div className="flex items-start gap-3">
                     <div className="rounded-md bg-room-raised p-3 text-room-text">
                       <LockKeyhole className="size-5" />
@@ -436,14 +436,14 @@ export function WatchPage() {
                   </form>
                 </section>
               ) : (
-                <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
+                <section className="overflow-hidden rounded-4xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
                   <div className="bg-room-surface p-3 sm:p-4">
                     {videoSrc ? (
                       <>
                         <div className="relative">
                           <video
                             ref={videoRef}
-                            className="pointer-events-none aspect-video h-full w-full rounded-[1.4rem] bg-black object-contain select-none"
+                            className="pointer-events-none aspect-video h-full w-full rounded-3xl bg-black object-contain select-none"
                             src={videoSrc}
                             crossOrigin="use-credentials"
                             playsInline
@@ -498,11 +498,11 @@ export function WatchPage() {
                               void handleCompleteWatch()
                             }}
                           />
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-[1.4rem] bg-gradient-to-t from-room-base to-transparent" />
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-3xl bg-gradient-to-t from-room-base to-transparent" />
                           <VideoWatermarkOverlay label={watermarkLabel} obscured={obscured} />
                         </div>
 
-                        <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 text-white/90">
+                        <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.045] p-4 text-white/90">
                           <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
                           <p className="mt-1 text-ds-body text-room-muted">{playerStatusBody}</p>
 
@@ -515,7 +515,7 @@ export function WatchPage() {
                         </div>
                       </>
                     ) : (
-                      <div className="flex aspect-video items-center justify-center rounded-[1.4rem] bg-black text-sm text-white/70">
+                      <div className="flex aspect-video items-center justify-center rounded-3xl bg-black text-sm text-white/70">
                         Preparing your video…
                       </div>
                     )}

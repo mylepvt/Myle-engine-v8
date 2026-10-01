@@ -37,7 +37,7 @@ function inr2(cents: number): string {
 function Kpi({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-      <p className={cn('text-lg font-bold', accent ? 'text-emerald-600 dark:text-emerald-300' : 'text-foreground')}>{value}</p>
+      <p className={cn('text-lg font-bold', accent ? 'text-success-ink' : 'text-foreground')}>{value}</p>
       <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
   )
@@ -46,9 +46,9 @@ function Kpi({ value, label, accent }: { value: string; label: string; accent?: 
 /** Approx-cheque hero block (personal, 25% of net). */
 function ChequeHero({ cents, subtitle }: { cents: number; subtitle: string }) {
   return (
-    <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-4 py-3">
+    <div className="rounded-xl border border-success/25 bg-success/[0.06] px-4 py-3">
       <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Your cheque (approx)</p>
-      <p className="bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-300 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
+      <p className="bg-gradient-to-r from-success to-success dark:from-success/30 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
         {inr2(cents)}
       </p>
       <p className="text-ds-micro text-muted-foreground">{subtitle}</p>
@@ -84,18 +84,18 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
               <span className="w-20 shrink-0 truncate text-xs text-foreground">{name}</span>
               <span className="relative h-3.5 flex-1 overflow-hidden rounded border border-border/60 bg-background/60">
                 <span
-                  className="absolute inset-y-0 left-0 rounded bg-gradient-to-r from-emerald-500 to-emerald-400"
+                  className="absolute inset-y-0 left-0 rounded bg-gradient-to-r from-success to-success"
                   style={{ width: `${pct}%` }}
                 />
               </span>
-              <span className="w-16 shrink-0 text-right text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="w-16 shrink-0 text-right text-xs font-semibold text-success-ink">
                 {inr(r.commission_cents)}
               </span>
             </button>
             {open ? (
               <div className="ml-0 sm:ml-[5.5rem] mb-1 grid grid-cols-3 gap-2 rounded-md border border-border/50 bg-background/50 px-3 py-2 text-xs">
                 <div>
-                  <p className="font-semibold text-emerald-700 dark:text-emerald-300">{cc.toFixed(3)}</p>
+                  <p className="font-semibold text-success-ink">{cc.toFixed(3)}</p>
                   <p className="text-ds-micro text-muted-foreground">CC</p>
                 </div>
                 <div>
@@ -151,7 +151,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
               <span className="text-ds-micro uppercase tracking-wide text-muted-foreground">
                 {data.scope === 'all' ? 'All-teams cheque total' : 'Team cheque total'}
               </span>
-              <span className="text-base font-bold text-emerald-700 dark:text-emerald-300">{inr(teamChequeCents)}</span>
+              <span className="text-base font-bold text-success-ink">{inr(teamChequeCents)}</span>
             </div>
           ) : null}
 
@@ -164,9 +164,9 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
           {data.pending_count > 0 ? (
             <Link
               to="/dashboard/team/sales-approvals"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 underline underline-offset-2"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-warning-ink underline underline-offset-2"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+              <span className="h-1.5 w-1.5 rounded-full bg-warning/30" />
               {data.pending_count} pending approval{data.pending_count === 1 ? '' : 's'}
             </Link>
           ) : null}

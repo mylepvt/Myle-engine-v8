@@ -34,10 +34,10 @@ export type XpLeaderboardEntry = {
 
 export const LEVEL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   rookie:  { bg: 'bg-zinc-500/20',   text: 'text-zinc-400',   border: 'border-zinc-500/30' },
-  agent:   { bg: 'bg-blue-500/20',   text: 'text-blue-400',   border: 'border-blue-500/30' },
+  agent:   { bg: 'bg-info/20',   text: 'text-info-ink',   border: 'border-info/30' },
   pro:     { bg: 'bg-violet-500/20', text: 'text-violet-400', border: 'border-violet-500/30' },
-  elite:   { bg: 'bg-amber-500/20',  text: 'text-amber-400',  border: 'border-amber-500/30' },
-  legend:  { bg: 'bg-rose-500/20',   text: 'text-rose-400',   border: 'border-rose-500/30' },
+  elite:   { bg: 'bg-warning/20',  text: 'text-warning-ink',  border: 'border-warning/30' },
+  legend:  { bg: 'bg-destructive/20',   text: 'text-destructive-ink',   border: 'border-destructive/30' },
 }
 
 export function useXpMeQuery() {

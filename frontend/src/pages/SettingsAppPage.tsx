@@ -198,7 +198,7 @@ export function SettingsAppPage({ title }: Props) {
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><span className="size-2 rounded-full bg-red-500" aria-hidden />Daily Live Session (2 PM)</h2>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><span className="size-2 rounded-full bg-destructive" aria-hidden />Daily Live Session (2 PM)</h2>
           <p className="text-xs text-muted-foreground">
             Roz ka naya Zoom link yahan paste karo. Ye turant sabhi members ke Home aur Live Session screen par dikhega.
           </p>
@@ -237,7 +237,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Update live session'}
           </button>
-          {liveSessionSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{liveSessionSaveMsg}</p> : null}
+          {liveSessionSaveMsg ? <p className="text-xs text-success-ink">{liveSessionSaveMsg}</p> : null}
           {liveSessionErrorMsg ? <p className="text-xs text-destructive">{liveSessionErrorMsg}</p> : null}
         </div>
       </section>
@@ -283,7 +283,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save content links'}
           </button>
-          {contentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{contentSaveMsg}</p> : null}
+          {contentSaveMsg ? <p className="text-xs text-success-ink">{contentSaveMsg}</p> : null}
           {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
         </div>
       </section>
@@ -347,7 +347,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save batch video links'}
           </button>
-          {batchSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{batchSaveMsg}</p> : null}
+          {batchSaveMsg ? <p className="text-xs text-success-ink">{batchSaveMsg}</p> : null}
           {batchErrorMsg ? <p className="text-xs text-destructive">{batchErrorMsg}</p> : null}
         </div>
       </section>
@@ -391,7 +391,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video'}
           </button>
-          {secureEnrollSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{secureEnrollSaveMsg}</p> : null}
+          {secureEnrollSaveMsg ? <p className="text-xs text-success-ink">{secureEnrollSaveMsg}</p> : null}
           {secureEnrollErrorMsg ? <p className="text-xs text-destructive">{secureEnrollErrorMsg}</p> : null}
         </div>
       </section>
@@ -490,12 +490,12 @@ function XpRecalcSection() {
           type="button"
           disabled={state === 'loading'}
           onClick={() => setShowConfirm(true)}
-          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+          className="rounded-md border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning-ink hover:bg-warning/20 disabled:opacity-50"
         >
           {state === 'loading' ? 'Processing…' : 'Reset Pre-June XP'}
         </button>
         {result && (
-          <span className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+          <span className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-success-ink'}`}>
             {result}
           </span>
         )}

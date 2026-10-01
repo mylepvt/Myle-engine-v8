@@ -11,12 +11,12 @@ type ActionColors = { bg: string; border: string; pill: string; pillText: string
 
 const ACTION_COLORS: Record<string, ActionColors> = {
   'commit_boundary': {
-    bg: 'bg-blue-400/20', border: 'border-l-blue-400',
-    pill: 'bg-blue-400/30', pillText: 'text-blue-700 dark:text-blue-200', tag: 'bg-blue-400/25 text-blue-700 dark:text-blue-200',
+    bg: 'bg-info/20', border: 'border-l-info',
+    pill: 'bg-info/30', pillText: 'text-info-ink', tag: 'bg-info/25 text-info-ink',
   },
   'lead:created': {
-    bg: 'bg-emerald-400/20', border: 'border-l-emerald-400',
-    pill: 'bg-emerald-400/30', pillText: 'text-emerald-700 dark:text-emerald-200', tag: 'bg-emerald-400/25 text-emerald-700 dark:text-emerald-200',
+    bg: 'bg-success/20', border: 'border-l-success',
+    pill: 'bg-success/30', pillText: 'text-success-ink', tag: 'bg-success/25 text-success-ink',
   },
   'lead:transitioned': {
     bg: 'bg-fuchsia-400/20', border: 'border-l-fuchsia-400',
@@ -47,8 +47,8 @@ const ACTION_COLORS: Record<string, ActionColors> = {
     pill: 'bg-indigo-400/30', pillText: 'text-indigo-700 dark:text-indigo-200', tag: 'bg-indigo-400/25 text-indigo-700 dark:text-indigo-200',
   },
   'lead:claim_duplicate': {
-    bg: 'bg-rose-400/20', border: 'border-l-rose-400',
-    pill: 'bg-rose-400/30', pillText: 'text-rose-700 dark:text-rose-200', tag: 'bg-rose-400/25 text-rose-700 dark:text-rose-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'lead:shadow_created': {
     bg: 'bg-sky-400/20', border: 'border-l-sky-400',
@@ -67,28 +67,28 @@ const ACTION_COLORS: Record<string, ActionColors> = {
     pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
   },
   'lead:shadow_deleted': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-700 dark:text-red-200', tag: 'bg-red-400/25 text-red-700 dark:text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'LEAD_DELETE': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-700 dark:text-red-200', tag: 'bg-red-400/25 text-red-700 dark:text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'wallet:credited': {
-    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
-    pill: 'bg-yellow-400/30', pillText: 'text-yellow-700 dark:text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-700 dark:text-yellow-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'wallet:credited_worker': {
-    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
-    pill: 'bg-yellow-400/30', pillText: 'text-yellow-700 dark:text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-700 dark:text-yellow-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'wallet.adjustment': {
-    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
-    pill: 'bg-yellow-400/30', pillText: 'text-yellow-700 dark:text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-700 dark:text-yellow-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'wallet.recharge_review': {
-    bg: 'bg-amber-400/20', border: 'border-l-amber-400',
-    pill: 'bg-amber-400/30', pillText: 'text-amber-700 dark:text-amber-200', tag: 'bg-amber-400/25 text-amber-700 dark:text-amber-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'enrollment.link_generated': {
     bg: 'bg-teal-400/20', border: 'border-l-teal-400',
@@ -103,12 +103,12 @@ const ACTION_COLORS: Record<string, ActionColors> = {
     pill: 'bg-pink-400/30', pillText: 'text-pink-700 dark:text-pink-200', tag: 'bg-pink-400/25 text-pink-700 dark:text-pink-200',
   },
   'fsm:validation_failed': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-700 dark:text-red-200', tag: 'bg-red-400/25 text-red-700 dark:text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'scheduler.failure': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-700 dark:text-red-200', tag: 'bg-red-400/25 text-red-700 dark:text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'system:scheduler_tick': {
     bg: 'bg-slate-400/15', border: 'border-l-slate-400',
@@ -125,8 +125,8 @@ const ACTION_COLORS: Record<string, ActionColors> = {
 }
 
 const DEFAULT_COLORS: ActionColors = {
-  bg: 'bg-blue-400/15', border: 'border-l-blue-400',
-  pill: 'bg-blue-400/25', pillText: 'text-blue-700 dark:text-blue-200', tag: 'bg-blue-400/20 text-blue-700 dark:text-blue-200',
+  bg: 'bg-info/15', border: 'border-l-info',
+  pill: 'bg-info/25', pillText: 'text-info-ink', tag: 'bg-info/20 text-info-ink',
 }
 
 function getActionColors(action: string): ActionColors {
@@ -267,7 +267,7 @@ export function AdminActivityPanel() {
           <Activity className="h-4 w-4" />
           <CardTitle className="text-sm">Live Activity</CardTitle>
           {unreadCount > 0 && (
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-ds-micro font-bold text-white">
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-warning px-1.5 text-ds-micro font-bold text-white">
               {unreadCount}
             </span>
           )}

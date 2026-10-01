@@ -355,7 +355,7 @@ export function LeadPoolWorkPage({ title }: Props) {
       {canClaimPool && walletData !== undefined ? (
         <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5 text-sm">
           <span className="text-muted-foreground">Wallet balance:</span>
-          <span className={`font-semibold ${walletBalance > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
+          <span className={`font-semibold ${walletBalance > 0 ? 'text-success-ink' : 'text-destructive'}`}>
             {formatRupees(walletBalance)}
           </span>
           <Link to="/dashboard/finance/wallet" className="text-xs text-primary underline-offset-2 hover:underline">
@@ -411,7 +411,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                 Leaders and team members can only claim in bulk from this screen.
               </p>
               {batchConfirmOpen ? (
-                <div className="mt-3 space-y-2 rounded-md border border-amber-400/30 bg-amber-400/5 p-2">
+                <div className="mt-3 space-y-2 rounded-md border border-warning/30 bg-warning/5 p-2">
                   <p className="text-foreground">
                     Claim up to <strong className="tabular-nums">{batchCountParsed}</strong> lead(s)? Exact
                     debit for the current FIFO slice:{' '}
@@ -542,8 +542,8 @@ export function LeadPoolWorkPage({ title }: Props) {
                       {/* Price badge */}
                       <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                         isFree
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                          ? 'bg-success/15 text-success-ink'
+                          : 'bg-warning/15 text-warning-ink'
                       }`}>
                         {isFree ? 'Free' : formatRupees(price)}
                       </span>
@@ -585,7 +585,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     {/* Claim flow */}
                     {canClaimPool ? (
                       isConfirming ? (
-                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2">
                           <p className="flex-1 text-xs text-foreground">
                             {isFree
                               ? 'Claim this lead for free?'

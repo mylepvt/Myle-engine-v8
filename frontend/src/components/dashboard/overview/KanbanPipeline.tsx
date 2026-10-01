@@ -58,10 +58,10 @@ const STAGE_ROUTES: Record<string, string> = {
 function Trend({ current, previous }: { current: number; previous?: number }) {
   if (previous == null) return null
   if (current > previous) {
-    return <TrendingUp className="size-3 text-emerald-500" aria-label="up" />
+    return <TrendingUp className="size-3 text-success-ink" aria-label="up" />
   }
   if (current < previous) {
-    return <TrendingDown className="size-3 text-red-500" aria-label="down" />
+    return <TrendingDown className="size-3 text-destructive-ink" aria-label="down" />
   }
   return null
 }
@@ -179,8 +179,8 @@ export function KanbanPipeline() {
           <div className="flex items-center gap-2">
             <Layers className="size-4 text-primary" aria-hidden />
             <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-success" />
             </span>
             <h2 className="font-heading text-ds-h3 font-semibold text-foreground">Pipeline Board</h2>
           </div>

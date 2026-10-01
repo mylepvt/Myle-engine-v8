@@ -115,7 +115,7 @@ export function LiveFunnelColumn() {
 
             <span
               className={`w-7 shrink-0 text-right text-ds-micro font-semibold tabular-nums sm:w-8 ${
-                isUp ? 'text-emerald-600 dark:text-emerald-400' : movement < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground dark:text-white/15'
+                isUp ? 'text-success-ink' : movement < 0 ? 'text-destructive-ink' : 'text-muted-foreground dark:text-white/15'
               }`}
             >
               {movement !== 0 ? `${isUp ? '↑' : '↓'}${Math.abs(movement)}` : '–'}

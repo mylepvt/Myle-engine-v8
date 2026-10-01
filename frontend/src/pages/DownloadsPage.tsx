@@ -156,7 +156,7 @@ export function DownloadsPage({ title }: Props) {
               if (!url) return null
               return (
                 <li key={key} className="flex items-center gap-3">
-                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-amber-500/15 text-ds-micro font-bold tracking-wide text-amber-400">
+                  <span className="flex h-7 w-14 shrink-0 items-center justify-center rounded bg-warning/15 text-ds-micro font-bold tracking-wide text-warning-ink">
                     Link
                   </span>
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>

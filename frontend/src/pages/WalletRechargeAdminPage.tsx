@@ -36,8 +36,8 @@ function formatReviewerLabel(item: WalletRecharge): string {
 
 function RechargeStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
-    pending: 'bg-amber-400/15 text-amber-400',
-    approved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    pending: 'bg-warning/15 text-warning-ink',
+    approved: 'bg-success/15 text-success-ink',
     rejected: 'bg-destructive/15 text-destructive',
   }
   const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'

@@ -52,9 +52,9 @@ export function SheetView({ sheet }: { sheet: SheetPublic }) {
       {/* Top totals — same chips the member sees above the form */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Chip label="Target CCs" value={sheet.target_ccs != null ? String(sheet.target_ccs) : '—'} />
-        <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2">
+        <span className="rounded-lg border border-success/25 bg-success/[0.06] px-3 py-2">
           Current CCs:{' '}
-          <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+          <span className="font-bold tabular-nums text-success-ink">
             {closedTotal.toFixed(3)}
           </span>
         </span>
@@ -106,7 +106,7 @@ export function SheetView({ sheet }: { sheet: SheetPublic }) {
                     <Val>{r.name}</Val>
                     <Val className="tabular-nums">{r.fresh_lead}</Val>
                     <Val className="tabular-nums">{r.old_lead}</Val>
-                    <span className="text-center text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    <span className="text-center text-sm font-semibold tabular-nums text-success-ink">
                       {(r.fresh_lead || 0) + (r.old_lead || 0)}
                     </span>
                   </div>
@@ -235,7 +235,7 @@ function Val({ children, className }: { children: React.ReactNode; className?: s
 
 function CheckMark({ on }: { on: boolean }) {
   return (
-    <span className={cn('text-center text-sm', on ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
+    <span className={cn('text-center text-sm', on ? 'text-success-ink' : 'text-muted-foreground')}>
       {on ? '✓' : '—'}
     </span>
   )
@@ -271,9 +271,9 @@ function Empty() {
 }
 
 const MATCH_STYLE: Record<string, { dot: string; text: string; label: string }> = {
-  match: { dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', label: 'Matches system' },
-  partial: { dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', label: 'Partly backed' },
-  mismatch: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400', label: "Doesn't match — flagged" },
+  match: { dot: 'bg-success', text: 'text-success-ink', label: 'Matches system' },
+  partial: { dot: 'bg-warning', text: 'text-warning-ink', label: 'Partly backed' },
+  mismatch: { dot: 'bg-destructive', text: 'text-destructive-ink', label: "Doesn't match — flagged" },
   none: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground', label: 'Nothing claimed' },
 }
 
@@ -314,7 +314,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
         </div>
       ) : null}
       {match.flagged ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/[0.06] px-3 py-2 text-xs text-red-600 dark:text-red-400">
+        <p className="rounded-lg border border-destructive/30 bg-destructive/[0.06] px-3 py-2 text-xs text-destructive-ink">
           Flagged: member wrote more than the system shows.
         </p>
       ) : null}
@@ -325,7 +325,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
+      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
       </p>
       <p className="text-ds-micro text-muted-foreground">{label}</p>

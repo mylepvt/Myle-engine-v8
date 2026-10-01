@@ -12,8 +12,8 @@ export function WatchLiveGauge() {
       <div className="flex items-center justify-between px-1 pb-1">
         <span className="inline-flex items-center gap-1.5 text-ds-label uppercase text-[color-mix(in_srgb,var(--foreground)_55%,transparent)]">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/80 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/80 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
           </span>
           Live
         </span>

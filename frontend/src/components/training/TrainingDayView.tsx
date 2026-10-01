@@ -169,7 +169,7 @@ export function TrainingDayView({
                 />
               </div>
               {!timerDone ? (
-                <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.08] px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-3 rounded-lg border border-warning/20 bg-warning/[0.08] px-3 py-2 text-xs text-warning-ink">
                   Stay on this video for at least 30 seconds to continue.
                 </p>
               ) : (
@@ -206,7 +206,7 @@ export function TrainingDayView({
                 </p>
               </>
             ) : resolvedAudioUrl ? (
-              <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.08] px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
+              <div className="rounded-lg border border-warning/20 bg-warning/[0.08] px-3 py-2 text-sm text-warning-ink">
                 Audio link exists, but this file is not loading right now. Training can continue while admin replaces the audio file.
               </div>
             ) : (
@@ -223,13 +223,13 @@ export function TrainingDayView({
               Upload one clear photo of your notes for this day.
             </p>
             {localHasNotes ? (
-              <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.08] px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              <div className="rounded-lg border border-success/20 bg-success/[0.08] px-3 py-2 text-sm text-success-ink">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-4" />
                   <span>Notes received</span>
                 </div>
                 {!completed ? (
-                  <p className="mt-2 text-xs text-emerald-700/90 dark:text-emerald-200/90">
+                  <p className="mt-2 text-xs text-success-ink/90">
                     Next step: click <strong>Mark day as done</strong> below to unlock the next day when it becomes available.
                   </p>
                 ) : null}
@@ -258,9 +258,9 @@ export function TrainingDayView({
           </div>
 
           {completed ? (
-            <div className="rounded border border-emerald-400/20 bg-emerald-400/[0.08] p-3">
+            <div className="rounded border border-success/20 bg-success/[0.08] p-3">
               <div className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 size-4 text-emerald-700 dark:text-emerald-300" />
+                <CheckCircle2 className="mt-0.5 size-4 text-success-ink" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Day complete</p>
                   <p className="mt-1 text-xs text-muted-foreground">

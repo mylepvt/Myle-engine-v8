@@ -117,7 +117,7 @@ function Metric({ name, current, pct }: { name: string; current: string; pct: nu
           <span
             className={cn(
               'text-ds-micro font-semibold tabular-nums',
-              up ? 'text-emerald-600 dark:text-emerald-400' : down ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
+              up ? 'text-success-ink' : down ? 'text-destructive-ink' : 'text-muted-foreground',
             )}
           >
             {up ? '▲' : down ? '▼' : '='} {Math.abs(pct)}%
