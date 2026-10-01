@@ -1,6 +1,7 @@
-import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, type FormEvent, type UIEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { AlertTriangle, WifiOff, X } from 'lucide-react'
+import { AlertTriangle, RefreshCw, WifiOff, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useShallow } from 'zustand/react/shallow'
 
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
@@ -13,6 +14,8 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
 import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useOnline } from '@/hooks/use-online'
+import { useAppUpdate } from '@/hooks/use-app-update'
+import { PULL_TRIGGER_PX, usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
 import { InstallAppGate } from '@/components/pwa/InstallAppGate'
@@ -37,6 +40,19 @@ export function DashboardLayout() {
   useSyncRoleFromMe()
   useRealtimeInvalidation(true)
   const isOnline = useOnline()
+  const queryClient = useQueryClient()
+  const [mainEl, setMainEl] = useState<HTMLElement | null>(null)
+  const appUpdate = useAppUpdate()
+  const checkAppUpdate = appUpdate.check
+  const handlePullRefresh = useCallback(async () => {
+    // A newer deploy wins over a data refetch: reload into the new build.
+    if (await checkAppUpdate()) {
+      window.location.reload()
+      return
+    }
+    await queryClient.refetchQueries({ type: 'active' })
+  }, [checkAppUpdate, queryClient])
+  const pullToRefresh = usePullToRefresh(mainEl, handlePullRefresh)
   const location = useLocation()
   const { data: me } = useAuthMeQuery()
   const { role: shellRole } = useDashboardShellRole()
@@ -382,6 +398,26 @@ export function DashboardLayout() {
           </div>
         ) : null}
 
+        {appUpdate.updateAvailable ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex shrink-0 items-center gap-2.5 border-b border-primary/30 bg-primary/10 px-3 py-2"
+          >
+            <RefreshCw className="size-3.5 shrink-0 text-primary" aria-hidden />
+            <p className="min-w-0 flex-1 text-xs text-foreground">
+              <span className="font-semibold">New version of Myle is ready.</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground"
+            >
+              Update
+            </button>
+          </div>
+        ) : null}
+
         {!isOnline ? (
           <div
             role="status"
@@ -400,6 +436,7 @@ export function DashboardLayout() {
         </div>
 
         <main
+          ref={setMainEl}
           data-tour="dashboard"
           className={cn(
             'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
@@ -407,6 +444,29 @@ export function DashboardLayout() {
           )}
           onScroll={handleMainScroll}
         >
+          {pullToRefresh.pull > 0 ? (
+            <div
+              aria-hidden={!pullToRefresh.refreshing}
+              role={pullToRefresh.refreshing ? 'status' : undefined}
+              aria-label={pullToRefresh.refreshing ? 'Refreshing' : undefined}
+              className={cn(
+                'flex items-end justify-center overflow-hidden',
+                !pullToRefresh.refreshing && pullToRefresh.pull === 0 && 'transition-[height]',
+              )}
+              style={{ height: pullToRefresh.pull }}
+            >
+              <span className="mb-2 flex size-8 items-center justify-center rounded-full border border-border bg-card shadow-sm">
+                <RefreshCw
+                  className={cn('size-4 text-primary', pullToRefresh.refreshing && 'animate-spin')}
+                  style={
+                    pullToRefresh.refreshing
+                      ? undefined
+                      : { transform: `rotate(${Math.round((pullToRefresh.pull / PULL_TRIGGER_PX) * 270)}deg)` }
+                  }
+                />
+              </span>
+            </div>
+          ) : null}
           <DashboardOutletErrorBoundary>
             <Outlet />
           </DashboardOutletErrorBoundary>
