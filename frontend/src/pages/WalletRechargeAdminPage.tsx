@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+import { useGoBack } from '@/hooks/use-go-back'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -212,7 +213,7 @@ function RechargeRow({
 }
 
 export function WalletRechargeAdminPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const requestsQuery = useWalletRechargeRequestsQuery()
   const reviewMut = useReviewRechargeRequestMutation()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
@@ -224,7 +225,7 @@ export function WalletRechargeAdminPage({ title }: Props) {
   return (
     <div className="max-w-3xl space-y-4 md:space-y-6">
       {title ? (
-        <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={goBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           ← Back
         </button>
       ) : null}

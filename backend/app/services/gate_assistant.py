@@ -260,7 +260,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
                     f"(W:{team_warning_count} / S:{team_strong_warning_count} / F:{team_final_warning_count} / R:{team_removed_count})"
                 ),
                 done=(team_warning_count + team_strong_warning_count + team_final_warning_count + team_removed_count) == 0,
-                href="settings/all-members",
+                href="team/members",
             ),
             GateChecklistItem(
                 id="followups_overdue",
@@ -274,7 +274,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
             next_action = (
                 f"Org discipline alerts: {team_removed_count} removed and {team_final_warning_count} final warning member(s)"
             )
-            next_href = "settings/all-members"
+            next_href = "team/members"
             next_label = "Open control center"
         elif pending_proof_count > 0:
             risk = "red"
@@ -284,7 +284,7 @@ async def build_gate_assistant(session: AsyncSession, user: AuthUser) -> GateAss
         elif team_strong_warning_count > 0 or team_warning_count > 0:
             risk = "yellow"
             next_action = f"{team_warning_count + team_strong_warning_count} member(s) are under discipline watch"
-            next_href = "settings/all-members"
+            next_href = "team/members"
             next_label = "Open control center"
         elif overdue_follow_ups > 0:
             risk = "yellow"

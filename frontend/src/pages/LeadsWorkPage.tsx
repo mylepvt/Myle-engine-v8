@@ -1,6 +1,7 @@
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useGoBack } from '@/hooks/use-go-back'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
 import { NativeSelect } from '@/components/ui/native-select'
@@ -26,6 +27,7 @@ import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
+import { useBackClose } from '@/hooks/use-back-close'
 
 type Props = {
   title: string
@@ -64,7 +66,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const [searchParams] = useSearchParams()
   const qParam = searchParams.get('q') ?? ''
   const stageParam = searchParams.get('stage') ?? ''
@@ -84,6 +86,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  useBackClose({ open: quickAddOpen, onClose: () => setQuickAddOpen(false) })
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
@@ -369,7 +372,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
         <div className="border-b border-border/30 bg-card/30 px-4 py-1.5">
-          <button type="button" onClick={() => navigate(-1)} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
+          <button type="button" onClick={goBack} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
         </div>
         <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
           <div className="flex flex-wrap items-center gap-2">

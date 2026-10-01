@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+import { useGoBack } from '@/hooks/use-go-back'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,7 +32,7 @@ function stageLabel(stage: LeadSale['billing_stage']): string {
 }
 
 export function SalesApprovalsPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const { data: me } = useAuthMeQuery()
   const { data, isPending, isError, error, refetch } = usePendingSalesQuery()
   const approve = useApproveSaleMutation()
@@ -79,7 +80,7 @@ export function SalesApprovalsPage({ title }: Props) {
       <div className="space-y-1">
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           className="text-sm text-primary underline-offset-2 hover:underline"
         >
           ← Back

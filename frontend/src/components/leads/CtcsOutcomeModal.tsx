@@ -4,6 +4,7 @@ import { MessageCircle, Phone } from 'lucide-react'
 import type { CtcsAction } from '@/hooks/use-leads-query'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
+import { useBackClose } from '@/hooks/use-back-close'
 
 // Left column — lead INTEREST decision (drives the pipeline).
 const INTEREST_OPTIONS: { action: CtcsAction; label: string }[] = [
@@ -44,6 +45,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
   const [step, setStep] = useState<'outcomes' | 'call_later_time'>('outcomes')
   const [localFollowup, setLocalFollowup] = useState(defaultCallLaterLocalInput)
   const innerRef = useRef<HTMLDivElement>(null)
+  useBackClose({ open, onClose })
 
   useEffect(() => {
     if (!open) return
