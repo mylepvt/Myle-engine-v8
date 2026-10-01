@@ -320,8 +320,16 @@ class LeadsService:
         self._notifier = notifier
         self._session = session
 
-    async def _get_lead_or_404(self, lead_id: int) -> Lead:
-        lead = await self._repository.get_lead(lead_id)
+    async def _get_lead_or_404(self, lead_id: int, *, for_update: bool = False) -> Lead:
+        # for_update: row-lock so concurrent writes to one lead (e.g. rapid taps on
+        # the calling board) run one after another. Without it both requests read
+        # the same crm_shadow_version and the second outbox insert hit the
+        # unique idempotency key -> 500.
+        lead = await (
+            self._repository.get_lead_for_update(lead_id)
+            if for_update
+            else self._repository.get_lead(lead_id)
+        )
         if lead is None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         return lead
@@ -898,7 +906,7 @@ class LeadsService:
         screenshot: bytes,
     ) -> Lead:
         """Member uploads the enrollment screenshot (₹149–200) → lead goes to the leader's Day 1."""
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
         if lead.deleted_at is not None or lead.archived_at is not None:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Restore the lead first")
         if not await self._repository.can_mutate_lead(user, lead):
@@ -938,7 +946,7 @@ class LeadsService:
         """Leader/admin rejects the enrollment proof: lead returns to the member, proof cleared."""
         if user.role not in ("leader", "admin"):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
         if not await self._repository.can_mutate_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         if lead.status != "day1":
@@ -984,7 +992,7 @@ class LeadsService:
         return lead
 
     async def update_lead(self, *, lead_id: int, body: LeadUpdate, user: AuthUser) -> Lead:
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
         if lead.deleted_at is not None and body.restored is not True:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -1290,7 +1298,7 @@ class LeadsService:
         return LeadDetailPublic.model_validate(lead_public.model_dump())
 
     async def log_call(self, *, lead_id: int, body: CallEventCreate, user: AuthUser) -> CallEventPublic:
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_mutate_lead(user, lead) and lead.assigned_to_user_id != user.user_id:
