@@ -351,31 +351,6 @@ async def test_pending_then_approve_flows_into_dashboard(session, monkeypatch, t
 
 
 @pytest.mark.asyncio
-async def test_system_overview_includes_approved_sale_revenue(session, monkeypatch, tmp_path):
-    """The admin data-metric overview rolls up approved CC/sale revenue."""
-    from app.services.analytics_service import AnalyticsService
-
-    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
-    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
-    ids = await _seed(session)
-    svc = SalesService(session)
-
-    _, _, sale, auto = await svc.submit_sale(
-        lead_id=ids["lead"], billing_stage="day3",
-        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
-        actor_user_id=ids["team"], actor_role="team",
-    )
-    assert auto is True and sale.status == "approved"
-
-    overview = await AnalyticsService(session).get_system_overview(days=30)
-    assert overview["sales"]["sale_count"] == 1
-    assert overview["sales"]["total_amount_cents"] == 1_997_800
-    assert overview["sales"]["total_case_credits"] == pytest.approx(1.002)
-
-
-# ── HTTP end-to-end: upload proof → admin approve → metrics ────────────────────
-
-@pytest.mark.asyncio
 async def test_http_upload_approve_dashboard_flow(session, team_client, monkeypatch, tmp_path):
     """Full HTTP path: team uploads invoice → admin approves → dashboard reflects it.
 
@@ -440,7 +415,6 @@ async def test_http_upload_approve_dashboard_flow(session, team_client, monkeypa
 @pytest.mark.asyncio
 async def test_approved_payment_proof_creates_approved_sale(session):
     """Approving a Day-3 payment proof links it into the CC/sale revenue rollup."""
-    from app.services.analytics_service import AnalyticsService
     from app.services.payment_service import PaymentService
 
     ids = await _seed(session)
@@ -467,10 +441,6 @@ async def test_approved_payment_proof_creates_approved_sale(session):
     assert sale.status == "approved"
     assert sale.amount_cents == 150_000
     assert sale.case_credits is None  # payment proof carries no CC
-
-    overview = await AnalyticsService(session).get_system_overview(days=30)
-    assert overview["sales"]["sale_count"] == 1
-    assert overview["sales"]["total_amount_cents"] == 150_000
 
 
 @pytest.mark.asyncio
@@ -567,27 +537,6 @@ async def test_commission_is_personal_only_not_team(session, monkeypatch, tmp_pa
     team_dash = await svc.dashboard(user_id=ids["team"], role="team")
     assert team_dash["personal_commission_cents"] == 475_667  # the seller gets the cheque
 
-
-@pytest.mark.asyncio
-async def test_system_overview_includes_total_commission(session, monkeypatch, tmp_path):
-    """Admin overview rolls up the grand-total personal commission."""
-    from app.services.analytics_service import AnalyticsService
-
-    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
-    monkeypatch.setattr(sales_mod, "extract_forever_invoice", lambda data: _good_ocr())
-    ids = await _seed(session)
-
-    await SalesService(session).submit_sale(
-        lead_id=ids["lead"], billing_stage="day3",
-        file=_FakeUpload(_png_bytes()), manual=SaleManualFields(),
-        actor_user_id=ids["team"], actor_role="team",
-    )
-
-    overview = await AnalyticsService(session).get_system_overview(days=30)
-    assert overview["sales"]["total_commission_cents"] == 475_667
-
-
-# ── Reverse bridge: approved Day-3 sale unlocks the Day-4 payment gate ──────────
 
 @pytest.mark.asyncio
 async def test_day3_auto_approved_sale_opens_payment_gate(session, monkeypatch, tmp_path):

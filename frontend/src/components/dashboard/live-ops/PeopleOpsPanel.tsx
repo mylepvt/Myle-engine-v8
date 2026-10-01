@@ -238,7 +238,7 @@ export function PeopleOpsPanel() {
       <div className="border-b border-border dark:border-white/[0.06] px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-ds-micro font-semibold text-muted-foreground/70">Top Leaders (Today)</p>
-          <Link to="/dashboard/settings/all-members" className="text-ds-micro font-medium text-primary/70 hover:text-primary">
+          <Link to="/dashboard/team/members" className="text-ds-micro font-medium text-primary/70 hover:text-primary">
             View all
           </Link>
         </div>
@@ -257,7 +257,7 @@ export function PeopleOpsPanel() {
       <div className="border-b border-border dark:border-white/[0.06]">
         <div className="flex items-center justify-between px-4 py-3">
           <p className="text-ds-micro font-semibold text-muted-foreground/70">Teams Live Overview</p>
-          <Link to="/dashboard/settings/all-members" className="text-ds-micro font-medium text-primary/70 hover:text-primary">
+          <Link to="/dashboard/team/members" className="text-ds-micro font-medium text-primary/70 hover:text-primary">
             View all
           </Link>
         </div>

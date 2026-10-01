@@ -12,7 +12,8 @@ import {
 import { playAppSound } from '@/lib/app-sounds'
 
 type Props = {
-  title: string
+  /** Omitted = embedded in Wallet admin (no back link or heading). */
+  title?: string
 }
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
@@ -222,11 +223,13 @@ export function WalletRechargeAdminPage({ title }: Props) {
 
   return (
     <div className="max-w-3xl space-y-4 md:space-y-6">
-      <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        ← Back
-      </button>
+      {title ? (
+        <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          ← Back
+        </button>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-ds-h2">{title}</h1>
+        {title ? <h1 className="text-ds-h2">{title}</h1> : <span />}
         <Button
           type="button"
           variant="secondary"

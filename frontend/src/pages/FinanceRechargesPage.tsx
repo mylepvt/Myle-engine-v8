@@ -10,7 +10,8 @@ import { useTeamMembersQuery, type TeamMemberPublic } from '@/hooks/use-team-que
 import { directorySearchValues, filterCollectionByQuery } from '@/lib/search-filter'
 import { useWalletAdjustmentMutation } from '@/hooks/use-wallet-query'
 
-type Props = { title: string }
+/** `title` omitted = embedded in Wallet admin (the tab supplies the heading). */
+type Props = { title?: string }
 
 function memberSelectLabel(m: TeamMemberPublic): string {
   const display = (m.name && m.name.trim()) || m.username || m.email
@@ -74,7 +75,7 @@ export function FinanceRechargesPage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4 md:space-y-6">
-      <h1 className="text-ds-h2">{title}</h1>
+      {title ? <h1 className="text-ds-h2">{title}</h1> : null}
 
       {stub.isPending ? <Skeleton className="h-12 w-full" /> : null}
       {stub.data?.note ? (

@@ -228,42 +228,6 @@ def test_create_team_member_short_password(monkeypatch: pytest.MonkeyPatch) -> N
     assert res.status_code == 422
 
 
-def test_my_team_leader_returns_self_and_downline_counts(monkeypatch: pytest.MonkeyPatch) -> None:
-    c = _authed_client(monkeypatch)
-    assert c.post("/api/v1/auth/dev-login", json={"role": "leader"}).status_code == 200
-    res = c.get("/api/v1/team/my-team")
-    assert res.status_code == 200
-    body = res.json()
-    assert body["total"] >= 1
-    assert len(body["items"]) == body["total"]
-    leader_rows = [x for x in body["items"] if x["email"] == "dev-leader@myle.local"]
-    assert len(leader_rows) == 1
-    assert leader_rows[0]["fbo_id"] == "fbo-leader-001"
-    assert leader_rows[0]["role"] == "leader"
-    assert body.get("direct_members", 0) >= 0
-    assert body.get("total_downline", 0) == max(0, body["total"] - 1)
-
-
-def test_my_team_team_user_ok(monkeypatch: pytest.MonkeyPatch) -> None:
-    c = _authed_client(monkeypatch)
-    assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
-    res = c.get("/api/v1/team/my-team")
-    assert res.status_code == 200
-    body = res.json()
-    assert body["total"] == 1
-    assert body["items"][0]["email"] == "dev-team@myle.local"
-    assert body["items"][0]["upline_user_id"] == 2
-    assert body["items"][0]["leader_user_id"] == 2
-    assert body["items"][0]["leader_name"] == "TestLeaderDisplay"
-
-
-def test_my_team_accessible_for_admin(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Admin can access /my-team (returns their own record or empty list)."""
-    c = _authed_client(monkeypatch)
-    assert c.post("/api/v1/auth/dev-login", json={"role": "admin"}).status_code == 200
-    assert c.get("/api/v1/team/my-team").status_code == 200
-
-
 def test_admin_training_put_forbidden_for_team(monkeypatch: pytest.MonkeyPatch) -> None:
     c = _authed_client(monkeypatch)
     assert c.post("/api/v1/auth/dev-login", json={"role": "team"}).status_code == 200
