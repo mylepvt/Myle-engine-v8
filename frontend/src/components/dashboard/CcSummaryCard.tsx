@@ -88,14 +88,14 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
                   style={{ width: `${pct}%` }}
                 />
               </span>
-              <span className="w-16 shrink-0 text-right text-xs font-semibold text-emerald-300">
+              <span className="w-16 shrink-0 text-right text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 {inr(r.commission_cents)}
               </span>
             </button>
             {open ? (
               <div className="ml-0 sm:ml-[5.5rem] mb-1 grid grid-cols-3 gap-2 rounded-md border border-border/50 bg-background/50 px-3 py-2 text-xs">
                 <div>
-                  <p className="font-semibold text-emerald-300">{cc.toFixed(3)}</p>
+                  <p className="font-semibold text-emerald-700 dark:text-emerald-300">{cc.toFixed(3)}</p>
                   <p className="text-ds-micro text-muted-foreground">CC</p>
                 </div>
                 <div>
@@ -151,7 +151,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
               <span className="text-ds-micro uppercase tracking-wide text-muted-foreground">
                 {data.scope === 'all' ? 'All-teams cheque total' : 'Team cheque total'}
               </span>
-              <span className="text-base font-bold text-emerald-300">{inr(teamChequeCents)}</span>
+              <span className="text-base font-bold text-emerald-700 dark:text-emerald-300">{inr(teamChequeCents)}</span>
             </div>
           ) : null}
 
@@ -164,7 +164,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
           {data.pending_count > 0 ? (
             <Link
               to="/dashboard/team/sales-approvals"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-300 underline underline-offset-2"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 underline underline-offset-2"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
               {data.pending_count} pending approval{data.pending_count === 1 ? '' : 's'}

@@ -268,7 +268,7 @@ export function LoginPage() {
         >
           {showGateBanner ? (
             <div
-              className="flex items-start gap-2 rounded border border-amber-500/35 bg-amber-500/[0.12] px-3 py-2.5 text-left text-sm text-amber-100/95"
+              className="flex items-start gap-2 rounded border border-amber-500/35 bg-amber-500/[0.12] px-3 py-2.5 text-left text-sm text-amber-700/95 dark:text-amber-100/95"
               role="status"
             >
               <span className="min-w-0 flex-1">
@@ -276,7 +276,7 @@ export function LoginPage() {
               </span>
               <button
                 type="button"
-                className="shrink-0 rounded-md p-1 text-amber-200/90 transition-colors hover:bg-amber-500/20 hover:text-amber-50"
+                className="shrink-0 rounded-md p-1 text-amber-700/90 dark:text-amber-200/90 transition-colors hover:bg-amber-500/20 hover:text-amber-900 dark:hover:text-amber-50"
                 onClick={() => setShowGateBanner(false)}
                 aria-label="Dismiss notice"
               >
@@ -287,7 +287,7 @@ export function LoginPage() {
 
           {devLoginAllowed ? (
             <div className="space-y-3 rounded border border-amber-500/30 bg-amber-500/[0.07] p-4">
-              <p className="text-ds-label uppercase text-amber-200/90">
+              <p className="text-ds-label uppercase text-amber-700/90 dark:text-amber-200/90">
                 Quick Access
               </p>
               <label className="field-label" htmlFor="login-role">

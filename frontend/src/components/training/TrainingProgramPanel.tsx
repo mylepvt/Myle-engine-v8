@@ -186,7 +186,7 @@ function CertificateDownloadBlock() {
   const downloadMut = useDownloadCertificateMutation()
   return (
     <div className="rounded-md border border-emerald-400/25 bg-gradient-to-br from-emerald-400/[0.12] to-transparent px-5 py-5 text-center">
-      <div className="mx-auto flex size-12 items-center justify-center rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-300">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-md border border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-700 dark:text-emerald-300">
         <Award className="size-5" />
       </div>
       <p className="mt-3 text-base font-semibold text-foreground">You're done with training</p>

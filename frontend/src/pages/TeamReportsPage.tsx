@@ -115,11 +115,11 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
         </div>
         <div className="surface-inset rounded-lg px-2 py-2">
           <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Picked</p>
-          <div className="text-center text-sm font-semibold tabular-nums text-emerald-300">{item.calls_picked}</div>
+          <div className="text-center text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{item.calls_picked}</div>
         </div>
         <div className="surface-inset rounded-lg px-2 py-2">
           <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Min. FLP</p>
-          <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-amber-300" />
+          <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-amber-700 dark:text-amber-300" />
         </div>
       </div>
 
@@ -340,7 +340,7 @@ export function TeamReportsPage({ title }: Props) {
                                 />
                               </td>
                               <td className="py-4 px-3 text-center">
-                                <span className="text-sm font-semibold tabular-nums text-emerald-300">
+                                <span className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
                                   {item.calls_picked}
                                 </span>
                               </td>
@@ -348,11 +348,11 @@ export function TeamReportsPage({ title }: Props) {
                                 <ReportMetric
                                   reported={item.day1_count + item.day2_count + item.day3_count}
                                   system={item.payments_actual}
-                                  tone="text-amber-300"
+                                  tone="text-amber-700 dark:text-amber-300"
                                 />
                               </td>
                               <td className="py-4 px-3 text-center">
-                                <span className="text-sm font-semibold tabular-nums text-violet-300">
+                                <span className="text-sm font-semibold tabular-nums text-violet-700 dark:text-violet-300">
                                   {item.plan_2cc}
                                 </span>
                               </td>
