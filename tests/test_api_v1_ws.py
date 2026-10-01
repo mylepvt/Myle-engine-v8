@@ -6,8 +6,10 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from app.core.passwords import DEV_LOGIN_PASSWORD_PLAIN
+from app.api.v1.realtime_ws import WS_CLOSE_AUTH_REQUIRED
 from app.core.realtime_hub import hub
 from main import app
 
@@ -23,10 +25,11 @@ def _clear_hub() -> None:
     hub.clear_for_tests()
 
 
-def test_ws_rejects_without_cookie() -> None:
-    with pytest.raises(Exception):  # noqa: PT011 — starlette closes the socket
-        with client.websocket_connect("/api/v1/ws"):
-            pass
+def test_ws_rejects_without_cookie_with_auth_close_code() -> None:
+    with client.websocket_connect("/api/v1/ws") as ws:
+        with pytest.raises(WebSocketDisconnect) as exc:
+            ws.receive_text()
+    assert exc.value.code == WS_CLOSE_AUTH_REQUIRED
 
 
 def test_ws_accepts_cookie_and_receives_broadcast(
