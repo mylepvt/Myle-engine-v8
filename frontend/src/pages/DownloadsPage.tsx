@@ -9,7 +9,7 @@ import {
   useDownloadsQuery,
   type DownloadItem,
 } from '@/hooks/use-downloads-query'
-import { useAppSettingsQuery } from '@/hooks/use-settings-query'
+import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { useTrainingQuery } from '@/hooks/use-training-query'
 import { cn } from '@/lib/utils'
 import { Download, ExternalLink, FileText, Trash2, Upload } from 'lucide-react'
@@ -68,7 +68,7 @@ export function DownloadsPage({ title }: Props) {
   const showLinks = isAdmin || isLeader
 
   const { data: trainingData } = useTrainingQuery()
-  const { data: appSettingsData } = useAppSettingsQuery(showLinks)
+  const { data: contentLinks } = useContentLinksQuery()
 
   const { data, isPending, isError, error, refetch } = useDownloadsQuery()
   const { upload, remove } = useDownloadsMutations()
@@ -112,6 +112,7 @@ export function DownloadsPage({ title }: Props) {
   }
 
   function handleDownload(item: DownloadItem) {
+    if (!item.available) return
     const a = document.createElement('a')
     a.href = getDownloadFileUrl(item.id)
     a.download = item.filename
@@ -151,7 +152,7 @@ export function DownloadsPage({ title }: Props) {
                 </li>
               ))}
             {CONTENT_VIDEO_LABELS.map(({ key, label }) => {
-              const url = appSettingsData?.settings[key]
+              const url = contentLinks?.[key]
               if (!url) return null
               return (
                 <li key={key} className="flex items-center gap-3">
@@ -262,6 +263,13 @@ export function DownloadsPage({ title }: Props) {
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatSize(row.file_size)} · {formatWhen(row.created_at)}
                   </p>
+                  {!row.available ? (
+                    <p className="mt-1 text-xs font-medium text-destructive">
+                      {isAdmin
+                        ? 'File lost from the server. Delete this and upload it again.'
+                        : 'File not available right now. Ask admin to upload it again.'}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   <Button
@@ -269,6 +277,7 @@ export function DownloadsPage({ title }: Props) {
                     variant="outline"
                     size="sm"
                     className="gap-1.5"
+                    disabled={!row.available}
                     onClick={() => handleDownload(row)}
                   >
                     <Download className="h-3.5 w-3.5" /> Download
