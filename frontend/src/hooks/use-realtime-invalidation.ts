@@ -9,13 +9,9 @@ import {
   flushRealtimeTopicsOrDefer,
 } from '@/lib/main-scroll-gate'
 import { mergeTopicBatches } from '@/lib/merge-topic-batches'
-import {
-  applyTeamTrackingPresenceEvent,
-  type TeamTrackingPresenceEvent,
-} from '@/hooks/use-team-tracking-query'
 
 type InvalidateMsg = { v: number; type: 'invalidate'; topics: string[] }
-type RealtimeMsg = InvalidateMsg | TeamTrackingPresenceEvent
+type RealtimeMsg = InvalidateMsg
 type PresenceAction = 'ping' | 'idle' | 'resume'
 
 function buildWsUrl(): string {
@@ -52,19 +48,16 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries({ queryKey: ['shell-stub'] })
     void qc.invalidateQueries({ queryKey: ['analytics'] })
     void qc.invalidateQueries({ queryKey: ['system'] })
-    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
     void qc.invalidateQueries({ queryKey: ['execution'] })
   }
   if (t.has('follow_ups')) {
     void qc.invalidateQueries({ queryKey: ['follow-ups'] })
-    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
   }
   if (t.has('team')) {
     void qc.invalidateQueries({ queryKey: ['team'] })
     void qc.invalidateQueries({ queryKey: ['team', 'flp-min-billing-requests'] })
   }
   if (t.has('team_tracking') || t.has('team_tracking.presence')) {
-    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'leader-health'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'online-now'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'today-pulse'] })
@@ -160,14 +153,6 @@ export function useRealtimeInvalidation(enabled: boolean) {
       ws.onmessage = (ev) => {
         try {
           const raw = JSON.parse(String(ev.data)) as RealtimeMsg
-          if (
-            raw?.type === 'team_tracking.presence' &&
-            typeof raw.user_id === 'number' &&
-            typeof raw.last_seen_at === 'string'
-          ) {
-            applyTeamTrackingPresenceEvent(qc, raw)
-            return
-          }
           if (raw?.type === 'invalidate' && Array.isArray(raw.topics)) {
             scheduleTopics(raw.topics)
           }

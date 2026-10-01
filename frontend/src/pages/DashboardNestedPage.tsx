@@ -20,8 +20,6 @@ import { LeadPoolWorkPage } from '@/pages/LeadPoolWorkPage'
 import { RecycleBinWorkPage } from '@/pages/RecycleBinWorkPage'
 import { TeamApprovalsPage } from '@/pages/TeamApprovalsPage'
 import { TeamMembersPage } from '@/pages/TeamMembersPage'
-import { TeamTrackingDetailPage } from '@/pages/TeamTrackingDetailPage'
-import { TeamTrackingPage } from '@/pages/TeamTrackingPage'
 import { MyTeamPage } from '@/pages/MyTeamPage'
 import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
 import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
@@ -40,8 +38,6 @@ import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
 import { TeamReportsPage } from '@/pages/TeamReportsPage'
 import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
 import { CurrentCcPage } from '@/pages/CurrentCcPage'
-import { CurrentCcBoardPage } from '@/pages/CurrentCcBoardPage'
-import { CurrentCcBoardDetailPage } from '@/pages/CurrentCcBoardDetailPage'
 import AnalyticsPage from '@/pages/AnalyticsPage'
 import SettingsPage from '@/pages/SettingsPage'
 import { LeaderboardPage } from '@/pages/LeaderboardPage'
@@ -77,8 +73,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RecycleBinWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
-    case 'team-tracking':
-      return <TeamTrackingPage title={title} />
     case 'leader-os':
       return <LeaderOSPage />
     case 'team-approvals':
@@ -122,8 +116,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <DailyReportFormPage title={title} />
     case 'current-cc':
       return <CurrentCcPage title={title} />
-    case 'current-cc-board':
-      return <CurrentCcBoardPage title={title} />
     case 'settings':
       return <SettingsPage />
     case 'leaderboard':
@@ -181,40 +173,6 @@ export function DashboardNestedPage() {
   // Enrollment Link page merged into the Calling Board "Enrollment Video" status.
   if (path === 'work/enroll-link') {
     return <Navigate to="/dashboard/work/leads" replace />
-  }
-
-  const ccBoardDetailMatch = /^team\/cc-board\/(\d+)$/.exec(path)
-  if (ccBoardDetailMatch) {
-    if (rolePending) {
-      return (
-        <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-24 w-full max-w-2xl" />
-        </div>
-      )
-    }
-    if (!navRole || (navRole !== 'admin' && navRole !== 'leader')) {
-      return <Navigate to="/dashboard" replace />
-    }
-    const targetUserId = parseInt(ccBoardDetailMatch[1], 10)
-    return <CurrentCcBoardDetailPage userId={targetUserId} />
-  }
-
-  const trackingDetailMatch = /^team\/tracking\/(\d+)$/.exec(path)
-  if (trackingDetailMatch) {
-    if (rolePending) {
-      return (
-        <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-24 w-full max-w-2xl" />
-        </div>
-      )
-    }
-    if (!navRole || (navRole !== 'admin' && navRole !== 'leader')) {
-      return <Navigate to="/dashboard" replace />
-    }
-    const targetUserId = parseInt(trackingDetailMatch[1], 10)
-    return <TeamTrackingDetailPage title="Tracking detail" userId={targetUserId} />
   }
 
   if (!path || !dashboardChildPathSet.has(path)) {

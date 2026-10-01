@@ -23,7 +23,6 @@ import {
   Search,
   Settings,
   ShieldAlert,
-  ShieldCheck,
   Users,
   Video,
   Wallet,
@@ -819,13 +818,6 @@ export function AdminCommandCenter({ firstName }: Props) {
               )
             })}
           </TabsList>
-          <Link
-            to="/dashboard/team/cc-board"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/25"
-          >
-            <Activity className="size-4" />
-            Tracking Reports
-          </Link>
         </div>
 
         {/* ==================== OVERVIEW ==================== */}
@@ -1217,7 +1209,6 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-3">
                   <DeskShortcut to="/dashboard/team/members" title="Team members" description="Role changes, compliance, password reset, lock/unlock, and training toggles." icon={<Users className="size-4" />} badge={teamMembers.data?.total ?? 0} />
-                  <DeskShortcut to="/dashboard/team/tracking" title="Team tracking" description="Operational tracking by member with discipline visibility." icon={<ShieldCheck className="size-4" />} />
                   <DeskShortcut to="/dashboard/team/reports" title="Team reports" description="Daily conversion and pipeline reporting by hierarchy." icon={<FileDown className="size-4" />} />
                 </CardContent>
               </Card>
