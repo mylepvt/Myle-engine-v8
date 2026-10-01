@@ -1,24 +1,26 @@
 """Downloads — admin uploads documents, team/leader downloads them.
 
-Files live in Cloudflare R2 when configured (``file_path`` = ``r2:<key>``):
-the Render container disk is wiped on every deploy, so disk is only the
-local-dev fallback.
+The Render container disk is wiped on every deploy, so files are never kept
+there: Cloudflare R2 when configured (``file_path`` = ``r2:<key>``), otherwise
+the bytes go into Postgres (``file_path`` = ``db:``, ``Download.content``).
+Rows with any other ``file_path`` are legacy disk uploads.
 """
 
 from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select, desc
+from sqlalchemy.orm import undefer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
-from app.core.config import settings
 from app.models.download import Download
 from app.services.r2_storage import delete_from_r2, presign_get_url, r2_enabled, upload_to_r2
 
@@ -27,6 +29,7 @@ router = APIRouter()
 ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".png", ".jpg", ".jpeg", ".mp4", ".zip"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 _R2_PREFIX = "r2:"
+_DB_PATH = "db:"
 
 
 class DownloadItem(BaseModel):
@@ -41,18 +44,12 @@ class DownloadItem(BaseModel):
     available: bool = True
 
 
-def _downloads_dir() -> Path:
-    p = Path(settings.upload_dir).expanduser().resolve() / "downloads"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def _r2_key(row: Download) -> str | None:
     return row.file_path[len(_R2_PREFIX):] if row.file_path.startswith(_R2_PREFIX) else None
 
 
 def _is_available(row: Download) -> bool:
-    return _r2_key(row) is not None or Path(row.file_path).exists()
+    return row.file_path == _DB_PATH or _r2_key(row) is not None or Path(row.file_path).exists()
 
 
 def _to_item(row: Download) -> DownloadItem:
@@ -127,9 +124,7 @@ async def upload_download(
         await upload_to_r2(data=content, key=key, content_type=mime)
         stored_path = f"{_R2_PREFIX}{key}"
     else:
-        dest = _downloads_dir() / safe_name
-        dest.write_bytes(content)
-        stored_path = str(dest)
+        stored_path = _DB_PATH
 
     row = Download(
         title=title.strip(),
@@ -139,6 +134,7 @@ async def upload_download(
         mime_type=mime,
         description=description.strip() or None,
         uploaded_by=user.user_id,
+        content=content if stored_path == _DB_PATH else None,
     )
     db.add(row)
     await db.commit()
@@ -151,10 +147,20 @@ async def serve_download_file(
     download_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> FileResponse | RedirectResponse:
-    row = await db.get(Download, download_id)
+) -> FileResponse | RedirectResponse | Response:
+    row = await db.get(Download, download_id, options=[undefer(Download.content)])
     if not row:
         raise HTTPException(status_code=404, detail="File not found.")
+
+    if row.file_path == _DB_PATH:
+        if row.content is None:
+            raise HTTPException(status_code=404, detail="File not found.")
+        disposition = f"attachment; filename*=UTF-8''{quote(row.filename)}"
+        return Response(
+            content=row.content,
+            media_type=row.mime_type,
+            headers={"Content-Disposition": disposition},
+        )
 
     key = _r2_key(row)
     if key is not None:
@@ -191,7 +197,7 @@ async def delete_download(
     key = _r2_key(row)
     if key is not None:
         await delete_from_r2(key)
-    else:
+    elif row.file_path != _DB_PATH:
         path = Path(row.file_path)
         if path.exists():
             path.unlink()

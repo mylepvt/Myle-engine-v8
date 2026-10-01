@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,9 +12,45 @@ import {
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { useTrainingQuery } from '@/hooks/use-training-query'
 import { cn } from '@/lib/utils'
-import { Download, ExternalLink, FileText, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, Download, ExternalLink, FileText, Trash2, Upload } from 'lucide-react'
 
 type Props = { title: string }
+
+function CollapsibleSection({
+  title,
+  icon,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  icon: ReactNode
+  count?: number
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <section className="surface-elevated overflow-hidden">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-12 w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-foreground transition-colors hover:bg-muted/40"
+      >
+        {icon}
+        <span className="flex-1">{title}</span>
+        {count != null ? (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-ds-caption tabular-nums text-muted-foreground">
+            {count}
+          </span>
+        ) : null}
+        <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
+      </button>
+      {open ? <div className="space-y-3 border-t border-border/60 p-4">{children}</div> : null}
+    </section>
+  )
+}
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
@@ -120,17 +156,167 @@ export function DownloadsPage({ title }: Props) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-4">
       <h1 className="text-ds-h1">{title}</h1>
-      <p className="text-sm text-muted-foreground">
-        Download documents shared by admin.
-      </p>
+
+      <CollapsibleSection
+        title="Documents"
+        icon={<FileText className="h-4 w-4" />}
+        count={data?.length}
+        defaultOpen
+      >
+        {isAdmin ? (
+          <form
+            onSubmit={(e) => void handleUpload(e)}
+            className="surface-inset space-y-3 p-4 text-sm"
+          >
+            <h2 className="flex items-center gap-2 font-medium text-foreground">
+              <Upload className="h-4 w-4" /> Upload document
+            </h2>
+
+            <input
+              ref={fileRef}
+              type="file"
+              onChange={handleFileChange}
+              disabled={upload.isPending}
+              className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-primary"
+            />
+
+            <input
+              type="text"
+              value={fileTitle}
+              onChange={(e) => setFileTitle(e.target.value)}
+              disabled={upload.isPending}
+              placeholder="Document title"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            />
+
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={upload.isPending}
+              rows={2}
+              placeholder="Description (optional)"
+              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
+            />
+
+            {formError ? (
+              <p className="text-sm text-destructive" role="alert">{formError}</p>
+            ) : null}
+
+            <Button type="submit" disabled={upload.isPending || !selectedFile}>
+              {upload.isPending ? 'Uploading…' : 'Upload'}
+            </Button>
+          </form>
+        ) : null}
+
+        {isPending ? (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : null}
+
+        {isError ? (
+          <div className="text-sm text-destructive" role="alert">
+            {error instanceof Error ? error.message : 'Could not load'}{' '}
+            <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
+              Retry
+            </button>
+          </div>
+        ) : null}
+
+        {data ? (
+          <div className="space-y-3">
+            {data.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+                <FileText className="h-10 w-10 opacity-40" />
+                <p className="text-sm">No documents uploaded yet.</p>
+              </div>
+            ) : null}
+            <ul className="space-y-2">
+              {data.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex items-center gap-3 rounded border border-border/60 p-3 text-sm"
+                >
+                  <FileTypeBadge mime={row.mime_type} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-foreground">{row.title}</p>
+                    {row.description ? (
+                      <p className="truncate text-xs text-muted-foreground">{row.description}</p>
+                    ) : null}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {formatSize(row.file_size)} · {formatWhen(row.created_at)}
+                    </p>
+                    {!row.available ? (
+                      <p className="mt-1 text-xs font-medium text-destructive">
+                        {isAdmin
+                          ? 'File lost from the server. Delete this and upload it again.'
+                          : 'File not available right now. Ask admin to upload it again.'}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={!row.available}
+                      onClick={() => handleDownload(row)}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Download
+                    </Button>
+                    {isAdmin ? (
+                      deleteConfirmId === row.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">Sure?</span>
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            className="bg-destructive text-white hover:bg-destructive/90"
+                            disabled={remove.isPending}
+                            onClick={() => {
+                              void remove.mutateAsync(row.id).finally(() => setDeleteConfirmId(null))
+                            }}
+                          >
+                            Yes
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteConfirmId(null)}
+                          >
+                            No
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className={cn('text-destructive hover:bg-destructive/10')}
+                          disabled={remove.isPending}
+                          onClick={() => setDeleteConfirmId(row.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </CollapsibleSection>
 
       {showLinks ? (
-        <div className="surface-elevated space-y-3 p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <ExternalLink className="h-4 w-4" /> Video Links
-          </h2>
+        <CollapsibleSection title="Video links" icon={<ExternalLink className="h-4 w-4" />}>
           <ul className="space-y-2 text-sm">
             {trainingData?.videos
               .filter((v) => v.youtube_url)
@@ -172,159 +358,7 @@ export function DownloadsPage({ title }: Props) {
               )
             })}
           </ul>
-        </div>
-      ) : null}
-
-      {isAdmin ? (
-        <form
-          onSubmit={(e) => void handleUpload(e)}
-          className="surface-elevated space-y-3 p-5 text-sm"
-        >
-          <h2 className="flex items-center gap-2 font-medium text-foreground">
-            <Upload className="h-4 w-4" /> Upload document
-          </h2>
-
-          <input
-            ref={fileRef}
-            type="file"
-            onChange={handleFileChange}
-            disabled={upload.isPending}
-            className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary/15 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-primary"
-          />
-
-          <input
-            type="text"
-            value={fileTitle}
-            onChange={(e) => setFileTitle(e.target.value)}
-            disabled={upload.isPending}
-            placeholder="Document title"
-            className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-          />
-
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={upload.isPending}
-            rows={2}
-            placeholder="Description (optional)"
-            className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-          />
-
-          {formError ? (
-            <p className="text-sm text-destructive" role="alert">{formError}</p>
-          ) : null}
-
-          <Button type="submit" disabled={upload.isPending || !selectedFile}>
-            {upload.isPending ? 'Uploading…' : 'Upload'}
-          </Button>
-        </form>
-      ) : null}
-
-      {isPending ? (
-        <div className="space-y-2">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      ) : null}
-
-      {isError ? (
-        <div className="text-sm text-destructive" role="alert">
-          {error instanceof Error ? error.message : 'Could not load'}{' '}
-          <button type="button" className="underline underline-offset-2" onClick={() => void refetch()}>
-            Retry
-          </button>
-        </div>
-      ) : null}
-
-      {data ? (
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            {data.length} document{data.length === 1 ? '' : 's'}
-          </p>
-          {data.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-              <FileText className="h-10 w-10 opacity-40" />
-              <p className="text-sm">No documents uploaded yet.</p>
-            </div>
-          ) : null}
-          <ul className="space-y-2">
-            {data.map((row) => (
-              <li
-                key={row.id}
-                className="surface-elevated flex items-center gap-3 rounded border border-border/60 p-4 text-sm"
-              >
-                <FileTypeBadge mime={row.mime_type} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">{row.title}</p>
-                  {row.description ? (
-                    <p className="truncate text-xs text-muted-foreground">{row.description}</p>
-                  ) : null}
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatSize(row.file_size)} · {formatWhen(row.created_at)}
-                  </p>
-                  {!row.available ? (
-                    <p className="mt-1 text-xs font-medium text-destructive">
-                      {isAdmin
-                        ? 'File lost from the server. Delete this and upload it again.'
-                        : 'File not available right now. Ask admin to upload it again.'}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex shrink-0 gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    disabled={!row.available}
-                    onClick={() => handleDownload(row)}
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download
-                  </Button>
-                  {isAdmin ? (
-                    deleteConfirmId === row.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-muted-foreground">Sure?</span>
-                        <Button
-                          type="button"
-                          variant="default"
-                          size="sm"
-                          className="bg-destructive text-white hover:bg-destructive/90"
-                          disabled={remove.isPending}
-                          onClick={() => {
-                            void remove.mutateAsync(row.id).finally(() => setDeleteConfirmId(null))
-                          }}
-                        >
-                          Yes
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeleteConfirmId(null)}
-                        >
-                          No
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={cn('text-destructive hover:bg-destructive/10')}
-                        disabled={remove.isPending}
-                        onClick={() => setDeleteConfirmId(row.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+        </CollapsibleSection>
       ) : null}
     </div>
   )
