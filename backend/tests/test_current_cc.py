@@ -168,19 +168,6 @@ async def test_match_green_with_activity(engine, admin_client: AsyncClient):
     assert body["match"]["flagged"] is False
 
 
-async def test_overview_forbidden_for_team(team_client: AsyncClient):
-    resp = await team_client.get("/api/v1/current-cc/overview")
-    assert resp.status_code == 403
-
-
-async def test_overview_leader_ok(leader_client: AsyncClient):
-    resp = await leader_client.get("/api/v1/current-cc/overview")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert "sheet_date" in body
-    assert isinstance(body["rows"], list)
-
-
 async def test_compare_structure(team_client: AsyncClient):
     await team_client.put(PUT_URL, json=_payload(201))
     resp = await team_client.get("/api/v1/current-cc/compare", params={"subject_user_id": 201})

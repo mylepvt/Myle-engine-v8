@@ -32,7 +32,7 @@ const FIXED_SURFACE = new Set([
 ])
 
 /** Lower this when you replace raw hues with tokens; never raise it. */
-const RAW_HUE_BUDGET = 350
+const RAW_HUE_BUDGET = 307
 
 const STATUS_HUES = new Set(['red', 'rose', 'amber', 'yellow', 'green', 'emerald', 'blue'])
 const RAW_HUE =

@@ -7,7 +7,6 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin_activity,
     admin_dashboard,
-    admin_performer_insights,
     admin_training,
     action_queue,
     automation,
@@ -55,7 +54,6 @@ from app.api.v1 import (
     skill_training,
     system,
     team,
-    team_tracking,
     wallet,
     wallet_enhanced,
     workboard,
@@ -68,7 +66,6 @@ api_router.include_router(meta.router, prefix="/meta", tags=["meta"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin_training.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["admin"])
-api_router.include_router(admin_performer_insights.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_activity.router, prefix="/admin", tags=["admin"])
 api_router.include_router(action_queue.router, tags=["action-queue"])
 api_router.include_router(automation.router, tags=["automation"])
@@ -79,7 +76,6 @@ api_router.include_router(hello.router, prefix="/hello", tags=["hello"])
 api_router.include_router(leads.router, prefix="/leads", tags=["leads"])
 api_router.include_router(leads.watch_router, tags=["watch"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])
-api_router.include_router(team_tracking.router, prefix="/team", tags=["team-tracking"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(skill_training.router, prefix="/system", tags=["skills-training"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

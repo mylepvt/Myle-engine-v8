@@ -299,7 +299,7 @@ function WarRoomDashboard({
                       <button
                         type="button"
                         className={cn('shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold', btnStyle)}
-                        onClick={() => navigate(a.action_ref || `/dashboard/team/tracking/${a.member_id}`)}
+                        onClick={() => navigate(a.action_ref || '/dashboard/team/members')}
                       >
                         {btnLabel}
                       </button>
@@ -698,7 +698,7 @@ export function DashboardHomePage() {
               </div>
             </div>
             <Button variant="outline" size="sm" className="shrink-0" asChild>
-              <Link to="/dashboard/team/tracking">View team tracking</Link>
+              <Link to="/dashboard/team/reports">View team reports</Link>
             </Button>
           </CardContent>
         </Card>

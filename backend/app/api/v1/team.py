@@ -8,7 +8,7 @@ from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import case, delete as sa_delete, func, select, update
+from sqlalchemy import delete as sa_delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -35,7 +35,6 @@ from app.schemas.team import (
     TeamMemberCreate,
     TeamMemberListResponse,
     TeamMemberPublic,
-    TeamMyTeamResponse,
     TeamReportItem,
     TeamReportMissingMember,
     TeamReportsLiveSummary,
@@ -76,7 +75,7 @@ async def _push_to_leader(member: User, session: AsyncSession, *, title: str, bo
     try:
         leader = await nearest_leader_for_user(session, member.id)
         if leader is not None:
-            await send_push_to_user(session, leader.id, title=title, body=body, url="/dashboard/team/my-team")
+            await send_push_to_user(session, leader.id, title=title, body=body, url="/dashboard")
     except Exception:
         logger.exception("leader push failed member_id=%s", member.id)
 
@@ -326,90 +325,6 @@ async def create_team_member(
     await session.refresh(row)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(row)])
     return item
-
-
-@router.get("/my-team", response_model=TeamMyTeamResponse)
-async def my_team(
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> TeamMyTeamResponse:
-    """Leader: self + entire downline (flat). Team: self only. Admin: global directory slice (UI preview / QA)."""
-    if user.role not in ("admin", "leader", "team"):
-        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-
-    Upline = aliased(User, name="upline")
-
-    if user.role == "admin":
-        count_q = select(func.count()).select_from(User)
-        total = int((await session.execute(count_q)).scalar_one())
-        list_q = (
-            select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
-            .outerjoin(Upline, User.upline_user_id == Upline.id)
-            .order_by(User.created_at.asc())
-            .limit(_MAX_LIMIT)
-            .offset(0)
-        )
-        rows = (await session.execute(list_q)).all()
-        items: list[TeamMemberPublic] = []
-        for row in rows:
-            u, up_fbo, up_name = row
-            item = TeamMemberPublic.model_validate(u)
-            item.upline_fbo_id = up_fbo
-            item.upline_name = up_name
-            items.append(item)
-        items = await _finalize_team_member_items(session, items)
-        return TeamMyTeamResponse(
-            items=items,
-            total=total,
-            direct_members=0,
-            total_downline=0,
-        )
-
-    if user.role == "team":
-        row = await session.get(User, user.user_id)
-        if row is None:
-            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
-        item = TeamMemberPublic.model_validate(row)
-        if row.upline_user_id is not None:
-            up = await session.get(User, row.upline_user_id)
-            if up is not None:
-                item.upline_fbo_id = up.fbo_id
-                item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
-        [item] = await _finalize_team_member_items(session, [item])
-        return TeamMyTeamResponse(items=[item], total=1, direct_members=0, total_downline=0)
-
-    leader_id = user.user_id
-    downline_ids = await recursive_downline_user_ids(session, leader_id)
-    id_list = [leader_id, *downline_ids]
-    list_q = (
-        select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
-        .outerjoin(Upline, User.upline_user_id == Upline.id)
-        .where(User.id.in_(id_list))
-        .order_by(case((User.id == leader_id, 0), else_=1), User.created_at.asc())
-    )
-    rows = (await session.execute(list_q)).all()
-    items: list[TeamMemberPublic] = []
-    for row in rows:
-        u, up_fbo, up_name = row
-        item = TeamMemberPublic.model_validate(u)
-        item.upline_fbo_id = up_fbo
-        item.upline_name = up_name
-        items.append(item)
-    items = await _finalize_team_member_items(session, items)
-
-    direct_ct = int(
-        (
-            await session.execute(
-                select(func.count()).select_from(User).where(User.upline_user_id == leader_id)
-            )
-        ).scalar_one()
-    )
-    return TeamMyTeamResponse(
-        items=items,
-        total=len(items),
-        direct_members=direct_ct,
-        total_downline=len(downline_ids),
-    )
 
 
 @router.put("/me/grace-request", response_model=TeamMemberPublic)

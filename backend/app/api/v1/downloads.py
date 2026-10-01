@@ -1,4 +1,9 @@
-"""Downloads — admin uploads documents, team/leader downloads them."""
+"""Downloads — admin uploads documents, team/leader downloads them.
+
+Files live in Cloudflare R2 when configured (``file_path`` = ``r2:<key>``):
+the Render container disk is wiped on every deploy, so disk is only the
+local-dev fallback.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +12,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,11 +20,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.config import settings
 from app.models.download import Download
+from app.services.r2_storage import delete_from_r2, presign_get_url, r2_enabled, upload_to_r2
 
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".png", ".jpg", ".jpeg", ".mp4", ".zip"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+_R2_PREFIX = "r2:"
 
 
 class DownloadItem(BaseModel):
@@ -30,12 +37,35 @@ class DownloadItem(BaseModel):
     mime_type: str
     description: str | None
     created_at: str
+    # False when the stored file is gone (old disk uploads wiped by a deploy).
+    available: bool = True
 
 
 def _downloads_dir() -> Path:
     p = Path(settings.upload_dir).expanduser().resolve() / "downloads"
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def _r2_key(row: Download) -> str | None:
+    return row.file_path[len(_R2_PREFIX):] if row.file_path.startswith(_R2_PREFIX) else None
+
+
+def _is_available(row: Download) -> bool:
+    return _r2_key(row) is not None or Path(row.file_path).exists()
+
+
+def _to_item(row: Download) -> DownloadItem:
+    return DownloadItem(
+        id=row.id,
+        title=row.title,
+        filename=row.filename,
+        file_size=row.file_size,
+        mime_type=row.mime_type,
+        description=row.description,
+        created_at=row.created_at.isoformat(),
+        available=_is_available(row),
+    )
 
 
 def _guess_mime(filename: str) -> str:
@@ -65,19 +95,7 @@ async def list_downloads(
     result = await db.execute(
         select(Download).order_by(desc(Download.created_at))
     )
-    rows = result.scalars().all()
-    return [
-        DownloadItem(
-            id=r.id,
-            title=r.title,
-            filename=r.filename,
-            file_size=r.file_size,
-            mime_type=r.mime_type,
-            description=r.description,
-            created_at=r.created_at.isoformat(),
-        )
-        for r in rows
-    ]
+    return [_to_item(r) for r in result.scalars().all()]
 
 
 @router.post("", response_model=DownloadItem, status_code=201)
@@ -103,14 +121,20 @@ async def upload_download(
         raise HTTPException(status_code=400, detail="File too large (max 50 MB).")
 
     safe_name = f"{uuid.uuid4().hex}{ext}"
-    dest = _downloads_dir() / safe_name
-    dest.write_bytes(content)
-
     mime = _guess_mime(file.filename)
+    if r2_enabled():
+        key = f"downloads/{safe_name}"
+        await upload_to_r2(data=content, key=key, content_type=mime)
+        stored_path = f"{_R2_PREFIX}{key}"
+    else:
+        dest = _downloads_dir() / safe_name
+        dest.write_bytes(content)
+        stored_path = str(dest)
+
     row = Download(
         title=title.strip(),
         filename=file.filename,
-        file_path=str(dest),
+        file_path=stored_path,
         file_size=len(content),
         mime_type=mime,
         description=description.strip() or None,
@@ -119,31 +143,30 @@ async def upload_download(
     db.add(row)
     await db.commit()
     await db.refresh(row)
-
-    return DownloadItem(
-        id=row.id,
-        title=row.title,
-        filename=row.filename,
-        file_size=row.file_size,
-        mime_type=row.mime_type,
-        description=row.description,
-        created_at=row.created_at.isoformat(),
-    )
+    return _to_item(row)
 
 
-@router.get("/{download_id}/file")
+@router.get("/{download_id}/file", response_model=None)
 async def serve_download_file(
     download_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> FileResponse:
+) -> FileResponse | RedirectResponse:
     row = await db.get(Download, download_id)
     if not row:
         raise HTTPException(status_code=404, detail="File not found.")
 
+    key = _r2_key(row)
+    if key is not None:
+        url = await presign_get_url(key=key, expires_seconds=300, download_name=row.filename)
+        return RedirectResponse(url=url, status_code=302)
+
     path = Path(row.file_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="File missing from disk.")
+        raise HTTPException(
+            status_code=404,
+            detail="This file is no longer on the server. Ask admin to upload it again.",
+        )
 
     return FileResponse(
         path=str(path),
@@ -165,9 +188,13 @@ async def delete_download(
     if not row:
         raise HTTPException(status_code=404, detail="File not found.")
 
-    path = Path(row.file_path)
-    if path.exists():
-        path.unlink()
+    key = _r2_key(row)
+    if key is not None:
+        await delete_from_r2(key)
+    else:
+        path = Path(row.file_path)
+        if path.exists():
+            path.unlink()
 
     await db.delete(row)
     await db.commit()

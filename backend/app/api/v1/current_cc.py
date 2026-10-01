@@ -13,7 +13,6 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.schemas.current_cc import (
     CcCompareResponse,
     CurrentCcAuto,
-    CurrentCcOverviewResponse,
     CurrentCcSheetPublic,
     CurrentCcSheetUpsert,
     CurrentCcTrendResponse,
@@ -21,7 +20,6 @@ from app.schemas.current_cc import (
 )
 from app.services.current_cc import (
     get_compare,
-    get_overview,
     get_sheet,
     get_trends,
     list_team_members,
@@ -103,21 +101,6 @@ async def read_auto(
         )
     except PermissionError as exc:
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-
-
-@router.get("/overview", response_model=CurrentCcOverviewResponse)
-async def read_overview(
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-    sheet_date: date | None = Query(default=None, alias="date"),
-) -> CurrentCcOverviewResponse:
-    """Team board — leader/admin only (members have no one below to oversee)."""
-    if user.role not in ("leader", "admin"):
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Overview is for leader or admin accounts.",
-        )
-    return await get_overview(session, actor=user, day=sheet_date or today_ist())
 
 
 @router.get("/team-members", response_model=list[TeamMemberOption])

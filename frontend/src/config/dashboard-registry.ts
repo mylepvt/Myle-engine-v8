@@ -56,53 +56,35 @@ export type FullUiSurface =
   | { kind: 'leads'; listMode: 'active' | 'archived' }
   | { kind: 'workboard' }
   | { kind: 'follow-ups' }
-  | { kind: 'lead-flow' }
   | { kind: 'lead-gen' }
   | { kind: 'lead-pool' }
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
-  | { kind: 'team-tracking' }
-  | { kind: 'leader-os' }
-  | { kind: 'my-team' }
   | { kind: 'team-approvals' }
   | { kind: 'flp-min-billing' }
   | { kind: 'sales-approvals' }
   | { kind: 'pending-as' }
-  | {
-      kind: 'system'
-      surface: 'training' | 'decision-engine' | 'coaching'
-    }
   | { kind: 'training-progress' }
   | { kind: 'lead-control' }
-  | {
-      kind: 'analytics'
-      surface: 'activity-log'
-    }
+  | { kind: 'activity-log' }
   | { kind: 'wallet' }
-  | { kind: 'finance-recharges' }
   | { kind: 'admin-invoices' }
   | { kind: 'wallet-recharge' }
-  | { kind: 'wallet-recharge-admin' }
+  | { kind: 'wallet-admin' }
   | { kind: 'notice-board' }
   | { kind: 'team-reports' }
   | { kind: 'daily-report-form' }
   | { kind: 'current-cc' }
-  | { kind: 'current-cc-board' }
-  | { kind: 'analytics' }
   | { kind: 'settings' }
   | { kind: 'leaderboard' }
   | { kind: 'live-session' }
   /** Single Training home: 7-day onboarding + Personal Development & Skills (collapsible). */
   | { kind: 'training-hub' }
-  /** Old path kept alive for bookmarks / links — sends the user to `to`. */
-  | { kind: 'redirect'; to: string }
   | { kind: 'downloads' }
   | { kind: 'budget-export' }
   | { kind: 'settings-app' }
   | { kind: 'settings-help' }
   | { kind: 'settings-org-tree' }
-  | { kind: 'all-members' }
-  | { kind: 'performer-insights' }
   /** Loads `ShellStubPage` with a GET that returns `SystemStubResponse` (items + note). */
   | { kind: 'shell-api'; apiPath: string }
 
@@ -177,15 +159,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'leads', listMode: 'archived' },
   },
   {
-    path: 'work/add-lead',
-    section: { id: 'work', label: '' },
-    label: 'Add Lead',
-    roles: routeRoles('work/add-lead'),
-    navHidden: true,
-    surface: 'full',
-    ui: { kind: 'leads', listMode: 'active' },
-  },
-  {
     path: 'work/lead-pool',
     section: { id: 'work', label: '' },
     label: 'Lead Pool',
@@ -208,14 +181,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('work/recycle-bin'),
     surface: 'full',
     ui: { kind: 'recycle-bin' },
-  },
-  {
-    path: 'work/lead-flow',
-    section: { id: 'work', label: '' },
-    label: 'Lead Flow',
-    roles: routeRoles('work/lead-flow'),
-    surface: 'full',
-    ui: { kind: 'lead-flow' },
   },
   {
     path: 'work/lead-gen',
@@ -269,14 +234,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'pending-as' },
   },
   {
-    path: 'team/tracking',
-    section: { id: 'team', label: 'Team' },
-    label: 'Team Tracking',
-    roles: routeRoles('team/tracking'),
-    surface: 'full',
-    ui: { kind: 'team-tracking' },
-  },
-  {
     path: 'team/current-cc',
     section: { id: 'team', label: 'Team' },
     label: 'Tracking Report',
@@ -285,36 +242,12 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'current-cc' },
   },
   {
-    path: 'team/cc-board',
-    section: { id: 'team', label: 'Team' },
-    label: 'CC Board',
-    roles: routeRoles('team/cc-board'),
-    surface: 'full',
-    ui: { kind: 'current-cc-board' },
-  },
-  {
     path: 'team/approvals',
     section: { id: 'team', label: 'Team' },
     label: 'Approvals',
     roles: routeRoles('team/approvals'),
     surface: 'full',
     ui: { kind: 'team-approvals' },
-  },
-  {
-    path: 'team/los',
-    section: { id: 'team', label: 'Team' },
-    label: 'Leader OS',
-    roles: routeRoles('team/los'),
-    surface: 'full',
-    ui: { kind: 'leader-os' },
-  },
-  {
-    path: 'team/my-team',
-    section: { id: 'team', label: 'Team' },
-    label: 'My team',
-    roles: routeRoles('team/my-team'),
-    surface: 'full',
-    ui: { kind: 'my-team' },
   },
   {
     path: 'system/lead-control',
@@ -330,7 +263,7 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     label: 'Activity log',
     roles: routeRoles('analytics/activity-log'),
     surface: 'full',
-    ui: { kind: 'analytics', surface: 'activity-log' },
+    ui: { kind: 'activity-log' },
   },
   {
     path: 'system/training',
@@ -349,38 +282,12 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'training-progress' },
   },
   {
-    path: 'system/decision-engine',
-    section: { id: 'system', label: 'System' },
-    label: 'Decision Engine',
-    roles: routeRoles('system/decision-engine'),
-    surface: 'full',
-    navHidden: true,
-    ui: { kind: 'system', surface: 'decision-engine' },
-  },
-  {
-    path: 'system/coaching',
-    section: { id: 'system', label: 'System' },
-    label: 'Coaching Panel',
-    roles: routeRoles('system/coaching'),
-    surface: 'full',
-    navHidden: true,
-    ui: { kind: 'system', surface: 'coaching' },
-  },
-  {
-    path: 'finance/recharges',
-    section: { id: 'finance', label: 'Wallet' },
-    label: 'Recharges',
-    roles: routeRoles('finance/recharges'),
-    surface: 'full',
-    ui: { kind: 'finance-recharges' },
-  },
-  {
     path: 'finance/recharge-admin',
     section: { id: 'finance', label: 'Wallet' },
-    label: 'Recharge requests',
+    label: 'Wallet admin',
     roles: routeRoles('finance/recharge-admin'),
     surface: 'full',
-    ui: { kind: 'wallet-recharge-admin' },
+    ui: { kind: 'wallet-admin' },
   },
   {
     path: 'finance/invoices',
@@ -431,24 +338,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'notice-board' },
   },
   {
-    path: 'other/training',
-    section: { id: 'other', label: 'Community' },
-    label: 'Training',
-    roles: routeRoles('other/training'),
-    navHidden: true,
-    surface: 'full',
-    ui: { kind: 'redirect', to: '/dashboard/system/training' },
-  },
-  {
-    path: 'other/skills-training',
-    section: { id: 'other', label: 'Community' },
-    label: 'Skills Training',
-    roles: routeRoles('other/skills-training'),
-    navHidden: true,
-    surface: 'full',
-    ui: { kind: 'redirect', to: '/dashboard/system/training' },
-  },
-  {
     path: 'other/live-session',
     section: { id: 'other', label: 'Community' },
     label: 'Live session',
@@ -474,14 +363,6 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
   },
 
   {
-    path: 'system/performer-insights',
-    section: { id: 'system', label: 'System' },
-    label: 'Performer Insights',
-    roles: routeRoles('system/performer-insights'),
-    surface: 'full',
-    ui: { kind: 'performer-insights' },
-  },
-  {
     path: 'settings/app',
     section: { id: 'settings', label: 'Settings' },
     label: 'General',
@@ -499,29 +380,12 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     ui: { kind: 'settings-help' },
   },
   {
-    path: 'settings/all-members',
-    section: { id: 'settings', label: 'Settings' },
-    label: 'All members',
-    roles: routeRoles('settings/all-members'),
-    navHidden: true,
-    surface: 'full',
-    ui: { kind: 'all-members' },
-  },
-  {
     path: 'settings/org-tree',
     section: { id: 'settings', label: 'Settings' },
     label: 'Org tree',
     roles: routeRoles('settings/org-tree'),
     surface: 'full',
     ui: { kind: 'settings-org-tree' },
-  },
-  {
-    path: 'analytics',
-    section: { id: 'system', label: 'System' },
-    label: 'Analytics',
-    roles: routeRoles('analytics'),
-    surface: 'full',
-    ui: { kind: 'analytics' },
   },
   {
     path: 'settings/profile',
