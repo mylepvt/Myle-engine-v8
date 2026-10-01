@@ -52,9 +52,9 @@ export function TodayClaimCalling({
         ) : (
           <>
             <div className="flex items-stretch gap-3">
-              <div className="flex-1 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3 text-center">
-                <UserPlus className="mx-auto size-4 text-amber-600 dark:text-amber-400" aria-hidden />
-                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
+              <div className="flex-1 rounded-xl border border-warning/20 bg-warning/[0.06] p-3 text-center">
+                <UserPlus className="mx-auto size-4 text-warning-ink" aria-hidden />
+                <p className="mt-1 text-2xl font-bold tabular-nums text-warning-ink">
                   {ls?.leads_claimed_today ?? 0}
                 </p>
                 <p className="text-ds-micro text-muted-foreground">Claimed today</p>
@@ -62,9 +62,9 @@ export function TodayClaimCalling({
               <div className="flex items-center text-muted-foreground">
                 <ArrowLeftRight className="size-5" aria-hidden />
               </div>
-              <div className="flex-1 rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-3 text-center">
-                <PhoneCall className="mx-auto size-4 text-blue-600 dark:text-blue-400" aria-hidden />
-                <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600 dark:text-blue-400">
+              <div className="flex-1 rounded-xl border border-info/20 bg-info/[0.06] p-3 text-center">
+                <PhoneCall className="mx-auto size-4 text-info-ink" aria-hidden />
+                <p className="mt-1 text-2xl font-bold tabular-nums text-info-ink">
                   {ls?.calls_made_today ?? 0}
                 </p>
                 <p className="text-ds-micro text-muted-foreground">Calls today</p>
@@ -84,7 +84,7 @@ export function TodayClaimCalling({
                     <div key={r.user_id} className="flex items-center gap-3">
                       <span className="min-w-0 flex-1 truncate text-sm text-foreground">{r.member_name}</span>
                       <span className="shrink-0 text-ds-caption text-muted-foreground">{r.day1_count || 0} D1</span>
-                      <span className="shrink-0 text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-info-ink">
                         {r.total_calling}
                       </span>
                     </div>
@@ -187,7 +187,7 @@ export function TeamWorkTrend() {
             </div>
             <div className="mt-3 grid grid-cols-3 gap-3 border-t border-border/40 pt-3 text-center">
               <div>
-                <p className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">{trend.data?.total_calls ?? 0}</p>
+                <p className="text-lg font-bold tabular-nums text-info-ink">{trend.data?.total_calls ?? 0}</p>
                 <p className="text-ds-micro text-muted-foreground">Calls</p>
               </div>
               <div>
@@ -195,7 +195,7 @@ export function TeamWorkTrend() {
                 <p className="text-ds-micro text-muted-foreground">Day 1</p>
               </div>
               <div>
-                <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{trend.data?.total_payments ?? 0}</p>
+                <p className="text-lg font-bold tabular-nums text-success-ink">{trend.data?.total_payments ?? 0}</p>
                 <p className="text-ds-micro text-muted-foreground">Payments</p>
               </div>
             </div>

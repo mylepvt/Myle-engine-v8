@@ -104,17 +104,17 @@ export function TrainingDayAdmin({ video }: Props) {
   }
 
   return (
-    <div className="mt-3 min-w-0 overflow-hidden rounded border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] via-transparent to-transparent p-4">
+    <div className="mt-3 min-w-0 overflow-hidden rounded border border-warning/20 bg-gradient-to-br from-warning/[0.07] via-transparent to-transparent p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700/90 dark:text-amber-300/90">Admin editor</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-warning-ink/90">Admin editor</p>
           <p className="mt-1 text-sm font-semibold text-foreground">Update day {dayNumber}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Edit the current title, swap media links, or remove media that should no longer show.
           </p>
         </div>
         {msg ? (
-          <div className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.08] px-3 py-1 text-xs text-emerald-700 dark:text-emerald-300">
+          <div className="rounded-full border border-success/20 bg-success/[0.08] px-3 py-1 text-xs text-success-ink">
             {msg}
           </div>
         ) : null}

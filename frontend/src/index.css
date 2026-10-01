@@ -3,14 +3,16 @@
 @tailwind utilities;
 
 /*
- * Myle — Discord-inspired theme
- * Blurple #5865F2 · Warm greys #313338 / #2b2d31 · 4px radius
+ * Myle theme
+ * Brand blue #3b6ef6 (both themes) · blue-grey light / charcoal dark ·
+ * radius scale from --radius (see tailwind.config.js borderRadius)
  */
 @layer base {
   :root {
     /* Raw palette */
     --palette-ink: #050208;
-    --palette-blue: #5865f2;
+    /* brand blue — same as --primary so charts, hero and buttons share one hue */
+    --palette-blue: #3b6ef6;
     --palette-mist: #d2ddff;
     --palette-cyan-neon: #00ffd4;
     --palette-cyan-dull: color-mix(in srgb, var(--palette-cyan-neon) 52%, #64748b 48%);
@@ -55,6 +57,12 @@
     --success-foreground: #ffffff;
     --warning: #f0b232;
     --warning-foreground: #000000;
+    /* readable text shades for status colours on cards / 10% tints */
+    --success-ink: #15803d;
+    --warning-ink: #b45309;
+    --destructive-ink: #b91c1c;
+    --info: #3b6ef6;
+    --info-ink: #2952cc;
     --glass-base: #ffffff;
     /* soft neumorphic card shadows — strengthened so white cards lift off the
        light page / white panels they nest inside (was 0.12/0.06) */
@@ -64,6 +72,22 @@
       0 10px 30px -16px rgba(45,70,120,0.22);
 
     --palette-blue-light: color-mix(in srgb, var(--palette-blue) 70%, white 30%);
+
+    /* Lead-journey phases — one colour per phase, used by every stage badge,
+       pipeline bar and board (see src/lib/stage-colors.ts). `-ink` is the
+       readable text shade on a 10% tint of the same colour. */
+    --stage-early: #3b6ef6;
+    --stage-early-ink: #2952cc;
+    --stage-engaged: #0891b2;
+    --stage-engaged-ink: #0e7490;
+    --stage-closing: #d97706;
+    --stage-closing-ink: #b45309;
+    --stage-won: #23a55a;
+    --stage-won-ink: #15803d;
+    --stage-lost: #e0444d;
+    --stage-lost-ink: #c0262f;
+    --stage-parked: #616a7d;
+    --stage-parked-ink: #565f73;
 
     --urgency-safe: #4ade80;
     --urgency-watch: #60a5fa;
@@ -91,15 +115,14 @@
     /* match light radius — one rounded identity across both themes */
     --radius: 0.625rem;
     --palette-ink: #0f1014;
-    /* ── Surfaces ─── deeper than Discord, matte charcoal blacks */
+    /* ── Surfaces ─── matte charcoal blacks */
     --background: #111214;
     --foreground: #c8ccd0;
     --card: #1a1c22;
     --card-foreground: #c8ccd0;
     --popover: #0f1014;
     --popover-foreground: #c8ccd0;
-    /* unified brand blue — same hue as light (#3b6ef6); dropped the
-       Discord-blurple #5865f2 so the brand colour is identical in both themes */
+    /* unified brand blue — same hue as light (#3b6ef6) */
     --primary: #3b6ef6;
     --primary-foreground: #ffffff;
     --secondary: #1e2028;
@@ -127,7 +150,24 @@
     --success-foreground: #ffffff;
     --warning: #f0b232;
     --warning-foreground: #000000;
+    --success-ink: #4ade80;
+    --warning-ink: #fbbf24;
+    --destructive-ink: #f87171;
+    --info: #3b6ef6;
+    --info-ink: #8aa8ff;
     --glass-base: #1a1c22;
+    --stage-early: #3b6ef6;
+    --stage-early-ink: #8aa8ff;
+    --stage-engaged: #22d3ee;
+    --stage-engaged-ink: #67e8f9;
+    --stage-closing: #f59e0b;
+    --stage-closing-ink: #fcd34d;
+    --stage-won: #23a55a;
+    --stage-won-ink: #4ade80;
+    --stage-lost: #da373c;
+    --stage-lost-ink: #f87171;
+    --stage-parked: #8e939d;
+    --stage-parked-ink: #a3a8b1;
     /* ── Shadows: darkness + a hairline ring so cards/modals actually lift off
        the near-black surfaces (was 1px/3px with no ring — zero elevation) */
     --shadow-card: 0 2px 8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
@@ -409,7 +449,7 @@
     border-color: color-mix(in srgb, var(--border) 100%, transparent);
   }
 
-  /* Discord-style inset surface (flat, no inset shadow) */
+  /* Inset surface (flat, no inset shadow) */
   .surface-inset {
     @apply rounded border transition-all duration-100;
     border-color: color-mix(in srgb, var(--border) 85%, transparent);
@@ -426,7 +466,7 @@
     letter-spacing: 0.01em;
   }
 
-  /* Discord-style input (flat, 4px radius) */
+  /* Text input (flat) */
   .field-input {
     @apply h-11 min-h-[44px] w-full rounded border border-border bg-input px-3 py-0 text-ds-body text-foreground transition-[border-color] placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50;
     letter-spacing: 0.004em;
@@ -437,24 +477,7 @@
     border-color: var(--primary);
   }
 
-  /* ── Discord-style interactive modifiers ─────────────────────────── */
-  .discord-hover {
-    transition: background-color 0.1s ease;
-  }
-  .discord-hover:hover {
-    background-color: color-mix(in srgb, var(--foreground) 7%, transparent);
-  }
-  .discord-hover:active {
-    background-color: color-mix(in srgb, var(--foreground) 11%, transparent);
-  }
-  html.dark .discord-hover-active {
-    background-color: rgba(255,255,255,0.09);
-  }
-  html.dark .discord-hover-selected {
-    background-color: rgba(255,255,255,0.12);
-  }
-
-  /* Discord-style minimal scrollbar */
+  /* Minimal scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -471,7 +494,7 @@
     background: color-mix(in srgb, var(--foreground) 30%, transparent);
   }
 
-  /* ── Discord-style status dots ──────────────────────────────────── */
+  /* ── Presence status dots ───────────────────────────────────────── */
   .status-dot {
     @apply absolute bottom-0 right-0 z-10 size-3 rounded-full border-2 border-background;
   }
@@ -496,19 +519,19 @@
     background: var(--muted-foreground);
   }
 
-  /* ── Discord modal animations ───────────────────────────────────── */
+  /* ── Modal / sheet entrance animations ──────────────────────────── */
   .keyboard-safe-modal {
-    animation: dcFadeIn 0.16s ease-out;
+    animation: modalFadeIn 0.16s ease-out;
   }
   .keyboard-safe-sheet {
     /* decelerate (ease-out-expo) for a settled, native feel */
-    animation: dcSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: sheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  @keyframes dcFadeIn {
+  @keyframes modalFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
   }
-  @keyframes dcSlideUp {
+  @keyframes sheetSlideUp {
     from { opacity: 0; transform: translateY(14px) scale(0.985); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
@@ -520,8 +543,8 @@
     }
   }
 
-  /* ── Discord shimmer skeleton ───────────────────────────────────── */
-  @keyframes dcShimmer {
+  /* ── Shimmer skeleton ───────────────────────────────────────────── */
+  @keyframes skeletonShimmer {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
   }
@@ -533,7 +556,7 @@
       color-mix(in srgb, var(--foreground) 5%, transparent) 75%
     );
     background-size: 200% 100%;
-    animation: dcShimmer 1.5s ease-in-out infinite;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
   }
 
   .dashboard-shell-header {
@@ -732,18 +755,19 @@
     transform: scale(0.86);
   }
 
-  /* Icons-only pill: hide labels visually but keep them for screen readers
-     (preserves each icon-only link's accessible name) */
+  /* Icon + short label: new members learn the tabs without guessing icons */
   .dashboard-mobile-tabbar__tab > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    position: relative;
+    z-index: 1;
+    max-width: 100%;
+    /* 11px = ds-micro, the smallest size the type scale allows */
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+  }
+
+  .dashboard-mobile-tabbar__tab--active > span {
+    color: var(--primary-foreground);
+    font-weight: 600;
   }
 
   .dashboard-mobile-tabbar__tab--active svg {

@@ -27,8 +27,8 @@ const TYPE_LABEL: Record<ActionQueueItem['item_type'], string> = {
 }
 
 function severityClasses(severity: number): string {
-  if (severity >= 70) return 'bg-red-500/15 text-red-600'
-  if (severity >= 50) return 'bg-amber-500/15 text-amber-600'
+  if (severity >= 70) return 'bg-destructive/15 text-destructive-ink'
+  if (severity >= 50) return 'bg-warning/15 text-warning-ink'
   return 'bg-sky-500/15 text-sky-600'
 }
 
@@ -51,7 +51,7 @@ function QueueRow({ item }: { item: ActionQueueItem }) {
             {TYPE_LABEL[item.item_type]}
           </span>
           {item.last_actioned_at && (
-            <span className="flex items-center gap-1 text-ds-micro font-medium text-emerald-600">
+            <span className="flex items-center gap-1 text-ds-micro font-medium text-success-ink">
               <CheckCircle2 className="size-3" /> actioned in last 24h
             </span>
           )}
@@ -137,7 +137,7 @@ export function ActionQueuePanel({ className, admin }: { className?: string; adm
     return (
       <Card className={className}>
         <CardContent className="py-8 text-center">
-          <CheckCircle2 className="mx-auto size-8 text-green-500" />
+          <CheckCircle2 className="mx-auto size-8 text-success-ink" />
           <p className="mt-2 text-sm font-semibold text-foreground">Action queue clear</p>
           <p className="mt-1 text-xs text-muted-foreground">No zombie leads, missed missions, or stuck verifications right now.</p>
         </CardContent>
@@ -149,7 +149,7 @@ export function ActionQueuePanel({ className, admin }: { className?: string; adm
     <Card className={className}>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
-          <Flame className="size-4 text-red-500" />
+          <Flame className="size-4 text-destructive-ink" />
           <CardTitle className="text-sm font-semibold">{admin ? 'Overview' : 'Do This Now'}</CardTitle>
           <Badge variant="secondary" className="text-ds-micro">{data.total} items</Badge>
         </div>

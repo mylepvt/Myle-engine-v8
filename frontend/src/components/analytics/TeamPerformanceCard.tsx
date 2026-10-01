@@ -180,13 +180,13 @@ export default function TeamPerformanceCard({ performance, isLoading }: TeamPerf
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-info-ink">
                 {performance.scores.avg_daily_points.toFixed(1)}
               </div>
               <div className="text-xs text-muted-foreground">Avg Daily Points</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success-ink">
                 {performance.reports.pickup_rate.toFixed(1)}%
               </div>
               <div className="text-xs text-muted-foreground">Call Pickup Rate</div>

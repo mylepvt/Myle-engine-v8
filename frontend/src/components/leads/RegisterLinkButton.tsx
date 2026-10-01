@@ -18,7 +18,7 @@ export function RegisterLinkButton({ lead, className }: { lead: LeadPublic; clas
     return (
       <span
         className={cn(
-          'flex h-8 items-center gap-1 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-2.5 text-ds-caption font-semibold text-emerald-600 dark:text-emerald-300',
+          'flex h-8 items-center gap-1 rounded-full border border-success/50 bg-success/10 px-2.5 text-ds-caption font-semibold text-success-ink',
           className,
         )}
         title="This lead has registered as a member"
@@ -52,7 +52,7 @@ export function RegisterLinkButton({ lead, className }: { lead: LeadPublic; clas
       className={cn(
         'flex h-8 items-center gap-1 rounded-full border px-2.5 text-ds-caption font-semibold transition active:scale-95 disabled:opacity-50',
         done
-          ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
+          ? 'border-success/60 bg-success/15 text-success-ink'
           : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
         className,
       )}

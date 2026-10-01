@@ -185,12 +185,12 @@ export function SalesApprovalsPage({ title }: Props) {
                       </div>
                     )}
                     {isAdmin && (!ccValue(row).trim() || !amountValue(row).trim()) ? (
-                      <p className="text-ds-micro text-amber-600 dark:text-amber-400">
+                      <p className="text-ds-micro text-warning-ink">
                         Enter CC and amount to book this invoice.
                       </p>
                     ) : null}
                     {row.verify_notes ? (
-                      <p className="text-xs text-amber-600/90 dark:text-amber-300/90">{row.verify_notes}</p>
+                      <p className="text-xs text-warning-ink/90">{row.verify_notes}</p>
                     ) : null}
                     {row.ocr_confidence ? (
                       <p className="text-ds-micro text-muted-foreground">

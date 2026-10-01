@@ -59,8 +59,8 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
   }
 
   const barColors = [
-    'bg-red-500', 'bg-orange-500', 'bg-amber-500',
-    'bg-blue-500', 'bg-purple-500', 'bg-gray-500',
+    'bg-destructive', 'bg-orange-500', 'bg-warning',
+    'bg-info', 'bg-purple-500', 'bg-gray-500',
   ]
 
   return (
@@ -98,14 +98,14 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
 
         {/* Suggestion */}
         {data.biggest_blocker && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 dark:bg-amber-950/10 p-3">
+          <div className="mt-4 rounded-lg border border-warning/20 bg-warning/60 p-3">
             <div className="flex items-start gap-2">
-              <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-600" />
+              <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning-ink" />
               <div>
-                <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                <p className="text-xs font-bold text-warning-ink">
                   {data.biggest_blocker_label}
                 </p>
-                <p className="mt-1 text-ds-micro text-amber-700/80 dark:text-amber-400/80 whitespace-pre-line">
+                <p className="mt-1 text-ds-micro text-warning-ink/80 whitespace-pre-line">
                   {data.suggestion}
                 </p>
               </div>

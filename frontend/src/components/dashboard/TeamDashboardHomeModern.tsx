@@ -10,7 +10,8 @@ import type { HomeQuickAction } from '@/config/dashboard-home-actions'
 import type { LeadPublic } from '@/hooks/use-leads-query'
 import type { TeamPersonalFunnel } from '@/hooks/use-team-personal-funnel-query'
 import type { TeamTodayStats } from '@/hooks/use-team-today-stats-query'
-import { formatRelativeTimeShort } from '@/lib/utils'
+import { stageBadgeClass } from '@/lib/stage-colors'
+import { cn, formatRelativeTimeShort } from '@/lib/utils'
 
 
 
@@ -59,7 +60,7 @@ export function TeamDashboardHomeModern({
 
   return (
     <div className="mx-auto w-full max-w-[430px] space-y-4 pb-2 md:max-w-3xl">
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--palette-blue)_38%,transparent),transparent_42%),linear-gradient(180deg,color-mix(in_srgb,var(--palette-ink)_92%,var(--palette-blue)_8%)_0%,color-mix(in_srgb,var(--palette-ink)_89%,var(--palette-blue)_11%)_48%,color-mix(in_srgb,var(--palette-ink)_96%,var(--palette-blue)_4%)_100%)] text-white shadow-[0_32px_80px_-44px_rgba(27,48,120,0.9)]">
+      <section className="relative overflow-hidden rounded-4xl border border-primary/20 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--palette-blue)_38%,transparent),transparent_42%),linear-gradient(180deg,color-mix(in_srgb,var(--palette-ink)_92%,var(--palette-blue)_8%)_0%,color-mix(in_srgb,var(--palette-ink)_89%,var(--palette-blue)_11%)_48%,color-mix(in_srgb,var(--palette-ink)_96%,var(--palette-blue)_4%)_100%)] text-white shadow-[0_32px_80px_-44px_rgba(27,48,120,0.9)]">
         <div
           className="pointer-events-none absolute inset-0 opacity-30"
           aria-hidden
@@ -93,7 +94,7 @@ export function TeamDashboardHomeModern({
               </p>
             </div>
 
-            <div className="shrink-0 rounded-[1.2rem] border border-white/10 bg-white/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
+            <div className="shrink-0 rounded-3xl border border-white/10 bg-white/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/68">
                 Min. FLP Billed
               </p>
@@ -107,7 +108,7 @@ export function TeamDashboardHomeModern({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[1.15rem] border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
+            <div className="rounded-3xl border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Today&apos;s leads
               </p>
@@ -115,7 +116,7 @@ export function TeamDashboardHomeModern({
                 {today?.claimed_today ?? 0}
               </p>
             </div>
-            <div className="rounded-[1.15rem] border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
+            <div className="rounded-3xl border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
               <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
                 Calls
               </p>
@@ -128,7 +129,7 @@ export function TeamDashboardHomeModern({
           {primaryAction ? (
             <Link
               to={primaryAction.to}
-              className="group flex items-center justify-between rounded-[1.25rem] border border-white/10 bg-white/15 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-white/20"
+              className="group flex items-center justify-between rounded-3xl border border-white/10 bg-white/15 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-white/20"
             >
               <div className="min-w-0">
                 <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
@@ -191,7 +192,7 @@ export function TeamDashboardHomeModern({
               Fresh records from your latest workboard activity.
             </p>
           </div>
-          <Link to="/dashboard/work/leads" className="text-ds-caption font-semibold text-primary">
+          <Link to="/dashboard/work/leads" className="shrink-0 whitespace-nowrap text-ds-caption font-semibold text-primary">
             View all
           </Link>
         </div>
@@ -205,7 +206,7 @@ export function TeamDashboardHomeModern({
               <Link
                 key={lead.id}
                 to={`/dashboard/work/leads/${lead.id}`}
-                className="group block rounded-[1.35rem] border border-border/70 bg-card px-4 py-3.5 shadow-[var(--shadow-card)] transition hover:border-primary/25 hover:shadow-[var(--shadow-card-hover)]"
+                className="group block rounded-3xl border border-border/70 bg-card px-4 py-3.5 shadow-[var(--shadow-card)] transition hover:border-primary/25 hover:shadow-[var(--shadow-card-hover)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -222,7 +223,7 @@ export function TeamDashboardHomeModern({
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-ds-label font-semibold text-primary">
+                    <span className={cn('rounded-full border px-2.5 py-1 text-ds-label font-semibold', stageBadgeClass(lead.status))}>
                       {humanizeStatus(lead.status)}
                     </span>
                     {lead.phone ? (

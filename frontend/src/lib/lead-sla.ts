@@ -20,7 +20,7 @@ export function leadSlaTone(totalSeconds: number): LeadSlaTone {
 
   if (hours >= 24) {
     return {
-      text: 'text-emerald-800 dark:text-urgency-safe',
+      text: 'text-success-ink dark:text-urgency-safe',
       stroke: 'var(--urgency-safe)',
       glow: 'shadow-urgency-safe',
       border: 'border-urgency-safe/25',
@@ -30,7 +30,7 @@ export function leadSlaTone(totalSeconds: number): LeadSlaTone {
   }
   if (hours >= 18) {
     return {
-      text: 'text-blue-700 dark:text-urgency-watch',
+      text: 'text-info-ink dark:text-urgency-watch',
       stroke: 'var(--urgency-watch)',
       glow: 'shadow-urgency-watch',
       border: 'border-urgency-watch/25',
@@ -50,7 +50,7 @@ export function leadSlaTone(totalSeconds: number): LeadSlaTone {
   }
   if (hours >= 6) {
     return {
-      text: 'text-red-700 dark:text-urgency-warning',
+      text: 'text-destructive-ink dark:text-urgency-warning',
       stroke: 'var(--urgency-warning)',
       glow: 'shadow-urgency-warning',
       border: 'border-urgency-warning/25',
@@ -60,7 +60,7 @@ export function leadSlaTone(totalSeconds: number): LeadSlaTone {
   }
   if (hours >= 2) {
     return {
-      text: 'text-red-800 dark:text-urgency-danger',
+      text: 'text-destructive-ink dark:text-urgency-danger',
       stroke: 'var(--urgency-danger)',
       glow: 'shadow-urgency-danger',
       border: 'border-urgency-danger/30',
@@ -69,7 +69,7 @@ export function leadSlaTone(totalSeconds: number): LeadSlaTone {
     }
   }
   return {
-    text: 'text-red-900 dark:text-urgency-critical',
+    text: 'text-destructive-ink dark:text-urgency-critical',
     stroke: 'var(--urgency-critical)',
     glow: 'shadow-urgency-critical',
     border: 'border-urgency-critical/40',

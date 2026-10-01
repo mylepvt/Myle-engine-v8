@@ -155,7 +155,7 @@ function JoinFeed({ entries }: { entries: JoinEntry[] }) {
   if (entries.length === 0) return null
   const visible = entries.slice(-5)
   return (
-    <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/8 bg-white/[0.03] px-4 py-3 backdrop-blur-xl">
+    <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-white/8 bg-white/[0.03] px-4 py-3 backdrop-blur-xl">
       <p className="mb-2 text-ds-micro font-semibold uppercase tracking-[0.25em] text-room-subtle">Live activity</p>
       <div className="space-y-1.5">
         {visible.map((e, i) => (
@@ -225,7 +225,7 @@ function Day6VideoPlayer({
     <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
       <video
         ref={externalRef}
-        className="pointer-events-none h-full w-full select-none rounded-[1.4rem] object-contain"
+        className="pointer-events-none h-full w-full select-none rounded-3xl object-contain"
         playsInline
         muted
         disableRemotePlayback
@@ -245,14 +245,14 @@ function Day6VideoPlayer({
         }}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-[1.4rem] bg-gradient-to-b from-black/60 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 rounded-b-[1.4rem] bg-gradient-to-t from-black/70 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-3xl bg-gradient-to-b from-black/60 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 rounded-b-3xl bg-gradient-to-t from-black/70 to-transparent" />
 
       {paused && (
         <button
           type="button"
           aria-label="Play"
-          className="absolute inset-0 flex items-center justify-center rounded-[1.4rem] bg-black/50"
+          className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/50"
           onClick={togglePlay}
         >
           <span className="flex size-20 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/20">
@@ -324,7 +324,7 @@ function LiveSection({
 
   if (!data.video_url) {
     return (
-      <div className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-muted/30 px-5 py-8 text-center md:px-8 md:py-12">
+      <div className="w-full max-w-2xl rounded-4xl border border-white/8 bg-muted/30 px-5 py-8 text-center md:px-8 md:py-12">
         <p className="text-sm text-room-subtle">Video is being prepared. Please refresh in a moment.</p>
       </div>
     )
@@ -332,14 +332,14 @@ function LiveSection({
 
   return (
     <div className="w-full space-y-3">
-      <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
+      <section className="overflow-hidden rounded-4xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
         <div className="bg-room-surface p-3 sm:p-4">
           <Day6VideoPlayer
             src={data.video_url}
             liveStartsAt={data.live_starts_at}
             externalRef={videoRef}
           />
-          <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
+          <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.045] px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-base font-semibold text-white">You're in, {firstName}</p>
@@ -413,7 +413,7 @@ export function Day6LivePage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
 
         {/* Header */}
-        <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 backdrop-blur-2xl">
+        <header className="rounded-4xl border border-white/10 bg-muted/40 px-5 py-4 backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-room-muted">Myle</p>
@@ -449,7 +449,7 @@ export function Day6LivePage() {
 
         {/* Greeting */}
         {data && (
-          <div className="mt-4 rounded-[1.6rem] border border-white/8 bg-white/[0.035] px-5 py-4 backdrop-blur-xl">
+          <div className="mt-4 rounded-3xl border border-white/8 bg-white/[0.035] px-5 py-4 backdrop-blur-xl">
             <p className="text-base font-medium text-room-soft">
               {wish}, <span className="font-bold text-room-text">{firstName}</span>
             </p>
@@ -462,7 +462,7 @@ export function Day6LivePage() {
         <main className="flex flex-1 flex-col items-center justify-center gap-5 py-8">
 
           {isError && (
-            <div className="rounded-[2rem] border border-room-danger-border bg-room-danger-bg px-6 py-8 text-center" role="alert">
+            <div className="rounded-4xl border border-room-danger-border bg-room-danger-bg px-6 py-8 text-center" role="alert">
               <p className="text-base font-semibold text-room-danger">Could not load session.</p>
               <p className="mt-2 text-sm text-room-danger-soft">Please refresh or use the latest link from your team.</p>
             </div>
@@ -471,7 +471,7 @@ export function Day6LivePage() {
           {/* UPCOMING */}
           {state === 'upcoming' && data && (
             <section className="w-full max-w-2xl space-y-4">
-              <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-5 py-8 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-10">
+              <div className="rounded-4xl border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-5 py-8 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-10">
                 <p className="text-xs font-semibold uppercase tracking-widest text-room-muted">Private session</p>
                 <p className="mt-4 text-[clamp(3rem,8vw,5rem)] font-bold tabular-nums tracking-tight text-room-text">
                   {formatTimeIST(data.live_starts_at)}
@@ -486,7 +486,7 @@ export function Day6LivePage() {
                   ['Access', 'Private link', 'Invited only'],
                   ['Action', 'Join on time', 'Limited seats'],
                 ] as const).map(([label, title, sub]) => (
-                  <div key={label} className="rounded-[1.4rem] border border-white/8 bg-muted/30 px-4 py-4 text-center backdrop-blur-xl">
+                  <div key={label} className="rounded-3xl border border-white/8 bg-muted/30 px-4 py-4 text-center backdrop-blur-xl">
                     <p className="text-xs font-semibold uppercase tracking-wide text-room-muted">{label}</p>
                     <p className="mt-2 text-sm font-semibold text-room-text">{title}</p>
                     <p className="mt-0.5 text-xs text-room-subtle">{sub}</p>
@@ -499,7 +499,7 @@ export function Day6LivePage() {
           {/* WAITING */}
           {state === 'waiting' && data && (
             <>
-              <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-5 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-14">
+              <section className="w-full max-w-2xl rounded-4xl border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-5 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-14">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-room-accent">Starting in</p>
                 <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-room-text">
                   {formatCountdown(data.live_starts_at, nowMs)}
@@ -524,7 +524,7 @@ export function Day6LivePage() {
 
           {/* ENDED */}
           {state === 'ended' && (
-            <section className="w-full max-w-2xl space-y-5 rounded-[2.25rem] border border-white/8 bg-muted/30 px-5 py-8 text-center backdrop-blur-2xl md:px-8 md:py-12">
+            <section className="w-full max-w-2xl space-y-5 rounded-4xl border border-white/8 bg-muted/30 px-5 py-8 text-center backdrop-blur-2xl md:px-8 md:py-12">
               <p className="text-2xl font-semibold text-room-text">Today's session has ended</p>
               <p className="text-base text-room-subtle">
                 {firstName ? `Well done, ${firstName}.` : 'Well done.'} Your team will follow up with the next step.

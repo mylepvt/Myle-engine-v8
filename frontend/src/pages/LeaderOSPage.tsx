@@ -36,9 +36,9 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 
 function ScoreTier({ score, tier }: { score: number; tier: string }) {
   const cfg = {
-    strong: { label: 'Strong Leader', color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-    average: { label: 'Average', color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/20' },
-    at_risk: { label: 'At Risk', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20' },
+    strong: { label: 'Strong Leader', color: 'text-success-ink', bg: 'bg-success/10 border-success/20' },
+    average: { label: 'Average', color: 'text-warning-ink', bg: 'bg-warning/10 border-warning/20' },
+    at_risk: { label: 'At Risk', color: 'text-destructive-ink', bg: 'bg-destructive/10 border-destructive/20' },
   }[tier] ?? { label: tier, color: 'text-muted-foreground', bg: 'bg-muted border-border' }
 
   return (
@@ -62,7 +62,7 @@ function ScoreTier({ score, tier }: { score: number; tier: string }) {
             strokeWidth="3"
             strokeDasharray={`${score} 100`}
             strokeLinecap="round"
-            className={tier === 'strong' ? 'stroke-emerald-500' : tier === 'average' ? 'stroke-amber-500' : 'stroke-red-500'}
+            className={tier === 'strong' ? 'stroke-success' : tier === 'average' ? 'stroke-warning' : 'stroke-destructive'}
           />
         </svg>
         <span className={cn('absolute inset-0 flex items-center justify-center text-xs font-bold', cfg.color)}>
@@ -79,14 +79,14 @@ function MemberRow({ m }: { m: LosMemberRow }) {
       <TableCell>
         <div className="flex items-center gap-2">
           <span
-            className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-emerald-500' : 'bg-red-500')}
+            className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-success' : 'bg-destructive')}
             aria-hidden
           />
           <span className="text-sm font-medium">{m.name}</span>
         </div>
       </TableCell>
       <TableCell className="tabular-nums">
-        <span className={cn('font-semibold', !m.call_gate_met && 'text-red-500')}>
+        <span className={cn('font-semibold', !m.call_gate_met && 'text-destructive-ink')}>
           {m.calls_today}
         </span>
         <span className="text-muted-foreground">/{m.call_target}</span>
@@ -144,10 +144,10 @@ export function LeaderOSPage() {
         <Card>
           <CardContent className="px-4 py-3.5">
             <div className="flex items-center gap-2">
-              <Users className="size-4 text-blue-600 dark:text-blue-400" aria-hidden />
+              <Users className="size-4 text-info-ink" aria-hidden />
               <span className="text-xs text-muted-foreground">Active Members</span>
             </div>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-info-ink">
               {data.active_count}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -159,10 +159,10 @@ export function LeaderOSPage() {
         <Card>
           <CardContent className="px-4 py-3.5">
             <div className="flex items-center gap-2">
-              <Phone className="size-4 text-amber-600 dark:text-amber-400" aria-hidden />
+              <Phone className="size-4 text-warning-ink" aria-hidden />
               <span className="text-xs text-muted-foreground">Calls Today</span>
             </div>
-            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', callsPct < 60 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400')}>
+            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', callsPct < 60 ? 'text-destructive-ink' : 'text-warning-ink')}>
               {data.total_calls_today}
             </p>
             <p className="text-xs text-muted-foreground">Target {data.calls_team_target}</p>
@@ -175,7 +175,7 @@ export function LeaderOSPage() {
               <Zap className="size-4 text-violet-600 dark:text-violet-400" aria-hidden />
               <span className="text-xs text-muted-foreground">Activations</span>
             </div>
-            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', actPct < 60 ? 'text-red-600 dark:text-red-400' : 'text-violet-600 dark:text-violet-400')}>
+            <p className={cn('mt-2 text-3xl font-semibold tabular-nums', actPct < 60 ? 'text-destructive-ink' : 'text-violet-600 dark:text-violet-400')}>
               {data.activations_today}
             </p>
             <p className="text-xs text-muted-foreground">Target {data.activations_target}</p>
@@ -185,10 +185,10 @@ export function LeaderOSPage() {
         <Card>
           <CardContent className="px-4 py-3.5">
             <div className="flex items-center gap-2">
-              <IndianRupee className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <IndianRupee className="size-4 text-success-ink" aria-hidden />
               <span className="text-xs text-muted-foreground">Today Billing</span>
             </div>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-success-ink">
               ₹{data.billing_today_rupees.toLocaleString('en-IN')}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -210,11 +210,11 @@ export function LeaderOSPage() {
                 <Phone className="size-3 text-muted-foreground" aria-hidden />
                 <span className="text-muted-foreground">Calls</span>
               </div>
-              <span className={cn('font-semibold tabular-nums', callsPct < 60 ? 'text-red-500' : 'text-foreground')}>
+              <span className={cn('font-semibold tabular-nums', callsPct < 60 ? 'text-destructive-ink' : 'text-foreground')}>
                 {data.total_calls_today} / {data.calls_team_target} ({callsPct}%)
               </span>
             </div>
-            <ProgressBar value={data.total_calls_today} max={data.calls_team_target} color={callsPct >= 80 ? 'bg-emerald-500' : callsPct >= 60 ? 'bg-amber-500' : 'bg-red-500'} />
+            <ProgressBar value={data.total_calls_today} max={data.calls_team_target} color={callsPct >= 80 ? 'bg-success' : callsPct >= 60 ? 'bg-warning' : 'bg-destructive'} />
           </div>
 
           <div className="space-y-1.5">
@@ -223,11 +223,11 @@ export function LeaderOSPage() {
                 <Target className="size-3 text-muted-foreground" aria-hidden />
                 <span className="text-muted-foreground">Activations</span>
               </div>
-              <span className={cn('font-semibold tabular-nums', actPct < 60 ? 'text-red-500' : 'text-foreground')}>
+              <span className={cn('font-semibold tabular-nums', actPct < 60 ? 'text-destructive-ink' : 'text-foreground')}>
                 {data.activations_today} / {data.activations_target} ({actPct}%)
               </span>
             </div>
-            <ProgressBar value={data.activations_today} max={data.activations_target} color={actPct >= 80 ? 'bg-emerald-500' : actPct >= 60 ? 'bg-violet-500' : 'bg-red-500'} />
+            <ProgressBar value={data.activations_today} max={data.activations_target} color={actPct >= 80 ? 'bg-success' : actPct >= 60 ? 'bg-violet-500' : 'bg-destructive'} />
           </div>
         </CardContent>
       </Card>
@@ -254,7 +254,7 @@ export function LeaderOSPage() {
                     'All'
                   ) : (
                     <span className="inline-flex items-center gap-1.5">
-                      <span className={cn('size-2 rounded-full', f === 'active' ? 'bg-emerald-500' : 'bg-red-500')} aria-hidden />
+                      <span className={cn('size-2 rounded-full', f === 'active' ? 'bg-success' : 'bg-destructive')} aria-hidden />
                       {f === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   )}
@@ -288,10 +288,10 @@ export function LeaderOSPage() {
 
       {/* Alert: inactive members */}
       {data.inactive_count > 0 && (
-        <div className="flex items-start gap-3 rounded border border-red-500/20 bg-red-500/5 px-4 py-3">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-500" aria-hidden />
+        <div className="flex items-start gap-3 rounded border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive-ink" aria-hidden />
           <div>
-            <p className="text-sm font-semibold text-red-500">
+            <p className="text-sm font-semibold text-destructive-ink">
               {data.inactive_count} member{data.inactive_count > 1 ? 's' : ''} below call target
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -303,11 +303,11 @@ export function LeaderOSPage() {
 
       {/* Basics streak warnings */}
       {data.basics_streak >= 14 && (
-        <div className="flex items-start gap-3 rounded border border-red-600/40 bg-red-600/10 px-4 py-3">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-600" aria-hidden />
+        <div className="flex items-start gap-3 rounded border border-destructive/40 bg-destructive/10 px-4 py-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive-ink" aria-hidden />
           <div>
-            <p className="text-sm font-bold text-red-600">Account locked — basics not met</p>
-            <p className="mt-0.5 text-xs text-red-500/80">
+            <p className="text-sm font-bold text-destructive-ink">Account locked — basics not met</p>
+            <p className="mt-0.5 text-xs text-destructive-ink/80">
               Team ne {data.basics_streak} din se daily call target miss kiya hai. Account lock ho gaya — admin se restore karwao.
             </p>
           </div>
@@ -315,13 +315,13 @@ export function LeaderOSPage() {
       )}
 
       {data.basics_streak >= 7 && data.basics_streak < 14 && (
-        <div className="flex items-start gap-3 rounded border border-amber-500/30 bg-amber-500/8 px-4 py-3">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
+        <div className="flex items-start gap-3 rounded border border-warning/30 bg-warning/8 px-4 py-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning-ink" aria-hidden />
           <div>
-            <p className="text-sm font-bold text-amber-500">Warning — team basics not met</p>
+            <p className="text-sm font-bold text-warning-ink">Warning — team basics not met</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Team ne {data.basics_streak} din se daily call target miss kiya hai.{' '}
-              <span className="font-semibold text-amber-500">
+              <span className="font-semibold text-warning-ink">
                 {14 - data.basics_streak} din baad account lock ho sakta hai.
               </span>{' '}
               Abhi action lo.
@@ -331,9 +331,9 @@ export function LeaderOSPage() {
       )}
 
       {data.leader_tier === 'strong' && data.basics_streak === 0 && (
-        <div className="flex items-center gap-3 rounded border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-          <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-hidden />
-          <p className="text-sm font-semibold text-emerald-500">Team performing strong — keep it up!</p>
+        <div className="flex items-center gap-3 rounded border border-success/20 bg-success/5 px-4 py-3">
+          <CheckCircle2 className="size-4 shrink-0 text-success-ink" aria-hidden />
+          <p className="text-sm font-semibold text-success-ink">Team performing strong — keep it up!</p>
         </div>
       )}
     </div>

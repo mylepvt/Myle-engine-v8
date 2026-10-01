@@ -99,7 +99,7 @@ export function CurrentCcBoardPage({ title }: Props) {
                   onClick={() => navigate(`/dashboard/team/cc-board/${r.subject_user_id}`)}
                   className={cn(
                     'cursor-pointer border-t border-border/40 transition hover:bg-muted/40',
-                    r.flagged ? 'bg-red-500/[0.06]' : !r.filled ? 'bg-amber-500/[0.05]' : '',
+                    r.flagged ? 'bg-destructive/[0.06]' : !r.filled ? 'bg-warning/[0.05]' : '',
                   )}
                 >
                   <td className="px-4 py-3">
@@ -110,7 +110,7 @@ export function CurrentCcBoardPage({ title }: Props) {
                   </td>
                   <td className="px-2 py-3">
                     {r.filled ? (
-                      <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                      <span className="text-success-ink">✓</span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
@@ -118,7 +118,7 @@ export function CurrentCcBoardPage({ title }: Props) {
                   <td className="px-2 py-3 tabular-nums">
                     {r.filled ? (
                       <>
-                        <span className={r.gap > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
+                        <span className={r.gap > 0 ? 'text-warning-ink' : 'text-success-ink'}>
                           {r.current_ccs.toFixed(2)}
                         </span>
                         <span className="text-muted-foreground"> / {r.target_ccs.toFixed(2)}</span>
@@ -127,7 +127,7 @@ export function CurrentCcBoardPage({ title }: Props) {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className={cn('px-2 py-3 tabular-nums', r.flagged ? 'text-red-600 dark:text-red-400' : 'text-foreground')}>
+                  <td className={cn('px-2 py-3 tabular-nums', r.flagged ? 'text-destructive-ink' : 'text-foreground')}>
                     {r.activity_total}
                   </td>
                   <td className="px-4 py-3 text-right text-muted-foreground">›</td>
@@ -155,9 +155,9 @@ export function CurrentCcBoardPage({ title }: Props) {
 function Kpi({ label, value, tone }: { label: string; value: string; tone: 'warning' | 'danger' | 'plain' }) {
   const color =
     tone === 'danger'
-      ? 'text-red-600 dark:text-red-400'
+      ? 'text-destructive-ink'
       : tone === 'warning'
-        ? 'text-amber-600 dark:text-amber-400'
+        ? 'text-warning-ink'
         : 'text-foreground'
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-4 py-3">
@@ -168,6 +168,6 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone: 'warn
 }
 
 function Dot({ tone }: { tone: 'danger' | 'warning' | 'success' }) {
-  const bg = tone === 'danger' ? 'bg-red-500' : tone === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'
+  const bg = tone === 'danger' ? 'bg-destructive' : tone === 'warning' ? 'bg-warning' : 'bg-success'
   return <span className={cn('h-2 w-2 shrink-0 rounded-full', bg)} />
 }

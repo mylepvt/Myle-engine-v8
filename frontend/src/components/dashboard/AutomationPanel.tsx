@@ -54,10 +54,10 @@ export function AutomationPanel({ className }: { className?: string }) {
       </div>
 
       {evaluate.data && (
-        <div className="rounded-lg border border-green-200 bg-green-50/60 dark:bg-green-950/10 p-3">
+        <div className="rounded-lg border border-success/20 bg-success/60 p-3">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="size-4 text-green-600" />
-            <p className="text-xs font-semibold text-green-800 dark:text-green-300">
+            <CheckCircle2 className="size-4 text-success-ink" />
+            <p className="text-xs font-semibold text-success-ink">
               Evaluation complete — {evaluate.data.triggered} action(s) triggered
             </p>
           </div>
@@ -150,9 +150,9 @@ export function AutomationPanel({ className }: { className?: string }) {
                 <div key={log.id} className="flex items-start gap-2.5 rounded-lg bg-muted/30 px-3 py-2">
                   <div className="mt-0.5">
                     {log.action_type === 'escalate' ? (
-                      <AlertTriangle className="size-3.5 text-red-500" />
+                      <AlertTriangle className="size-3.5 text-destructive-ink" />
                     ) : (
-                      <CheckCircle2 className="size-3.5 text-green-500" />
+                      <CheckCircle2 className="size-3.5 text-success-ink" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

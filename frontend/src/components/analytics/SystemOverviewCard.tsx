@@ -81,7 +81,7 @@ export default function SystemOverviewCard({ overview, isLoading }: SystemOvervi
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Total CC</span>
-            <span className="font-medium text-emerald-400">
+            <span className="font-medium text-success-ink">
               {overview.sales.total_case_credits.toFixed(3)}
             </span>
           </div>
@@ -97,7 +97,7 @@ export default function SystemOverviewCard({ overview, isLoading }: SystemOvervi
           </div>
           <div className="flex justify-between border-t border-border/40 pt-2">
             <span className="text-muted-foreground">Commission (cheques)</span>
-            <span className="font-medium text-emerald-400">
+            <span className="font-medium text-success-ink">
               {new Intl.NumberFormat('en-IN', {
                 style: 'currency',
                 currency: 'INR',

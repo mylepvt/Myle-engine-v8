@@ -269,7 +269,7 @@ export default function SettingsPage() {
                 <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
                   {updateProfile.isPending ? 'Saving...' : 'Save Profile'}
                 </Button>
-                {profileSuccess ? <p className="text-sm text-emerald-500" role="status">{profileSuccess}</p> : null}
+                {profileSuccess ? <p className="text-sm text-success-ink" role="status">{profileSuccess}</p> : null}
                 {profileError ? <p className="text-sm text-destructive" role="alert">{profileError}</p> : null}
               </CardContent>
             </Card>
@@ -439,7 +439,7 @@ export default function SettingsPage() {
                 </div>
                 {passwordError ? <p className="text-sm text-destructive" role="alert">{passwordError}</p> : null}
                 {changePassword.isSuccess ? (
-                  <p className="text-sm text-green-600" role="status">Password changed successfully.</p>
+                  <p className="text-sm text-success-ink" role="status">Password changed successfully.</p>
                 ) : null}
                 <Button onClick={handlePasswordChange} disabled={changePassword.isPending}>
                   {changePassword.isPending ? 'Changing...' : 'Change Password'}

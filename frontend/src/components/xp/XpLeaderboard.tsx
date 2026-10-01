@@ -4,7 +4,7 @@ import { useXpLeaderboardQuery, LEVEL_COLORS } from '@/hooks/use-xp-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const RANK_COLORS = ['text-amber-400', 'text-slate-400', 'text-amber-600/80']
+const RANK_COLORS = ['text-warning-ink', 'text-slate-400', 'text-warning-ink/80']
 
 export function XpLeaderboard() {
   const { data, isPending, isError } = useXpLeaderboardQuery()
@@ -48,7 +48,7 @@ export function XpLeaderboard() {
               key={entry.user_id}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm',
-                idx === 0 && 'bg-amber-500/[0.08]',
+                idx === 0 && 'bg-warning/[0.08]',
               )}
             >
               <span className={cn('w-5 shrink-0 text-center font-bold tabular-nums text-xs', rankColor)}>

@@ -35,9 +35,9 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
 }
 
 const EVENT_VARIANTS: Record<string, string> = {
-  created: 'border-blue-200 bg-blue-50/40 dark:bg-blue-950/10',
+  created: 'border-info/20 bg-info/40',
   claimed: 'border-purple-200 bg-purple-50/40 dark:bg-purple-950/10',
-  called: 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/10',
+  called: 'border-success/20 bg-success/40',
   whatsapp_sent: 'border-sky-200 bg-sky-50/40 dark:bg-sky-950/10',
   mindset_completed: 'border-violet-200 bg-violet-50/40 dark:bg-violet-950/10',
   day1: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
@@ -45,11 +45,11 @@ const EVENT_VARIANTS: Record<string, string> = {
   day3: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
   day4: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
   day5: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
-  day2_test: 'border-green-200 bg-green-50/40 dark:bg-green-950/10',
-  day2_test_failed: 'border-red-200 bg-red-50/40 dark:bg-red-950/10',
-  sale: 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/10',
-  converted: 'border-green-200 bg-green-50/40 dark:bg-green-950/10 text-green-700 font-bold',
-  dead: 'border-red-200 bg-red-50/40 dark:bg-red-950/10',
+  day2_test: 'border-success/20 bg-success/40',
+  day2_test_failed: 'border-destructive/20 bg-destructive/40',
+  sale: 'border-success/20 bg-success/40',
+  converted: 'border-success/20 bg-success/40 text-success-ink font-bold',
+  dead: 'border-destructive/20 bg-destructive/40',
   recycle: 'border-orange-200 bg-orange-50/40 dark:bg-orange-950/10',
   note: 'border-gray-200 bg-gray-50/40 dark:bg-gray-950/10',
 }

@@ -286,15 +286,15 @@ function buildLeaderHealth(items: TeamTrackingMemberSummary[]) {
 }
 
 function liveBadgeClass(status: TeamTrackingMemberSummary['presence_status']) {
-  if (status === 'online') return 'bg-emerald-500 dark:bg-emerald-400'
-  if (status === 'idle') return 'bg-amber-500 dark:bg-amber-400'
+  if (status === 'online') return 'bg-success dark:bg-success'
+  if (status === 'idle') return 'bg-warning dark:bg-warning'
   return 'bg-slate-500 dark:bg-slate-400'
 }
 
 function scoreRailClass(band: TeamTrackingMemberSummary['consistency_band']) {
-  if (band === 'high') return 'bg-emerald-500/90 dark:bg-emerald-400/90'
-  if (band === 'medium') return 'bg-amber-500/90 dark:bg-amber-400/90'
-  return 'bg-rose-500/90 dark:bg-rose-400/90'
+  if (band === 'high') return 'bg-success/90 dark:bg-success/90'
+  if (band === 'medium') return 'bg-warning/90 dark:bg-warning/90'
+  return 'bg-destructive/90 dark:bg-destructive/90'
 }
 
 function updateParam(
@@ -313,9 +313,9 @@ function updateParam(
 function MetricPanel({ icon: Icon, label, value, tone = 'default', to }: MetricPanelProps) {
   const cls = cn(
     'border-t-2 bg-gradient-to-b to-transparent',
-    tone === 'success' && 'border-t-emerald-400/50 from-emerald-400/[0.06]',
-    tone === 'warning' && 'border-t-amber-400/50 from-amber-400/[0.06]',
-    tone === 'danger' && 'border-t-rose-400/50 from-rose-400/[0.06]',
+    tone === 'success' && 'border-t-success/50 from-success/[0.06]',
+    tone === 'warning' && 'border-t-warning/50 from-warning/[0.06]',
+    tone === 'danger' && 'border-t-destructive/50 from-destructive/[0.06]',
     tone === 'default' && 'border-t-primary/40 from-primary/[0.05]',
   )
   const inner = (
@@ -323,9 +323,9 @@ function MetricPanel({ icon: Icon, label, value, tone = 'default', to }: MetricP
       <div
         className={cn(
           'absolute right-3 top-3 rounded p-1.5',
-          tone === 'success' && 'bg-emerald-400/15 text-emerald-500 dark:text-emerald-300',
-          tone === 'warning' && 'bg-amber-400/15 text-amber-600 dark:text-amber-300',
-          tone === 'danger' && 'bg-rose-400/15 text-rose-500 dark:text-rose-300',
+          tone === 'success' && 'bg-success/15 text-success-ink',
+          tone === 'warning' && 'bg-warning/15 text-warning-ink',
+          tone === 'danger' && 'bg-destructive/15 text-destructive-ink',
           tone === 'default' && 'bg-primary/10 text-primary',
         )}
       >
@@ -337,9 +337,9 @@ function MetricPanel({ icon: Icon, label, value, tone = 'default', to }: MetricP
       <p
         className={cn(
           'mt-3 text-ds-display font-bold leading-none tabular-nums',
-          tone === 'success' && 'text-emerald-600 dark:text-emerald-300',
-          tone === 'warning' && 'text-amber-600 dark:text-amber-300',
-          tone === 'danger' && 'text-rose-600 dark:text-rose-300',
+          tone === 'success' && 'text-success-ink',
+          tone === 'warning' && 'text-warning-ink',
+          tone === 'danger' && 'text-destructive-ink',
           tone === 'default' && 'text-foreground',
         )}
       >
@@ -388,7 +388,7 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
   ].filter(Boolean) as string[]
 
   return (
-    <div className="rounded-md border border-rose-400/15 bg-rose-400/[0.05] px-4 py-3">
+    <div className="rounded-md border border-destructive/15 bg-destructive/[0.05] px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -409,7 +409,7 @@ function AttentionRow({ item, dateIso }: { item: TeamTrackingMemberSummary; date
             last activity {formatRelativeTime(item.last_activity_at)}
           </p>
         </div>
-        <div className="rounded-full border border-rose-400/20 px-2 py-1 text-ds-label uppercase text-rose-600 dark:text-rose-200">
+        <div className="rounded-full border border-destructive/20 px-2 py-1 text-ds-label uppercase text-destructive-ink">
           priority
         </div>
       </div>
@@ -541,22 +541,22 @@ export function TeamTrackingPage({ title }: Props) {
               <span className="size-1.5 rounded-full bg-primary/60" />
               {filteredItems.length} visible
             </div>
-            <div className="flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+            <div className="flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success-ink dark:bg-success/10">
               <span className="relative flex size-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-success" />
               </span>
               {filteredLiveCount} live now
             </div>
-            <div className="flex items-center gap-1.5 rounded-full border border-rose-400/30 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:bg-rose-400/10 dark:text-rose-300">
+            <div className="flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive-ink dark:bg-destructive/10">
               {flagged.length} need attention
             </div>
             <div className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">H{filteredHighCount}</span>
+              <span className="font-semibold text-success-ink">H{filteredHighCount}</span>
               {' · '}
-              <span className="font-semibold text-amber-600 dark:text-amber-400">M{filteredMediumCount}</span>
+              <span className="font-semibold text-warning-ink">M{filteredMediumCount}</span>
               {' · '}
-              <span className="font-semibold text-rose-600 dark:text-rose-400">L{filteredLowCount}</span>
+              <span className="font-semibold text-destructive-ink">L{filteredLowCount}</span>
             </div>
           </div>
         </div>
@@ -759,10 +759,10 @@ export function TeamTrackingPage({ title }: Props) {
           </div>
 
           {complianceFilter === 'removed' ? (
-            <section className="overflow-hidden rounded-md border border-rose-400/30 bg-rose-400/[0.04] shadow-[var(--shadow-card)]">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-400/20 px-5 py-4">
+            <section className="overflow-hidden rounded-md border border-destructive/30 bg-destructive/[0.04] shadow-[var(--shadow-card)]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-destructive/20 px-5 py-4">
                 <div>
-                  <p className="text-sm font-semibold text-rose-600 dark:text-rose-300">
+                  <p className="text-sm font-semibold text-destructive-ink">
                     Removed members — WhatsApp cleanup list
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -776,7 +776,7 @@ export function TeamTrackingPage({ title }: Props) {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="gap-1.5 border-rose-400/30 text-rose-600 hover:bg-rose-400/10 dark:text-rose-300"
+                      className="gap-1.5 border-destructive/30 text-destructive-ink hover:bg-destructive/10"
                       onClick={copyRemovedList}
                     >
                       {copyDone ? (
@@ -804,7 +804,7 @@ export function TeamTrackingPage({ title }: Props) {
                   {removedMembers.map((item) => (
                     <div
                       key={item.user_id}
-                      className="rounded-md border border-rose-400/20 bg-background px-4 py-3"
+                      className="rounded-md border border-destructive/20 bg-background px-4 py-3"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -835,20 +835,20 @@ export function TeamTrackingPage({ title }: Props) {
                           </p>
                         ) : null}
                         {item.compliance_summary ? (
-                          <p className="mt-1 border-t border-rose-400/15 pt-1">
+                          <p className="mt-1 border-t border-destructive/15 pt-1">
                             <span className="text-[color-mix(in_srgb,var(--foreground)_60%,transparent)]">Reason:</span>{' '}
-                            <span className="text-rose-600 dark:text-rose-400">{item.compliance_summary}</span>
+                            <span className="text-destructive-ink">{item.compliance_summary}</span>
                           </p>
                         ) : null}
                       </div>
 
                       {item.member_phone ? (
-                        <div className="mt-3 border-t border-rose-400/15 pt-3 text-xs">
+                        <div className="mt-3 border-t border-destructive/15 pt-3 text-xs">
                           <a
                             href={`https://wa.me/${item.member_phone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-500/20 dark:text-blue-400"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-info/30 bg-info/10 px-2.5 py-1 text-xs font-medium text-info-ink hover:bg-info/20"
                           >
                             <MessageCircle className="size-3" aria-hidden />
                             Message on WhatsApp

@@ -55,7 +55,7 @@ function MemberRow({ member }: { member: TrainingProgressMember }) {
           <div className="flex items-center gap-2">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)]">
               <div
-                className="h-full rounded-full bg-emerald-500 transition-[width] duration-300 dark:bg-emerald-400"
+                className="h-full rounded-full bg-success transition-[width] duration-300 dark:bg-success"
                 style={{ width: `${percent}%` }}
               />
             </div>

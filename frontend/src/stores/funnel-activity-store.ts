@@ -33,7 +33,7 @@ const FUNNEL_STAGES: { key: string; label: string; icon: LucideIcon }[] = [
 ]
 
 const DOT_COLORS = [
-  '#5865f2', '#eb459e', '#3ba55c', '#f0b232',
+  '#3b6ef6', '#eb459e', '#3ba55c', '#f0b232',
   '#9b59b6', '#1abc9c', '#e67e22', '#3498db',
   '#2ecc71', '#e74c3c', '#95a5a6', '#f39c12',
 ]

@@ -311,8 +311,8 @@ export function CurrentCcPage({ title }: Props) {
             className={cn(inputCls, 'w-28 tabular-nums')}
           />
         </label>
-        <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-sm">
-          Current CCs: <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{closedTotalCcs.toFixed(3)}</span>
+        <span className="rounded-lg border border-success/25 bg-success/[0.06] px-3 py-2 text-sm">
+          Current CCs: <span className="font-bold tabular-nums text-success-ink">{closedTotalCcs.toFixed(3)}</span>
         </span>
       </div>
 
@@ -402,7 +402,7 @@ export function CurrentCcPage({ title }: Props) {
                   <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { name: e.target.value })} className={inputCls} />
                   <input type="number" min={0} value={r.fresh_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { fresh_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
                   <input type="number" min={0} value={r.old_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { old_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
-                  <div className="flex items-center justify-center text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{(r.fresh_lead || 0) + (r.old_lead || 0)}</div>
+                  <div className="flex items-center justify-center text-sm font-semibold tabular-nums text-success-ink">{(r.fresh_lead || 0) + (r.old_lead || 0)}</div>
                   <RemoveBtn onClick={() => removeRow('enrollment_rows', i)} />
                 </div>
               ))}
@@ -461,7 +461,7 @@ export function CurrentCcPage({ title }: Props) {
             className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]">
             {mut.isPending ? 'Saving…' : 'Save sheet'}
           </button>
-          {mut.isSuccess ? <span className="text-sm text-emerald-600 dark:text-emerald-400/90">Saved.</span> : null}
+          {mut.isSuccess ? <span className="text-sm text-success-ink">Saved.</span> : null}
           {mut.isError ? (
             <span className="text-sm text-destructive" role="alert">
               {mut.error instanceof Error ? mut.error.message : 'Save failed'}
@@ -536,7 +536,7 @@ function RowHeader({ cols, grid }: { cols: string[]; grid: string }) {
 function CheckCell({ checked, disabled, onChange }: { checked: boolean; disabled: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center justify-center">
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-emerald-500" />
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-success" />
     </label>
   )
 }
@@ -567,9 +567,9 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 }
 
 const MATCH_STYLE: Record<string, { dot: string; text: string; label: string }> = {
-  match: { dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', label: 'Matches system' },
-  partial: { dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', label: 'Partly backed' },
-  mismatch: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400', label: "Doesn't match — flagged" },
+  match: { dot: 'bg-success', text: 'text-success-ink', label: 'Matches system' },
+  partial: { dot: 'bg-warning', text: 'text-warning-ink', label: 'Partly backed' },
+  mismatch: { dot: 'bg-destructive', text: 'text-destructive-ink', label: "Doesn't match — flagged" },
   none: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground', label: 'Nothing claimed' },
 }
 
@@ -608,7 +608,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
         })}
       </div>
       {match.flagged ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/[0.06] px-3 py-2 text-xs text-red-600 dark:text-red-400">
+        <p className="rounded-lg border border-destructive/30 bg-destructive/[0.06] px-3 py-2 text-xs text-destructive-ink">
           Flagged: what you wrote is more than the system shows. Admin can see this.
         </p>
       ) : null}
@@ -619,7 +619,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>{value}</p>
+      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>{value}</p>
       <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
   )

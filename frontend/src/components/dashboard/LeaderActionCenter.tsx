@@ -18,10 +18,10 @@ const ACTION_BUTTONS: Record<string, { label: string; icon: typeof Phone; varian
 
 function KpiCard({ label, value, icon, variant }: { label: string; value: number | string; icon: React.ReactNode; variant: 'danger' | 'warning' | 'success' | 'info' }) {
   const styles = {
-    danger: 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300',
-    warning: 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300',
-    success: 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300',
-    info: 'border-blue-200 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300',
+    danger: 'border-destructive/20 bg-destructive/10 text-destructive-ink',
+    warning: 'border-warning/20 bg-warning/10 text-warning-ink',
+    success: 'border-success/20 bg-success/10 text-success-ink',
+    info: 'border-info/20 bg-info/10 text-info-ink',
   }
   return (
     <div className={cn('flex items-center gap-3 rounded-xl border p-3', styles[variant])}>
@@ -38,7 +38,7 @@ function KpiCard({ label, value, icon, variant }: { label: string; value: number
 
 function HealthBar({ label, value, max }: { label: string; value: number; max?: number }) {
   const pct = max ? (value / max) * 100 : value
-  const color = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'
+  const color = pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-destructive'
   return (
     <div className="flex items-center gap-2">
       <span className="w-32 shrink-0 text-ds-caption font-medium">{label}</span>
@@ -52,10 +52,10 @@ function HealthBar({ label, value, max }: { label: string; value: number; max?: 
 
 function ActionCard({ action }: { action: ActionItem }) {
   const severityColor = action.severity === 'critical'
-    ? 'border-red-200 bg-red-50/60 dark:bg-red-950/10'
+    ? 'border-destructive/20 bg-destructive/60'
     : action.severity === 'warning'
-    ? 'border-amber-200 bg-amber-50/60 dark:bg-amber-950/10'
-    : 'border-blue-200 bg-blue-50/60 dark:bg-blue-950/10'
+    ? 'border-warning/20 bg-warning/60'
+    : 'border-info/20 bg-info/60'
 
   const btn = ACTION_BUTTONS[action.action_type] ?? { label: 'Action', icon: AlertCircle, variant: 'outline' as const }
   const BtnIcon = btn.icon
@@ -66,7 +66,7 @@ function ActionCard({ action }: { action: ActionItem }) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-foreground">{action.member_name}</span>
           {action.severity === 'critical' && (
-            <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-ds-micro font-bold text-red-600">URGENT</span>
+            <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-ds-micro font-bold text-destructive-ink">URGENT</span>
           )}
         </div>
         <p className="mt-0.5 text-ds-caption">{action.issue}</p>
@@ -134,9 +134,9 @@ export function LeaderActionCenter() {
           <h2 className="text-ds-label font-bold">Team Overview</h2>
           <Badge variant="outline" className="text-ds-micro ml-auto">{data.team_size} members</Badge>
           <Badge className={cn('text-ds-micro',
-            h.leader_band === 'elite' ? 'bg-green-100 text-green-800' :
-            h.leader_band === 'average' ? 'bg-amber-100 text-amber-800' :
-            'bg-red-100 text-red-800'
+            h.leader_band === 'elite' ? 'bg-success/10 text-success-ink' :
+            h.leader_band === 'average' ? 'bg-warning/10 text-warning-ink' :
+            'bg-destructive/10 text-destructive-ink'
           )}>
             Score {h.leader_score} — {h.leader_band}
           </Badge>
@@ -184,15 +184,15 @@ export function LeaderActionCenter() {
         <div>
           <div className="mb-3 flex items-center gap-2">
             <h2 className="flex items-center gap-1.5 text-ds-label font-bold">
-              <AlertTriangle className="size-4 text-amber-500" />
+              <AlertTriangle className="size-4 text-warning-ink" />
               Action Queue
             </h2>
             <Badge variant="secondary" className="text-ds-micro">{data.actions.length} items</Badge>
             {totalCritical > 0 && (
-              <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-ds-micro font-bold text-red-600">
+              <span className="flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-ds-micro font-bold text-destructive-ink">
                 <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-destructive" />
                 </span>
                 {totalCritical} urgent
               </span>
@@ -207,7 +207,7 @@ export function LeaderActionCenter() {
       ) : (
         <Card>
           <CardContent className="py-8 text-center">
-            <CheckCircle2 className="mx-auto size-10 text-green-500" />
+            <CheckCircle2 className="mx-auto size-10 text-success-ink" />
             <p className="mt-3 text-base font-bold text-foreground">All Clear!</p>
             <p className="mt-1 text-sm text-muted-foreground">No actions needed for your team right now.</p>
           </CardContent>

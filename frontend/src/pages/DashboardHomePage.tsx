@@ -39,6 +39,7 @@ import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCar
 import { useLeaderCommandCenter } from '@/hooks/use-leader-command-center-query'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
 import { cn } from '@/lib/utils'
+import { phaseColor, phaseInk, stageColor } from '@/lib/stage-colors'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -104,7 +105,7 @@ function Day1PipelineRow({
           {/* Previous stages auto-complete */}
           <div className="flex items-center gap-1">
             {D1_STAGES.map((s) => (
-              <span key={s} className="flex items-center gap-0.5 text-ds-micro text-emerald-600/80 dark:text-emerald-400/80">
+              <span key={s} className="flex items-center gap-0.5 text-ds-micro text-success-ink/80">
                 <CheckCircle2 className="size-3.5" />
               </span>
             ))}
@@ -127,7 +128,7 @@ function Day1PipelineRow({
                   className={cn(
                     'flex items-center gap-1 rounded-full border px-2 py-0.5 text-ds-micro font-medium transition disabled:opacity-50',
                     checked
-                      ? 'border-emerald-600/40 bg-emerald-600/12 text-emerald-600 dark:border-emerald-400/40 dark:bg-emerald-400/12 dark:text-emerald-400'
+                      ? 'border-success/40 bg-success/12 text-success-ink dark:border-success/40 dark:bg-success/12'
                       : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground',
                   )}
                 >
@@ -174,12 +175,13 @@ function WarRoomDashboard({
       colMap.set(col.status, col.total)
     }
     const maxCount = Math.max(1, ...Array.from(colMap.values()))
-    // One colour per phase, from theme tokens: blue = early, cyan = engaged,
-    // green = converting. (Was 12 hard-coded hues with Converted in red.)
+    // Column + bar colours come from the shared lead-journey phases
+    // (src/lib/stage-colors.ts), so Converted is green and Day 2–5 amber.
     const stages = [
       {
         title: 'Top of Funnel',
-        color: 'var(--primary)',
+        color: phaseColor('early'),
+        ink: phaseInk('early'),
         stages: [
           { key: 'new_lead', label: 'Just Claimed' },
           { key: 'contacted', label: 'Contacted' },
@@ -188,7 +190,8 @@ function WarRoomDashboard({
       },
       {
         title: 'Engagement',
-        color: 'var(--chart-2)',
+        color: phaseColor('engaged'),
+        ink: phaseInk('engaged'),
         stages: [
           { key: 'whatsapp_sent', label: 'WhatsApp Sent' },
           { key: 'video_watched', label: 'Video Watched' },
@@ -198,7 +201,8 @@ function WarRoomDashboard({
       },
       {
         title: 'Conversion',
-        color: 'var(--success)',
+        color: phaseColor('closing'),
+        ink: phaseInk('closing'),
         stages: [
           { key: 'day2', label: 'Day 2' },
           { key: 'day3', label: 'Day 3' },
@@ -257,7 +261,7 @@ function WarRoomDashboard({
         <div className="rounded-2xl border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-bold">
-              <AlertTriangle className="size-4 text-amber-500" />
+              <AlertTriangle className="size-4 text-warning-ink" />
               Action Queue
             </h3>
             {actions.length > 0 && (
@@ -268,9 +272,9 @@ function WarRoomDashboard({
             <>
               <div className="space-y-2">
                 {displayedActions.map((a, i) => {
-                  const severityDot = a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+                  const severityDot = a.severity === 'critical' ? 'bg-destructive' : a.severity === 'warning' ? 'bg-warning' : 'bg-info'
                   const btnStyle = a.action_type === 'call'
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-info text-white hover:bg-info/90'
                     : a.action_type === 'message'
                       ? 'bg-purple-600 text-white hover:bg-purple-700'
                       : 'bg-muted text-foreground hover:bg-muted/80 border border-border'
@@ -283,9 +287,9 @@ function WarRoomDashboard({
                   return (
                     <div key={`${a.member_id}-${i}`} className={cn(
                       'flex items-center gap-3 rounded-xl border p-3',
-                      a.severity === 'critical' ? 'border-red-500/20 bg-red-500/5' :
-                      a.severity === 'warning' ? 'border-amber-500/20 bg-amber-500/5' :
-                      'border-blue-500/20 bg-blue-500/5',
+                      a.severity === 'critical' ? 'border-destructive/20 bg-destructive/5' :
+                      a.severity === 'warning' ? 'border-warning/20 bg-warning/5' :
+                      'border-info/20 bg-info/5',
                     )}>
                       <span className={cn('size-2 shrink-0 rounded-full', severityDot)} />
                       <div className="min-w-0 flex-1">
@@ -314,9 +318,9 @@ function WarRoomDashboard({
               )}
             </>
           ) : (
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5">
-              <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
-              <p className="text-sm font-bold text-emerald-500">All Clear!</p>
+            <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-success/5 px-4 py-5">
+              <CheckCircle2 className="size-5 shrink-0 text-success-ink" />
+              <p className="text-sm font-bold text-success-ink">All Clear!</p>
               <p className="text-xs text-muted-foreground">No actions needed right now.</p>
             </div>
           )}
@@ -324,29 +328,29 @@ function WarRoomDashboard({
         <div className="rounded-2xl border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Zap className="size-4 text-amber-500" />
+              <Zap className="size-4 text-warning-ink" />
               Priority Matrix
             </h3>
             {totalCritical > 0 && (
-              <span className="rounded-md bg-red-500/15 px-2 py-0.5 text-ds-micro font-bold text-red-500">{totalCritical} urgent</span>
+              <span className="rounded-md bg-destructive/15 px-2 py-0.5 text-ds-micro font-bold text-destructive-ink">{totalCritical} urgent</span>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-red-500">{f?.campaign_failures ?? '—'}</p>
-              <p className="mt-1 text-xs text-red-400">Missed Missions</p>
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-destructive-ink">{f?.campaign_failures ?? '—'}</p>
+              <p className="mt-1 text-xs text-destructive-ink">Missed Missions</p>
             </div>
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-amber-500">{f?.zombie_leads ?? '—'}</p>
-              <p className="mt-1 text-xs text-amber-400">Zombie Leads</p>
+            <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-warning-ink">{f?.zombie_leads ?? '—'}</p>
+              <p className="mt-1 text-xs text-warning-ink">Zombie Leads</p>
             </div>
-            <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-blue-500">{f?.pending_verifications ?? '—'}</p>
-              <p className="mt-1 text-xs text-blue-400">Pending Verif.</p>
+            <div className="rounded-xl border border-info/20 bg-info/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-info-ink">{f?.pending_verifications ?? '—'}</p>
+              <p className="mt-1 text-xs text-info-ink">Pending Verif.</p>
             </div>
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-emerald-500">{f?.campaigns_running ?? '—'}</p>
-              <p className="mt-1 text-xs text-emerald-400">Campaigns Running</p>
+            <div className="rounded-xl border border-success/20 bg-success/10 p-4 text-center">
+              <p className="text-2xl font-extrabold tabular-nums text-success-ink">{f?.campaigns_running ?? '—'}</p>
+              <p className="mt-1 text-xs text-success-ink">Campaigns Running</p>
             </div>
           </div>
         </div>
@@ -359,8 +363,8 @@ function WarRoomDashboard({
           <div className="flex items-center gap-2">
             <Layers className="size-4 text-primary" aria-hidden />
             <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-success" />
             </span>
             <h3 className="text-sm font-bold">Pipeline Board</h3>
           </div>
@@ -383,10 +387,10 @@ function WarRoomDashboard({
               return (
                 <div key={col.title} className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-border/60">
                   <div className="mb-3 flex items-center justify-between border-b border-border/30 pb-2.5" style={{ borderColor: `color-mix(in srgb, ${col.color} 20%, transparent)` }}>
-                    <span className="text-ds-micro font-bold uppercase tracking-[0.08em]" style={{ color: col.color }}>
+                    <span className="text-ds-micro font-bold uppercase tracking-[0.08em]" style={{ color: col.ink }}>
                       {col.title}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-lg font-extrabold tabular-nums" style={{ color: col.color }}>
+                    <span className="inline-flex items-center gap-1 text-lg font-extrabold tabular-nums" style={{ color: col.ink }}>
                       {colTotal}
                     </span>
                   </div>
@@ -404,13 +408,13 @@ function WarRoomDashboard({
                             <div className="flex items-center gap-2.5 min-w-0">
                               <span
                                 className="size-2 shrink-0 rounded-full"
-                                style={{ backgroundColor: col.color }}
+                                style={{ backgroundColor: stageColor(stage.key) }}
                               />
                               <span className="truncate text-ds-caption font-medium text-muted-foreground">
                                 {stage.label}
                               </span>
                             </div>
-                            <span className="inline-flex items-center gap-1 shrink-0 text-base font-extrabold tabular-nums" style={{ color: col.color }}>
+                            <span className="inline-flex items-center gap-1 shrink-0 text-base font-extrabold tabular-nums text-foreground">
                               {count}
                             </span>
                           </div>
@@ -418,7 +422,7 @@ function WarRoomDashboard({
                             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                               <div
                                 className="h-full rounded-full transition-all duration-700"
-                                style={{ width: `${pct}%`, backgroundColor: col.color }}
+                                style={{ width: `${pct}%`, backgroundColor: stageColor(stage.key) }}
                               />
                             </div>
                             <span className="text-ds-micro font-semibold text-muted-foreground tabular-nums">
@@ -441,11 +445,11 @@ function WarRoomDashboard({
         <div className="rounded-2xl border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-bold">
-              <TrendingUp className="size-4 text-emerald-500" />
+              <TrendingUp className="size-4 text-success-ink" />
               Team Health
             </h3>
             {h && (
-              <span className={cn('rounded-md px-2 py-0.5 text-ds-micro font-bold', h.leader_band === 'elite' ? 'bg-emerald-500/15 text-emerald-500' : h.leader_band === 'average' ? 'bg-amber-500/15 text-amber-500' : 'bg-red-500/15 text-red-500')}>
+              <span className={cn('rounded-md px-2 py-0.5 text-ds-micro font-bold', h.leader_band === 'elite' ? 'bg-success/15 text-success-ink' : h.leader_band === 'average' ? 'bg-warning/15 text-warning-ink' : 'bg-destructive/15 text-destructive-ink')}>
                 Score: {h.leader_score}
               </span>
             )}
@@ -463,7 +467,7 @@ function WarRoomDashboard({
                   { label: 'Blocker Res.', value: h.blocker_resolution_pct },
                 ].map((item) => {
                   const tone = item.value >= 70 ? 'success' : item.value >= 40 ? 'warning' : 'destructive'
-                  const textColor = tone === 'success' ? 'text-emerald-700 dark:text-emerald-400' : tone === 'warning' ? 'text-amber-700 dark:text-amber-400' : 'text-destructive'
+                  const textColor = tone === 'success' ? 'text-success-ink' : tone === 'warning' ? 'text-warning-ink' : 'text-destructive'
                   const barColor = tone === 'success' ? 'bg-success' : tone === 'warning' ? 'bg-warning' : 'bg-destructive'
                   return (
                     <div key={item.label} className="flex items-center gap-3">
@@ -489,7 +493,7 @@ function WarRoomDashboard({
         <div className="rounded-2xl border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Users className="size-4 text-blue-500" />
+              <Users className="size-4 text-info-ink" />
               Team Members
             </h3>
             <span className="rounded-md bg-muted px-2 py-0.5 text-ds-micro font-bold text-muted-foreground">
@@ -499,7 +503,7 @@ function WarRoomDashboard({
           <div className="grid grid-cols-2 gap-2">
             {s.members.slice(0, 8).map((m) => (
               <div key={m.user_id} className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2.5 text-xs font-medium">
-                <span className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-emerald-500' : 'bg-red-500')} />
+                <span className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-success' : 'bg-destructive')} />
                 <span className="truncate">{m.name}</span>
                 <span className="ml-auto text-muted-foreground tabular-nums">{m.calls_today}</span>
               </div>
@@ -516,8 +520,8 @@ type KpiTone = 'neutral' | 'success' | 'warning'
 
 const KPI_TONE: Record<KpiTone, string> = {
   neutral: 'text-foreground',
-  success: 'text-emerald-700 dark:text-emerald-400',
-  warning: 'text-amber-700 dark:text-amber-400',
+  success: 'text-success-ink',
+  warning: 'text-warning-ink',
 }
 
 /** One KPI style for the home overview — colour only carries status, never decoration. */

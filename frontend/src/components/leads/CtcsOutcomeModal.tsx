@@ -102,8 +102,8 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
                   href={tel}
                   className={cn(
                     'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
-                    'border-2 border-emerald-600/45 bg-emerald-500/15 text-emerald-900 shadow-[0_0_12px_rgba(52,211,153,0.28)] hover:bg-emerald-500/25',
-                    'dark:border-emerald-400/70 dark:bg-emerald-500/20 dark:text-emerald-100 dark:shadow-[0_0_12px_rgba(52,211,153,0.35)] dark:hover:bg-emerald-500/30',
+                    'border-2 border-success/45 bg-success/15 text-success-ink shadow-[0_0_12px_rgba(52,211,153,0.28)] hover:bg-success/25',
+                    'dark:border-success/70 dark:bg-success/20 dark:text-success-ink dark:shadow-[0_0_12px_rgba(52,211,153,0.35)] dark:hover:bg-success/30',
                   )}
                 >
                   <Phone className="size-4 shrink-0" aria-hidden />

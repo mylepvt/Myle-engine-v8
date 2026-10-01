@@ -240,7 +240,7 @@ export function LeadGenPage({ title }: { title?: string }) {
             </div>
           )}
           {createMutation.isError ? (
-            <p className="text-sm text-red-600">{(createMutation.error as Error).message}</p>
+            <p className="text-sm text-destructive-ink">{(createMutation.error as Error).message}</p>
           ) : null}
         </CardContent>
       </Card>
@@ -273,7 +273,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                   {link.active ? (
                     <Button
                       variant="ghost"
-                      className="text-red-600"
+                      className="text-destructive-ink"
                       onClick={() => deactivateMutation.mutate(link.id)}
                     >
                       Deactivate
@@ -439,7 +439,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                 ) : null}
 
                 {uploadMutation.isError && uploadingId === link.id ? (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-destructive-ink">
                     {(uploadMutation.error as Error).message}
                   </p>
                 ) : null}

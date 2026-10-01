@@ -22,9 +22,9 @@ const boxMd =
   'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border transition active:scale-95 [&_svg]:h-4 [&_svg]:w-4'
 
 const callTint =
-  'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-300'
+  'border-success/30 bg-success/10 text-success-ink hover:bg-success/20 dark:border-success/40 dark:bg-success/15'
 const waTint =
-  'border-green-500/30 bg-green-500/10 text-green-700 hover:bg-green-500/20 dark:border-green-400/40 dark:bg-green-400/15 dark:text-green-300'
+  'border-success/30 bg-success/10 text-success-ink hover:bg-success/20 dark:border-success/40 dark:bg-success/15'
 const neutralTint = 'border-border bg-muted/50 text-foreground'
 
 const BLOCKED_LEVELS = new Set(['strong_warning', 'final_warning'])

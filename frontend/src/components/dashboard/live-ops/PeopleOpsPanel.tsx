@@ -7,7 +7,7 @@ import { activityIcon } from '@/lib/activity-icons'
 import { cn } from '@/lib/utils'
 
 // ── Rank badge colors ──────────────────────────────────────────────────────
-const RANK_COLORS = ['#f59e0b', '#9ca3af', '#cd7c2f', '#5865f2', '#6b7280']
+const RANK_COLORS = ['#f59e0b', '#9ca3af', '#cd7c2f', '#3b6ef6', '#6b7280']
 
 function rankBg(rank: number): string {
   return RANK_COLORS[rank - 1] ?? '#6b7280'
@@ -15,7 +15,7 @@ function rankBg(rank: number): string {
 
 // Generate consistent avatar color from name
 function avatarColor(name: string): string {
-  const COLORS = ['#5865f2', '#eb459e', '#3ba55c', '#f0b232', '#9b59b6', '#1abc9c', '#e67e22']
+  const COLORS = ['#3b6ef6', '#eb459e', '#3ba55c', '#f0b232', '#9b59b6', '#1abc9c', '#e67e22']
   let h = 0
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
   return COLORS[Math.abs(h) % COLORS.length]
@@ -55,7 +55,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
         <span
           className={cn(
             'absolute bottom-0 right-0 block size-3 rounded-full border-2 border-background dark:border-card',
-            isOnline ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-500 dark:bg-gray-600',
+            isOnline ? 'bg-success dark:bg-success' : 'bg-gray-500 dark:bg-gray-600',
           )}
         />
       </div>
@@ -73,7 +73,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
           <p className="text-ds-micro text-muted-foreground/70">Adds</p>
         </div>
         <div className="text-center">
-          <p className="text-ds-caption font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{leader.personal_calls_today}</p>
+          <p className="text-ds-caption font-bold tabular-nums text-success-ink">{leader.personal_calls_today}</p>
           <p className="text-ds-micro text-muted-foreground/70">Calls</p>
         </div>
         <div className="text-center">
@@ -102,7 +102,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         <span
           className={cn(
             'absolute -bottom-0.5 -right-0.5 block size-2.5 rounded-full border-[1.5px] border-background dark:border-card',
-            isOnline ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-muted-foreground/40 dark:bg-gray-600',
+            isOnline ? 'bg-success dark:bg-success' : 'bg-muted-foreground/40 dark:bg-gray-600',
           )}
         />
       </div>
@@ -110,7 +110,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold text-foreground">{leader.leader_name}</p>
         <div className="flex items-center gap-1.5">
-          <span className={cn('text-ds-micro font-medium', isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
+          <span className={cn('text-ds-micro font-medium', isOnline ? 'text-success-ink' : 'text-muted-foreground')}>
             {isOnline ? 'Live' : 'Offline'}
           </span>
         </div>
@@ -147,7 +147,7 @@ function timeAgo(ts: number): string {
 }
 
 const ACTION_COLORS: Record<string, string> = {
-  'lead:created': '#5865f2',
+  'lead:created': '#3b6ef6',
   'lead:claimed': '#f0b232',
   'lead:batch_claimed': '#f0b232',
   'lead:transitioned': '#3ba55c',
@@ -277,8 +277,8 @@ export function PeopleOpsPanel() {
         <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success dark:bg-success opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-success dark:bg-success" />
             </span>
             <p className="text-ds-micro font-semibold text-muted-foreground/70">Live Activity</p>
           </div>

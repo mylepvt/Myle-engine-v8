@@ -69,9 +69,9 @@ export function LiveSessionPage({ title }: Props) {
       ) : null}
 
       {joinHref ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-4">
-          <p className="text-ds-label font-bold uppercase tracking-wider text-red-500 dark:text-red-300">
-            <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-red-500 align-middle" aria-hidden />
+        <div className="rounded-xl border border-destructive/30 bg-destructive/[0.06] p-4">
+          <p className="text-ds-label font-bold uppercase tracking-wider text-destructive-ink">
+            <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-destructive align-middle" aria-hidden />
             Today&apos;s Live Session
           </p>
           <p className="mt-1 text-base font-semibold text-foreground">
@@ -85,18 +85,18 @@ export function LiveSessionPage({ title }: Props) {
               href={joinHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-500"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-destructive px-5 text-sm font-semibold text-white transition hover:bg-destructive"
             >
               Join Now <ArrowRight className="ml-1.5 size-4" aria-hidden />
             </a>
             <button
               type="button"
               onClick={() => void copyMessage()}
-              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-500/40 bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-red-500/10"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-destructive/40 bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-destructive/10"
             >
               {copied ? (
                 <>
-                  <Check className="mr-1.5 size-4 text-emerald-500" aria-hidden /> Copied
+                  <Check className="mr-1.5 size-4 text-success-ink" aria-hidden /> Copied
                 </>
               ) : (
                 <>

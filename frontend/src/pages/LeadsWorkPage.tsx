@@ -609,7 +609,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="qa-lead-name" className="mb-1 block text-xs font-semibold text-foreground">
-                      Full name <span className="text-red-500">*</span>
+                      Full name <span className="text-destructive-ink">*</span>
                     </label>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -628,7 +628,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   </div>
                   <div>
                     <label htmlFor="qa-lead-phone" className="mb-1 block text-xs font-semibold text-foreground">
-                      Phone <span className="text-red-500">*</span>
+                      Phone <span className="text-destructive-ink">*</span>
                     </label>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -731,7 +731,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   </div>
                 </div>
                 {createHint ? (
-                  <p className="text-xs text-amber-700 dark:text-amber-400" role="status">
+                  <p className="text-xs text-warning-ink" role="status">
                     {createHint}
                   </p>
                 ) : null}
@@ -754,7 +754,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                     type="submit"
                     data-ui-silent
                     disabled={createMut.isPending || !name.trim() || !newPhone.trim()}
-                    className="border-0 bg-gradient-to-r from-emerald-600 to-[var(--palette-cyan-dull)] font-semibold text-primary-foreground shadow-md hover:opacity-90"
+                    className="border-0 bg-gradient-to-r from-success to-[var(--palette-cyan-dull)] font-semibold text-primary-foreground shadow-md hover:opacity-90"
                   >
                     {createMut.isPending ? 'Adding…' : 'Add Lead'}
                   </Button>

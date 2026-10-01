@@ -20,17 +20,17 @@ import {
 } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
-const ASSIGNEE_PALETTE = ['bg-blue-500', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-amber-500'] as const
+const ASSIGNEE_PALETTE = ['bg-info', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-warning'] as const
 
 /** Compact status pill (NativeSelect): truncating label, chevron, native picker on tap. */
 const statusPill =
   'h-9 rounded-full border border-border/50 bg-muted/60 pl-2.5 text-ds-caption font-medium leading-none text-foreground'
 
 function statusDotClass(status: string): string {
-  if (status === 'contacted') return 'bg-yellow-500'
+  if (status === 'contacted') return 'bg-warning'
   if (status === 'lost' || status === 'inactive') return 'bg-gray-500'
   if (status === 'new_lead' || status === 'new') return 'bg-sky-400'
-  if (['day1', 'day2'].includes(status)) return 'bg-emerald-400'
+  if (['day1', 'day2'].includes(status)) return 'bg-success'
   return 'bg-orange-400'
 }
 
@@ -281,17 +281,17 @@ export function CtcsLeadCard({
                 }}
                 className={cn(
                   'flex size-9 items-center justify-center rounded-full border-2 transition active:scale-95 min-[380px]:size-10',
-                  'border-emerald-600/50 bg-emerald-500/15 text-emerald-900',
-                  'shadow-[0_0_10px_rgba(52,211,153,0.35)] ring-1 ring-emerald-500/25',
-                  'hover:border-emerald-500 hover:bg-emerald-500/25',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/80',
-                  'dark:border-emerald-400/70 dark:bg-emerald-500/20 dark:text-emerald-100 dark:shadow-[0_0_12px_rgba(52,211,153,0.45)] dark:ring-emerald-400/30',
-                  'dark:hover:border-emerald-300 dark:hover:bg-emerald-500/30',
+                  'border-success/50 bg-success/15 text-success-ink',
+                  'shadow-[0_0_10px_rgba(52,211,153,0.35)] ring-1 ring-success/25',
+                  'hover:border-success hover:bg-success/25',
+                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success/80',
+                  'dark:border-success/70 dark:bg-success/20 dark:text-success-ink dark:shadow-[0_0_12px_rgba(52,211,153,0.45)] dark:ring-success/30',
+                  'dark:hover:border-success/30 dark:hover:bg-success/30',
                 )}
                 title="Dial — log + outcome"
                 aria-label="Dial and log call"
               >
-                <Phone className="size-3.5 text-emerald-800 dark:text-emerald-200" aria-hidden />
+                <Phone className="size-3.5 text-success-ink" aria-hidden />
               </a>
             ) : (
               <span

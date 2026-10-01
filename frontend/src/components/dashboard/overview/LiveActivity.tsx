@@ -9,9 +9,9 @@ import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-
 type Kind = LiveActivityKind
 
 const COLORS: Record<Kind, { box: string; boxText: string; chip: string }> = {
-  new:        { box: 'bg-blue-500/15', boxText: 'text-blue-400', chip: 'text-blue-400' },
-  claim:      { box: 'bg-amber-500/15', boxText: 'text-amber-400', chip: 'text-amber-400' },
-  conversion: { box: 'bg-emerald-500/15', boxText: 'text-emerald-400', chip: 'text-emerald-400' },
+  new:        { box: 'bg-info/15', boxText: 'text-info-ink', chip: 'text-info-ink' },
+  claim:      { box: 'bg-warning/15', boxText: 'text-warning-ink', chip: 'text-warning-ink' },
+  conversion: { box: 'bg-success/15', boxText: 'text-success-ink', chip: 'text-success-ink' },
   money:      { box: 'bg-violet-500/15', boxText: 'text-violet-400', chip: 'text-violet-400' },
   handoff:    { box: 'bg-indigo-500/15', boxText: 'text-indigo-400', chip: 'text-indigo-400' },
   stage:      { box: 'bg-muted', boxText: 'text-muted-foreground', chip: 'text-muted-foreground' },
@@ -156,10 +156,10 @@ export function LiveActivity() {
             <Zap className="size-4 text-primary" aria-hidden />
             <h2 className="text-ds-body font-semibold text-foreground tracking-[-0.01em]">Live Activity</h2>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-ds-micro font-semibold text-emerald-500">
+          <span className="inline-flex items-center gap-1.5 text-ds-micro font-semibold text-success-ink">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-success" />
             </span>
             Live
           </span>
@@ -167,9 +167,9 @@ export function LiveActivity() {
 
         {/* Metrics */}
         <div className="flex gap-2 px-5 py-4">
-          <Metric label="New" value={pulse.newLeads} cls="text-blue-400" />
-          <Metric label="Claims" value={pulse.claims} cls="text-amber-400" />
-          <Metric label="Conv." value={pulse.conversions} cls="text-emerald-400" />
+          <Metric label="New" value={pulse.newLeads} cls="text-info-ink" />
+          <Metric label="Claims" value={pulse.claims} cls="text-warning-ink" />
+          <Metric label="Conv." value={pulse.conversions} cls="text-success-ink" />
           <Metric label="Revenue" value={pulse.money} cls="text-violet-400" />
         </div>
 

@@ -80,7 +80,7 @@ export function XpBadge() {
             <span>{data.daily_cap} XP today</span>
           </span>
           {data.streak >= 2 && (
-            <span className="inline-flex items-center gap-1 font-medium text-amber-400">
+            <span className="inline-flex items-center gap-1 font-medium text-warning-ink">
               <Flame className="size-3.5" aria-hidden /> {data.streak} day streak
             </span>
           )}

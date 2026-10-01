@@ -366,8 +366,8 @@ export function CreateTaskModal({ open, onClose }: Props) {
         {step === 'done' && (
           <div className="px-6 py-8">
             <div className="flex flex-col items-center text-center">
-              <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
-                <Check className="size-6 text-emerald-500" />
+              <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-success/15">
+                <Check className="size-6 text-success-ink" />
               </div>
               <p className="text-sm text-foreground">
                 Task assigned to {assignedCount} {assignedCount === 1 ? 'person' : 'people'}.

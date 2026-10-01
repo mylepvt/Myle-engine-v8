@@ -480,7 +480,7 @@ export function MemberProfileModal({
               <div>
                 <p className="text-xs text-foreground">
                   Status:{' '}
-                  <span className={trainingRequired ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                  <span className={trainingRequired ? 'text-warning-ink font-medium' : 'text-success-ink font-medium'}>
                     {trainingRequired ? 'Locked (training required)' : 'Unlocked'}
                   </span>
                 </p>

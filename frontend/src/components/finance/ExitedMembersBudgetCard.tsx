@@ -111,7 +111,7 @@ export function ExitedMembersBudgetCard() {
                           </p>
                         </td>
                         <td className="py-3 pr-4">
-                          <p className={row.exit_status === 'removed' ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}>
+                          <p className={row.exit_status === 'removed' ? 'text-destructive' : 'text-warning-ink'}>
                             {row.exit_status === 'removed' ? 'Removed' : 'Blocked'}
                             {row.removed_at ? ` · ${shortDate(row.removed_at)}` : ''}
                           </p>

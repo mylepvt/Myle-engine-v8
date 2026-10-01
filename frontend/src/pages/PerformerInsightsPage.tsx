@@ -38,16 +38,16 @@ import { cn } from '@/lib/utils'
 type FilterMode = 'all' | 'suggested' | 'active' | 'inactive'
 
 const TREND_COLORS: Record<string, string> = {
-  improving: 'text-green-600 bg-green-500/10 border-green-500/20',
-  stable: 'text-amber-600 bg-amber-500/10 border-amber-500/20',
-  declining: 'text-red-600 bg-red-500/10 border-red-500/20',
+  improving: 'text-success-ink bg-success/10 border-success/20',
+  stable: 'text-warning-ink bg-warning/10 border-warning/20',
+  declining: 'text-destructive-ink bg-destructive/10 border-destructive/20',
   inactive: 'text-muted-foreground bg-muted/40 border-muted/30',
 }
 
 const TIER_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
   elite: {
     icon: <Trophy className="w-4 h-4" />,
-    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-600 dark:text-amber-300 border-amber-400/30',
+    cls: 'bg-gradient-to-r from-warning/20 to-orange-400/20 text-warning-ink border-warning/30',
   },
   strong: {
     icon: <Shield className="w-4 h-4" />,
@@ -55,7 +55,7 @@ const TIER_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
   },
   rising: {
     icon: <TrendingUp className="w-4 h-4" />,
-    cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    cls: 'bg-info/15 text-info-ink border-info/20',
   },
   developing: {
     icon: <Star className="w-4 h-4" />,
@@ -70,15 +70,15 @@ const TIER_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
 const RISK_STYLES: Record<string, { icon: React.ReactNode; cls: string }> = {
   high: {
     icon: <ShieldAlert className="w-4 h-4" />,
-    cls: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20',
+    cls: 'bg-destructive/15 text-destructive-ink border-destructive/20',
   },
   medium: {
     icon: <AlertTriangle className="w-4 h-4" />,
-    cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    cls: 'bg-warning/15 text-warning-ink border-warning/20',
   },
   low: {
     icon: <ShieldCheck className="w-4 h-4" />,
-    cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    cls: 'bg-info/15 text-info-ink border-info/20',
   },
 }
 
@@ -102,11 +102,11 @@ function SuggestedCard({ member, isElite }: { member: SuggestedMember; isElite: 
     <div
       className={cn(
         'flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/20',
-        isElite ? 'border-amber-400/40 bg-amber-500/5' : 'border-violet-400/20 bg-violet-500/5',
+        isElite ? 'border-warning/40 bg-warning/5' : 'border-violet-400/20 bg-violet-500/5',
       )}
     >
       {isElite ? (
-        <Flame className="size-5 shrink-0 text-amber-500" aria-hidden />
+        <Flame className="size-5 shrink-0 text-warning-ink" aria-hidden />
       ) : (
         <Dumbbell className="size-5 shrink-0 text-violet-500" aria-hidden />
       )}
@@ -212,7 +212,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
     return (
       <div className="p-4 sm:p-6">
         <div
-          className="rounded border border-red-600/20 bg-red-600/5 p-4 text-sm text-red-600"
+          className="rounded border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive-ink"
           role="alert"
         >
           {error instanceof Error ? error.message : 'Failed to load performer insights'}
@@ -233,7 +233,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-amber-500" />
+            <Trophy className="w-5 h-5 text-warning-ink" />
             {title}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -260,9 +260,9 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
       {/* Summary tiles */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <SummaryCard icon={<Users className="w-4 h-4" />} label="Total Members" value={data.total_members} />
-        <SummaryCard icon={<PhoneCall className="w-4 h-4 text-green-600" />} label="Active (reported)" value={data.active_members} />
-        <SummaryCard icon={<Trophy className="w-4 h-4 text-amber-600" />} label="Top Performers" value={data.top_performer_count} />
-        <SummaryCard icon={<TrendingUp className="w-4 h-4 text-blue-600" />} label="Avg Score" value={`${data.average_score}`} />
+        <SummaryCard icon={<PhoneCall className="w-4 h-4 text-success-ink" />} label="Active (reported)" value={data.active_members} />
+        <SummaryCard icon={<Trophy className="w-4 h-4 text-warning-ink" />} label="Top Performers" value={data.top_performer_count} />
+        <SummaryCard icon={<TrendingUp className="w-4 h-4 text-info-ink" />} label="Avg Score" value={`${data.average_score}`} />
         <SummaryCard icon={<Star className="w-4 h-4 text-violet-600" />} label="Median Score" value={`${data.median_score}`} />
       </div>
 
@@ -278,13 +278,13 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
           )
         })}
         {audit.total_flagged > 0 && (
-          <Badge variant="outline" className="gap-1 px-2.5 py-1 text-xs bg-red-500/10 text-red-600 border-red-500/20">
+          <Badge variant="outline" className="gap-1 px-2.5 py-1 text-xs bg-destructive/10 text-destructive-ink border-destructive/20">
             <AlertTriangle className="w-4 h-4" />
             {audit.total_flagged} flagged
           </Badge>
         )}
         {atRisk.total_at_risk > 0 && (
-          <Badge variant="outline" className="gap-1 px-2.5 py-1 text-xs bg-amber-500/15 text-amber-600 border-amber-500/20">
+          <Badge variant="outline" className="gap-1 px-2.5 py-1 text-xs bg-warning/15 text-warning-ink border-warning/20">
             <Activity className="w-4 h-4" />
             {atRisk.total_at_risk} at risk
           </Badge>
@@ -293,14 +293,14 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
 
       {/* ─────────────────── ELITE AT RISK ─────────────────── */}
       {atRisk.total_at_risk > 0 && (
-        <Card className="border-amber-400/30">
+        <Card className="border-warning/30">
           <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-amber-600" />
+                <Activity className="w-4 h-4 text-warning-ink" />
                 Elite at Risk — Top performers going inactive
               </span>
-              <Badge variant="outline" className="text-xs bg-amber-500/15 text-amber-600 border-amber-500/20">
+              <Badge variant="outline" className="text-xs bg-warning/15 text-warning-ink border-warning/20">
                 {atRisk.total_at_risk} at risk
               </Badge>
             </CardTitle>
@@ -316,7 +316,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                   key={m.user_id}
                   className={cn(
                     'rounded-lg border p-3',
-                    m.risk_level === 'high' ? 'border-red-400/30 bg-red-500/[0.03]' : 'border-amber-400/20 bg-amber-500/[0.02]',
+                    m.risk_level === 'high' ? 'border-destructive/30 bg-destructive/[0.03]' : 'border-warning/20 bg-warning/[0.02]',
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -334,7 +334,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                         <span className="inline-flex items-center gap-1"><Timer className="size-3.5" aria-hidden />{m.days_since_activity}d inactive</span>
                         <span className="inline-flex items-center gap-1"><Trophy className="size-3.5" aria-hidden />Score {m.composite_score}</span>
                         <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5" aria-hidden />Last active: {m.last_active_date}</span>
-                        <span className={cn(m.grace_risk !== 'low' ? 'text-red-500' : '')}>
+                        <span className={cn(m.grace_risk !== 'low' ? 'text-destructive-ink' : '')}>
                           Grace risk: {m.grace_risk} ({m.grace_count_30d}/30d)
                         </span>
                       </div>
@@ -345,7 +345,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                           href={m.whatsapp_link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md bg-green-600 px-2.5 py-1.5 text-xs text-white hover:bg-green-700 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-md bg-success px-2.5 py-1.5 text-xs text-white hover:bg-success/90 transition-colors"
                         >
                           <MessageSquare className="w-3 h-3" />
                           WhatsApp
@@ -362,14 +362,14 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
 
       {/* ─────────────────── INTEGRITY AUDIT ─────────────────── */}
       {audit.total_flagged > 0 && (
-        <Card className="border-red-200/40 dark:border-red-900/30">
+        <Card className="border-destructive/40">
           <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-red-500" />
+                <ShieldAlert className="w-4 h-4 text-destructive-ink" />
                 Integrity Audit — Report vs Reality
               </span>
-              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/20">
+              <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive-ink border-destructive/20">
                 Trust score: {audit.average_trust_score}%
               </Badge>
             </CardTitle>
@@ -380,12 +380,12 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
           </CardHeader>
           <CardContent className="px-4 sm:px-6 pb-4 space-y-2">
             {audit.flagged_members.map((m: FlaggedMember) => {
-              const trustColor = m.trust_score < 30 ? 'bg-red-500' : m.trust_score < 50 ? 'bg-orange-500' : 'bg-amber-500'
+              const trustColor = m.trust_score < 30 ? 'bg-destructive' : m.trust_score < 50 ? 'bg-orange-500' : 'bg-warning'
               return (
-                <div key={m.user_id} className="rounded-lg border border-red-200/30 dark:border-red-900/20 p-3">
+                <div key={m.user_id} className="rounded-lg border border-destructive/30 p-3">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-destructive-ink" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{m.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{m.fbo_id}</p>
@@ -394,7 +394,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={cn(
                         'inline-flex items-center rounded-full px-2 py-0.5 text-ds-micro font-medium',
-                        trustColor.replace('bg-', 'bg-').replace('red-500', 'red-500/15 text-red-600').replace('orange-500', 'orange-500/15 text-orange-600').replace('amber-500', 'amber-500/15 text-amber-600'),
+                        trustColor.replace('bg-', 'bg-').replace('red-500', 'red-500/15 text-destructive-ink').replace('orange-500', 'orange-500/15 text-orange-600').replace('amber-500', 'amber-500/15 text-warning-ink'),
                       )}>
                         Trust: {m.trust_score}%
                       </span>
@@ -410,17 +410,17 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                     </div>
                     <div>
                       <span className="text-muted-foreground">Actual calls (system)</span>
-                      <p className="font-semibold tabular-nums text-green-600">{m.actual_calls}</p>
+                      <p className="font-semibold tabular-nums text-success-ink">{m.actual_calls}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Discrepancy</span>
-                      <p className={cn('font-semibold tabular-nums', m.discrepancy > 0 ? 'text-red-600' : 'text-green-600')}>
+                      <p className={cn('font-semibold tabular-nums', m.discrepancy > 0 ? 'text-destructive-ink' : 'text-success-ink')}>
                         {m.discrepancy > 0 ? '+' : ''}{m.discrepancy}
                       </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Discrepancy %</span>
-                      <p className={cn('font-semibold tabular-nums', m.discrepancy_pct > 20 ? 'text-red-600' : 'text-amber-600')}>
+                      <p className={cn('font-semibold tabular-nums', m.discrepancy_pct > 20 ? 'text-destructive-ink' : 'text-warning-ink')}>
                         {m.discrepancy_pct > 0 ? '+' : ''}{m.discrepancy_pct}%
                       </p>
                     </div>
@@ -434,14 +434,14 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
 
       {/* ─────────────────── WHATSAPP GROUP ─────────────────── */}
       {suggested.total_count > 0 && (
-        <Card className="border-amber-400/30">
+        <Card className="border-warning/30">
           <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-green-600" />
+                <MessageSquare className="w-4 h-4 text-success-ink" />
                 Suggested for WhatsApp Top Performers Group
               </span>
-              <Badge variant="default" className="bg-green-600 text-white text-xs">
+              <Badge variant="default" className="bg-success text-white text-xs">
                 {suggested.total_count} members
               </Badge>
             </CardTitle>
@@ -449,7 +449,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
           <CardContent className="px-4 sm:px-6 pb-4 space-y-3">
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleCopyNumbers} className="text-xs gap-1.5">
-                {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-success-ink" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Copied!' : 'Copy All Numbers'}
               </Button>
               <Button variant="outline" size="sm" onClick={handleCopyNamesAndNumbers} className="text-xs gap-1.5">
@@ -460,7 +460,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                 variant="default"
                 size="sm"
                 onClick={handleOpenWhatsAppGroup}
-                className="text-xs gap-1.5 bg-green-600 hover:bg-green-700"
+                className="text-xs gap-1.5 bg-success hover:bg-success/90"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 Open WhatsApp
@@ -468,7 +468,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
             </div>
             {suggested.elite.length > 0 && (
               <div>
-                <h4 className="text-sm font-semibold text-amber-600 mb-2 flex items-center gap-1.5">
+                <h4 className="text-sm font-semibold text-warning-ink mb-2 flex items-center gap-1.5">
                   <Trophy className="w-4 h-4" /> Elite ({suggested.elite.length})
                 </h4>
                 <div className="space-y-1.5">
@@ -496,14 +496,14 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
 
       {/* ─────────────────── INACTIVE MEMBERS ─────────────────── */}
       {data.tier_distribution.inactive > 0 && (
-        <Card className="border-red-200/40 dark:border-red-900/30">
+        <Card className="border-destructive/40">
           <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-muted-foreground" />
                 Inactive Members
               </span>
-              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/20">
+              <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive-ink border-destructive/20">
                 {data.tier_distribution.inactive} members
               </Badge>
             </CardTitle>
@@ -567,9 +567,9 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                     key={p.user_id}
                     className={cn(
                       'rounded-lg border p-3 transition-colors hover:bg-muted/20',
-                      p.rank <= 3 ? 'border-amber-400/30 bg-amber-500/[0.03]' : 'border-border',
-                      filterMode !== 'all' && 'border-green-400/30',
-                      p.trust_score < 50 && 'border-l-red-400',
+                      p.rank <= 3 ? 'border-warning/30 bg-warning/[0.03]' : 'border-border',
+                      filterMode !== 'all' && 'border-success/30',
+                      p.trust_score < 50 && 'border-l-destructive',
                     )}
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
@@ -590,8 +590,8 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                           <span className={cn(
                             'inline-flex items-center rounded-full px-1.5 py-0.5 text-ds-micro font-medium',
                             p.trust_score < 30
-                              ? 'bg-red-500/15 text-red-600'
-                              : 'bg-amber-500/15 text-amber-600',
+                              ? 'bg-destructive/15 text-destructive-ink'
+                              : 'bg-warning/15 text-warning-ink',
                           )}>
                             <AlertTriangle className="w-3 h-3 mr-0.5" />
                             {p.trust_score}%
@@ -611,12 +611,12 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                     </div>
 
                     <div className="space-y-1 mb-2">
-                      <BreakdownBar value={p.breakdown.consistency} label="Consistency" color="bg-blue-500" />
-                      <BreakdownBar value={p.breakdown.call_activity} label="Call Volume" color="bg-emerald-500" />
+                      <BreakdownBar value={p.breakdown.consistency} label="Consistency" color="bg-info" />
+                      <BreakdownBar value={p.breakdown.call_activity} label="Call Volume" color="bg-success" />
                       <BreakdownBar value={p.breakdown.pickup_rate} label="Pickup Rate" color="bg-teal-500" />
                       <BreakdownBar value={p.breakdown.lead_education} label="Lead Education" color="bg-violet-500" />
                       <BreakdownBar value={p.breakdown.pipeline_conversion} label="Pipeline Conv." color="bg-orange-500" />
-                      <BreakdownBar value={p.breakdown.results} label="Results" color="bg-rose-500" />
+                      <BreakdownBar value={p.breakdown.results} label="Results" color="bg-destructive" />
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -626,7 +626,7 @@ export default function PerformerInsightsPage({ title = 'Performer Insights' }: 
                       <span className="flex items-center gap-1">
                         <PhoneCall className="w-3 h-3" /> {p.metrics.total_calls} calls
                       </span>
-                      <span className={cn(p.metrics.total_calls > p.metrics.actual_calls ? 'text-red-500' : 'text-green-600')}>
+                      <span className={cn(p.metrics.total_calls > p.metrics.actual_calls ? 'text-destructive-ink' : 'text-success-ink')}>
                         ({p.metrics.actual_calls} system)
                       </span>
                       <span>{p.metrics.pickup_rate}% picked</span>

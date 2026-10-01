@@ -54,7 +54,7 @@ function weekdayShort(iso: string): string {
 // ── Avatar helpers (consistent with PeopleOpsPanel) ───────────────────────
 
 function avatarColor(name: string): string {
-  const COLORS = ['#5865f2', '#eb459e', '#3ba55c', '#f0b232', '#9b59b6', '#1abc9c', '#e67e22']
+  const COLORS = ['#3b6ef6', '#eb459e', '#3ba55c', '#f0b232', '#9b59b6', '#1abc9c', '#e67e22']
   let h = 0
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
   return COLORS[Math.abs(h) % COLORS.length]
@@ -98,16 +98,16 @@ type ActionMeta = { label: string; icon: typeof Phone; color: string }
 
 const ACTION_MAP: Record<string, ActionMeta> = {
   'lead:created':          { label: 'New lead added',          icon: UserPlus,       color: 'text-primary' },
-  'lead:claimed':          { label: 'Lead claimed',            icon: CheckCircle2,   color: 'text-emerald-600 dark:text-emerald-400' },
-  'lead:batch_claimed':    { label: 'Batch leads claimed',     icon: CheckCircle2,   color: 'text-emerald-600 dark:text-emerald-400' },
-  'lead:transitioned':     { label: 'Lead stage moved',        icon: ArrowRightLeft, color: 'text-blue-600 dark:text-blue-400' },
-  lead_state:              { label: 'Lead stage updated',      icon: ArrowRightLeft, color: 'text-blue-600 dark:text-blue-400' },
+  'lead:claimed':          { label: 'Lead claimed',            icon: CheckCircle2,   color: 'text-success-ink' },
+  'lead:batch_claimed':    { label: 'Batch leads claimed',     icon: CheckCircle2,   color: 'text-success-ink' },
+  'lead:transitioned':     { label: 'Lead stage moved',        icon: ArrowRightLeft, color: 'text-info-ink' },
+  lead_state:              { label: 'Lead stage updated',      icon: ArrowRightLeft, color: 'text-info-ink' },
   'lead:closed':           { label: 'Lead closed',             icon: Target,         color: 'text-violet-600 dark:text-violet-400' },
   'lead:assigned':         { label: 'Lead reassigned',         icon: ArrowRightLeft, color: 'text-slate-400' },
   'lead:auto_reassigned':  { label: 'Lead auto-reassigned',    icon: ArrowRightLeft, color: 'text-slate-400' },
-  'auto_handoff.call_logged': { label: 'Outbound call logged', icon: Phone,          color: 'text-emerald-600 dark:text-emerald-400' },
-  'wallet:credited':       { label: 'Wallet credited',         icon: Wallet,         color: 'text-amber-600 dark:text-amber-400' },
-  'wallet:credited_worker':{ label: 'Wallet credited',         icon: Wallet,         color: 'text-amber-600 dark:text-amber-400' },
+  'auto_handoff.call_logged': { label: 'Outbound call logged', icon: Phone,          color: 'text-success-ink' },
+  'wallet:credited':       { label: 'Wallet credited',         icon: Wallet,         color: 'text-warning-ink' },
+  'wallet:credited_worker':{ label: 'Wallet credited',         icon: Wallet,         color: 'text-warning-ink' },
   'fsm:validation_failed': { label: 'Stage change blocked',    icon: XCircle,        color: 'text-destructive' },
 }
 
@@ -221,13 +221,13 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
       {/* Legend */}
       <div className="flex items-center gap-4 text-ds-micro text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2 rounded-full bg-emerald-400" />Calls
+          <span className="inline-block size-2 rounded-full bg-success" />Calls
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block size-2 rounded-full bg-violet-400" />Leads
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2 rounded-full bg-amber-400" />Follow-ups
+          <span className="inline-block size-2 rounded-full bg-warning" />Follow-ups
         </span>
       </div>
 
@@ -241,15 +241,15 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
           return (
             <div key={point.date} className="flex flex-1 flex-col items-center gap-1">
               <div className="flex w-full items-end gap-px" style={{ height: '72px' }}>
-                <div className="flex-1 rounded-sm bg-emerald-400/80 transition-all duration-500" style={{ height: `${cH}%` }} />
+                <div className="flex-1 rounded-sm bg-success/80 transition-all duration-500" style={{ height: `${cH}%` }} />
                 <div className="flex-1 rounded-sm bg-violet-400/80 transition-all duration-500" style={{ height: `${lH}%` }} />
-                <div className="flex-1 rounded-sm bg-amber-400/80 transition-all duration-500" style={{ height: `${fH}%` }} />
+                <div className="flex-1 rounded-sm bg-warning/80 transition-all duration-500" style={{ height: `${fH}%` }} />
               </div>
               {/* Score dot */}
               <div
                 className={cn('size-1.5 rounded-full flex-shrink-0',
-                  point.consistency_band === 'high' ? 'bg-emerald-500 dark:bg-emerald-400' :
-                  point.consistency_band === 'medium' ? 'bg-amber-500 dark:bg-amber-400' : 'bg-rose-500 dark:bg-rose-400'
+                  point.consistency_band === 'high' ? 'bg-success dark:bg-success' :
+                  point.consistency_band === 'medium' ? 'bg-warning dark:bg-warning' : 'bg-destructive dark:bg-destructive'
                 )}
                 role="img"
                 aria-label={`Consistency: ${point.consistency_band}`}
@@ -266,8 +266,8 @@ function TrendBars({ trend }: { trend: TeamTrackingTrendPoint[] }) {
           <div key={point.date} className="flex flex-1 justify-center">
             <span className={cn(
               'text-ds-micro font-bold tabular-nums',
-                point.consistency_band === 'high' ? 'text-emerald-600 dark:text-emerald-400' :
-                  point.consistency_band === 'medium' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                point.consistency_band === 'high' ? 'text-success-ink' :
+                  point.consistency_band === 'medium' ? 'text-warning-ink' : 'text-destructive-ink'
             )}>
               {point.consistency_score}
             </span>
@@ -287,8 +287,8 @@ function ActivityFunnel({ member }: { member: TeamTrackingMemberSummary }) {
       label: 'Calls Made',
       value: member.calls_count,
       pct: Math.round((member.calls_count / base) * 100),
-      barClass: 'bg-emerald-400/30 border-emerald-400/40',
-      textClass: 'text-emerald-400',
+      barClass: 'bg-success/30 border-success/40',
+      textClass: 'text-success-ink',
     },
     {
       label: 'Follow-ups Done',
@@ -301,8 +301,8 @@ function ActivityFunnel({ member }: { member: TeamTrackingMemberSummary }) {
       label: 'Leads Added',
       value: member.leads_added_count,
       pct: Math.round((member.leads_added_count / base) * 100),
-      barClass: 'bg-amber-400/30 border-amber-400/40',
-      textClass: 'text-amber-400',
+      barClass: 'bg-warning/30 border-warning/40',
+      textClass: 'text-warning-ink',
     },
   ]
 
@@ -337,9 +337,9 @@ function WeeklyHeatmap({ trend }: { trend: TeamTrackingTrendPoint[] }) {
             <div
               className={cn(
                 'aspect-square w-full max-w-[38px] rounded border',
-                point.consistency_band === 'high' ? 'bg-emerald-400/50 border-emerald-400/40' :
-                point.consistency_band === 'medium' ? 'bg-amber-400/45 border-amber-400/35' :
-                'bg-rose-500/40 border-rose-500/30'
+                point.consistency_band === 'high' ? 'bg-success/50 border-success/40' :
+                point.consistency_band === 'medium' ? 'bg-warning/45 border-warning/35' :
+                'bg-destructive/40 border-destructive/30'
               )}
               title={`${formatShortDate(point.date)}: Score ${point.consistency_score}`}
             />
@@ -349,13 +349,13 @@ function WeeklyHeatmap({ trend }: { trend: TeamTrackingTrendPoint[] }) {
       </div>
       <div className="flex items-center gap-3 text-ds-micro text-muted-foreground">
         <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-sm bg-emerald-400/50 border border-emerald-400/40" />High
+          <span className="inline-block size-2 rounded-sm bg-success/50 border border-success/40" />High
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-sm bg-amber-400/45 border border-amber-400/35" />Medium
+          <span className="inline-block size-2 rounded-sm bg-warning/45 border border-warning/35" />Medium
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-sm bg-rose-500/40 border border-rose-500/30" />Low
+          <span className="inline-block size-2 rounded-sm bg-destructive/40 border border-destructive/30" />Low
         </span>
       </div>
     </div>
@@ -514,11 +514,11 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                   </div>
                   <span className={cn(
                     'absolute -bottom-0.5 -right-0.5 block size-3.5 rounded-full border-2 border-card',
-                    data.member.presence_status === 'online' ? 'bg-emerald-400' :
-                    data.member.presence_status === 'idle' ? 'bg-amber-400' : 'bg-slate-500'
+                    data.member.presence_status === 'online' ? 'bg-success' :
+                    data.member.presence_status === 'idle' ? 'bg-warning' : 'bg-slate-500'
                   )} role="img" aria-label={data.member.presence_status} />
                   {data.member.presence_status === 'online' && (
-                    <span className="absolute -bottom-0.5 -right-0.5 size-3.5 animate-ping rounded-full bg-emerald-400/40" />
+                    <span className="absolute -bottom-0.5 -right-0.5 size-3.5 animate-ping rounded-full bg-success/40" />
                   )}
                 </div>
 
@@ -555,7 +555,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                   {todayVsAvg !== 0 && (
                     <div className={cn(
                       'flex items-center gap-0.5 text-ds-micro font-medium',
-                      todayVsAvg > 0 ? 'text-emerald-400' : 'text-rose-400'
+                      todayVsAvg > 0 ? 'text-success-ink' : 'text-destructive-ink'
                     )}>
                       {todayVsAvg > 0
                         ? <TrendingUp className="size-3" />
@@ -572,9 +572,9 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
               {/* Metrics row: 4 columns */}
               <div className="grid grid-cols-4 divide-x divide-border/50">
                 {[
-                  { label: 'Calls',      value: data.member.calls_count,         color: 'text-emerald-600 dark:text-emerald-400' },
+                  { label: 'Calls',      value: data.member.calls_count,         color: 'text-success-ink' },
                   { label: 'Leads',      value: data.member.leads_added_count,    color: 'text-primary' },
-                  { label: 'Follow-ups', value: data.member.followups_done_count, color: 'text-amber-600 dark:text-amber-400' },
+                  { label: 'Follow-ups', value: data.member.followups_done_count, color: 'text-warning-ink' },
                   { label: 'Logins',     value: data.member.login_count,          color: 'text-muted-foreground' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex flex-col items-center gap-0.5 py-3">
@@ -592,7 +592,7 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
                     : 'No recent activity'}
                 </span>
                 {(data.member.calls_short_streak > 0 || data.member.missing_report_streak > 0) && (
-                  <span className="flex items-center gap-1 text-ds-micro text-amber-400/80">
+                  <span className="flex items-center gap-1 text-ds-micro text-warning-ink/80">
                     <Clock className="size-3" />
                     {data.member.calls_short_streak > 0
                       ? `${data.member.calls_short_streak}d low calls`
@@ -652,14 +652,14 @@ export function TeamTrackingDetailPage({ title, userId }: Props) {
             <Card className="surface-elevated">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
-                  <Zap className="size-3.5 text-amber-400" />
+                  <Zap className="size-3.5 text-warning-ink" />
                   <CardTitle className="text-sm">Operational Intelligence</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 {data.member.insights.map((insight) => (
-                  <div key={insight} className="flex items-start gap-2.5 rounded border border-amber-600/15 bg-amber-600/[0.05] px-3 py-2.5 dark:border-amber-400/15 dark:bg-amber-400/[0.05]">
-                    <span className="mt-px shrink-0 text-xs text-amber-600 dark:text-amber-400">!</span>
+                  <div key={insight} className="flex items-start gap-2.5 rounded border border-warning/15 bg-warning/[0.05] px-3 py-2.5 dark:border-warning/15 dark:bg-warning/[0.05]">
+                    <span className="mt-px shrink-0 text-xs text-warning-ink">!</span>
                     <p className="text-ds-caption text-foreground">{insight}</p>
                   </div>
                 ))}

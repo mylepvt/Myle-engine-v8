@@ -26,16 +26,16 @@ function KpiCard({
 }) {
   const base = cn(
     'flex flex-col gap-2 rounded border px-4 py-3 transition-all duration-150',
-    urgent ? 'border-amber-500/20 bg-amber-500/[0.06]' : 'border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03]',
+    urgent ? 'border-warning/20 bg-warning/[0.06]' : 'border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03]',
     clickable && 'cursor-pointer hover:border-foreground/10 dark:hover:border-white/20 hover:brightness-110 active:brightness-125',
   )
   const inner = (
     <>
       <div className="flex items-center gap-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground">
-        <span className={urgent ? 'text-amber-600/70 dark:text-amber-400/70' : 'text-muted-foreground'}>{icon}</span>
+        <span className={urgent ? 'text-warning-ink/70' : 'text-muted-foreground'}>{icon}</span>
         {label}
       </div>
-      <span className={cn('text-ds-h1 font-bold leading-none tabular-nums', urgent ? 'text-amber-600 dark:text-amber-300' : 'text-foreground')}>
+      <span className={cn('text-ds-h1 font-bold leading-none tabular-nums', urgent ? 'text-warning-ink' : 'text-foreground')}>
         {value}
       </span>
       <p className="text-ds-micro text-muted-foreground">{sub}</p>
@@ -59,17 +59,17 @@ function ReportsPopoverContent({ members }: { members: ReportStatusItem[] }) {
       <div className="max-h-64 overflow-y-auto divide-y divide-border/40">
         {submitted.length > 0 && (
           <div className="pb-1">
-            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-success-ink">
               Submitted ({submitted.length})
             </p>
             <div className="px-3">
               {submitted.map((r) => (
                 <div key={r.user_id} className="flex items-center gap-2 py-1.5">
-                  <span className="size-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                  <span className="size-1.5 shrink-0 rounded-full bg-success dark:bg-success" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
                   <span className="shrink-0 text-ds-micro capitalize text-muted-foreground">{r.role}</span>
                   {r.calls_in_report > 0 && (
-                    <span className="shrink-0 text-ds-micro text-emerald-600 dark:text-emerald-400">{r.calls_in_report}c</span>
+                    <span className="shrink-0 text-ds-micro text-success-ink">{r.calls_in_report}c</span>
                   )}
                 </div>
               ))}
@@ -78,13 +78,13 @@ function ReportsPopoverContent({ members }: { members: ReportStatusItem[] }) {
         )}
         {pending.length > 0 && (
           <div className="pb-1">
-            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+            <p className="sticky top-0 bg-card px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-warning-ink">
               Pending ({pending.length})
             </p>
             <div className="px-3">
               {pending.map((r) => (
                 <div key={r.user_id} className="flex items-center gap-2 py-1.5">
-                  <span className="size-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
+                  <span className="size-1.5 shrink-0 rounded-full bg-warning dark:bg-warning" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.name}</span>
                   <span className="shrink-0 text-ds-micro capitalize text-muted-foreground">{r.role}</span>
                 </div>
@@ -212,24 +212,24 @@ function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded border border-amber-500/20 bg-amber-500/[0.05] px-3 py-1.5 text-ds-micro font-semibold text-amber-600 dark:text-amber-300 transition-colors hover:bg-amber-500/[0.1]"
+        className="flex items-center gap-1.5 rounded border border-warning/20 bg-warning/[0.05] px-3 py-1.5 text-ds-micro font-semibold text-warning-ink transition-colors hover:bg-warning/[0.1]"
       >
         <span className="relative flex size-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 dark:bg-amber-400 opacity-60" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning dark:bg-warning opacity-60" />
+          <span className="relative inline-flex size-1.5 rounded-full bg-warning dark:bg-warning" />
         </span>
         {users.length} online · no work today
       </button>
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
           <div className="max-h-56 overflow-y-auto">
-            <p className="px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+            <p className="px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-warning-ink">
               Online · 0 activity today
             </p>
             <div className="px-3 pb-2">
               {users.map((z) => (
                 <div key={z.user_id} className="flex items-center gap-2 py-1.5">
-                  <span className="size-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
+                  <span className="size-1.5 shrink-0 rounded-full bg-warning dark:bg-warning" />
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">{z.name}</span>
                   <span className="shrink-0 text-ds-micro capitalize text-muted-foreground">{z.role}</span>
                 </div>

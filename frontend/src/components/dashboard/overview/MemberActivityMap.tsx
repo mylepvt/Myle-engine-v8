@@ -190,7 +190,7 @@ export function MemberActivityMap({ userId, name, onClose }: Props) {
 
               {data.last_at ? (
                 <p className="flex items-center gap-1.5 text-ds-micro text-muted-foreground">
-                  <Flame className="size-3.5 text-amber-500" aria-hidden />
+                  <Flame className="size-3.5 text-warning-ink" aria-hidden />
                   Last active {new Date(data.last_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </p>
               ) : null}

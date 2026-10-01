@@ -143,11 +143,11 @@ function CampaignMetricsMini({ campaignId }: { campaignId: number }) {
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">Implementation</span>
-        <span className={`font-semibold tabular-nums ${data.implementation_pct >= 50 ? 'text-green-600' : 'text-amber-600'}`}>{data.implementation_pct}%</span>
+        <span className={`font-semibold tabular-nums ${data.implementation_pct >= 50 ? 'text-success-ink' : 'text-warning-ink'}`}>{data.implementation_pct}%</span>
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">Success</span>
-        <span className={`font-semibold tabular-nums ${data.success_pct >= 50 ? 'text-green-600' : data.success_pct >= 20 ? 'text-amber-600' : 'text-red-600'}`}>{data.success_pct}%</span>
+        <span className={`font-semibold tabular-nums ${data.success_pct >= 50 ? 'text-success-ink' : data.success_pct >= 20 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{data.success_pct}%</span>
       </div>
     </div>
   )
@@ -243,7 +243,7 @@ function DeskShortcut({
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{title}</p>
           {badge != null && Number(badge) > 0 ? (
-            <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
+            <span className="rounded-full bg-warning/15 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
               {badge}
             </span>
           ) : null}
@@ -419,9 +419,9 @@ const GRACE_RISK_CONFIG = {
 
 const GRACE_OUTCOME_LABEL: Record<string, { text: string; cls: string }> = {
   auto_restored: { text: 'Last: worked through it ✓', cls: 'text-success' },
-  auto_removed:  { text: 'Last: removed at expiry ✗', cls: 'text-red-600 dark:text-red-400' },
+  auto_removed:  { text: 'Last: removed at expiry ✗', cls: 'text-destructive-ink' },
   approved:      { text: 'Last: completed',            cls: 'text-muted-foreground' },
-  cleared:       { text: 'Last: cleared early',        cls: 'text-amber-600 dark:text-amber-400' },
+  cleared:       { text: 'Last: cleared early',        cls: 'text-warning-ink' },
 }
 
 function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
@@ -455,7 +455,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
           {riskCfg.label}
         </span>
         {count30d >= 2 && (
-          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-ds-micro font-semibold text-red-700 dark:text-red-400">
+          <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-ds-micro font-semibold text-destructive-ink">
             Over monthly limit
           </span>
         )}
@@ -478,7 +478,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
             <span className={lastOutcomeCfg.cls}>{lastOutcomeCfg.text}</span>
           )}
           {streakNote && (
-            <span className="text-amber-600 dark:text-amber-400">{streakNote}</span>
+            <span className="text-warning-ink">{streakNote}</span>
           )}
         </div>
       </div>
@@ -527,27 +527,27 @@ function DoNowTile({ item, onTab }: { item: DoNowItem; onTab: (tab: string) => v
   const className = cn(
     'group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition',
     active && item.urgent
-      ? 'border-red-400/40 bg-red-400/[0.06] hover:bg-red-400/[0.1]'
+      ? 'border-destructive/40 bg-destructive/[0.06] hover:bg-destructive/[0.1]'
       : active
-        ? 'border-amber-400/30 bg-amber-400/[0.06] hover:bg-amber-400/[0.1]'
+        ? 'border-warning/30 bg-warning/[0.06] hover:bg-warning/[0.1]'
         : 'border-border/50 bg-card/40 hover:bg-muted/40',
   )
   const body = (
     <>
       <span className={cn(
         'grid size-10 shrink-0 place-items-center rounded-lg',
-        active && item.urgent ? 'bg-red-400/15 text-red-600 dark:text-red-400' :
-        active ? 'bg-amber-400/15 text-amber-700 dark:text-amber-300' : 'bg-muted/50 text-muted-foreground'
+        active && item.urgent ? 'bg-destructive/15 text-destructive-ink' :
+        active ? 'bg-warning/15 text-warning-ink' : 'bg-muted/50 text-muted-foreground'
       )}>
         {item.icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-foreground">{item.title}</span>
+        <span className="block text-sm font-semibold leading-tight text-foreground">{item.title}</span>
       </span>
       <span className={cn(
         'shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums',
-        active && item.urgent ? 'bg-red-400/20 text-red-600 dark:text-red-400' :
-        active ? 'bg-amber-400/20 text-amber-700 dark:text-amber-300' : 'text-muted-foreground'
+        active && item.urgent ? 'bg-destructive/20 text-destructive-ink' :
+        active ? 'bg-warning/20 text-warning-ink' : 'text-muted-foreground'
       )}>
         {item.count}
       </span>
@@ -572,13 +572,15 @@ const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon 
   { value: 'system', label: 'System', Icon: Cog },
 ]
 
+/** Open by default so admins actually see the reports; collapse is opt-in. */
 function ReportsSection({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   return (
     <div className="border-t border-border/40 pt-4 mt-6">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
         className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
       >
         {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
@@ -633,7 +635,7 @@ function DashboardViewSwitcher({
         <CurrentIcon className="size-4 text-primary" />
         <span>{current.label}</span>
         {totalAlerts > 0 && (
-          <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
+          <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
             {totalAlerts}
           </span>
         )}
@@ -666,7 +668,7 @@ function DashboardViewSwitcher({
                 <Icon className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
                 <span className="flex-1 text-left">{t.label}</span>
                 {badge > 0 && (
-                  <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
+                  <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
                     {badge}
                   </span>
                 )}
@@ -811,7 +813,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <t.Icon className="size-4" aria-hidden />
                   {t.label}
                   {badge > 0 ? (
-                    <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-ds-micro font-bold text-amber-700 dark:text-amber-300">
+                    <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
                       {badge}
                     </span>
                   ) : null}
@@ -834,7 +836,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             <section aria-label="Action needed" className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <BellRing className="size-4 text-amber-600 dark:text-amber-400" aria-hidden />
+                  <BellRing className="size-4 text-warning-ink" aria-hidden />
                   Action needed
                 </h2>
                 <button
@@ -884,7 +886,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <div className="flex shrink-0 items-center justify-center">
                     <div className="flex size-24 items-center justify-center rounded-full border-4 border-primary/20">
                       <span className={`text-3xl font-bold tabular-nums ${
-                        orgScore.data.overall_score >= 70 ? 'text-green-600' : orgScore.data.overall_score >= 40 ? 'text-amber-600' : 'text-red-600'
+                        orgScore.data.overall_score >= 70 ? 'text-success-ink' : orgScore.data.overall_score >= 40 ? 'text-warning-ink' : 'text-destructive-ink'
                       }`}>{orgScore.data.overall_score}</span>
                     </div>
                   </div>
@@ -895,7 +897,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       { key: 'lead_activity', label: 'Lead Activity', value: orgScore.data.components.lead_activity },
                       { key: 'zombie_leads', label: 'Zombie Score', value: orgScore.data.components.zombie_leads },
                     ].map((c) => {
-                      const barColor = c.value >= 70 ? 'bg-green-500' : c.value >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                      const barColor = c.value >= 70 ? 'bg-success' : c.value >= 40 ? 'bg-warning' : 'bg-destructive'
                       return (
                         <div key={c.key} className="rounded-lg border border-border/40 p-2.5">
                           <div className="flex items-center justify-between">
@@ -915,11 +917,11 @@ export function AdminCommandCenter({ firstName }: Props) {
           )}
 
           {/* 🔥 Do Now — Action-oriented queue */}
-          <Card className="border-amber-500/30 bg-gradient-to-br from-card to-amber-500/[0.03]">
+          <Card className="border-warning/30 bg-gradient-to-br from-card to-warning/[0.03]">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <BellRing className="size-4 text-amber-400" />
+                  <BellRing className="size-4 text-warning-ink" />
                   Do Now
                 </CardTitle>
                 <Badge variant="warning" className="text-xs">
@@ -991,7 +993,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Clock className="size-4" />
                     Pending Grace Requests
-                    <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-400">{pendingGraceCount}</span>
+                    <span className="rounded-full bg-warning/20 px-2 py-0.5 text-xs font-bold text-warning-ink">{pendingGraceCount}</span>
                   </CardTitle>
                   <CardDescription>Review and action each request without leaving the dashboard.</CardDescription>
                 </CardHeader>
@@ -1087,7 +1089,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                           <p className="text-xs text-muted-foreground">{lead.assigned_to_name ?? 'Unassigned'} · {lead.status}</p>
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className={`text-xs font-bold tabular-nums ${(lead.days_inactive ?? 0) >= 14 ? 'text-red-600' : 'text-amber-600'}`}>{lead.days_inactive}d</p>
+                          <p className={`text-xs font-bold tabular-nums ${(lead.days_inactive ?? 0) >= 14 ? 'text-destructive-ink' : 'text-warning-ink'}`}>{lead.days_inactive}d</p>
                           <p className="text-ds-micro text-muted-foreground">inactive</p>
                         </div>
                       </div>
@@ -1117,7 +1119,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                         <div key={m.user_id} className="surface-inset rounded-md p-3">
                           <div className="flex items-center justify-between"><p className="text-sm font-medium">{m.name}</p><Badge variant="secondary">{m.total_dead}</Badge></div>
                           <div className="mt-1.5 flex flex-wrap gap-1">{Object.entries(m.reasons).map(([reason, count]) => (
-                            <span key={reason} className={`inline-block rounded-full px-2 py-0.5 text-ds-micro font-medium ${reason === 'known_zone_miss' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : reason === 'no_budget' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>{reason.replace(/_/g, ' ')}: {count}</span>
+                            <span key={reason} className={`inline-block rounded-full px-2 py-0.5 text-ds-micro font-medium ${reason === 'known_zone_miss' ? 'bg-destructive/10 text-destructive-ink ' : reason === 'no_budget' ? 'bg-warning/10 text-warning-ink ' : 'bg-muted text-muted-foreground'}`}>{reason.replace(/_/g, ' ')}: {count}</span>
                           ))}</div>
                         </div>
                       ))}
@@ -1137,7 +1139,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <>{(['active', 'converted', 'dead', 'recycle'] as const).map((oc) => {
                       const count = outcomeSummary.data?.outcomes?.[oc] ?? 0
                       const pct = outcomeSummary.data?.[`${oc}_pct` as keyof typeof outcomeSummary.data] as number ?? 0
-                      const barColor = oc === 'active' ? 'bg-blue-500' : oc === 'converted' ? 'bg-green-500' : oc === 'dead' ? 'bg-red-500' : 'bg-amber-500'
+                      const barColor = oc === 'active' ? 'bg-info' : oc === 'converted' ? 'bg-success' : oc === 'dead' ? 'bg-destructive' : 'bg-warning'
                       return (<div key={oc}><div className="flex items-center justify-between text-sm"><span className="font-medium capitalize">{oc}</span><span className="text-muted-foreground">{count} ({pct}%)</span></div><div className="mt-1 h-2 w-full rounded-full bg-muted"><div className={`h-2 rounded-full ${barColor}`} style={{ width: `${pct}%` }} /></div></div>)
                     })}</>
                   )}
@@ -1276,8 +1278,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <div className="space-y-4">
                     {effectiveness.data!.leaders.map((leader) => {
                       const { components } = leader
-                      const bandColor = leader.band === 'elite' ? 'text-green-600' : leader.band === 'average' ? 'text-amber-600' : 'text-red-600'
-                      const bandBg = leader.band === 'elite' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : leader.band === 'average' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                      const bandColor = leader.band === 'elite' ? 'text-success-ink' : leader.band === 'average' ? 'text-warning-ink' : 'text-destructive-ink'
+                      const bandBg = leader.band === 'elite' ? 'bg-success/10 text-success-ink ' : leader.band === 'average' ? 'bg-warning/10 text-warning-ink ' : 'bg-destructive/10 text-destructive-ink '
                       return (
                         <div key={leader.user_id} className="rounded-lg border border-border/60 p-4">
                           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1292,10 +1294,10 @@ export function AdminCommandCenter({ firstName }: Props) {
                               { key: 'zombie_lead_score', label: 'Zombie', value: components.zombie_lead_score, pct: 20, weak: leader.weakest_component === 'Zombie Leads' },
                               { key: 'blocker_resolution', label: 'Blocker', value: components.blocker_resolution, pct: 10, weak: leader.weakest_component === 'Blocker Resolution' },
                             ].map((bar) => {
-                              const barColor = bar.value >= 80 ? 'bg-green-500' : bar.value >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                              const barColor = bar.value >= 80 ? 'bg-success' : bar.value >= 40 ? 'bg-warning' : 'bg-destructive'
                               return (
-                                <div key={bar.key} className={`rounded border p-2 ${bar.weak ? 'border-red-400/50 bg-red-50 dark:bg-red-950/20' : 'border-border/40'}`}>
-                                  <div className="flex items-center justify-between"><span className="text-ds-micro font-medium text-muted-foreground">{bar.label} ({bar.pct}%)</span><span className={`text-xs font-bold tabular-nums ${bar.value >= 80 ? 'text-green-600' : bar.value >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{bar.value}</span></div>
+                                <div key={bar.key} className={`rounded border p-2 ${bar.weak ? 'border-destructive/50 bg-destructive/10' : 'border-border/40'}`}>
+                                  <div className="flex items-center justify-between"><span className="text-ds-micro font-medium text-muted-foreground">{bar.label} ({bar.pct}%)</span><span className={`text-xs font-bold tabular-nums ${bar.value >= 80 ? 'text-success-ink' : bar.value >= 40 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{bar.value}</span></div>
                                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${barColor}`} style={{ width: `${bar.value}%` }} /></div>
                                 </div>
                               )
@@ -1324,7 +1326,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       <div key={leader.leader_id} className="surface-inset rounded-md p-4">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className={`size-2 rounded-full ${leader.presence_status === 'online' ? 'bg-emerald-500' : leader.presence_status === 'idle' ? 'bg-amber-400' : 'bg-muted-foreground/30'}`} aria-label={leader.presence_status} />
+                            <span className={`size-2 rounded-full ${leader.presence_status === 'online' ? 'bg-success' : leader.presence_status === 'idle' ? 'bg-warning' : 'bg-muted-foreground/30'}`} aria-label={leader.presence_status} />
                             <p className="font-medium text-foreground">{leader.leader_name}</p>
                           </div>
                           <div className="flex gap-3 text-xs text-muted-foreground">
@@ -1388,8 +1390,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                         <div className="min-w-0 flex-1"><p className="text-sm font-medium">{l.name}</p><p className="text-xs text-muted-foreground">Team: {l.total_assigned}</p></div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground">{l.verified_count} verified</span>
-                          <span className={`text-xs font-bold tabular-nums ${l.verification_rate_pct >= 80 ? 'text-green-600' : l.verification_rate_pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{l.verification_rate_pct}%</span>
-                          {l.total_assigned - l.verified_count > 5 && <ShieldAlert className="size-4 text-red-500" />}
+                          <span className={`text-xs font-bold tabular-nums ${l.verification_rate_pct >= 80 ? 'text-success-ink' : l.verification_rate_pct >= 50 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{l.verification_rate_pct}%</span>
+                          {l.total_assigned - l.verified_count > 5 && <ShieldAlert className="size-4 text-destructive-ink" />}
                         </div>
                       </div>
                     ))}
@@ -1452,7 +1454,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       {(missionSummary.data?.leader_breakdown ?? []).map((l) => (
                         <div key={l.user_id} className="surface-inset flex items-center justify-between gap-3 rounded-md p-3">
                           <div className="min-w-0 flex-1"><p className="text-sm font-medium">{l.name}</p><p className="text-xs text-muted-foreground">Team: {l.team_size} · Assigned: {l.assigned}</p></div>
-                          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{l.completed} done</span><span className={`text-xs font-bold tabular-nums ${l.completion_rate_pct >= 60 ? 'text-green-600' : l.completion_rate_pct >= 20 ? 'text-amber-600' : 'text-red-600'}`}>{l.completion_rate_pct}%</span></div>
+                          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{l.completed} done</span><span className={`text-xs font-bold tabular-nums ${l.completion_rate_pct >= 60 ? 'text-success-ink' : l.completion_rate_pct >= 20 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{l.completion_rate_pct}%</span></div>
                         </div>
                       ))}
                     </div>

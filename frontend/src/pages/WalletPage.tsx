@@ -58,7 +58,7 @@ export function WalletPage({ title }: Props) {
                 className="surface-inset flex flex-col gap-2 px-3 py-2 text-muted-foreground sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0">
-                  <span className={e.amount_cents >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  <span className={e.amount_cents >= 0 ? 'text-success-ink' : 'text-destructive-ink'}>
                     {e.amount_cents >= 0 ? '+' : ''}
                     {(e.amount_cents / 100).toFixed(2)} {e.currency}
                   </span>

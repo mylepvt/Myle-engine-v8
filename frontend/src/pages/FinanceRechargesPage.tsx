@@ -187,7 +187,7 @@ export function FinanceRechargesPage({ title }: Props) {
             {mut.error instanceof Error ? mut.error.message : 'Request failed'}
           </p>
         ) : null}
-        {mut.isSuccess ? <p className="text-xs text-emerald-500">Ledger line recorded.</p> : null}
+        {mut.isSuccess ? <p className="text-xs text-success-ink">Ledger line recorded.</p> : null}
       </form>
 
       {showConfirm && selectedMember ? (
@@ -203,7 +203,7 @@ export function FinanceRechargesPage({ title }: Props) {
             <h3 className="text-lg font-semibold text-foreground">Confirm wallet adjustment</h3>
             <div className="mt-3 space-y-2 text-sm">
               <p><span className="text-muted-foreground">User:</span> {memberSelectLabel(selectedMember)}</p>
-              <p><span className="text-muted-foreground">Amount:</span> <strong className={parsedCents >= 0 ? 'text-emerald-500' : 'text-destructive'}>{parsedCents >= 0 ? '+' : ''}{formatInr(Math.abs(parsedCents))}</strong></p>
+              <p><span className="text-muted-foreground">Amount:</span> <strong className={parsedCents >= 0 ? 'text-success-ink' : 'text-destructive'}>{parsedCents >= 0 ? '+' : ''}{formatInr(Math.abs(parsedCents))}</strong></p>
               {note.trim() ? <p><span className="text-muted-foreground">Note:</span> {note.trim()}</p> : null}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">This action cannot be undone. Review carefully before confirming.</p>

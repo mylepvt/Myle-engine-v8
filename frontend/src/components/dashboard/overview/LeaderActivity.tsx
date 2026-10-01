@@ -17,15 +17,15 @@ const PRESENCE: Record<string, string> = {
 }
 
 function scoreColor(v: number): string {
-  if (v >= 60) return 'text-emerald-600 dark:text-emerald-400'
-  if (v >= 30) return 'text-amber-600 dark:text-amber-400'
-  return 'text-red-600 dark:text-red-400'
+  if (v >= 60) return 'text-success-ink'
+  if (v >= 30) return 'text-warning-ink'
+  return 'text-destructive-ink'
 }
 
 function bandColor(band: string): string {
-  if (band === 'high') return 'text-emerald-600 dark:text-emerald-400'
-  if (band === 'medium') return 'text-amber-600 dark:text-amber-400'
-  return 'text-red-600 dark:text-red-400'
+  if (band === 'high') return 'text-success-ink'
+  if (band === 'medium') return 'text-warning-ink'
+  return 'text-destructive-ink'
 }
 
 function LeaderRow({ l, view, onOpen }: { l: LeaderHealthItem; view: View; onOpen: (id: number, name: string) => void }) {
@@ -47,7 +47,7 @@ function LeaderRow({ l, view, onOpen }: { l: LeaderHealthItem; view: View; onOpe
       {view === 'team' ? (
         <div className="flex shrink-0 items-center gap-3 text-right">
           <div>
-            <p className="text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">{l.team_calls_today}</p>
+            <p className="text-sm font-semibold tabular-nums text-info-ink">{l.team_calls_today}</p>
             <p className="text-ds-micro text-muted-foreground">calls</p>
           </div>
           <div>
@@ -58,7 +58,7 @@ function LeaderRow({ l, view, onOpen }: { l: LeaderHealthItem; view: View; onOpe
       ) : (
         <div className="flex shrink-0 items-center gap-3 text-right">
           <div>
-            <p className="text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">{l.personal_calls_today}</p>
+            <p className="text-sm font-semibold tabular-nums text-info-ink">{l.personal_calls_today}</p>
             <p className="text-ds-micro text-muted-foreground">calls</p>
           </div>
           <div>

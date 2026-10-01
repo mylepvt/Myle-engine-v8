@@ -54,7 +54,7 @@ function DayCard({ day, open, onToggle }: { day: SkillTrainingDay; open: boolean
       >
         <div className="flex min-w-0 items-center gap-3">
           {day.completed ? (
-            <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+            <CheckCircle2 className="size-5 shrink-0 text-success-ink" />
           ) : day.unlocked ? (
             <PlayCircle className="size-5 shrink-0 text-primary" />
           ) : (
@@ -163,7 +163,7 @@ function ProgressTable({ enabled }: { enabled: boolean }) {
                   </td>
                   <td className="px-2 py-2">
                     {m.available ? (
-                      <span className={cn(m.completed_days >= data.total_days && data.total_days > 0 && 'font-semibold text-emerald-600 dark:text-emerald-400')}>
+                      <span className={cn(m.completed_days >= data.total_days && data.total_days > 0 && 'font-semibold text-success-ink')}>
                         {m.completed_days}/{data.total_days}
                       </span>
                     ) : (

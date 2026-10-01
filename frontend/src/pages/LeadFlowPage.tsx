@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { LEAD_STATUS_OPTIONS } from '@/hooks/use-leads-query'
+import { stageBadgeClass, stageColor } from '@/lib/stage-colors'
 
 type Props = {
   title: string
@@ -19,21 +20,6 @@ function label(v: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v
 }
 
-const STAGE_COLORS: Record<string, string> = {
-  new_lead:       'border-primary/30 bg-primary/10 text-primary',
-  contacted:      'border-sky-400/30 bg-sky-400/10 text-sky-600 dark:text-sky-400',
-  invited:        'border-violet-400/30 bg-violet-400/10 text-violet-600 dark:text-violet-400',
-  video_sent:     'border-indigo-400/30 bg-indigo-400/10 text-indigo-600 dark:text-indigo-400',
-  video_watched:  'border-blue-400/30 bg-blue-400/10 text-blue-600 dark:text-blue-400',
-  day1:           'border-orange-400/30 bg-orange-400/10 text-orange-600 dark:text-orange-400',
-  day2:           'border-yellow-400/30 bg-yellow-400/10 text-yellow-600 dark:text-yellow-400',
-  day3:           'border-lime-400/30 bg-lime-400/10 text-lime-600 dark:text-lime-400',
-  training:       'border-cyan-400/30 bg-cyan-400/10 text-cyan-600 dark:text-cyan-400',
-  converted:      'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  lost:           'border-destructive/30 bg-destructive/10 text-destructive',
-  retarget:       'border-rose-400/30 bg-rose-400/10 text-rose-600 dark:text-rose-400',
-  inactive:       'border-zinc-400/30 bg-zinc-400/10 text-zinc-600 dark:text-zinc-400',
-}
 
 export function LeadFlowPage({ title }: Props) {
   return (
@@ -59,7 +45,7 @@ export function LeadFlowPage({ title }: Props) {
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {PIPELINE_STAGES.map((s, i) => (
             <span key={s} className="flex items-center gap-2">
-              <span className={`rounded-md border px-3 py-1.5 font-medium ${STAGE_COLORS[s] ?? 'border-border bg-muted/30 text-foreground'}`}>
+              <span className={`rounded-md border px-3 py-1.5 font-medium ${stageBadgeClass(s)}`}>
                 {label(s)}
               </span>
               {i < PIPELINE_STAGES.length - 1 ? (
@@ -84,7 +70,7 @@ export function LeadFlowPage({ title }: Props) {
         </p>
         <div className="flex flex-wrap gap-2 text-sm">
           {TERMINAL_STAGES.map((s) => (
-            <span key={s} className={`rounded-md border px-3 py-1.5 font-medium ${STAGE_COLORS[s] ?? 'border-border bg-muted/30 text-foreground'}`}>
+            <span key={s} className={`rounded-md border px-3 py-1.5 font-medium ${stageBadgeClass(s)}`}>
               {label(s)}
             </span>
           ))}
@@ -99,7 +85,7 @@ export function LeadFlowPage({ title }: Props) {
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {INTERNAL_COMPAT_STAGES.map((s, i) => (
             <span key={s} className="flex items-center gap-2">
-              <span className={`rounded-md border px-3 py-1.5 font-medium ${STAGE_COLORS[s] ?? 'border-border bg-muted/30 text-foreground'}`}>
+              <span className={`rounded-md border px-3 py-1.5 font-medium ${stageBadgeClass(s)}`}>
                 {label(s)}
               </span>
               {i < INTERNAL_COMPAT_STAGES.length - 1 ? (
@@ -121,7 +107,7 @@ export function LeadFlowPage({ title }: Props) {
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
           {LEAD_STATUS_OPTIONS.filter(o => o.value !== 'new').map((o) => (
             <div key={o.value} className="surface-inset flex items-center gap-2 px-2.5 py-1.5">
-              <span className={`h-2 w-2 shrink-0 rounded-full border ${STAGE_COLORS[o.value] ?? 'border-border bg-muted'}`} aria-hidden />
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: stageColor(o.value) }} aria-hidden />
               <span className="truncate text-xs text-foreground">{o.label}</span>
             </div>
           ))}

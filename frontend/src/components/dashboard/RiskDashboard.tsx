@@ -9,12 +9,12 @@ import { cn } from '@/lib/utils'
 import { usePredictiveRisk, type MemberRiskScore, type LeaderRiskScore } from '@/hooks/use-predictive-risk-query'
 
 const BAND_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  critical: { bg: 'bg-red-50 dark:bg-red-950/20 border-red-200', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
+  critical: { bg: 'bg-destructive/10 border-destructive/20', text: 'text-destructive-ink', dot: 'bg-destructive' },
   high: { bg: 'bg-orange-50 dark:bg-orange-950/20 border-orange-200', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
-  medium: { bg: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200', text: 'text-amber-700 dark:text-amber-300', dot: 'bg-amber-400' },
-  low: { bg: 'bg-green-50 dark:bg-green-950/20 border-green-200', text: 'text-green-700 dark:text-green-300', dot: 'bg-green-500' },
-  at_risk: { bg: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200', text: 'text-amber-700 dark:text-amber-300', dot: 'bg-amber-400' },
-  stable: { bg: 'bg-green-50 dark:bg-green-950/20 border-green-200', text: 'text-green-700 dark:text-green-300', dot: 'bg-green-500' },
+  medium: { bg: 'bg-warning/10 border-warning/20', text: 'text-warning-ink', dot: 'bg-warning' },
+  low: { bg: 'bg-success/10 border-success/20', text: 'text-success-ink', dot: 'bg-success' },
+  at_risk: { bg: 'bg-warning/10 border-warning/20', text: 'text-warning-ink', dot: 'bg-warning' },
+  stable: { bg: 'bg-success/10 border-success/20', text: 'text-success-ink', dot: 'bg-success' },
 }
 
 function RiskBandBadge({ band }: { band: string }) {
@@ -28,9 +28,9 @@ function RiskBandBadge({ band }: { band: string }) {
 }
 
 function SignalPill({ signal: s }: { signal: { label: string; value: number } }) {
-  const color = s.value >= 70 ? 'text-red-600 bg-red-50 dark:bg-red-950/20 border-red-200' :
-               s.value >= 40 ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 border-amber-200' :
-               'text-green-600 bg-green-50 dark:bg-green-950/20 border-green-200'
+  const color = s.value >= 70 ? 'text-destructive-ink bg-destructive/10 border-destructive/20' :
+               s.value >= 40 ? 'text-warning-ink bg-warning/10 border-warning/20' :
+               'text-success-ink bg-success/10 border-success/20'
   return (
     <span className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-ds-caption font-medium', color)}>
       {s.label}
@@ -158,15 +158,15 @@ export function RiskDashboard() {
       {/* ── ORG RISK OVERVIEW ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatCard label="Avg Risk Score" value={`${s.avg_member_score}`} icon={<ShieldAlert className="size-4" />}
-          color={s.avg_member_score >= 50 ? 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700' :
-                 s.avg_member_score >= 25 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' :
-                 'border-green-200 bg-green-50 dark:bg-green-950/20 text-green-700'} />
+          color={s.avg_member_score >= 50 ? 'border-destructive/20 bg-destructive/10 text-destructive-ink' :
+                 s.avg_member_score >= 25 ? 'border-warning/20 bg-warning/10 text-warning-ink' :
+                 'border-success/20 bg-success/10 text-success-ink'} />
         <StatCard label={`Critical (${s.critical_risk})`} value={`${s.band_pct_critical}%`} icon={<Skull className="size-4" />}
-          color={s.critical_risk > 0 ? 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700' : 'border-border/60 bg-card text-foreground'} />
+          color={s.critical_risk > 0 ? 'border-destructive/20 bg-destructive/10 text-destructive-ink' : 'border-border/60 bg-card text-foreground'} />
         <StatCard label={`High (${s.high_risk})`} value={`${s.band_pct_high}%`} icon={<AlertTriangle className="size-4" />}
           color={s.high_risk > 0 ? 'border-orange-200 bg-orange-50 dark:bg-orange-950/20 text-orange-700' : 'border-border/60 bg-card text-foreground'} />
         <StatCard label={`Medium (${s.medium_risk})`} value={`${s.band_pct_medium}%`} icon={<AlertCircle className="size-4" />}
-          color={s.medium_risk > 0 ? 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700' : 'border-border/60 bg-card text-foreground'} />
+          color={s.medium_risk > 0 ? 'border-warning/20 bg-warning/10 text-warning-ink' : 'border-border/60 bg-card text-foreground'} />
       </div>
 
       {/* ── LEADER RISKS ──────────────────────────────────────────── */}
@@ -189,7 +189,7 @@ export function RiskDashboard() {
       <div>
         <div className="mb-3 flex items-center gap-2">
           <h2 className="flex items-center gap-2 text-ds-label font-bold">
-            <AlertTriangle className="size-4 text-amber-500" />
+            <AlertTriangle className="size-4 text-warning-ink" />
             Members at Risk
           </h2>
           <Badge variant="secondary" className="ml-1 text-ds-micro">{data.member_risks.length}</Badge>
