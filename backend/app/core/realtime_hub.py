@@ -147,6 +147,11 @@ async def ws_listen_loop(
                 )
     except WebSocketDisconnect:
         pass
+    except RuntimeError:
+        # A broadcast send to this socket failed after the client vanished, so
+        # Starlette marked it closed and receive_text() raises instead of
+        # WebSocketDisconnect. Same outcome: clean up below, no ASGI traceback.
+        pass
     finally:
         async with session_factory() as session:
             changed = await disconnect_presence_session(
