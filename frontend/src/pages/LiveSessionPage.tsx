@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Check, Copy } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
-import { buildLiveSessionMessage, formatLiveSessionUpdatedAt } from '@/lib/live-session-message'
+import { buildLiveSessionMessage, extractPasscode, formatLiveSessionUpdatedAt } from '@/lib/live-session-message'
 
 type LiveSessionStub = {
   items: {
@@ -23,6 +23,25 @@ async function fetchLiveSession(): Promise<LiveSessionStub> {
 
 type Props = { title: string }
 
+const URL_OR_BOLD = /(https?:\/\/\S+|\*[^*\n]+\*)/g
+
+/** Render one WhatsApp line: `*bold*` as bold, URLs as links — so the page shows exactly what gets copied. */
+function renderWhatsAppLine(line: string): ReactNode[] {
+  return line.split(URL_OR_BOLD).map((part, i) => {
+    if (/^https?:\/\//.test(part)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="break-all text-primary underline-offset-2 hover:underline">
+          {part}
+        </a>
+      )
+    }
+    if (part.length > 2 && part.startsWith('*') && part.endsWith('*')) {
+      return <strong key={i} className="font-semibold text-foreground">{part.slice(1, -1)}</strong>
+    }
+    return <Fragment key={i}>{part}</Fragment>
+  })
+}
+
 /** Admin's daily live (Zoom) session — the `live_session_*` app settings. */
 export function LiveSessionPage({ title }: Props) {
   const liveSession = useQuery({
@@ -35,10 +54,13 @@ export function LiveSessionPage({ title }: Props) {
   const [copied, setCopied] = useState(false)
 
   const updatedLabel = formatLiveSessionUpdatedAt(liveCard?.updated_at)
+  // The admin's "Passcode" setting (older saves held "⏰ 2:00 PM · ID … · Passcode 303948").
+  const passcode = extractPasscode(liveCard?.detail)
+  const message = joinHref ? buildLiveSessionMessage(joinHref, passcode) : ''
 
   async function copyMessage() {
-    if (!joinHref || !liveCard) return
-    const text = buildLiveSessionMessage(liveCard, joinHref)
+    if (!message) return
+    const text = message
     try {
       await navigator.clipboard.writeText(text)
     } catch {
@@ -74,12 +96,15 @@ export function LiveSessionPage({ title }: Props) {
             <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-destructive align-middle" aria-hidden />
             Today&apos;s Live Session
           </p>
-          <p className="mt-1 text-base font-semibold text-foreground">
-            {liveCard?.title || "Today's Live Session"}
-          </p>
-          {liveCard?.detail ? (
-            <p className="mt-1 whitespace-pre-line text-ds-caption text-muted-foreground">{liveCard.detail}</p>
-          ) : null}
+          {/* the exact WhatsApp message members copy — same text, bold + links rendered */}
+          <div className="mt-3 select-text whitespace-pre-wrap break-words rounded-lg border border-border bg-card p-3 text-sm leading-relaxed text-card-foreground">
+            {message.split('\n').map((line, i) => (
+              <Fragment key={i}>
+                {renderWhatsAppLine(line)}
+                {'\n'}
+              </Fragment>
+            ))}
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <a
               href={joinHref}
@@ -105,7 +130,6 @@ export function LiveSessionPage({ title }: Props) {
               )}
             </button>
           </div>
-          <p className="mt-2 break-all text-ds-caption text-muted-foreground">{joinHref}</p>
           {updatedLabel ? (
             <p className="mt-1 text-ds-caption text-muted-foreground">Link updated: {updatedLabel}</p>
           ) : null}

@@ -6,6 +6,7 @@ import {
   useAppSettingsQuery,
 } from '@/hooks/use-settings-query'
 import { apiFetch } from '@/lib/api'
+import { buildLiveSessionMessage, extractJoinUrl, extractPasscode } from '@/lib/live-session-message'
 
 type Props = { title: string }
 
@@ -32,24 +33,20 @@ const BATCH_VIDEO_FIELDS: readonly SettingsTextField[] = [
   { key: 'batch_d2_evening_v2', label: 'Day 2 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_evening/2.' },
 ]
 
+// The 2 PM message text is fixed (src/lib/live-session-message.ts); only the
+// Zoom link and its passcode change day to day. The Meeting ID comes from the link.
 const LIVE_SESSION_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'live_session_url',
-    label: 'Join Link (Zoom/Meet)',
+    label: 'Zoom link',
     placeholder: 'https://us06web.zoom.us/j/...',
-    help: 'Daily 2 PM session join link. Members tap this on the Home + Live Session screen.',
-  },
-  {
-    key: 'live_session_title',
-    label: 'Topic / Title',
-    placeholder: "Today's Live Session — topic + speaker",
-    help: 'Shown as the heading on the live card.',
+    help: 'The Zoom link for the day. You can also paste the whole Zoom "Copy Invitation" text: the link and passcode are filled in for you. The Meeting ID is read from the link.',
   },
   {
     key: 'live_session_schedule',
-    label: 'Time / Meeting ID / Passcode',
-    placeholder: '⏰ 2:00 PM · ID 836 4190 3667 · Passcode 303948',
-    help: 'Free text under the title — put the time, Meeting ID and Passcode here.',
+    label: 'Passcode',
+    placeholder: '331434',
+    help: 'Passcode of the current Zoom meeting. Leave empty to drop the Passcode line from the message.',
   },
 ]
 
@@ -128,7 +125,13 @@ export function SettingsAppPage({ title }: Props) {
     setLiveSessionErrorMsg(null)
     try {
       for (const field of LIVE_SESSION_FIELDS) {
-        const value = resolvedLiveSessionValue(field.key).trim()
+        const raw = resolvedLiveSessionValue(field.key).trim()
+        const value =
+          field.key === 'live_session_url'
+            ? extractJoinUrl(raw)
+            : field.key === 'live_session_schedule'
+              ? extractPasscode(raw)
+              : raw
         await updateAppSetting.mutateAsync({ key: field.key, value })
       }
       setLiveSessionEdits({})
@@ -218,7 +221,23 @@ export function SettingsAppPage({ title }: Props) {
                 <input
                   type="text"
                   value={resolvedLiveSessionValue(field.key)}
-                  onChange={(e) => setLiveSessionEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (field.key === 'live_session_url' && /\s/.test(raw.trim())) {
+                      // whole Zoom invitation pasted: keep only the link, lift the passcode out of it
+                      const pass = extractPasscode(raw)
+                      setLiveSessionEdits((prev) => ({
+                        ...prev,
+                        live_session_url: extractJoinUrl(raw),
+                        ...(pass ? { live_session_schedule: pass } : {}),
+                      }))
+                      return
+                    }
+                    setLiveSessionEdits((prev) => ({
+                      ...prev,
+                      [field.key]: field.key === 'live_session_schedule' ? extractPasscode(raw) || raw : raw,
+                    }))
+                  }}
                   placeholder={field.placeholder}
                   className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
@@ -227,6 +246,18 @@ export function SettingsAppPage({ title }: Props) {
             ))}
           </div>
         )}
+
+        {extractJoinUrl(resolvedLiveSessionValue('live_session_url')) ? (
+          <div>
+            <p className="mb-1 text-ds-caption text-muted-foreground">Members see and copy exactly this message:</p>
+            <pre className="max-h-72 select-text overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/40 p-3 font-sans text-xs leading-relaxed text-foreground">
+              {buildLiveSessionMessage(
+                extractJoinUrl(resolvedLiveSessionValue('live_session_url')),
+                extractPasscode(resolvedLiveSessionValue('live_session_schedule')),
+              )}
+            </pre>
+          </div>
+        ) : null}
 
         <div className="flex items-center gap-3">
           <button
