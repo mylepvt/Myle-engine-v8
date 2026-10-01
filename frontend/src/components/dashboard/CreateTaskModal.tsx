@@ -15,6 +15,7 @@ import {
 import { useCreateTask, useBulkAssignTask } from '@/hooks/use-verification-query'
 import { useTeamMembersQuery } from '@/hooks/use-team-query'
 import { cn } from '@/lib/utils'
+import { useBackClose } from '@/hooks/use-back-close'
 
 type Props = {
   open: boolean
@@ -80,6 +81,7 @@ const TEMPLATES: Template[] = [
 
 export function CreateTaskModal({ open, onClose }: Props) {
   const [step, setStep] = useState<'form' | 'done'>('form')
+  useBackClose({ open, onClose })
   const [templateKey, setTemplateKey] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')

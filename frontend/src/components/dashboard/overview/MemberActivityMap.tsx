@@ -4,6 +4,7 @@ import { Activity, Flame, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMemberActivityMap } from '@/hooks/use-member-activity-map'
+import { useBackClose } from '@/hooks/use-back-close'
 
 const RANGES = [
   { days: 30, label: '30 days' },
@@ -50,6 +51,7 @@ type Props = {
 
 export function MemberActivityMap({ userId, name, onClose }: Props) {
   const [days, setDays] = useState<number>(30)
+  useBackClose({ open: true, onClose })
   const { data, isPending, isError } = useMemberActivityMap(userId, days)
 
   const maxHour = data ? Math.max(...data.by_hour, 1) : 1

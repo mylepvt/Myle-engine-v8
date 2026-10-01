@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useBackClose } from '@/hooks/use-back-close'
+import { useGoBack } from '@/hooks/use-go-back'
 import {
   ArrowLeftRight,
   Check,
@@ -1024,6 +1026,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     if (sharingSlot != null || markingSlot != null) return
     setBatchModal(null)
   }
+  useBackClose({ open: batchModal != null, onClose: closeBatchModal })
 
   const handleBatchButtonClick = async (slot: BatchSlotChip, slotKey: BatchSlotKey) => {
     setBatchError(null)
@@ -1615,7 +1618,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -1666,7 +1669,7 @@ export function WorkboardPage({ title }: Props) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <button type="button" onClick={() => navigate(-1)} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
+          <button type="button" onClick={goBack} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
           <h1 className="text-ds-h2">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {surfaceRole === 'admin'

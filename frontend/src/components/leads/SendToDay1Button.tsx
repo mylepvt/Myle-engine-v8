@@ -9,6 +9,7 @@ import {
   type LeadPublic,
   useSendToDay1Mutation,
 } from '@/hooks/use-leads-query'
+import { useBackClose } from '@/hooks/use-back-close'
 
 /**
  * Team: after the prospect pays the enrollment (₹149–200), upload the payment
@@ -30,6 +31,7 @@ export function SendToDay1Button({ lead, className }: { lead: LeadPublic; classN
     setFile(null)
     mut.reset()
   }
+  useBackClose({ open, onClose: close })
 
   return (
     <>

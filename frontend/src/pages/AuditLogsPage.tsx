@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+import { useGoBack } from '@/hooks/use-go-back'
 import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -123,7 +124,7 @@ const DAY_OPTIONS = [7, 30, 90] as const
 type Props = { title: string }
 
 export function AuditLogsPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const { data: me } = useAuthMeQuery()
   const isAdmin = me?.role === 'admin'
 
@@ -179,7 +180,7 @@ export function AuditLogsPage({ title }: Props) {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="text-sm text-primary hover:underline underline-offset-2"
           >
             ← Back

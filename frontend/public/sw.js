@@ -1,5 +1,5 @@
 /* Myle SW — PWA install + Web Push + Offline caching */
-const CACHE_PREFIX = 'myle-v20261001-1'
+const CACHE_PREFIX = 'myle-v20261001-2'
 const STATIC_CACHE = `${CACHE_PREFIX}-static`
 const API_CACHE = `${CACHE_PREFIX}-api`
 
@@ -167,14 +167,15 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = normalizeNotificationUrl(event.notification.data?.url)
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const client of list) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.navigate(url)
-          return client.focus()
-        }
-      }
-      return clients.openWindow(url)
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (list) => {
+      const client = list.find((c) => c.url.startsWith(self.location.origin) && 'focus' in c)
+      if (!client) return clients.openWindow(url)
+      await client.focus()
+      // In-app (SPA) navigation: keeps the session and history, so Back returns to
+      // the page the user was on. client.navigate() did a full reload and rejects
+      // for uncontrolled clients (then nothing opened).
+      client.postMessage({ type: 'NAVIGATE', url })
+      return undefined
     }),
   )
 })

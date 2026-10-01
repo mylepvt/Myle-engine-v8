@@ -162,7 +162,7 @@ async def _send_digest_for_leader(session: AsyncSession, leader_id: int) -> None
             leader_id,
             title="Weekly team compliance digest",
             body=body,
-            url="/dashboard/team",
+            url="/dashboard/team/reports",
         )
     except Exception as exc:
         logger.warning("Weekly digest push failed for leader_id=%s: %s", leader_id, exc)
@@ -218,7 +218,7 @@ async def job_daily_report_reminder() -> None:
                         member.id,
                         title="Daily report pending ⚠️",
                         body="You haven't submitted today's daily report yet. Submit before midnight to avoid a compliance warning.",
-                        url="/dashboard/work/report",
+                        url="/dashboard/other/daily-report",
                     )
                 except Exception as exc:
                     logger.warning("Report reminder push failed for user_id=%s: %s", member.id, exc)
@@ -504,7 +504,7 @@ async def job_leader_basics_enforcement() -> None:
                                 f"Your team has missed daily call targets for {streak} days. "
                                 "Your account has been locked. Contact admin to restore access."
                             ),
-                            url="/dashboard/team/los",
+                            url="/dashboard",
                         )
                     except Exception as exc:
                         logger.warning("Leader lock push failed leader_id=%s: %s", leader.id, exc)
@@ -521,7 +521,7 @@ async def job_leader_basics_enforcement() -> None:
                                 f"Account will be locked in {_LEADER_LOCK_STREAK - streak} day(s) "
                                 "if basics are not restored."
                             ),
-                            url="/dashboard/team/los",
+                            url="/dashboard",
                         )
                     except Exception as exc:
                         logger.warning("Leader warning push failed leader_id=%s: %s", leader.id, exc)
