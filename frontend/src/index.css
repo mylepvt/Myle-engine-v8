@@ -884,6 +884,21 @@ html.pwa-standalone .keyboard-safe-sheet {
   );
 }
 
+/* iOS home-screen app uses status-bar-style black-translucent, whose clock and
+   battery are always white. In light mode the page behind them is light, so
+   paint a dark strip under the status bar to keep them readable. */
+html.ios-standalone:not(.dark) body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #141a29;
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
 /* Prevent callout popup on long-press for interactive elements in PWA */
 html.pwa-standalone button,
 html.pwa-standalone a,

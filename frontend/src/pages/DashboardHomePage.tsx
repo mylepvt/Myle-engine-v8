@@ -545,7 +545,7 @@ function KpiTile({
         <p className={cn('mt-2 font-heading text-ds-display font-bold tabular-nums leading-none', KPI_TONE[tone])}>
           {value}
         </p>
-        <p className="mt-1.5 truncate text-ds-caption text-subtle">{hint}</p>
+        <p className="mt-1.5 text-ds-caption text-subtle">{hint}</p>
       </CardContent>
     </Card>
   )

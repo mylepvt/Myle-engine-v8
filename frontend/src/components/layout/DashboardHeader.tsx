@@ -55,7 +55,7 @@ export function DashboardHeader({
   return (
     <header
       className={cn(
-        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-2 border-b border-border bg-background/96 px-3 md:px-4',
+        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-1 border-b border-border bg-background/96 px-2 min-[400px]:gap-2 min-[400px]:px-3 md:px-4',
         'supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-sm',
         isMainScrolled && 'dashboard-shell-header--scrolled',
       )}
@@ -142,7 +142,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
+          className="flex min-h-[44px] min-w-[44px] max-md:min-w-[36px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
           aria-label="Settings"
         >
           <Settings className="size-[17px]" />
@@ -154,7 +154,7 @@ export function DashboardHeader({
           <div className="relative">
             <Link
               to="/dashboard/other/notice-board"
-              className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
+              className="relative flex min-h-[44px] min-w-[44px] max-md:min-w-[36px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
               aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
             >
               <Bell className="size-[17px]" />
@@ -189,7 +189,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="relative ml-1 flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
+          className="relative ml-1 flex size-11 shrink-0 max-md:ml-0.5 max-md:size-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
           title={
             me?.fbo_id
               ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`

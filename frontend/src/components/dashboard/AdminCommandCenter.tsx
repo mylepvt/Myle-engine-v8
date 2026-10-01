@@ -823,10 +823,12 @@ export function AdminCommandCenter({ firstName }: Props) {
           </TabsList>
           <Link
             to="/dashboard/team/cc-board"
+            aria-label="Tracking Reports"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/25"
           >
-            <Activity className="size-4" />
-            Tracking Reports
+            <Activity className="size-4" aria-hidden />
+            {/* icon-only on phones so the header row never runs off-screen */}
+            <span className="hidden sm:inline">Tracking Reports</span>
           </Link>
         </div>
 
@@ -1618,11 +1620,12 @@ export function AdminCommandCenter({ firstName }: Props) {
 
       <CreateTaskModal open={showCreateTask} onClose={() => setShowCreateTask(false)} />
 
-      {/* Floating Create Task button — always visible */}
+      {/* Floating Create Task button — always visible. On phones it sits above the
+          bottom tab bar (60px pill + padding + home-indicator inset) instead of on it. */}
       <button
         type="button"
         onClick={() => setShowCreateTask(true)}
-        className="fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-95"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-50 flex size-14 md:bottom-6 md:right-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-95"
         aria-label="Create Task"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-6"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
