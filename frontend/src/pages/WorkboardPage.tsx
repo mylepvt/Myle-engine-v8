@@ -107,6 +107,23 @@ function parseAdminTab(value: string | null): ATab {
   return (match?.id ?? 'day2') as ATab
 }
 
+/**
+ * Resolve once a pending history.back() (useBackClose dropping its placeholder
+ * after a modal closes) has landed, so a following page navigation is not
+ * cancelled by it. Falls back after 400 ms when no back() was queued.
+ */
+function waitForHistorySettle(): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      window.removeEventListener('popstate', done)
+      window.clearTimeout(timer)
+      resolve()
+    }
+    const timer = window.setTimeout(done, 400)
+    window.addEventListener('popstate', done)
+  })
+}
+
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
   dayKey: 1 | 2 | 3 | 4 | 5 | 6,
@@ -1076,7 +1093,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
-  const markBatchDone = async (slotKey: BatchSlotKey) => {
+  const markBatchDone = async (slotKey: BatchSlotKey): Promise<boolean> => {
     setBatchError(null)
     setMarkingSlot(slotKey)
     try {
@@ -1084,6 +1101,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       // Optimistic cache update already painted; mutation onSettled invalidates
       // the board in the background — no awaited refetch needed.
       setBatchModal(null)
+      return true
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not update batch state'
       setBatchError(message)
@@ -1095,6 +1113,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             }
           : prev,
       )
+      return false
     } finally {
       setMarkingSlot(null)
     }
@@ -1127,13 +1146,16 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
       return
     }
+    // Mark first, then open WhatsApp. Closing the modal makes useBackClose drop
+    // its history placeholder with history.back(); if WhatsApp were already
+    // loading, that back() cancels the wa.me navigation and WhatsApp never opens.
+    const marked = await markBatchDone(batchModal.slotKey)
+    if (marked) await waitForHistorySettle()
     if (!openExternalShareUrl(waUrl)) {
       const message = 'Could not open WhatsApp share window.'
       setBatchError(message)
       setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
-      return
     }
-    await markBatchDone(batchModal.slotKey)
   }
 
   const handleCopyBatchLink = async (variant: BatchLinkVariant) => {
