@@ -14,6 +14,7 @@ import {
   useUpdateMemberRoleMutation,
   useUpdateMemberUplineMutation,
   useDeleteMemberMutation,
+  usePurgeMemberMutation,
   useMemberLeadsQuery,
   useToggleTrainingLockMutation,
   type TeamMemberPublic,
@@ -41,6 +42,7 @@ export function MemberProfileModal({
   const updateUplineMut = useUpdateMemberUplineMutation()
   const updateComplianceMut = useUpdateMemberComplianceMutation()
   const deleteMut = useDeleteMemberMutation()
+  const purgeMut = usePurgeMemberMutation()
   const trainingToggle = useToggleTrainingLockMutation()
   const { data: allMembers } = useTeamMembersQuery()
   const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
@@ -49,7 +51,7 @@ export function MemberProfileModal({
   const [uplineError, setUplineError] = useState<string | null>(null)
   const [complianceError, setComplianceError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [danger, setDanger] = useState<null | 'delete' | 'remove_now'>(null)
+  const [danger, setDanger] = useState<null | 'delete' | 'remove_now' | 'purge'>(null)
   const [trainingError, setTrainingError] = useState<string | null>(null)
   const [trainingRequired, setTrainingRequired] = useState<boolean>(member.training_required ?? false)
   const [graceEndDate, setGraceEndDate] = useState(
@@ -131,6 +133,14 @@ export function MemberProfileModal({
         },
       },
     )
+  }
+
+  function handlePurge() {
+    setDeleteError(null)
+    purgeMut.mutate(currentMember.id, {
+      onError: (e: Error) => setDeleteError(e.message),
+      onSuccess: onClose,
+    })
   }
 
   function handleDelete() {
@@ -539,9 +549,30 @@ export function MemberProfileModal({
               onClick={() => setDanger('delete')}
               className="border-destructive/50 text-destructive hover:bg-destructive/10"
             >
-              {deleteMut.isPending ? 'Deleting…' : 'Delete Account'}
+              {deleteMut.isPending ? 'Removing…' : 'Remove member'}
             </Button>
+            <p className="mt-1 text-ds-caption text-muted-foreground">
+              Blocks login. Account and history stay, so it can be restored.
+            </p>
           </div>
+          {currentMember.role !== 'admin' ? (
+            <div className="mt-4 border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                disabled={purgeMut.isPending}
+                onClick={() => setDanger('purge')}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                {purgeMut.isPending ? 'Deleting…' : 'Delete permanently'}
+              </Button>
+              <p className="mt-1 text-ds-caption text-muted-foreground">
+                Erases name, phone, email and FBO ID for good (can&apos;t be undone). Their leads go to their
+                leader and their team moves up one level. Money, sales and reports stay as &quot;Deleted member&quot;.
+              </p>
+            </div>
+          ) : null}
             </TabsContent>
           </Tabs>
         </div>
@@ -550,19 +581,24 @@ export function MemberProfileModal({
 
       <ConfirmDialog
         open={danger !== null}
-        title={danger === 'delete' ? 'Delete account' : 'Remove member now'}
-        description={
-          danger === 'delete'
-            ? `This removes ${currentMember.fbo_id} from the system and revokes access immediately. Their history is kept and access can be restored later.`
-            : `Remove ${currentMember.fbo_id} from the system right now? They lose access immediately.`
+        title={
+          danger === 'purge' ? 'Delete permanently' : danger === 'delete' ? 'Remove member' : 'Remove member now'
         }
-        confirmLabel={danger === 'delete' ? 'Delete account' : 'Remove now'}
+        description={
+          danger === 'purge'
+            ? `Permanently erase ${currentMember.fbo_id}? Name, phone, email and FBO ID are deleted forever and cannot be recovered. Their leads move to their leader. Type DELETE to confirm.`
+            : danger === 'delete'
+              ? `This removes ${currentMember.fbo_id} and revokes access immediately. Their history is kept and access can be restored later.`
+              : `Remove ${currentMember.fbo_id} from the system right now? They lose access immediately.`
+        }
+        confirmLabel={danger === 'purge' ? 'Delete permanently' : danger === 'delete' ? 'Remove member' : 'Remove now'}
         destructive
-        requireTyped={danger === 'delete' ? currentMember.fbo_id : undefined}
+        requireTyped={danger === 'purge' ? 'DELETE' : danger === 'delete' ? currentMember.fbo_id : undefined}
         onConfirm={() => {
           const action = danger
           setDanger(null)
-          if (action === 'delete') handleDelete()
+          if (action === 'purge') handlePurge()
+          else if (action === 'delete') handleDelete()
           else if (action === 'remove_now') handleComplianceAction('remove_now')
         }}
         onCancel={() => setDanger(null)}

@@ -458,6 +458,30 @@ export async function deleteMember(userId: number): Promise<void> {
   if (!res.ok && res.status !== 204) await parseError(res)
 }
 
+export type MemberPurgeResult = {
+  leads_moved: number
+  leads_moved_to_user_id: number
+  downline_moved: number
+}
+
+/** Irreversible: erases the member's identity and frees their FBO ID / email / phone. */
+export async function purgeMember(userId: number): Promise<MemberPurgeResult> {
+  const res = await apiFetch(`/api/v1/team/members/${userId}/purge`, { method: 'POST' })
+  if (!res.ok) await parseError(res)
+  return res.json() as Promise<MemberPurgeResult>
+}
+
+export function usePurgeMemberMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: purgeMember,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team'] })
+      void queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+}
+
 export function useDeleteMemberMutation() {
   const queryClient = useQueryClient()
   return useMutation({

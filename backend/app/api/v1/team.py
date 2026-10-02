@@ -52,6 +52,7 @@ from app.services.grace_intelligence import (
     MONTHLY_GRACE_LIMIT,
 )
 from app.services.payment_service import PaymentService
+from app.services.member_purge import PURGED_FBO_PREFIX, is_purged, purge_member
 from app.services.push_service import send_push_to_user
 from app.services.team_reports_metrics import IST, compute_live_summary, compute_work_trend
 from app.services.user_hierarchy import (
@@ -255,13 +256,15 @@ async def list_team_members(
     """All users (no passwords) — admin only."""
     _require_admin(user)
 
-    count_q = select(func.count()).select_from(User)
+    not_purged = ~User.fbo_id.startswith(PURGED_FBO_PREFIX)
+    count_q = select(func.count()).select_from(User).where(not_purged)
     total = int((await session.execute(count_q)).scalar_one())
 
     Upline = aliased(User, name="upline")
     list_q = (
         select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
         .outerjoin(Upline, User.upline_user_id == Upline.id)
+        .where(not_purged)
         .order_by(User.created_at.asc())
         .limit(limit)
         .offset(offset)
@@ -1228,6 +1231,45 @@ async def delete_member(
     )
 
     background_tasks.add_task(_notify_leader_member_removed_bg, target_user_id, target.removal_reason)
+
+
+class MemberPurgeResponse(BaseModel):
+    leads_moved: int
+    leads_moved_to_user_id: int
+    downline_moved: int
+
+
+@router.post("/members/{target_user_id}/purge", response_model=MemberPurgeResponse)
+async def purge_member_permanently(
+    target_user_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> MemberPurgeResponse:
+    """Admin: permanently erase a member's identity (irreversible).
+
+    Frees their FBO ID / email / phone, moves the leads they work to their
+    nearest leader, moves their direct team up one level, and keeps money /
+    sales / report history under an anonymous "Deleted member #id" row.
+    """
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None or is_purged(target):
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if target.id == user.user_id:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+    if target.role == "admin":
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Admins cannot be permanently deleted. Change their role first.",
+        )
+    result = await purge_member(session, target=target, actor_user_id=user.user_id)
+    await session.commit()
+    await notify_topics("team", "leads")
+    return MemberPurgeResponse(
+        leads_moved=result.leads_moved,
+        leads_moved_to_user_id=result.leads_moved_to_user_id,
+        downline_moved=result.downline_moved,
+    )
 
 
 @router.get("/approvals", response_model=SystemStubResponse)
