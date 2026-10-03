@@ -940,7 +940,7 @@ class LeadsService:
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=f"Enrollment amount must be between ₹{ENROLLMENT_MIN_RUPEES} and ₹{ENROLLMENT_MAX_RUPEES}.",
             )
-        ok, result = await save_enrollment_proof_bytes(data=screenshot, lead_id=lead.id)
+        ok, result = await save_enrollment_proof_bytes(session=self._session, data=screenshot, lead_id=lead.id)
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=result)
 

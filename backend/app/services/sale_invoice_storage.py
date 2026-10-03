@@ -15,6 +15,9 @@ import uuid
 
 from app.core.config import settings
 from app.services.avatar_storage import detect_image_suffix
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.db_media_storage import put_media
 from app.services.r2_storage import r2_enabled, upload_to_r2
 
 _MAX_BYTES = 8 * 1024 * 1024  # invoices can be denser than payment screenshots
@@ -35,7 +38,7 @@ def sale_invoice_disk_path(filename: str) -> Path:
     return _root() / "sale_invoices" / Path(filename).name
 
 
-async def save_sale_invoice_bytes(*, data: bytes, lead_id: int) -> tuple[bool, str]:
+async def save_sale_invoice_bytes(*, session: AsyncSession, data: bytes, lead_id: int) -> tuple[bool, str]:
     if len(data) > _MAX_BYTES:
         return False, "Image too large (max 8 MB)"
 
@@ -55,7 +58,7 @@ async def save_sale_invoice_bytes(*, data: bytes, lead_id: int) -> tuple[bool, s
         )
         return True, url
 
-    root = _root() / "sale_invoices"
-    root.mkdir(parents=True, exist_ok=True)
-    (root / filename).write_bytes(data)
+    # No R2 in production: the container disk is wiped on every deploy, so the
+    # bytes go to Postgres (served by /api/v1/media/sale-invoices/...).
+    await put_media(session, kind="sale-invoices", name=filename, data=data)
     return True, f"/api/v1/media/sale-invoices/{filename}"

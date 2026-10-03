@@ -11,6 +11,9 @@ import uuid
 
 from app.core.config import settings
 from app.services.avatar_storage import detect_image_suffix
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.db_media_storage import put_media
 from app.services.r2_storage import r2_enabled, upload_to_r2
 
 _MAX_BYTES = 5 * 1024 * 1024
@@ -31,7 +34,7 @@ def enrollment_proof_disk_path(filename: str) -> Path:
     return _root() / "enrollment_proofs" / Path(filename).name
 
 
-async def save_enrollment_proof_bytes(*, data: bytes, lead_id: int) -> tuple[bool, str]:
+async def save_enrollment_proof_bytes(*, session: AsyncSession, data: bytes, lead_id: int) -> tuple[bool, str]:
     if not data:
         return False, "Empty file"
     if len(data) > _MAX_BYTES:
@@ -51,7 +54,7 @@ async def save_enrollment_proof_bytes(*, data: bytes, lead_id: int) -> tuple[boo
         )
         return True, url
 
-    root = _root() / "enrollment_proofs"
-    root.mkdir(parents=True, exist_ok=True)
-    (root / filename).write_bytes(data)
+    # No R2 in production: the container disk is wiped on every deploy, so the
+    # bytes go to Postgres (served by /api/v1/media/enrollment-proofs/...).
+    await put_media(session, kind="enrollment-proofs", name=filename, data=data)
     return True, f"/api/v1/media/enrollment-proofs/{filename}"
