@@ -32,7 +32,7 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
     job_closing_pipeline_maintenance,
-    job_daily_report_reminder,
+    job_evening_recap,
     job_eos_automation_rules,
     job_eos_mission_pregeneration,
     job_eos_verification_escalations,
@@ -40,6 +40,7 @@ from app.services.scheduled_jobs import (
     job_integrity_audit,
     job_general_pipeline_maintenance,
     job_lead_booking_fulfillment,
+    job_morning_plan,
     job_leader_basics_enforcement,
     job_tracking_report_reminder,
     job_watch_archive_maintenance,
@@ -84,9 +85,16 @@ async def lifespan(_app: FastAPI):
             misfire_grace_time=3600,
         )
         _scheduler.add_job(
-            job_daily_report_reminder,
-            CronTrigger(hour=21, minute=0, timezone="Asia/Kolkata"),
-            id="daily_report_reminder",
+            job_morning_plan,
+            CronTrigger(hour=9, minute=0, timezone="Asia/Kolkata"),
+            id="morning_plan",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_evening_recap,
+            CronTrigger(hour=20, minute=30, timezone="Asia/Kolkata"),
+            id="evening_recap",
             replace_existing=True,
             misfire_grace_time=1800,
         )
