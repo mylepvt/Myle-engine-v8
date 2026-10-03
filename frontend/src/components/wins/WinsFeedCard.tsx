@@ -67,7 +67,7 @@ export function WinsFeedCard() {
           <p className="text-ds-caption text-muted-foreground">Team wins are unavailable right now.</p>
         ) : !items.length ? (
           <p className="text-ds-caption text-muted-foreground">
-            No wins this week yet. Enroll a prospect or hit your call target to be the first.
+            No wins yet today. Enroll a prospect or hit your call target to be the first.
           </p>
         ) : (
           <ul className="space-y-0.5">

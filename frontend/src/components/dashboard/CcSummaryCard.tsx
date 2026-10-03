@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { SaleDashboardRow } from '@/hooks/use-sales-query'
+import type { SaleDashboardRow, SalesPeriod } from '@/hooks/use-sales-query'
 import { useSalesDashboardQuery } from '@/hooks/use-sales-query'
 import { cn } from '@/lib/utils'
 
@@ -117,7 +117,9 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
 
 /** Role-scoped CC + revenue + approx-cheque rollup. Backend decides scope. */
 export function CcSummaryCard({ enabled = true, className }: Props) {
-  const { data, isPending, isError } = useSalesDashboardQuery(enabled)
+  // Today first; "All time" is the history view.
+  const [period, setPeriod] = useState<SalesPeriod>('today')
+  const { data, isPending, isError } = useSalesDashboardQuery(enabled, period)
 
   if (!enabled) return null
 
@@ -128,12 +130,27 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
     <div className={cn('surface-elevated space-y-3 p-4', className)}>
       <div className="flex items-center justify-between">
         <p className="text-ds-label uppercase text-muted-foreground">Case Credits &amp; Cheque</p>
-        {data ? (
-          <span className="text-ds-micro text-muted-foreground">
-            {SCOPE_LABEL[data.scope] ?? data.scope}
-          </span>
-        ) : null}
+        <div className="flex rounded-full border border-border bg-muted/40 p-0.5" role="tablist" aria-label="CC period">
+          {(['today', 'all'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={period === p}
+              onClick={() => setPeriod(p)}
+              className={cn(
+                'rounded-full px-2.5 py-0.5 text-ds-micro font-semibold transition-colors',
+                period === p ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {p === 'today' ? 'Today' : 'All time'}
+            </button>
+          ))}
+        </div>
       </div>
+      {data ? (
+        <p className="-mt-2 text-ds-micro text-muted-foreground">{SCOPE_LABEL[data.scope] ?? data.scope}</p>
+      ) : null}
 
       {isPending ? (
         <p className="text-xs text-muted-foreground">Loading CC…</p>
@@ -143,7 +160,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
         <>
           <ChequeHero
             cents={data.personal_commission_cents}
-            subtitle="25% of net • personal sales only"
+            subtitle={period === 'today' ? 'Today · 25% of net · personal sales only' : '25% of net • personal sales only'}
           />
 
           {isTeamView ? (
