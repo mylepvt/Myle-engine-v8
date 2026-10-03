@@ -81,6 +81,7 @@ vi.mock('@/hooks/use-xp-query', () => ({
   useXpMeQuery: () => mockUseXpMeQuery(),
   useXpHistoryQuery: () => mockUseXpHistoryQuery(),
   useXpLeaderboardQuery: () => mockUseXpLeaderboardQuery(),
+  useXpPeriodLeaderboardQuery: () => ({ data: { period: 'today', items: [], me: null, total: 0 }, isPending: false, isError: false }),
   LEVEL_COLORS: {
     rookie: { bg: 'bg-zinc-500/20', text: 'text-zinc-400', border: 'border-zinc-500/30' },
   },

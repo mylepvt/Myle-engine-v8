@@ -14,6 +14,7 @@ reset via the admin endpoint.
 from __future__ import annotations
 
 from collections import defaultdict
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -25,6 +26,8 @@ from app.models.user import User
 from app.models.xp_event import XpEvent
 from app.models.xp_monthly_archive import XpMonthlyArchive
 from app.services.push_service import send_push_to_user
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -603,3 +606,56 @@ async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
             "process_score_7d": 0,
         })
     return result
+
+
+LEADERBOARD_PERIODS = ("today", "week")
+
+
+async def get_period_leaderboard(
+    session: AsyncSession,
+    *,
+    period: str,
+    viewer_user_id: int,
+    limit: int = 10,
+) -> dict:
+    """XP earned today / this week (IST, week starts Monday) — fresh race each period.
+
+    Returns the top ``limit`` plus the viewer's own rank so members outside the
+    top 10 still see where they stand.
+    """
+    from app.core.time_ist import today_ist
+    from app.services.live_metrics import ist_day_bounds
+
+    today = today_ist()
+    start_day = today if period == "today" else today - timedelta(days=today.weekday())
+    start, _ = ist_day_bounds(start_day)
+
+    earned = func.sum(XpEvent.xp).label("xp")
+    rows = (
+        await session.execute(
+            select(User.id, User.name, User.username, User.fbo_id, User.role, earned)
+            .join(XpEvent, XpEvent.user_id == User.id)
+            .where(
+                XpEvent.created_at >= start,
+                User.role.in_(("leader", "team")),
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+            )
+            .group_by(User.id, User.name, User.username, User.fbo_id, User.role)
+            .having(func.sum(XpEvent.xp) > 0)
+            .order_by(earned.desc(), User.id.asc())
+        )
+    ).all()
+
+    ranked = [
+        {
+            "rank": i + 1,
+            "user_id": int(uid),
+            "name": name or username or fbo_id,
+            "role": role,
+            "xp": int(xp or 0),
+        }
+        for i, (uid, name, username, fbo_id, role, xp) in enumerate(rows)
+    ]
+    me = next((r for r in ranked if r["user_id"] == viewer_user_id), None)
+    return {"period": period, "items": ranked[:limit], "me": me, "total": len(ranked)}

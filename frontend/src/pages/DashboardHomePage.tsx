@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, Layers, TrendingUp, Users, Zap } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
+import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { XpBadge } from '@/components/xp/XpBadge'
-import { XpLeaderboard } from '@/components/xp/XpLeaderboard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
@@ -824,7 +824,7 @@ export function DashboardHomePage() {
 
       <XpBadge />
 
-      <XpLeaderboard />
+      <TodayLeaderboardCard />
 
       <CollapsibleSection title="Recent Leads" defaultOpen={false}>
         <Card>

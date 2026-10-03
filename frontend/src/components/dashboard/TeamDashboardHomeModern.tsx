@@ -4,6 +4,7 @@ import { ArrowRight, Clock3 } from 'lucide-react'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSection'
+import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
@@ -177,6 +178,8 @@ export function TeamDashboardHomeModern({
       </section>
 
       <XpBadge />
+
+      <TodayLeaderboardCard />
 
       <GateAssistantCard sessionReady={sessionReady} />
 

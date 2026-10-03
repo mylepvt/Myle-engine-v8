@@ -3,7 +3,8 @@
 Jobs (all IST-aware):
 - flp_min_billing_proof_alert          : every 30min — pending proof > 2h → push admin/leaders
 - weekly_compliance_digest        : Monday 09:00 IST — compliance summary to leaders
-- daily_report_reminder           : 21:00 IST daily — push eligible users who haven't submitted report
+- morning_plan                    : 09:00 IST daily — "Your plan for today" push (leads to call, follow-ups, streak)
+- evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
@@ -26,9 +27,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.time_ist import today_ist
 from app.db.session import AsyncSessionLocal
 from app.models.current_cc import CurrentCcSheet
-from app.models.daily_report import DailyReport
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.engagement_digest import (
+    build_evening_recaps,
+    build_morning_plans,
+    evening_recap_message,
+    morning_plan_message,
+)
 from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.observation_logger import observe_event
@@ -169,7 +175,7 @@ async def _send_digest_for_leader(session: AsyncSession, leader_id: int) -> None
 
 
 # ---------------------------------------------------------------------------
-# Job 3: daily report reminder — 20:00 IST
+# Job 3: morning plan (09:00) + evening recap (20:30) IST
 # ---------------------------------------------------------------------------
 
 _ELIGIBLE_ROLES = {"team", "leader"}
@@ -186,47 +192,51 @@ async def _get_eligible_users(session: AsyncSession) -> list[User]:
     ).scalars().all()
 
 
-async def job_daily_report_reminder() -> None:
-    """Push eligible users who haven't submitted today's daily report (runs 20:00 IST)."""
+async def _push_digest(session: AsyncSession, user: User, title: str, body: str, url: str) -> bool:
+    if not user.daily_report_reminders_enabled:
+        return False
+    try:
+        return bool(await send_push_to_user(session, user.id, title=title, body=body, url=url))
+    except Exception as exc:  # noqa: BLE001 — one bad subscription must not stop the batch
+        logger.warning("Digest push failed for user_id=%s: %s", user.id, exc)
+        return False
+
+
+async def job_morning_plan() -> None:
+    """09:00 IST — "Your plan for today": new leads to call, follow-ups due, streak."""
     try:
         async with AsyncSessionLocal() as session:
-            today = today_ist()
             users = await _get_eligible_users(session)
-            if not users:
-                return
-
-            user_ids = [u.id for u in users]
-            submitted = {
-                int(uid)
-                for (uid,) in (
-                    await session.execute(
-                        select(DailyReport.user_id).where(
-                            DailyReport.user_id.in_(user_ids),
-                            DailyReport.report_date == today,
-                        )
-                    )
-                ).all()
-            }
-
-            missing = [u for u in users if u.id not in submitted]
-
-            # Push notification (existing)
-            for member in missing:
-                try:
-                    await send_push_to_user(
-                        session,
-                        member.id,
-                        title="Daily report pending ⚠️",
-                        body="You haven't submitted today's daily report yet. Submit before midnight to avoid a compliance warning.",
-                        url="/dashboard/other/daily-report",
-                    )
-                except Exception as exc:
-                    logger.warning("Report reminder push failed for user_id=%s: %s", member.id, exc)
-
-            logger.info("daily_report_reminder: push=%d users", len(missing))
-
+            plans = await build_morning_plans(session, list(users), today_ist())
+            sent = 0
+            for user in users:
+                msg = morning_plan_message(plans[user.id])
+                if msg is None:
+                    continue
+                sent += await _push_digest(session, user, *msg, url="/dashboard/work/leads?tab=today")
+            logger.info("morning_plan: users=%d sent=%d", len(users), sent)
     except Exception as exc:
-        logger.error("job_daily_report_reminder failed: %s", exc)
+        logger.error("job_morning_plan failed: %s", exc)
+
+
+async def job_evening_recap() -> None:
+    """20:30 IST — calls vs yesterday, today's XP rank, and the daily-report nudge.
+
+    Replaces the old 21:00 daily-report reminder so members get one evening push.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            users = await _get_eligible_users(session)
+            recaps = await build_evening_recaps(session, list(users), today_ist())
+            sent = 0
+            for user in users:
+                recap = recaps[user.id]
+                title, body = evening_recap_message(recap)
+                url = "/dashboard/other/daily-report" if not recap.report_submitted else "/dashboard/other/leaderboard"
+                sent += await _push_digest(session, user, title, body, url=url)
+            logger.info("evening_recap: users=%d sent=%d", len(users), sent)
+    except Exception as exc:
+        logger.error("job_evening_recap failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
