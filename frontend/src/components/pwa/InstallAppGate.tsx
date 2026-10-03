@@ -193,7 +193,11 @@ function DeclinedGate() {
   )
 }
 
-export function InstallAppGate({ children }: { children: ReactNode }) {
+/**
+ * `allowSkip` false (team / leader) removes "Skip for now" on phones: Myle must be
+ * installed to be used. Desktop can always skip — laptops can't always install.
+ */
+export function InstallAppGate({ children, allowSkip = true }: { children: ReactNode; allowSkip?: boolean }) {
   const { standalone, installed, canInstall, promptInstall } = usePwaInstall()
   const [ready, setReady] = useState(false)
   const [declined, setDeclined] = useState(false)
@@ -201,7 +205,8 @@ export function InstallAppGate({ children }: { children: ReactNode }) {
   const isIos = useMemo(() => isIosFamily(), [])
   const isAndroid = useMemo(() => isAndroidFamily(), [])
   const promptingRef = useRef(false)
-  const skip = useCallback(() => setSkipped(true), [])
+  const skipFn = useCallback(() => setSkipped(true), [])
+  const skip = allowSkip || !(isIos || isAndroid) ? skipFn : undefined
 
   // A single guarded entry point: taps on the button AND on the surrounding
   // overlay both route here, but Chrome's native dialog may only be opened once

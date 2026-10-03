@@ -372,9 +372,18 @@ async def connect_presence_session(
         row.user_agent = user_agent or row.user_agent
         row.updated_at = ts
     user = await session.get(User, user_id)
+    first_today = False
     if user is not None:
+        last = user.last_seen_at
+        if last is not None and last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        first_today = last is None or last.astimezone(IST).date() < ts.astimezone(IST).date()
         user.last_seen_at = ts
     await session.commit()
+    if first_today and user is not None:
+        from app.services.admin_alerts import member_came_online
+
+        member_came_online(user)
     return prev != "online"
 
 

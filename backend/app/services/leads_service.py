@@ -507,6 +507,9 @@ class LeadsService:
         return None
 
     async def create_lead(self, *, body: LeadCreate, user: AuthUser) -> Lead:
+        from app.services.lead_file_import import lock_lead_phones
+
+        await lock_lead_phones(self._session)
         dup = await self._find_duplicate_phone_lead(body.phone)
         if dup is not None:
             dup_id, dup_name, dup_status, normalized = dup
@@ -1573,6 +1576,9 @@ class LeadsService:
                 drop_recorded_by_user_id=user.user_id if action == "not_interested" else None,
             )
         _sync_stage_anchor(lead, previous_status=prev_status, now=now)
+        from app.services.admin_alerts import mark_call_outcome
+
+        mark_call_outcome(self._session, lead, action)
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead

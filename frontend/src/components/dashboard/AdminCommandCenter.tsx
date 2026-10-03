@@ -1,5 +1,4 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -825,30 +824,33 @@ export function AdminCommandCenter({ firstName }: Props) {
 
         {/* ==================== OVERVIEW ==================== */}
         <TabsContent value="overview" className="space-y-6">
-          {openApprovals.length > 0 ? (
-            <section aria-label="Action needed" className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <BellRing className="size-4 text-warning-ink" aria-hidden />
-                  Action needed
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('war-room')}
-                  className="text-ds-caption font-semibold text-primary hover:underline"
-                >
-                  Open War Room
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {openApprovals.map((item) => (
-                  <DoNowTile key={item.title} item={item} onTab={setActiveTab} />
-                ))}
-              </div>
-            </section>
-          ) : null}
-          <WinsFeedCard />
-          <OverviewTab firstName={firstName} onCreateTask={() => setShowCreateTask(true)} />
+          <OverviewTab
+            firstName={firstName}
+            actionNeeded={
+              openApprovals.length > 0 ? (
+                <section aria-label="Action needed" className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <BellRing className="size-4 text-warning-ink" aria-hidden />
+                      Action needed
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('war-room')}
+                      className="text-ds-caption font-semibold text-primary hover:underline"
+                    >
+                      Open War Room
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    {openApprovals.map((item) => (
+                      <DoNowTile key={item.title} item={item} onTab={setActiveTab} />
+                    ))}
+                  </div>
+                </section>
+              ) : null
+            }
+          />
         </TabsContent>
 
         {/* ==================== WAR ROOM ==================== */}

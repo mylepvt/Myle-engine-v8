@@ -10,7 +10,6 @@ import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
 import type { LeadPublic } from '@/hooks/use-leads-query'
-import type { TeamPersonalFunnel } from '@/hooks/use-team-personal-funnel-query'
 import type { TeamTodayStats } from '@/hooks/use-team-today-stats-query'
 import { stageBadgeClass } from '@/lib/stage-colors'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
@@ -20,7 +19,6 @@ import { cn, formatRelativeTimeShort } from '@/lib/utils'
 type Props = {
   sessionReady: boolean
   firstName: string
-  funnel: TeamPersonalFunnel | undefined
   today: TeamTodayStats | undefined
   recentLeads: LeadPublic[]
   handedOffLeads: LeadPublic[]
@@ -44,7 +42,6 @@ function humanizeStatus(status: string) {
 export function TeamDashboardHomeModern({
   sessionReady,
   firstName,
-  funnel,
   today,
   recentLeads,
   handedOffLeads,
@@ -55,10 +52,6 @@ export function TeamDashboardHomeModern({
   const primaryAction = topActions[0]
   const secondaryActions = topActions.slice(1, 4)
   const greeting = greetingForCurrentTime()
-  const enrolledPct =
-    funnel?.claimed && funnel.claimed > 0
-      ? Math.round((funnel.paid_flp / funnel.claimed) * 100)
-      : 0
 
   return (
     <div className="mx-auto w-full max-w-[430px] space-y-4 pb-2 md:max-w-3xl">
@@ -104,7 +97,7 @@ export function TeamDashboardHomeModern({
                 {today?.flp_min_billing_today ?? 0}
               </p>
               <p className="mt-1 text-ds-micro text-blue-100/70">
-                {enrolledPct}% from claimed
+                today
               </p>
             </div>
           </div>
@@ -192,7 +185,7 @@ export function TeamDashboardHomeModern({
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Recent Leads</h2>
+            <h2 className="text-base font-semibold text-foreground">Today&apos;s Leads</h2>
             <p className="mt-1 text-ds-caption text-muted-foreground">
               Fresh records from your latest workboard activity.
             </p>
@@ -203,7 +196,7 @@ export function TeamDashboardHomeModern({
         </div>
         {recentLeads.length === 0 ? (
           <Card className="border-border/70 bg-card/95">
-            <CardContent className="text-sm text-muted-foreground">No leads yet</CardContent>
+            <CardContent className="text-sm text-muted-foreground">No leads added or worked on today yet</CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">

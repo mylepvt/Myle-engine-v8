@@ -1,7 +1,7 @@
 """Web Push notification endpoints."""
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -68,6 +68,31 @@ async def get_vapid_key(
             else "Push delivery is not configured on the server yet. Install the push dependencies and redeploy."
         ),
     )
+
+
+class DeviceStatusBody(BaseModel):
+    platform: Literal["ios", "android", "desktop"]
+    standalone: bool
+    push_permission: Literal["granted", "denied", "default", "unsupported"]
+
+
+@router.post("/device-status")
+async def report_device_status(
+    body: DeviceStatusBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """The app reports how it is opened (home-screen app vs browser) and push permission."""
+    from app.services.app_setup import record_device_status
+
+    await record_device_status(
+        session,
+        user_id=user.user_id,
+        platform=body.platform,
+        standalone=body.standalone,
+        push_permission=body.push_permission,
+    )
+    return {"ok": True}
 
 
 @router.post("/subscribe", status_code=http_status.HTTP_201_CREATED)

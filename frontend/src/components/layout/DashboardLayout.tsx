@@ -19,6 +19,7 @@ import { PULL_TRIGGER_PX, usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
 import { useWinsToaster } from '@/hooks/use-wins-toaster'
 import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
+import { useReportDeviceStatus } from '@/hooks/use-report-device-status'
 import { InstallAppGate } from '@/components/pwa/InstallAppGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { cn } from '@/lib/utils'
@@ -57,6 +58,10 @@ export function DashboardLayout() {
   const pullToRefresh = usePullToRefresh(mainEl, handlePullRefresh)
   const location = useLocation()
   const { data: me } = useAuthMeQuery()
+  // Team and leaders must install the app and turn notifications on; admins may skip.
+  const mustSetUpApp = me?.authenticated === true && (me.role === 'team' || me.role === 'leader')
+  // Report even while an install / notification screen is blocking, so the admin sees "Using browser".
+  useReportDeviceStatus(me?.authenticated === true, false)
   const { role: shellRole } = useDashboardShellRole()
   const navigate = useNavigate()
   const {
@@ -301,8 +306,8 @@ export function DashboardLayout() {
   }
 
   return (
-    <InstallAppGate>
-    <PushNotificationGate>
+    <InstallAppGate allowSkip={!mustSetUpApp}>
+    <PushNotificationGate allowSkip={!mustSetUpApp}>
     <div
       className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
       style={shellStyle}

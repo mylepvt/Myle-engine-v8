@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, Layers, TrendingUp, Users, Zap } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
+import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
@@ -26,21 +27,16 @@ import {
 import { getHomeQuickActions } from '@/config/dashboard-home-actions'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useFollowUpsQuery } from '@/hooks/use-follow-ups-query'
-import { useTeamPersonalFunnelQuery } from '@/hooks/use-team-personal-funnel-query'
 import { useHandedOffLeadsQuery } from '@/hooks/use-handed-off-leads-query'
 import { useTeamTodayStatsQuery } from '@/hooks/use-team-today-stats-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus, usePatchLeadMutation } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { usePingLoginMutation } from '@/hooks/use-xp-query'
-import { useLosQuery } from '@/hooks/use-los-query'
 import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePanel'
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
-import { useLeaderCommandCenter } from '@/hooks/use-leader-command-center-query'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
 import { cn } from '@/lib/utils'
-import { phaseColor, phaseInk, stageColor } from '@/lib/stage-colors'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -64,6 +60,12 @@ function statusLabel(status: string): string {
   return LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
 }
 
+const isToday = (iso: string | null | undefined) =>
+  !!iso && new Date(iso).toDateString() === new Date().toDateString()
+
+const touchedAt = (l: LeadPublic) => new Date(l.last_action_at ?? l.created_at).getTime()
+
+/** Leads added or worked today — the home screen is about today; "View all" is the history. */
 function recentFromWorkboard(columns: { items?: LeadPublic[] }[] | undefined): LeadPublic[] {
   if (!columns?.length) return []
   const seen = new Set<number>()
@@ -78,10 +80,8 @@ function recentFromWorkboard(columns: { items?: LeadPublic[] }[] | undefined): L
     }
   }
   return out
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
+    .filter((l) => isToday(l.created_at) || isToday(l.last_action_at))
+    .sort((a, b) => touchedAt(b) - touchedAt(a))
     .slice(0, 8)
 }
 
@@ -158,408 +158,7 @@ function Day1PipelineRow({
   )
 }
 
-function WarRoomDashboard({
-  los,
-  lcc,
-  wb,
-}: {
-  los: ReturnType<typeof useLosQuery>
-  lcc: ReturnType<typeof useLeaderCommandCenter>
-  wb: ReturnType<typeof useWorkboardQuery>
-}) {
-  const isLoading = los.isPending && !los.data
-  const isError = los.isError && !los.data
 
-  const pipelineColumns = useMemo(() => {
-    const colMap = new Map<string, number>()
-    for (const col of wb.data?.columns ?? []) {
-      colMap.set(col.status, col.total)
-    }
-    const maxCount = Math.max(1, ...Array.from(colMap.values()))
-    // Column + bar colours come from the shared lead-journey phases
-    // (src/lib/stage-colors.ts), so Converted is green and Day 2–5 amber.
-    const stages = [
-      {
-        title: 'Top of Funnel',
-        color: phaseColor('early'),
-        ink: phaseInk('early'),
-        stages: [
-          { key: 'new_lead', label: 'Just Claimed' },
-          { key: 'contacted', label: 'Contacted' },
-          { key: 'invited', label: 'Invited' },
-        ],
-      },
-      {
-        title: 'Engagement',
-        color: phaseColor('engaged'),
-        ink: phaseInk('engaged'),
-        stages: [
-          { key: 'whatsapp_sent', label: 'WhatsApp Sent' },
-          { key: 'video_watched', label: 'Video Watched' },
-          { key: 'paid', label: 'Paid' },
-          { key: 'day1', label: 'Day 1' },
-        ],
-      },
-      {
-        title: 'Conversion',
-        color: phaseColor('closing'),
-        ink: phaseInk('closing'),
-        stages: [
-          { key: 'day2', label: 'Day 2' },
-          { key: 'day3', label: 'Day 3' },
-          { key: 'day4', label: 'Day 4' },
-          { key: 'day5', label: 'Day 5' },
-          { key: 'converted', label: 'Converted' },
-        ],
-      },
-    ]
-    return { stages, maxCount, colMap }
-  }, [wb.data])
-
-  const { stages: pipelineStageDefs, maxCount: pipelineMaxCount, colMap: pipelineColMap } = pipelineColumns
-
-  const pipelineTotal = useMemo(
-    () => pipelineStageDefs.reduce((sum, col) => sum + col.stages.reduce((s, st) => s + (pipelineColMap.get(st.key) ?? 0), 0), 0),
-    [pipelineStageDefs, pipelineColMap],
-  )
-
-  const navigate = useNavigate()
-  const [showAllActions, setShowAllActions] = useState(false)
-
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 rounded-xl" />
-        ))}
-      </div>
-    )
-  }
-
-  if (isError || !los.data) {
-    return (
-      <ErrorState
-        message="Could not load team data."
-        onRetry={() => {
-          los.refetch()
-          lcc.refetch()
-        }}
-      />
-    )
-  }
-
-  const s = los.data
-  const h = lcc.data?.team_health
-  const f = lcc.data?.fires
-  const actions = lcc.data?.actions ?? []
-  const totalCritical = actions.filter((a) => a.severity === 'critical').length
-  const displayedActions = showAllActions ? actions : actions.slice(0, 3)
-
-  return (
-    <div className="space-y-5">
-      {/* ── Do now: Action Queue + Priority Matrix ─────────────── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <AlertTriangle className="size-4 text-warning-ink" />
-              Action Queue
-            </h3>
-            {actions.length > 0 && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-ds-micro font-bold text-muted-foreground">{actions.length} items</span>
-            )}
-          </div>
-          {actions.length > 0 ? (
-            <>
-              <div className="space-y-2">
-                {displayedActions.map((a, i) => {
-                  const severityDot = a.severity === 'critical' ? 'bg-destructive' : a.severity === 'warning' ? 'bg-warning' : 'bg-info'
-                  const btnStyle = a.action_type === 'call'
-                    ? 'bg-info text-white hover:bg-info/90'
-                    : a.action_type === 'message'
-                      ? 'bg-purple-600 text-white hover:bg-purple-700'
-                      : 'bg-muted text-foreground hover:bg-muted/80 border border-border'
-                  const btnLabel = a.action_type === 'call' ? 'Call'
-                    : a.action_type === 'message' ? 'Message'
-                    : a.action_type === 'review' ? 'Review'
-                    : a.action_type === 'verify' ? 'Verify'
-                    : a.action_type === 'follow_up' ? 'Follow Up'
-                    : 'Action'
-                  return (
-                    <div key={`${a.member_id}-${i}`} className={cn(
-                      'flex items-center gap-3 rounded-xl border p-3',
-                      a.severity === 'critical' ? 'border-destructive/20 bg-destructive/5' :
-                      a.severity === 'warning' ? 'border-warning/20 bg-warning/5' :
-                      'border-info/20 bg-info/5',
-                    )}>
-                      <span className={cn('size-2 shrink-0 rounded-full', severityDot)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold">{a.member_name}</p>
-                        <p className="text-xs text-muted-foreground">{a.issue}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className={cn('shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold', btnStyle)}
-                        onClick={() => navigate(a.action_ref || '/dashboard/team/members')}
-                      >
-                        {btnLabel}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-              {actions.length > 3 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllActions((o) => !o)}
-                  className="mt-2 w-full rounded-lg border border-border/40 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
-                >
-                  {showAllActions ? 'Show less' : `Show all ${actions.length} items`}
-                </button>
-              )}
-            </>
-          ) : (
-            <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-success/5 px-4 py-5">
-              <CheckCircle2 className="size-5 shrink-0 text-success-ink" />
-              <p className="text-sm font-bold text-success-ink">All Clear!</p>
-              <p className="text-xs text-muted-foreground">No actions needed right now.</p>
-            </div>
-          )}
-        </div>
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Zap className="size-4 text-warning-ink" />
-              Priority Matrix
-            </h3>
-            {totalCritical > 0 && (
-              <span className="rounded-md bg-destructive/15 px-2 py-0.5 text-ds-micro font-bold text-destructive-ink">{totalCritical} urgent</span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-destructive-ink">{f?.campaign_failures ?? '—'}</p>
-              <p className="mt-1 text-xs text-destructive-ink">Missed Missions</p>
-            </div>
-            <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-warning-ink">{f?.zombie_leads ?? '—'}</p>
-              <p className="mt-1 text-xs text-warning-ink">Zombie Leads</p>
-            </div>
-            <div className="rounded-xl border border-info/20 bg-info/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-info-ink">{f?.pending_verifications ?? '—'}</p>
-              <p className="mt-1 text-xs text-info-ink">Pending Verif.</p>
-            </div>
-            <div className="rounded-xl border border-success/20 bg-success/10 p-4 text-center">
-              <p className="text-2xl font-extrabold tabular-nums text-success-ink">{f?.campaigns_running ?? '—'}</p>
-              <p className="mt-1 text-xs text-success-ink">Campaigns Running</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── Pipeline Board ─────────────────────────────────────── */}
-      <div className="rounded-2xl border bg-card p-5">
-        <div className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Layers className="size-4 text-primary" aria-hidden />
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-success" />
-            </span>
-            <h3 className="text-sm font-bold">Pipeline Board</h3>
-          </div>
-          <Link
-            to="/dashboard/work/workboard"
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-          >
-            Open board <ArrowRight className="size-3.5" aria-hidden />
-          </Link>
-        </div>
-
-        {pipelineTotal === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            No leads in pipeline.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {pipelineStageDefs.map((col) => {
-              const colTotal = col.stages.reduce((s, st) => s + (pipelineColMap.get(st.key) ?? 0), 0)
-              return (
-                <div key={col.title} className="rounded-xl border border-border/40 bg-card p-4 transition-colors hover:border-border/60">
-                  <div className="mb-3 flex items-center justify-between border-b border-border/30 pb-2.5" style={{ borderColor: `color-mix(in srgb, ${col.color} 20%, transparent)` }}>
-                    <span className="text-ds-micro font-bold uppercase tracking-[0.08em]" style={{ color: col.ink }}>
-                      {col.title}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-lg font-extrabold tabular-nums" style={{ color: col.ink }}>
-                      {colTotal}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {col.stages.map((stage) => {
-                      const count = pipelineColMap.get(stage.key) ?? 0
-                      const pct = pipelineMaxCount > 0 ? Math.max(3, (count / pipelineMaxCount) * 100) : 0
-                      const sharePct = pipelineTotal > 0 ? Math.round((count / pipelineTotal) * 100) : 0
-                      return (
-                        <div
-                          key={stage.key}
-                          className="block rounded-lg border border-border/30 bg-background/40 p-3 transition-all hover:border-border/60 hover:bg-muted/30"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span
-                                className="size-2 shrink-0 rounded-full"
-                                style={{ backgroundColor: stageColor(stage.key) }}
-                              />
-                              <span className="truncate text-ds-caption font-medium text-muted-foreground">
-                                {stage.label}
-                              </span>
-                            </div>
-                            <span className="inline-flex items-center gap-1 shrink-0 text-base font-extrabold tabular-nums text-foreground">
-                              {count}
-                            </span>
-                          </div>
-                          <div className="mt-2.5 flex items-center gap-2">
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full transition-all duration-700"
-                                style={{ width: `${pct}%`, backgroundColor: stageColor(stage.key) }}
-                              />
-                            </div>
-                            <span className="text-ds-micro font-semibold text-muted-foreground tabular-nums">
-                              {sharePct}%
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── Team Health + Team Members ─────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <TrendingUp className="size-4 text-success-ink" />
-              Team Health
-            </h3>
-            {h && (
-              <span className={cn('rounded-md px-2 py-0.5 text-ds-micro font-bold', h.leader_band === 'elite' ? 'bg-success/15 text-success-ink' : h.leader_band === 'average' ? 'bg-warning/15 text-warning-ink' : 'bg-destructive/15 text-destructive-ink')}>
-                Score: {h.leader_score}
-              </span>
-            )}
-          </div>
-          <div className="space-y-3">
-            {h ? (
-              <>
-                {[
-                  // every metric is 0–100, higher is better (zombie_score = 100 − zombie %),
-                  // so bar + number share one good/ok/bad colour instead of a fixed hue each
-                  { label: 'Mission', value: h.mission_completion_pct },
-                  { label: 'Verification', value: h.verification_pct },
-                  { label: 'Conversion', value: h.conversion_pct },
-                  { label: 'Zombie-free', value: h.zombie_score },
-                  { label: 'Blocker Res.', value: h.blocker_resolution_pct },
-                ].map((item) => {
-                  const tone = item.value >= 70 ? 'success' : item.value >= 40 ? 'warning' : 'destructive'
-                  const textColor = tone === 'success' ? 'text-success-ink' : tone === 'warning' ? 'text-warning-ink' : 'text-destructive'
-                  const barColor = tone === 'success' ? 'bg-success' : tone === 'warning' ? 'bg-warning' : 'bg-destructive'
-                  return (
-                    <div key={item.label} className="flex items-center gap-3">
-                      <span className="w-24 shrink-0 text-xs text-muted-foreground">{item.label}</span>
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className={cn('h-full rounded-full', barColor)} style={{ width: `${Math.min(100, item.value)}%` }} />
-                      </div>
-                      <span className={cn('w-8 shrink-0 text-right text-xs font-bold tabular-nums', textColor)}>
-                        {Math.round(item.value)}
-                      </span>
-                    </div>
-                  )
-                })}
-                {(f?.blockers_waiting ?? 0) > 0 && (
-                  <p className="pt-1 text-ds-micro text-muted-foreground">{f?.blockers_waiting} blocker(s) currently unresolved.</p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Loading health data…</p>
-            )}
-          </div>
-        </div>
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Users className="size-4 text-info-ink" />
-              Team Members
-            </h3>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-ds-micro font-bold text-muted-foreground">
-              {s.total_members} total
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {s.members.slice(0, 8).map((m) => (
-              <div key={m.user_id} className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2.5 text-xs font-medium">
-                <span className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-success' : 'bg-destructive')} />
-                <span className="truncate">{m.name}</span>
-                <span className="ml-auto text-muted-foreground tabular-nums">{m.calls_today}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-    </div>
-  )
-}
-
-type KpiTone = 'neutral' | 'success' | 'warning'
-
-const KPI_TONE: Record<KpiTone, string> = {
-  neutral: 'text-foreground',
-  success: 'text-success-ink',
-  warning: 'text-warning-ink',
-}
-
-/** One KPI style for the home overview — colour only carries status, never decoration. */
-function KpiTile({
-  label,
-  value,
-  hint,
-  tone = 'neutral',
-  to,
-}: {
-  label: string
-  value: number | string
-  hint: string
-  tone?: KpiTone
-  to?: string
-}) {
-  const card = (
-    <Card className={cn('h-full', to && 'transition-colors hover:border-primary/40')}>
-      <CardContent>
-        <p className="text-ds-caption font-medium text-muted-foreground">{label}</p>
-        <p className={cn('mt-2 font-heading text-ds-display font-bold tabular-nums leading-none', KPI_TONE[tone])}>
-          {value}
-        </p>
-        <p className="mt-1.5 text-ds-caption text-subtle">{hint}</p>
-      </CardContent>
-    </Card>
-  )
-  if (!to) return card
-  return (
-    <Link
-      to={to}
-      className="block rounded-lg no-underline outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
-    >
-      {card}
-    </Link>
-  )
-}
 
 export function DashboardHomePage() {
   const { role } = useDashboardShellRole()
@@ -569,13 +168,9 @@ export function DashboardHomePage() {
 
   const wb = useWorkboardQuery(sessionReady)
   /** Legacy team dashboard had no follow-up queue in nav; skip API for team. */
-  const fu = useFollowUpsQuery(true, sessionReady && role !== 'team')
-  const teamFunnel = useTeamPersonalFunnelQuery(sessionReady && role === 'team')
   const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
   const handedOffLeads = useHandedOffLeadsQuery(sessionReady && role === 'team')
   const pool = useLeadPoolQuery(sessionReady && role === 'admin')
-  const los = useLosQuery(sessionReady && role === 'leader')
-  const lcc = useLeaderCommandCenter(sessionReady && role === 'leader')
   const pingLogin = usePingLoginMutation()
 
   useEffect(() => {
@@ -592,63 +187,12 @@ export function DashboardHomePage() {
     me?.email?.split('@')[0]?.split(/[._-]/)[0] ||
     'there'
 
-  const metrics = useMemo(() => {
-    const columns = wb.data?.columns
-    if (!columns) {
-      return {
-        activeTotal: 0,
-        won: 0,
-        lost: 0,
-        newLeads: 0,
-        winRatePct: null as number | null,
-        chartMax: 1,
-        bars: [] as { status: string; total: number; label: string }[],
-      }
-    }
-    let activeTotal = 0
-    let won = 0
-    let lost = 0
-    let newLeads = 0
-    const bars: { status: string; total: number; label: string }[] = []
-    for (const c of columns) {
-      const t = typeof c.total === 'number' ? c.total : 0
-      activeTotal += t
-      if (c.status === 'converted') won = t
-      if (c.status === 'lost') lost = t
-      if (c.status === 'new_lead' || c.status === 'new') newLeads = t
-      bars.push({
-        status: c.status,
-        total: t,
-        label: statusLabel(c.status),
-      })
-    }
-    const closed = won + lost
-    const winRatePct = closed > 0 ? Math.round((won / closed) * 100) : null
-    const chartMax = Math.max(...bars.map((b) => b.total), 1)
-    return {
-      activeTotal,
-      won,
-      lost,
-      newLeads,
-      winRatePct,
-      chartMax,
-      bars,
-    }
-  }, [wb.data?.columns])
-
   const recentLeads = useMemo(
     () => recentFromWorkboard(wb.data?.columns),
     [wb.data?.columns],
   )
 
-  const openFollowUps = fu.data?.total ?? 0
   const poolTotal = pool.data?.total ?? 0
-
-  const kpiLoading =
-    sessionReady &&
-    (wb.isPending ||
-      (role !== 'team' && fu.isPending) ||
-      (role === 'team' && teamFunnel.isPending))
 
   const quickActions = useMemo(() => {
     if (role == null) return []
@@ -660,7 +204,6 @@ export function DashboardHomePage() {
       <TeamDashboardHomeModern
         sessionReady={sessionReady}
         firstName={firstName}
-        funnel={teamFunnel.data}
         today={teamToday.data}
         recentLeads={recentLeads}
         handedOffLeads={handedOffLeads.data ?? []}
@@ -682,28 +225,7 @@ export function DashboardHomePage() {
         </h1>
       </div>
 
-      {role === 'leader' && (lcc.data?.fires?.members_at_risk ?? 0) > 0 && (
-        <Card className="border-destructive/30">
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <AlertTriangle className="size-5 shrink-0 text-destructive" aria-hidden />
-              <div className="min-w-0">
-                <p className="text-ds-h3 font-semibold text-foreground">
-                  {lcc.data?.fires?.members_at_risk} member{lcc.data?.fires?.members_at_risk !== 1 ? 's' : ''} at risk
-                </p>
-                {los.data?.inactive_count != null && los.data.inactive_count > 0 ? (
-                  <p className="text-ds-caption text-muted-foreground">
-                    {los.data.inactive_count} below call target today
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="shrink-0" asChild>
-              <Link to="/dashboard/team/reports">View team reports</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {role === 'leader' ? <ControlRoomCard /> : null}
 
       {role === 'team' || role === 'leader' ? <GateAssistantCard sessionReady={sessionReady} /> : null}
 
@@ -722,66 +244,6 @@ export function DashboardHomePage() {
         />
       ) : null}
 
-      <div>
-        <h2 className="mb-4 font-heading text-ds-h2 text-foreground">
-          Overview
-        </h2>
-        {kpiLoading ? (
-          <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent>
-                  <Skeleton className="mb-2 h-3 w-24" />
-                  <Skeleton className="h-8 w-16" />
-                  <Skeleton className="mt-2 h-3 w-20" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-            <KpiTile
-              to="/dashboard/work/workboard"
-              label="Active leads"
-              value={metrics.activeTotal}
-              hint="In your scope · open workboard"
-            />
-            {role === 'admin' || role === 'leader' ? (
-              <KpiTile
-                to="/dashboard/work/follow-ups"
-                label="Open follow-ups"
-                value={openFollowUps}
-                tone={openFollowUps > 0 ? 'warning' : 'neutral'}
-                hint="Not completed · open queue"
-              />
-            ) : role === 'team' ? (
-              <KpiTile
-                to="/dashboard/other/live-session"
-                label="Live session"
-                value="Join"
-                hint="Join link and schedule"
-              />
-            ) : (
-              <KpiTile label="Open follow-ups" value="—" hint="Sign in to see your workspace." />
-            )}
-            <KpiTile
-              to="/dashboard/work/leads"
-              label="Converted"
-              value={metrics.won}
-              tone={metrics.won > 0 ? 'success' : 'neutral'}
-              hint={metrics.winRatePct !== null ? `Win rate ${metrics.winRatePct}%` : 'No closed outcomes yet'}
-            />
-            <KpiTile
-              to="/dashboard/work/leads"
-              label="New leads"
-              value={metrics.newLeads}
-              hint="New lead stage · open list"
-            />
-          </div>
-        )}
-      </div>
-
-      {role === 'leader' && <WarRoomDashboard los={los} lcc={lcc} wb={wb} />}
 
       {role === 'team' || role === 'leader' ? <VerificationHomePanel /> : null}
 
@@ -828,13 +290,13 @@ export function DashboardHomePage() {
       <WinsFeedCard />
       <TodayLeaderboardCard />
 
-      <CollapsibleSection title="Recent Leads" defaultOpen={false}>
+      <CollapsibleSection title="Today's Leads" defaultOpen={false}>
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle className="text-ds-h3">Recent leads</CardTitle>
+              <CardTitle className="text-ds-h3">Today's leads</CardTitle>
               <CardDescription>
-                Your 8 most recent leads
+                Added or worked on today
               </CardDescription>
             </div>
             <Button variant="secondary" size="sm" asChild>
@@ -850,7 +312,7 @@ export function DashboardHomePage() {
               </div>
             ) : recentLeads.length === 0 ? (
               <p className="text-ds-body text-muted-foreground">
-                No leads yet. Open{' '}
+                No leads added or worked on today yet. Open{' '}
                 <Link
                   to="/dashboard/work/leads"
                   className="font-medium text-primary underline-offset-2 hover:underline"

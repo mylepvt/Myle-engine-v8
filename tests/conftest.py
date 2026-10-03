@@ -17,6 +17,7 @@ sys.path.insert(0, str(_BACKEND))
 
 # Disable APScheduler background jobs during tests — prevents DB connection hangs
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
+os.environ.setdefault("ADMIN_ALERTS_DISABLED", "1")
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 

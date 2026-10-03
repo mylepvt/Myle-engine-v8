@@ -574,6 +574,10 @@ export type LeadFileImportResult = {
   imported: number
   skipped: number
   warnings: string[]
+  /** Phone already in Myle, or repeated in the file. */
+  duplicates?: number
+  /** Missing or bad phone number. */
+  invalid?: number
 }
 
 export async function importLeadsFile(file: File, sourceTag?: string): Promise<LeadFileImportResult> {

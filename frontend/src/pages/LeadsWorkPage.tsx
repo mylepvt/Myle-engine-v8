@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_GROUPS,
   LEAD_STATUS_OPTIONS,
+  type LeadFileImportResult,
   type LeadPublic,
   type LeadListFilters,
   type LeadStatus,
@@ -61,6 +62,19 @@ function emptyListHint(role: Role | null, archivedOnly: boolean): string {
   return 'No leads match this view — adjust filters or add one above. You see only leads you created.'
 }
 
+/** "Added 20 new leads (fresh for today) · 5 already in Myle, skipped · 2 bad phone numbers" */
+function importSummary(r: LeadFileImportResult): string {
+  const parts = [
+    r.imported > 0 ? `Added ${r.imported} new lead${r.imported === 1 ? '' : 's'} (fresh for today)` : 'No new leads added',
+  ]
+  if (r.duplicates) parts.push(`${r.duplicates} already in Myle, skipped`)
+  if (r.invalid) parts.push(`${r.invalid} bad phone number${r.invalid === 1 ? '' : 's'}`)
+  const known = (r.duplicates ?? 0) + (r.invalid ?? 0)
+  if (r.skipped > known) parts.push(`${r.skipped - known} skipped`)
+  const warn = r.imported > 0 ? [] : (r.warnings ?? []).filter((w) => !w.startsWith('No new leads were imported'))
+  return [...parts, ...warn].join(' · ')
+}
+
 export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const archivedOnly = listMode === 'archived'
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
@@ -90,7 +104,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
-  const canFileImport = surfaceRole === 'leader' || surfaceRole === 'team'
+  const canFileImport = surfaceRole === 'leader' || surfaceRole === 'team' || surfaceRole === 'admin'
 
   useEffect(() => {
     setQInput(qParam)
@@ -199,8 +213,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     setImportHint(null)
     try {
       const r = await importMut.mutateAsync({ file: f })
-      const extra = r.warnings?.length ? ` ${r.warnings.join(' ')}` : ''
-      setImportHint(`Imported ${r.imported}, skipped ${r.skipped}.${extra}`)
+      setImportHint(importSummary(r))
     } catch (err) {
       setImportHint(err instanceof Error ? err.message : 'Import failed')
     }

@@ -382,6 +382,48 @@ class TodayPulseResponse(BaseModel):
     zero_activity: list[ZeroActivityItem]
 
 
+class AlertSettingsBody(BaseModel):
+    off: list[str]
+
+
+@router.get("/alert-settings")
+async def get_alert_settings(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Which live alerts admins get on their phone."""
+    _require_admin(user)
+    from app.services.admin_alerts import KINDS, disabled_kinds
+
+    off = await disabled_kinds(session)
+    return {"kinds": [{"kind": k, "label": label, "on": k not in off} for k, label in KINDS.items()]}
+
+
+@router.put("/alert-settings")
+async def put_alert_settings(
+    body: AlertSettingsBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    _require_admin(user)
+    from app.services.admin_alerts import set_disabled_kinds
+
+    await set_disabled_kinds(session, set(body.off))
+    return await get_alert_settings(user, session)
+
+
+@router.get("/app-setup")
+async def admin_app_setup(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Per member: app installed on the phone or used in the browser; notifications on/off."""
+    _require_admin(user)
+    from app.services.app_setup import build_app_setup
+
+    return await build_app_setup(session)
+
+
 @router.get("/today-pulse", response_model=TodayPulseResponse)
 async def admin_today_pulse(
     user: Annotated[AuthUser, Depends(require_auth_user)],
