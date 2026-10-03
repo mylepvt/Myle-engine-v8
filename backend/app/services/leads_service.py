@@ -339,6 +339,20 @@ class LeadsService:
         self._repository = repository
         self._notifier = notifier
         self._session = session
+        # (user_id, title, body, url) pushes for the route to send after the response.
+        self.queued_pushes: list[tuple[int, str, str, str]] = []
+
+    def _queue_leader_handoff_push(self, leader_id: int | None, lead: Lead, *, actor_user_id: int) -> None:
+        if leader_id is None or leader_id == actor_user_id:
+            return
+        self.queued_pushes.append(
+            (
+                leader_id,
+                "New Day 1 lead",
+                f"{lead.name} is now on your Day 1 — enrollment done, take it forward.",
+                "/dashboard/work/workboard",
+            )
+        )
 
     async def _get_lead_or_404(self, lead_id: int, *, for_update: bool = False) -> Lead:
         # for_update: row-lock so concurrent writes to one lead (e.g. rapid taps on
@@ -888,11 +902,15 @@ class LeadsService:
         await self._notifier("leads", "workboard")
         return lead
 
-    async def _handoff_to_leader_day1(self, lead: Lead, *, actor: AuthUser, now: datetime) -> None:
-        """Reassign to the owner's nearest upline leader and advance to Day 1."""
+    async def _handoff_to_leader_day1(self, lead: Lead, *, actor: AuthUser, now: datetime) -> int | None:
+        """Reassign to the owner's nearest upline leader and advance to Day 1.
+
+        Returns the leader's user id when the lead changed hands (for the push)."""
         owner_id = lead.owner_user_id or lead.assigned_to_user_id or lead.created_by_user_id
         leader = await self._nearest_leader(owner_id) if owner_id else None
+        handed_to: int | None = None
         if leader is not None and lead.assigned_to_user_id != leader[0]:
+            handed_to = leader[0]
             from_uid = lead.assigned_to_user_id
             lead.assigned_to_user_id = leader[0]
             lead.is_reassigned = True
@@ -915,6 +933,7 @@ class LeadsService:
             lead_id=lead.id,
             meta={"from_status": previous, "to_status": "day1"},
         )
+        return handed_to
 
     async def send_to_day1_with_enrollment(
         self,
@@ -944,6 +963,20 @@ class LeadsService:
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=result)
 
+        # A re-upload after the leader sent the lead back is the same enrollment —
+        # don't post a second win for it.
+        already_enrolled_before = (
+            await self._session.execute(
+                select(ActivityLog.id)
+                .where(
+                    ActivityLog.entity_type == "lead",
+                    ActivityLog.entity_id == lead.id,
+                    ActivityLog.action == "lead.enrollment_proof_uploaded",
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none() is not None
+
         now = datetime.now(timezone.utc)
         lead.enrollment_amount_cents = int(amount_rupees) * 100
         lead.enrollment_proof_url = result
@@ -956,11 +989,13 @@ class LeadsService:
             lead_id=lead.id,
             meta={"amount_cents": lead.enrollment_amount_cents, "proof_url": result, "from_status": lead.status},
         )
-        await self._handoff_to_leader_day1(lead, actor=user, now=now)
+        leader_id = await self._handoff_to_leader_day1(lead, actor=user, now=now)
         from app.services.wins import record_win
 
-        record_win(self._session, user_id=user.user_id, kind="enrollment")
+        if not already_enrolled_before:
+            record_win(self._session, user_id=user.user_id, kind="enrollment")
         lead = await self._commit_with_shadow_upsert(lead)
+        self._queue_leader_handoff_push(leader_id, lead, actor_user_id=user.user_id)
         await self._notifier("leads", "workboard")
         return lead
 
@@ -998,19 +1033,15 @@ class LeadsService:
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "workboard")
         if member_id:
-            from app.services.push_service import send_push_to_user
-
             why = f" Reason: {reason.strip()}" if reason and reason.strip() else ""
-            try:
-                await send_push_to_user(
-                    self._session,
+            self.queued_pushes.append(
+                (
                     member_id,
-                    title="Enrollment screenshot sent back",
-                    body=f"{lead.name}: your leader sent this lead back from Day 1.{why} Upload a correct screenshot.",
-                    url="/dashboard/work/leads?tab=today",
+                    "Enrollment screenshot sent back",
+                    f"{lead.name}: your leader sent this lead back from Day 1.{why} Upload a correct screenshot.",
+                    "/dashboard/work/leads?tab=today",
                 )
-            except Exception:
-                logger.exception("send-back push failed for lead %s", lead.id)
+            )
         return lead
 
     async def update_lead(self, *, lead_id: int, body: LeadUpdate, user: AuthUser) -> Lead:
@@ -1122,7 +1153,8 @@ class LeadsService:
                 and user.role != "admin"
                 and (user.role != "team" or (lead.enrollment_proof_url or "").strip())
             ):
-                await self._handoff_to_leader_day1(lead, actor=user, now=now)
+                leader_id = await self._handoff_to_leader_day1(lead, actor=user, now=now)
+                self._queue_leader_handoff_push(leader_id, lead, actor_user_id=user.user_id)
         if body.archived is True:
             lead.archived_at = now
             lead.in_pool = False

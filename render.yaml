@@ -81,4 +81,4 @@ services:
       - key: PHASE1_OBSERVATION_ENABLED
         value: "true"
       - key: PHASE1_OBSERVATION_SAMPLE_RATE
-        value: "1.0"
+        value: "0.1"             # 10% of commits is enough signal; 1.0 logged every write

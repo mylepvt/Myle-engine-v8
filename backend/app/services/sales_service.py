@@ -13,6 +13,7 @@ Lifecycle per (lead, billing_stage):
 
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -190,7 +191,8 @@ class SalesService:
         if not ok_save:
             return False, proof_url, None, False
 
-        ocr = extract_forever_invoice(data)
+        # Tesseract OCR takes seconds of CPU — keep it off the event loop.
+        ocr = await asyncio.to_thread(extract_forever_invoice, data)
 
         # Upsert the (lead, stage) row — re-upload replaces a prior pending/rejected.
         existing = (

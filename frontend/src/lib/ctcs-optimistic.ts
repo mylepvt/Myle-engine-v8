@@ -6,8 +6,6 @@ function clampHeat(n: number): number {
 
 export type CtcsOptimisticOpts = {
   followupAt?: string | null
-  /** Paid action stays on ``paid`` until mindset lock / next-stage work happens. */
-  paidStatus?: 'paid' | 'day1'
 }
 
 function stageAnchorForStatusChange(lead: LeadPublic, nextStatus: LeadPublic['status'], now: string): string | null | undefined {
@@ -63,16 +61,6 @@ export function applyCtcsOptimisticToLead(
         last_action_at: stageAnchorForStatusChange(lead, 'lost', now),
         in_pool: false,
       }
-    case 'paid': {
-      const slug = opts?.paidStatus === 'paid' ? 'paid' : 'day1'
-      return {
-        ...lead,
-        status: slug,
-        payment_status: 'approved',
-        heat_score: clampHeat(h + 25),
-        last_action_at: stageAnchorForStatusChange(lead, slug, now),
-      }
-    }
     default:
       return lead
   }

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, event, func, inspect as sa_inspect, text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, event, func, inspect as sa_inspect, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,12 @@ _ProcessJSON = JSON().with_variant(JSONB(), "postgresql")
 
 class Lead(Base):
     __tablename__ = "leads"
+    # Hot list / maintenance filters (see migration 20261003_0102).
+    __table_args__ = (
+        Index("ix_leads_assignee_active", "assigned_to_user_id", "archived_at", "deleted_at"),
+        Index("ix_leads_status_last_action", "status", "last_action_at"),
+        Index("ix_leads_created_by_user_id", "created_by_user_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

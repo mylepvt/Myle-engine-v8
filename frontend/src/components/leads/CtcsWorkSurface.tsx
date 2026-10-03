@@ -236,12 +236,12 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   const onCtcsAction = useCallback(
     async (id: number, action: CtcsAction, opts?: { followupAt?: string | null }) => {
-      await ctcsMut.mutateAsync({
-        id,
-        action,
-        followupAt: opts?.followupAt,
-        paidStatus: 'day1',
-      })
+      try {
+        await ctcsMut.mutateAsync({ id, action, followupAt: opts?.followupAt })
+      } catch (err) {
+        window.alert('Could not save outcome: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        return
+      }
       const ref = await leadsQ.refetch()
       const fresh = ref.data?.pages.flatMap((p) => p.items) ?? []
       if (callMode) {
@@ -292,7 +292,11 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const onFollowUp = useCallback(
     async (id: number) => {
       const at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      await patchMut.mutateAsync({ id, body: { next_followup_at: at } })
+      try {
+        await patchMut.mutateAsync({ id, body: { next_followup_at: at } })
+      } catch (err) {
+        window.alert('Follow-up save failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      }
     },
     [patchMut],
   )
@@ -329,7 +333,12 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     }
   }, [reassignTarget, revertMut])
 
-  const actionBusy = ctcsMut.isPending || callLogMut.isPending
+  // Only the card being saved is locked — the rest of the board stays usable.
+  const actionBusyLeadId = ctcsMut.isPending
+    ? ctcsMut.variables?.id ?? null
+    : callLogMut.isPending
+      ? callLogMut.variables ?? null
+      : null
   const sendBusyLeadId = sendingLeadId
 
   return (
@@ -422,8 +431,8 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             lead={l}
             nowMs={nowMs}
             isActive={callMode && activeLeadId === l.id}
-            patchBusy={patchBusyLeadId === l.id || sendBusyLeadId === l.id || patchMut.isPending}
-            actionBusy={actionBusy}
+            patchBusy={patchBusyLeadId === l.id || sendBusyLeadId === l.id || (patchMut.isPending && patchMut.variables?.id === l.id)}
+            actionBusy={actionBusyLeadId === l.id}
             onPatchStatus={onPatchStatus}
             onPatchCallStatus={onPatchCallStatus}
             onCall={onCall}
