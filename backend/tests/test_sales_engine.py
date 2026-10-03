@@ -267,6 +267,17 @@ async def test_dashboard_scoping(session, monkeypatch, tmp_path):
     assert admin_dash["sale_count"] == 2  # sees both
     assert admin_dash["total_case_credits"] == Decimal("2.004")
 
+    # "Today" only counts sales approved today; push one back to yesterday.
+    from datetime import timedelta
+    from sqlalchemy import select as _select
+
+    old = (await session.execute(_select(LeadSale).where(LeadSale.owner_user_id == ids["other"]))).scalar_one()
+    old.approved_at = datetime.now(timezone.utc) - timedelta(days=1)
+    await session.commit()
+    today_dash = await svc.dashboard(user_id=ids["admin"], role="admin", period="today")
+    assert today_dash["sale_count"] == 1
+    assert (await svc.dashboard(user_id=ids["admin"], role="admin"))["sale_count"] == 2
+
 
 @pytest.mark.asyncio
 async def test_trend_series_buckets_approved_sale_today(session, monkeypatch, tmp_path):

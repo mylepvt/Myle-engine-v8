@@ -102,8 +102,10 @@ async function fetchPendingSales(): Promise<SaleListResponse> {
   return res.json()
 }
 
-async function fetchSalesDashboard(): Promise<SaleDashboardResponse> {
-  const res = await apiFetch('/api/v1/sales/dashboard')
+export type SalesPeriod = 'today' | 'all'
+
+async function fetchSalesDashboard(period: SalesPeriod): Promise<SaleDashboardResponse> {
+  const res = await apiFetch(`/api/v1/sales/dashboard?period=${period}`)
   if (!res.ok) await parseError(res)
   return res.json()
 }
@@ -188,10 +190,10 @@ export function usePendingSalesQuery(enabled = true) {
   })
 }
 
-export function useSalesDashboardQuery(enabled = true) {
+export function useSalesDashboardQuery(enabled = true, period: SalesPeriod = 'today') {
   return useQuery({
-    queryKey: ['sales-dashboard'],
-    queryFn: fetchSalesDashboard,
+    queryKey: ['sales-dashboard', period],
+    queryFn: () => fetchSalesDashboard(period),
     enabled,
   })
 }

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -167,9 +167,10 @@ async def reject_sale(
 async def sales_dashboard(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    period: Literal["today", "all"] = "all",
 ) -> SaleDashboardResponse:
     svc = SalesService(session)
-    data = await svc.dashboard(user_id=user.user_id, role=user.role)
+    data = await svc.dashboard(user_id=user.user_id, role=user.role, period=period)
     return SaleDashboardResponse.model_validate(data)
 
 

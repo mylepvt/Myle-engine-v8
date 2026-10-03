@@ -17,8 +17,6 @@ const mockUseXpMeQuery = vi.fn()
 const mockUseXpHistoryQuery = vi.fn()
 const mockUseXpLeaderboardQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
-const mockUseLosQuery = vi.fn()
-const mockUseLeaderCommandCenter = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
 vi.mock('@/components/control-room/ControlRoomCard', () => ({
@@ -96,14 +94,6 @@ vi.mock('@/hooks/use-xp-query', () => ({
 vi.mock('@/hooks/use-leads-query', () => ({
   LEAD_STATUS_OPTIONS: [],
   usePatchLeadMutation: () => mockUsePatchLeadMutation(),
-}))
-
-vi.mock('@/hooks/use-los-query', () => ({
-  useLosQuery: () => mockUseLosQuery(),
-}))
-
-vi.mock('@/hooks/use-leader-command-center-query', () => ({
-  useLeaderCommandCenter: () => mockUseLeaderCommandCenter(),
 }))
 
 function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
@@ -194,17 +184,6 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
     mutate: vi.fn(),
     isPending: false,
   })
-  mockUseLosQuery.mockReturnValue({
-    data: null,
-    isPending: false,
-    isError: false,
-  })
-  mockUseLeaderCommandCenter.mockReturnValue({
-    data: null,
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  })
 }
 
 describe('DashboardHomePage', () => {
@@ -225,7 +204,7 @@ describe('DashboardHomePage', () => {
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
-  it('renders leader war room dashboard on the leader path', () => {
+  it('renders the today-first leader home on the leader path', () => {
     seedBaseMocks('leader')
 
     render(
@@ -237,6 +216,7 @@ describe('DashboardHomePage', () => {
     // GateAssistantCard is rendered directly for leader role in the main layout
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
     expect(screen.getByTestId('control-room')).toBeInTheDocument()
+    expect(screen.queryByText('Active leads')).toBeNull() // lifetime tiles are gone
   })
 
   it('routes admin home to the command center surface', () => {

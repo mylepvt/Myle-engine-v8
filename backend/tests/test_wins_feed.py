@@ -43,12 +43,12 @@ async def Session(monkeypatch):
     await engine.dispose()
 
 
-async def test_feed_lists_recent_wins_without_removed_or_old(Session):
+async def test_feed_lists_todays_wins_without_removed_or_old(Session):
     async with Session() as s:
         record_win(s, user_id=A, kind="enrollment")
         record_win(s, user_id=A, kind="streak", detail="7")
         record_win(s, user_id=GONE, kind="conversion")
-        s.add(Win(user_id=B, kind="conversion", created_at=datetime.now(timezone.utc) - timedelta(days=9)))
+        s.add(Win(user_id=B, kind="conversion", created_at=datetime.now(timezone.utc) - timedelta(days=1)))
         record_win(s, user_id=A, kind="bogus")  # ignored
         await s.commit()
         items = await list_wins(s, viewer_id=B)

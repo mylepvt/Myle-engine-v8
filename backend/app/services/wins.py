@@ -7,17 +7,18 @@ All copy is English (app UI rule).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time_ist import IST
 from app.models.user import User
 from app.models.win import Win, WinCheer
+from app.services.live_metrics import ist_day_bounds
 
 logger = logging.getLogger(__name__)
 
-FEED_WINDOW = timedelta(days=7)
 # Winner hears about cheers on these counts only — recognition without spam.
 CHEER_PUSH_AT = frozenset({1, 5, 10, 25})
 
@@ -61,7 +62,8 @@ def _first_name(user: User) -> str:
 
 
 async def list_wins(session: AsyncSession, *, viewer_id: int, limit: int = 20) -> list[dict]:
-    since = datetime.now(timezone.utc) - FEED_WINDOW
+    # Today's wins only (IST) — the home screen is about today.
+    since, _ = ist_day_bounds(datetime.now(timezone.utc).astimezone(IST).date())
     cheers = (
         select(WinCheer.win_id, func.count(WinCheer.id).label("n"))
         .group_by(WinCheer.win_id)

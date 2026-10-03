@@ -375,11 +375,17 @@ class SalesService:
         stmt = stmt.order_by(LeadSale.created_at.asc())
         return list((await self.session.execute(stmt)).scalars().all())
 
-    async def dashboard(self, *, user_id: int, role: str) -> dict:
+    async def dashboard(self, *, user_id: int, role: str, period: str = "all") -> dict:
         owner_ids = await self._scope_owner_ids(user_id, role)
         scope = "all" if owner_ids is None else ("downline" if role == "leader" else "self")
 
         approved = LeadSale.status == "approved"
+        if period == "today":
+            from app.core.time_ist import today_ist
+            from app.services.live_metrics import ist_day_bounds
+
+            day_start, day_end = ist_day_bounds(today_ist())
+            approved = and_(approved, LeadSale.approved_at >= day_start, LeadSale.approved_at < day_end)
         base_where = [approved]
         pending_where = [LeadSale.status == "pending"]
         if owner_ids is not None:
