@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from 'react'
 
 import { playAppSound, primeAppSounds } from '@/lib/app-sounds'
+import { XpFlyLayer } from '@/components/xp/XpFlyLayer'
 import { useXpRewardSound } from '@/hooks/use-xp-reward-sound'
 
 // Elements matching these selectors get the tap sound on pointerdown.
@@ -79,5 +80,10 @@ export function AppSoundProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <XpFlyLayer />
+    </>
+  )
 }

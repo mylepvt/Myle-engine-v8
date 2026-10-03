@@ -390,6 +390,60 @@
   }
 }
 
+/* XP reward burst (Instagram-heart style): icons float up from the tap point. */
+@keyframes xp-fly-icon {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.4);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--xp-dx) * 0.2), -20px) scale(1.15);
+  }
+  60% {
+    transform: translate(calc(-50% - var(--xp-dx) * 0.3), calc(var(--xp-rise) * -0.65)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--xp-dx)), calc(var(--xp-rise) * -1)) scale(0.7);
+  }
+}
+
+@keyframes xp-fly-label {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -12px) scale(1.12);
+  }
+  35% {
+    transform: translate(-50%, -24px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -120px) scale(1);
+  }
+}
+
+.xp-fly-icon {
+  animation: xp-fly-icon 1.1s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.xp-fly-label {
+  animation: xp-fly-label 1.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-fly-icon {
+    display: none;
+  }
+  .xp-fly-label {
+    animation: fadeIn 0.2s ease-out both;
+  }
+}
+
 /* Entrance utilities: if user prefers reduced motion, show final state (no invisible stuck frames). */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,

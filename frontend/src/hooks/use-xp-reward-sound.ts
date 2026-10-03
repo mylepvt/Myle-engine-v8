@@ -3,6 +3,7 @@ import { useXpMeQuery } from './use-xp-query'
 import { toast } from 'sonner'
 
 import { playAppSound } from '@/lib/app-sounds'
+import { emitXpFly } from '@/lib/xp-fly'
 
 export function useXpRewardSound() {
   const { data } = useXpMeQuery()
@@ -23,18 +24,12 @@ export function useXpRewardSound() {
     if (levelUp || xpGained || streakMilestone) {
       playAppSound('reward')
     }
-    // Make the reward visible, not just audible: "+8 XP · 64 XP today".
+    // Make the reward visible, not just audible: icons + "+8 XP" float up
+    // from where the user tapped (Instagram-heart style).
+    if (xpGained) emitXpFly({ amount: data.xp_total - p.xp_total, levelUp })
     if (levelUp) {
       toast.success(`Level up! You're now ${data.level_label}.`, {
         description: `${data.xp_total} XP this season. Keep going.`,
-      })
-    } else if (xpGained) {
-      toast.success(`+${data.xp_total - p.xp_total} XP`, {
-        description:
-          data.streak >= 2
-            ? `${data.daily_xp} XP today · ${data.streak}-day streak`
-            : `${data.daily_xp} XP today`,
-        duration: 2500,
       })
     }
 
