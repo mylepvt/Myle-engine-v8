@@ -279,6 +279,26 @@ def _toggle_process_task(
     lead.process_tracking = tracking
 
 
+# List-time maintenance (auto-archive watched leads, lapse seat-holds) used to run
+# on EVERY list call. Each lead save broadcasts "leads" to ~90 open apps, which all
+# re-list at once -> ~90 archive scans + writes per save, and those writes hold the
+# same lead row locks a save waits on. The scheduler already runs the archive pass
+# every 30 min; here we only keep lists fresh, at most once a minute per database.
+_LIST_MAINTENANCE_EVERY = timedelta(seconds=60)
+_last_list_maintenance: dict[int, datetime] = {}
+
+
+async def _maybe_run_list_maintenance(session: AsyncSession) -> None:
+    key = id(session.bind)
+    now = datetime.now(timezone.utc)
+    last = _last_list_maintenance.get(key)
+    if last is not None and now - last < _LIST_MAINTENANCE_EVERY:
+        return
+    _last_list_maintenance[key] = now
+    await run_completed_watch_pipeline_maintenance(session)
+    await expire_stale_seat_holds(session)
+
+
 async def expire_stale_seat_holds(
     session: AsyncSession, *, now: datetime | None = None
 ) -> int:
@@ -407,8 +427,7 @@ class LeadsService:
         leader_team_scope: bool = False,
         generated_only: bool = False,
     ) -> LeadListResponse:
-        await run_completed_watch_pipeline_maintenance(self._session)
-        await expire_stale_seat_holds(self._session)
+        await _maybe_run_list_maintenance(self._session)
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         cross_section_search = search_all_sections and bool((q or "").strip())
         condition = lead_list_conditions(
