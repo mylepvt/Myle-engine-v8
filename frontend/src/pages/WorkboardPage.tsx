@@ -1097,7 +1097,13 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     setBatchError(null)
     setMarkingSlot(slotKey)
     try {
-      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      try {
+        await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      } catch {
+        // One quiet retry: a flaky phone connection shouldn't leave a sent batch grey.
+        await new Promise((resolve) => window.setTimeout(resolve, 800))
+        await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      }
       // Optimistic cache update already painted; mutation onSettled invalidates
       // the board in the background — no awaited refetch needed.
       setBatchModal(null)
@@ -1164,7 +1170,16 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     if (!value) return
     try {
       await navigator.clipboard.writeText(value)
+      setBatchError(null)
       setBatchModal((prev) => (prev ? { ...prev, copied: variant } : prev))
+      // Copying the link to send it yourself counts as sending: turn the batch green
+      // (the modal stays open so the other video's link can be copied too).
+      const slotKey = batchModal.slotKey
+      if (!lead[slotKey]) {
+        void pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } }).catch((err: unknown) => {
+          setBatchError(err instanceof Error ? err.message : 'Could not mark this batch as sent')
+        })
+      }
       window.setTimeout(() => {
         setBatchModal((prev) => (prev ? { ...prev, copied: null } : prev))
       }, 1800)
@@ -1394,7 +1409,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                         </div>
                       ))}
                     <p className="text-xs text-muted-foreground">
-                      Send on WhatsApp to mark this batch done, or use already sent if the prospect already has the link.
+                      Send &amp; Mark or Copy a link and the batch turns green. Use Already Sent if the prospect already has the link.
                     </p>
                   </>
                 ) : (
