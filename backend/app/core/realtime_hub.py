@@ -7,6 +7,7 @@ re-broadcasts locally. Until then, deploy with sticky sessions (session_affinity
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -24,6 +25,7 @@ from app.services.team_tracking import (
 logger = logging.getLogger("myle.realtime")
 
 _WS_PAYLOAD_VERSION = 1
+_SEND_TIMEOUT_S = 1.5
 
 
 class RealtimeHub:
@@ -58,15 +60,18 @@ class RealtimeHub:
         )
 
     async def broadcast_message(self, message: dict[str, Any]) -> None:
+        # Send to every socket concurrently, each capped at _SEND_TIMEOUT_S. This
+        # runs inside request handlers (e.g. every lead save): sending one by one
+        # meant a single phone on a bad network delayed the save for everyone.
         payload = json.dumps(message)
-        for _uid, sockets in list(self._by_user.items()):
-            for ws in list(sockets):
-                await self._safe_send_text(ws, payload)
+        sockets = [ws for group in list(self._by_user.values()) for ws in list(group)]
+        if sockets:
+            await asyncio.gather(*(self._safe_send_text(ws, payload) for ws in sockets))
 
     async def _safe_send_text(self, websocket: WebSocket, text: str) -> None:
         try:
-            await websocket.send_text(text)
-        except Exception as e:  # noqa: BLE001 — disconnect races
+            await asyncio.wait_for(websocket.send_text(text), timeout=_SEND_TIMEOUT_S)
+        except Exception as e:  # noqa: BLE001 — disconnect races / slow clients
             logger.debug("websocket send skipped: %s", e)
 
 
