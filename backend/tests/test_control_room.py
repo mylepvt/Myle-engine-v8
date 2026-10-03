@@ -51,7 +51,7 @@ async def Session(monkeypatch):
         for uid, n, ago in ((IDLE, 1, timedelta(hours=3)), (BUSY, 1, timedelta(minutes=10)), (DONE, 3, timedelta(hours=4))):
             for i in range(n):
                 lead = Lead(name=f"L{uid}{i}", status="new_lead", created_by_user_id=uid, owner_user_id=uid,
-                            assigned_to_user_id=uid, in_pool=False, created_at=NOW)
+                            assigned_to_user_id=uid, in_pool=False, created_at=NOW - ago - timedelta(minutes=1))
                 s.add(lead)
                 await s.flush()
                 s.add(CallEvent(lead_id=lead.id, user_id=uid, outcome="answered", called_at=NOW - ago))

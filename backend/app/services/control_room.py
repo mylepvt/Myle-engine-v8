@@ -17,7 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.activity_log import ActivityLog
 from app.models.user import User
 from app.services.engagement_nudge import _aware, build_nudge_contexts
-from app.services.live_metrics import get_daily_call_target
+from app.core.time_ist import IST
+from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.report_eligibility import report_eligibility_conditions
 from app.services.user_hierarchy import is_user_in_downline_of, recursive_downline_user_ids
 
@@ -79,12 +80,15 @@ async def build_control_room(
     users = await _scope_users(session, viewer_id, viewer_role)
     target = await get_daily_call_target(session)
     contexts = await build_nudge_contexts(session, users, now)
+    # Same "fresh call" count the daily target and work streak use.
+    fresh = await fresh_call_counts_by_user(session, [u.id for u in users], now.astimezone(IST).date())
     nudged = await _last_nudges(session, [u.id for u in users], now - NUDGE_COOLDOWN)
 
     members = []
     for u in users:
         ctx = contexts[u.id]
-        status = member_status(calls_today=ctx.calls_today, target=target, last_work_at=ctx.last_work_at, now=now)
+        calls = fresh.get(u.id, 0)
+        status = member_status(calls_today=calls, target=target, last_work_at=ctx.last_work_at, now=now)
         nudged_at = nudged.get(u.id)
         members.append(
             {
@@ -92,7 +96,7 @@ async def build_control_room(
                 "name": u.name or u.username or u.fbo_id,
                 "role": u.role,
                 "status": status,
-                "calls_today": ctx.calls_today,
+                "calls_today": calls,
                 "last_work_at": ctx.last_work_at.isoformat() if ctx.last_work_at else None,
                 "last_seen_at": _aware(u.last_seen_at).isoformat() if u.last_seen_at else None,
                 "streak": ctx.streak,
@@ -145,13 +149,14 @@ async def send_leader_nudge(
         raise NudgeError(429, "Already nudged recently")
 
     ctx = (await build_nudge_contexts(session, [member], now))[member_id]
+    calls = (await fresh_call_counts_by_user(session, [member_id], now.astimezone(IST).date())).get(member_id, 0)
     target = await get_daily_call_target(session)
-    status = member_status(calls_today=ctx.calls_today, target=target, last_work_at=ctx.last_work_at, now=now)
+    status = member_status(calls_today=calls, target=target, last_work_at=ctx.last_work_at, now=now)
     sender = await session.get(User, sender_id)
     title, body = nudge_message(
         _first(sender) if sender else "Your leader",
         status=status,
-        calls=ctx.calls_today,
+        calls=calls,
         target=target,
         new_leads=ctx.new_leads,
         followups=ctx.followups_due,
