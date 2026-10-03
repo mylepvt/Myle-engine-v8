@@ -58,6 +58,7 @@ from app.api.v1 import (
     wallet_enhanced,
     workboard,
     crm_proxy,
+    wins,
     xp,
 )
 
@@ -114,6 +115,7 @@ api_router.include_router(sales.router, tags=["sales"])
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])
 api_router.include_router(crm_proxy.router, tags=["crm"])
 api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
+api_router.include_router(wins.router, prefix="/wins", tags=["wins"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])

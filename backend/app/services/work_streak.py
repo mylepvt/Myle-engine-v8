@@ -44,7 +44,10 @@ async def bump_work_streak_after_call(session: AsyncSession, user: User) -> int 
     user.work_streak_best = max(int(user.work_streak_best or 0), streak)
 
     if streak in STREAK_BONUS_DAYS:
+        from app.services.wins import record_win
         from app.services.xp_service import grant_xp
+
+        record_win(session, user_id=user.id, kind="streak", detail=str(streak))
 
         await grant_xp(session, user.id, f"streak_{streak}")
     return streak

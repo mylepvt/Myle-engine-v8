@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Cir
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
+import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
@@ -824,6 +825,7 @@ export function DashboardHomePage() {
 
       <XpBadge />
 
+      <WinsFeedCard />
       <TodayLeaderboardCard />
 
       <CollapsibleSection title="Recent Leads" defaultOpen={false}>

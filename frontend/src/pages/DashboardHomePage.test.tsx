@@ -21,6 +21,9 @@ const mockUseLosQuery = vi.fn()
 const mockUseLeaderCommandCenter = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
+vi.mock('@/components/wins/WinsFeedCard', () => ({
+  WinsFeedCard: () => <div data-testid="wins-feed" />,
+}))
 vi.mock('@/components/dashboard/GateAssistantCard', () => ({
   GateAssistantCard: () => <div data-testid="gate-assistant">Gate Assistant</div>,
 }))

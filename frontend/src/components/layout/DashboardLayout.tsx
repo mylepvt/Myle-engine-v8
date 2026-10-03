@@ -17,6 +17,7 @@ import { useOnline } from '@/hooks/use-online'
 import { useAppUpdate } from '@/hooks/use-app-update'
 import { PULL_TRIGGER_PX, usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
+import { useWinsToaster } from '@/hooks/use-wins-toaster'
 import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
 import { InstallAppGate } from '@/components/pwa/InstallAppGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
@@ -39,6 +40,7 @@ function isEditableElement(node: Element | null): boolean {
 export function DashboardLayout() {
   useSyncRoleFromMe()
   useRealtimeInvalidation(true)
+  useWinsToaster(true)
   const isOnline = useOnline()
   const queryClient = useQueryClient()
   const [mainEl, setMainEl] = useState<HTMLElement | null>(null)

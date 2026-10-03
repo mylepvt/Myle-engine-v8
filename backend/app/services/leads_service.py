@@ -957,6 +957,9 @@ class LeadsService:
             meta={"amount_cents": lead.enrollment_amount_cents, "proof_url": result, "from_status": lead.status},
         )
         await self._handoff_to_leader_day1(lead, actor=user, now=now)
+        from app.services.wins import record_win
+
+        record_win(self._session, user_id=user.user_id, kind="enrollment")
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "workboard")
         return lead
@@ -1259,7 +1262,12 @@ class LeadsService:
         if lead.status != "converted" or previous_status == "converted":
             return
         from app.services.lead_conversion import handle_lead_converted
+        from app.services.wins import record_win
+
+        closer = lead.assigned_to_user_id or lead.owner_user_id
         try:
+            if closer is not None:
+                record_win(self._session, user_id=closer, kind="conversion")
             await handle_lead_converted(self._session, lead=lead)
             await self._session.commit()
         except Exception as exc:  # noqa: BLE001 - onboarding side-effects are best-effort
