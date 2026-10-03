@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Bell, Lock, Mail, RotateCcw, Shield, User } from 'lucide-react'
 
+import { AdminLiveAlertsCard } from '@/components/notifications/AdminLiveAlertsCard'
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -320,6 +321,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="preferences" className="space-y-6">
+          {isAdmin ? <AdminLiveAlertsCard /> : null}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-lg">
