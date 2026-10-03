@@ -109,3 +109,24 @@ async def test_nudge_guards(Session):
             assert e.value.status_code == code
         await send_leader_nudge(s, sender_id=LEADER, sender_role="leader", member_id=NEW, now=NOW)
     assert Session.pushes[-1][2].startswith("No calls yet today.")
+
+
+async def test_room_shows_leads_and_team_leader(Session):
+    async with Session() as s:
+        room = await build_control_room(s, viewer_id=1, viewer_role="admin", now=NOW)
+    by_id = {m["user_id"]: m for m in room["members"]}
+    assert by_id[IDLE]["leader_id"] == LEADER and by_id[LEADER]["leader_id"] == LEADER
+    assert by_id[STRANGER]["leader_id"] == OTHER_LEADER
+    assert by_id[NEW]["leads_to_work"] == 0  # nothing assigned → needs leads
+    assert room["no_leads"] >= 1
+
+
+async def test_nudge_all_hits_only_people_not_working(Session):
+    from app.services.control_room import nudge_everyone_idle
+
+    async with Session() as s:
+        r = await nudge_everyone_idle(s, sender_id=LEADER, sender_role="leader", now=NOW)
+        assert r == {"sent": 2, "notifications_off": 0, "skipped": 0}  # IDLE + NEW; BUSY/DONE untouched
+        assert sorted(uid for uid, *_ in Session.pushes) == [IDLE, NEW]
+        again = await nudge_everyone_idle(s, sender_id=LEADER, sender_role="leader", now=NOW + timedelta(minutes=5))
+        assert again == {"sent": 0, "notifications_off": 0, "skipped": 2}

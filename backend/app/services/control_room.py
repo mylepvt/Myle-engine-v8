@@ -73,6 +73,24 @@ async def _last_nudges(session: AsyncSession, member_ids: list[int], since: date
     return {int(mid): _aware(at) for mid, at in rows.all()}
 
 
+async def _team_leaders(session: AsyncSession, users: list[User]) -> dict[int, int | None]:
+    """Member id -> id of the leader whose team they are in (a leader leads their own group)."""
+    tree = {
+        int(uid): (role, upline)
+        for uid, role, upline in (await session.execute(select(User.id, User.role, User.upline_user_id))).all()
+    }
+    out: dict[int, int | None] = {}
+    for u in users:
+        if u.role == "leader":
+            out[u.id] = u.id
+            continue
+        cur, hops = u.upline_user_id, 0
+        while cur is not None and hops < 20 and tree.get(cur, ("", None))[0] != "leader":
+            cur, hops = tree.get(cur, ("", None))[1], hops + 1
+        out[u.id] = cur if cur is not None and tree.get(cur, ("", None))[0] == "leader" else None
+    return out
+
+
 async def build_control_room(
     session: AsyncSession, *, viewer_id: int, viewer_role: str, now: datetime | None = None
 ) -> dict:
@@ -83,6 +101,7 @@ async def build_control_room(
     # Same "fresh call" count the daily target and work streak use.
     fresh = await fresh_call_counts_by_user(session, [u.id for u in users], now.astimezone(IST).date())
     nudged = await _last_nudges(session, [u.id for u in users], now - NUDGE_COOLDOWN)
+    team_of = await _team_leaders(session, users)
 
     members = []
     for u in users:
@@ -102,6 +121,9 @@ async def build_control_room(
                 "streak": ctx.streak,
                 "new_leads": ctx.new_leads,
                 "followups_due": ctx.followups_due,
+                # Leads waiting to be worked: never-called + follow-ups due. 0 = needs leads.
+                "leads_to_work": ctx.new_leads + ctx.followups_due,
+                "leader_id": team_of.get(u.id),
                 "nudge_available_at": (nudged_at + NUDGE_COOLDOWN).isoformat() if nudged_at else None,
             }
         )
@@ -109,7 +131,8 @@ async def build_control_room(
     counts = {s: 0 for s in STATUS_ORDER}
     for m in members:
         counts[m["status"]] += 1
-    return {"call_target": target, "counts": counts, "members": members}
+    no_leads = sum(1 for m in members if m["leads_to_work"] == 0)
+    return {"call_target": target, "counts": counts, "no_leads": no_leads, "members": members}
 
 
 def nudge_message(sender: str, *, status: str, calls: int, target: int, new_leads: int, followups: int) -> tuple[str, str]:
@@ -184,3 +207,35 @@ async def send_leader_nudge(
     except Exception as exc:  # noqa: BLE001 — the nudge is logged even if push fails
         logger.warning("Leader nudge push failed member_id=%s: %s", member_id, exc)
     return {"delivered": delivered > 0, "nudge_available_at": (now + NUDGE_COOLDOWN).isoformat()}
+
+
+NEEDS_NUDGE = frozenset({"not_started", "idle"})
+
+
+async def nudge_everyone_idle(
+    session: AsyncSession, *, sender_id: int, sender_role: str, now: datetime | None = None
+) -> dict:
+    """Nudge every member in scope who is not working right now (skips recent nudges)."""
+    now = now or datetime.now(timezone.utc)
+    if sender_role not in ("leader", "admin"):
+        raise NudgeError(403, "Only leaders can nudge")
+    room = await build_control_room(session, viewer_id=sender_id, viewer_role=sender_role, now=now)
+    sent = no_push = skipped = 0
+    for m in room["members"]:
+        if m["status"] not in NEEDS_NUDGE or m["user_id"] == sender_id:
+            continue
+        if m["nudge_available_at"] is not None:
+            skipped += 1
+            continue
+        try:
+            r = await send_leader_nudge(
+                session, sender_id=sender_id, sender_role=sender_role, member_id=m["user_id"], now=now
+            )
+        except NudgeError:
+            skipped += 1
+            continue
+        if r["delivered"]:
+            sent += 1
+        else:
+            no_push += 1
+    return {"sent": sent, "notifications_off": no_push, "skipped": skipped}

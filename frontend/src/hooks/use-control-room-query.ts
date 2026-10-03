@@ -14,6 +14,10 @@ export type ControlRoomMember = {
   streak: number
   new_leads: number
   followups_due: number
+  /** Never-called leads + follow-ups due. 0 means the member has nothing to work on. */
+  leads_to_work: number
+  /** Leader whose team this member is in (a leader's own id for leaders). */
+  leader_id: number | null
   /** Set while a recent nudge is cooling down. */
   nudge_available_at: string | null
 }
@@ -21,6 +25,7 @@ export type ControlRoomMember = {
 export type ControlRoom = {
   call_target: number
   counts: Record<MemberStatus, number>
+  no_leads: number
   members: ControlRoomMember[]
 }
 
@@ -63,5 +68,17 @@ export function useNudgeMemberMutation() {
           : old,
       )
     },
+  })
+}
+
+export function useNudgeAllMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch('/api/v1/control-room/nudge-all', { method: 'POST' })
+      if (!res.ok) throw new NudgeFailed(res.status)
+      return (await res.json()) as { sent: number; notifications_off: number; skipped: number }
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: KEY }),
   })
 }
