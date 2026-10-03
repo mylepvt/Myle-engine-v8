@@ -1541,6 +1541,9 @@ class LeadsService:
                 drop_recorded_by_user_id=user.user_id if action == "not_interested" else None,
             )
         _sync_stage_anchor(lead, previous_status=prev_status, now=now)
+        from app.services.admin_alerts import mark_call_outcome
+
+        mark_call_outcome(self._session, lead, action)
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead
