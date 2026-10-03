@@ -15,10 +15,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity_log import ActivityLog
+from app.models.lead import Lead
 from app.models.user import User
 from app.services.engagement_nudge import _aware, build_nudge_contexts
 from app.core.time_ist import IST
-from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
+from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target, ist_day_bounds
 from app.services.report_eligibility import report_eligibility_conditions
 from app.services.user_hierarchy import is_user_in_downline_of, recursive_downline_user_ids
 
@@ -73,6 +74,44 @@ async def _last_nudges(session: AsyncSession, member_ids: list[int], since: date
     return {int(mid): _aware(at) for mid, at in rows.all()}
 
 
+async def leads_today_by_user(session: AsyncSession, user_ids: list[int], now: datetime) -> dict[int, int]:
+    """Leads each member got *today* (IST): claimed, added by them, or reassigned to them."""
+    if not user_ids:
+        return {}
+    start, end = ist_day_bounds(now.astimezone(IST).date())
+    got: dict[int, set[int]] = {}
+    claimed = await session.execute(
+        select(ActivityLog.user_id, ActivityLog.entity_id).where(
+            ActivityLog.action == "lead.claimed",
+            ActivityLog.user_id.in_(user_ids),
+            ActivityLog.created_at >= start,
+            ActivityLog.created_at < end,
+        )
+    )
+    added = await session.execute(
+        select(Lead.created_by_user_id, Lead.id).where(
+            Lead.created_by_user_id.in_(user_ids),
+            Lead.created_at >= start,
+            Lead.created_at < end,
+            Lead.in_pool.is_(False),
+            Lead.deleted_at.is_(None),
+        )
+    )
+    given = await session.execute(
+        select(Lead.assigned_to_user_id, Lead.id).where(
+            Lead.assigned_to_user_id.in_(user_ids),
+            Lead.reassigned_at >= start,
+            Lead.reassigned_at < end,
+            Lead.deleted_at.is_(None),
+        )
+    )
+    for rows in (claimed, added, given):
+        for uid, lead_id in rows.all():
+            if uid is not None and lead_id is not None:
+                got.setdefault(int(uid), set()).add(int(lead_id))
+    return {uid: len(ids) for uid, ids in got.items()}
+
+
 async def _team_leaders(session: AsyncSession, users: list[User]) -> dict[int, int | None]:
     """Member id -> id of the leader whose team they are in (a leader leads their own group)."""
     tree = {
@@ -102,6 +141,7 @@ async def build_control_room(
     fresh = await fresh_call_counts_by_user(session, [u.id for u in users], now.astimezone(IST).date())
     nudged = await _last_nudges(session, [u.id for u in users], now - NUDGE_COOLDOWN)
     team_of = await _team_leaders(session, users)
+    leads_today = await leads_today_by_user(session, [u.id for u in users], now)
 
     members = []
     for u in users:
@@ -121,8 +161,8 @@ async def build_control_room(
                 "streak": ctx.streak,
                 "new_leads": ctx.new_leads,
                 "followups_due": ctx.followups_due,
-                # Leads waiting to be worked: never-called + follow-ups due. 0 = needs leads.
-                "leads_to_work": ctx.new_leads + ctx.followups_due,
+                # Leads this member got today (claimed / added / reassigned). 0 = no leads today.
+                "leads_today": leads_today.get(u.id, 0),
                 "leader_id": team_of.get(u.id),
                 "nudge_available_at": (nudged_at + NUDGE_COOLDOWN).isoformat() if nudged_at else None,
             }
@@ -131,7 +171,7 @@ async def build_control_room(
     counts = {s: 0 for s in STATUS_ORDER}
     for m in members:
         counts[m["status"]] += 1
-    no_leads = sum(1 for m in members if m["leads_to_work"] == 0)
+    no_leads = sum(1 for m in members if m["leads_today"] == 0)
     return {"call_target": target, "counts": counts, "no_leads": no_leads, "members": members}
 
 

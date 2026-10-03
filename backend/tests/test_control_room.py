@@ -117,8 +117,30 @@ async def test_room_shows_leads_and_team_leader(Session):
     by_id = {m["user_id"]: m for m in room["members"]}
     assert by_id[IDLE]["leader_id"] == LEADER and by_id[LEADER]["leader_id"] == LEADER
     assert by_id[STRANGER]["leader_id"] == OTHER_LEADER
-    assert by_id[NEW]["leads_to_work"] == 0  # nothing assigned → needs leads
+    assert by_id[NEW]["leads_today"] == 0  # got nothing today
+    assert by_id[IDLE]["leads_today"] == 1  # added a lead today
     assert room["no_leads"] >= 1
+
+
+async def test_leads_today_ignores_older_leads(Session):
+    from app.models.activity_log import ActivityLog
+    from app.services.control_room import leads_today_by_user
+
+    async with Session() as s:
+        old = Lead(name="old", status="contacted", created_by_user_id=NEW, owner_user_id=NEW,
+                   assigned_to_user_id=NEW, in_pool=False, created_at=NOW - timedelta(days=3))
+        claimed = Lead(name="pool", status="new_lead", created_by_user_id=OTHER_LEADER, owner_user_id=NEW,
+                       assigned_to_user_id=NEW, in_pool=False, created_at=NOW - timedelta(days=2))
+        moved = Lead(name="moved", status="contacted", created_by_user_id=OTHER_LEADER, owner_user_id=NEW,
+                     assigned_to_user_id=NEW, in_pool=False, created_at=NOW - timedelta(days=5),
+                     reassigned_at=NOW - timedelta(hours=1))
+        s.add_all([old, claimed, moved])
+        await s.flush()
+        s.add(ActivityLog(user_id=NEW, action="lead.claimed", entity_type="lead", entity_id=claimed.id,
+                          created_at=NOW - timedelta(hours=2)))
+        await s.commit()
+        counts = await leads_today_by_user(s, [NEW], NOW)
+    assert counts == {NEW: 2}  # claimed today + reassigned today; the 3-day-old lead doesn't count
 
 
 async def test_nudge_all_hits_only_people_not_working(Session):

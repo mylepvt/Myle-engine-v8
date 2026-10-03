@@ -53,10 +53,10 @@ function MemberRow({ m, target }: { m: ControlRoomMember; target: number }) {
         </p>
         <p className="truncate text-ds-caption text-muted-foreground">
           {m.calls_today}/{target} calls ·{' '}
-          {m.leads_to_work > 0 ? (
-            `${m.leads_to_work} leads`
+          {m.leads_today > 0 ? (
+            `${m.leads_today} leads today`
           ) : (
-            <span className="font-semibold text-destructive-ink">No leads</span>
+            <span className="font-semibold text-destructive-ink">No leads today</span>
           )}
         </p>
       </div>
@@ -128,7 +128,7 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
   const [expanded, setExpanded] = useState(false)
 
   const list = data
-    ? data.members.filter((m) => !filter || (filter === 'no_leads' ? m.leads_to_work === 0 : m.status === filter))
+    ? data.members.filter((m) => !filter || (filter === 'no_leads' ? m.leads_today === 0 : m.status === filter))
     : []
   const shown = expanded || groupByLeader ? list : list.slice(0, COLLAPSED)
   const notWorking = data ? data.counts.not_started + data.counts.idle : 0
@@ -179,7 +179,7 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
               {data.no_leads ? (
                 <>
                   {' · '}
-                  <span className="font-semibold text-destructive-ink">{data.no_leads} with no leads</span>
+                  <span className="font-semibold text-destructive-ink">{data.no_leads} with no leads today</span>
                 </>
               ) : null}
             </p>
@@ -221,7 +221,7 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
                   filter && filter !== 'no_leads' && 'opacity-40',
                 )}
               >
-                No leads {data.no_leads}
+                No leads today {data.no_leads}
               </button>
             </div>
 
