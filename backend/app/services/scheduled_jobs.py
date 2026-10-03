@@ -5,6 +5,7 @@ Jobs (all IST-aware):
 - weekly_compliance_digest        : Monday 09:00 IST — compliance summary to leaders
 - morning_plan                    : 09:00 IST daily — "Your plan for today" push (leads to call, follow-ups, streak)
 - evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
+- inactivity_nudge                : every 30 min 11:00–16:30 IST — attention push to idle members (max 2/day)
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
@@ -27,8 +28,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.time_ist import today_ist
 from app.db.session import AsyncSessionLocal
 from app.models.current_cc import CurrentCcSheet
+from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.engagement_nudge import (
+    NUDGE_ACTION,
+    build_nudge_contexts,
+    in_nudge_window,
+    pick_nudge,
+)
 from app.services.engagement_digest import (
     build_evening_recaps,
     build_morning_plans,
@@ -237,6 +245,43 @@ async def job_evening_recap() -> None:
             logger.info("evening_recap: users=%d sent=%d", len(users), sent)
     except Exception as exc:
         logger.error("job_evening_recap failed: %s", exc)
+
+
+async def job_inactivity_nudge() -> None:
+    """Every 30 min, 11:00–16:30 IST — one attention-grabbing push to idle members.
+
+    Selection and caps live in engagement_nudge (max 2/day, 3h apart, never the
+    same kind twice, only when they have leads/follow-ups to work).
+    """
+    now = datetime.now(timezone.utc)
+    if not in_nudge_window(now):
+        return
+    try:
+        async with AsyncSessionLocal() as session:
+            users = list(await _get_eligible_users(session))
+            contexts = await build_nudge_contexts(session, users, now)
+            sent = 0
+            for user in users:
+                pick = pick_nudge(contexts[user.id], now)
+                if pick is None:
+                    continue
+                kind, title, body = pick
+                url = "/dashboard/other/leaderboard" if kind == "overtaken" else "/dashboard/work/leads?tab=today"
+                if await _push_digest(session, user, title, body, url=url):
+                    session.add(
+                        ActivityLog(
+                            user_id=user.id,
+                            action=NUDGE_ACTION,
+                            entity_type="user",
+                            entity_id=user.id,
+                            meta={"type": kind},
+                        )
+                    )
+                    sent += 1
+            await session.commit()
+            logger.info("inactivity_nudge: users=%d sent=%d", len(users), sent)
+    except Exception as exc:
+        logger.error("job_inactivity_nudge failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
