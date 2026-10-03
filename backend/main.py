@@ -37,6 +37,7 @@ from app.services.scheduled_jobs import (
     job_eos_mission_pregeneration,
     job_eos_verification_escalations,
     job_flp_min_billing_proof_alert,
+    job_inactivity_nudge,
     job_integrity_audit,
     job_general_pipeline_maintenance,
     job_lead_booking_fulfillment,
@@ -90,6 +91,13 @@ async def lifespan(_app: FastAPI):
             id="morning_plan",
             replace_existing=True,
             misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_inactivity_nudge,
+            CronTrigger(hour="11-16", minute="0,30", timezone="Asia/Kolkata"),
+            id="inactivity_nudge",
+            replace_existing=True,
+            misfire_grace_time=600,
         )
         _scheduler.add_job(
             job_evening_recap,
