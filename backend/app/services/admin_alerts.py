@@ -34,12 +34,23 @@ logger = logging.getLogger(__name__)
 
 KINDS: dict[str, str] = {
     "lead_added": "New leads",
-    "status": "Lead stage changes",
+    "status": "Lead status changes (incl. calling board)",
     "enrollment": "Enrollments",
     "online": "Members coming online",
 }
 SETTING_KEY = "admin_alerts.off"  # JSON list of kinds switched off
 _INFO_KEY = "admin_alert_events"
+_OUTCOME_KEY = "admin_alert_call_outcomes"
+
+# Calling-board buttons. "Not picked" / "Call later" often leave the stage as
+# Contacted, so they would be invisible to the stage hook — they get their own text.
+CALL_OUTCOME_LABELS = {
+    "interested": "Interested",
+    "not_picked": "Not picked",
+    "call_later": "Call later",
+    "not_interested": "Not interested",
+    "paid": "Paid",
+}
 
 
 @dataclass(frozen=True)
@@ -52,6 +63,7 @@ class AlertEvent:
     old_status: str = ""
     new_status: str = ""
     amount_cents: int = 0
+    call_outcome: str = ""
 
 
 def _label(status: str) -> str:
@@ -71,6 +83,9 @@ def alert_text(ev: AlertEvent) -> tuple[str, str, str]:
     if ev.kind == "enrollment":
         amount = f" (₹{ev.amount_cents // 100})" if ev.amount_cents else ""
         return "Enrollment", f"{who} enrolled {lead}{amount}", url
+    if ev.kind == "status" and ev.call_outcome:
+        label = CALL_OUTCOME_LABELS.get(ev.call_outcome, ev.call_outcome.replace("_", " ").title())
+        return f"{lead} → {label}", f"{who} marked {lead} {label} on the calling board", url
     if ev.kind == "status":
         return f"{lead} → {_label(ev.new_status)}", f"{who} moved {lead} from {_label(ev.old_status)}", url
     return "Online now", f"{who} is online", "/dashboard"
@@ -107,15 +122,25 @@ def _capture_lead_changes(session: SASession, _ctx, _instances) -> None:
             events.append(("enrollment", obj, actor_id, actor_name, "", int(obj.enrollment_amount_cents or 0)))
 
 
+def mark_call_outcome(session: AsyncSession, lead: Lead, action: str) -> None:
+    """Calling-board button pressed: alert with the button's name once the save commits."""
+    actor_id, actor_name = _actor()
+    if actor_id is None:
+        return
+    session.info.setdefault(_OUTCOME_KEY, {})[lead.id] = (lead, action, actor_id, actor_name)
+
+
 @sa_event.listens_for(SASession, "after_rollback")
 def _drop_on_rollback(session: SASession) -> None:
     session.info.pop(_INFO_KEY, None)
+    session.info.pop(_OUTCOME_KEY, None)
 
 
 @sa_event.listens_for(SASession, "after_commit")
 def _send_after_commit(session: SASession) -> None:
-    raw = session.info.pop(_INFO_KEY, None)
-    if not raw:
+    raw = session.info.pop(_INFO_KEY, None) or []
+    outcomes = session.info.pop(_OUTCOME_KEY, None) or {}
+    if not raw and not outcomes:
         return
     events = []
     for kind, lead, actor_id, actor_name, old, amount in raw:
@@ -133,6 +158,23 @@ def _send_after_commit(session: SASession) -> None:
                 )
             )
         except Exception:  # noqa: BLE001 — a detached lead must never break the commit
+            continue
+    # A calling-board button replaces the plain stage alert for that lead.
+    events = [e for e in events if not (e.kind == "status" and e.lead_id in outcomes)]
+    for lead_id, (lead, action, actor_id, actor_name) in outcomes.items():
+        try:
+            events.append(
+                AlertEvent(
+                    kind="status",
+                    actor_id=actor_id,
+                    actor_name=actor_name,
+                    lead_id=lead_id,
+                    lead_name=lead.name or "",
+                    new_status=lead.status or "",
+                    call_outcome=action,
+                )
+            )
+        except Exception:  # noqa: BLE001
             continue
     # An enrollment also moves the lead to Day 1 — one alert is enough.
     enrolled = {e.lead_id for e in events if e.kind == "enrollment"}

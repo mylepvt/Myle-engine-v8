@@ -15,7 +15,7 @@ const KEY = ['admin', 'alert-settings'] as const
 
 const HINT: Record<string, string> = {
   lead_added: 'A member adds a new lead.',
-  status: 'A lead moves stage: Day 1, Day 2, Converted and more.',
+  status: 'A lead moves stage (Day 1, Day 2, Converted…) or a calling-board button is pressed (Interested, Not picked, Call later…).',
   enrollment: 'An enrollment proof is uploaded.',
   online: "A member comes online for the first time today.",
 }

@@ -46,7 +46,8 @@ async def ctx(monkeypatch):
 
 
 def _lead(**kw) -> Lead:
-    return Lead(name="Rohit", status="new_lead", created_by_user_id=MEMBER, owner_user_id=MEMBER,
+    kw.setdefault("status", "new_lead")
+    return Lead(name="Rohit", created_by_user_id=MEMBER, owner_user_id=MEMBER,
                 assigned_to_user_id=MEMBER, in_pool=False, **kw)
 
 
@@ -125,3 +126,25 @@ async def test_online_alert_only_on_first_connection_of_the_day(ctx, monkeypatch
         await team_tracking.connect_presence_session(s, user_id=MEMBER, session_key="k1", last_path="/", user_agent="x", now=now)
         await team_tracking.connect_presence_session(s, user_id=MEMBER, session_key="k2", last_path="/", user_agent="x", now=now + timedelta(minutes=5))
     assert seen == [MEMBER]
+
+
+async def test_calling_board_buttons_alert_even_without_stage_change(ctx):
+    from app.services.admin_alerts import mark_call_outcome
+
+    S, captured, _ = ctx
+    set_request_context(user_id=str(MEMBER), actor_name="Priya Sharma")
+    async with S() as s:
+        lead = _lead(status="contacted")
+        s.add(lead)
+        await s.commit()
+        captured.clear()
+        mark_call_outcome(s, lead, "not_picked")  # stays Contacted
+        await s.commit()
+        lead.status = "video_sent"
+        mark_call_outcome(s, lead, "interested")  # stage moves too: one alert, not two
+        await s.commit()
+    assert [(e.kind, e.call_outcome, e.new_status) for e in captured] == [
+        ("status", "not_picked", "contacted"),
+        ("status", "interested", "video_sent"),
+    ]
+    assert alert_text(captured[0])[:2] == ("Rohit → Not picked", "Priya marked Rohit Not picked on the calling board")
