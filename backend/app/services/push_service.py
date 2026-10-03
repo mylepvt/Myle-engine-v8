@@ -5,6 +5,7 @@ Push failures NEVER raise — they are logged and swallowed.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import functools
 import json
@@ -113,30 +114,24 @@ def _vapid_signer(private_pem: str) -> "Vapid01":
     return Vapid01.from_pem(private_pem.encode())
 
 
-def _do_webpush(sub: PushSubscription, data: str, private_pem: str) -> bool:
-    """Send a single push. Returns True on success, False on failure."""
+# Concurrent sends per batch. Each send is a blocking HTTPS call, so it runs in a
+# worker thread — calling it inline froze the event loop (every API request) for
+# the length of a digest run.
+_PUSH_SEND_CONCURRENCY = 8
+
+
+def _webpush_sync(sub_info: dict[str, Any], data: str, private_pem: str) -> BaseException | None:
+    """Blocking send — run via ``asyncio.to_thread``. Returns the error instead of raising."""
     try:
         webpush(
-            subscription_info={
-                "endpoint": sub.endpoint,
-                "keys": {"p256dh": sub.keys_p256dh, "auth": sub.keys_auth},
-            },
+            subscription_info=sub_info,
             data=data,
             vapid_private_key=_vapid_signer(private_pem),
             vapid_claims={"sub": "mailto:admin@mylecommunity.com"},
         )
-        return True
+        return None
     except Exception as exc:  # noqa: BLE001
-        # Check for WebPushException specifically when available
-        status_code: int | None = None
-        if _PUSH_AVAILABLE:
-            try:
-                if isinstance(exc, WebPushException) and exc.response is not None:
-                    status_code = exc.response.status_code
-            except Exception:  # noqa: BLE001
-                pass
-        logger.warning("Push send failed (status=%s): %s", status_code, exc)
-        return False
+        return exc
 
 
 async def _send_and_cleanup(
@@ -146,34 +141,36 @@ async def _send_and_cleanup(
     private_pem: str,
 ) -> int:
     """Send to list of subscriptions; delete stale ones. Returns success count."""
+    sem = asyncio.Semaphore(_PUSH_SEND_CONCURRENCY)
+
+    async def _send(sub: PushSubscription) -> BaseException | None:
+        sub_info = {
+            "endpoint": sub.endpoint,
+            "keys": {"p256dh": sub.keys_p256dh, "auth": sub.keys_auth},
+        }
+        async with sem:
+            return await asyncio.to_thread(_webpush_sync, sub_info, data, private_pem)
+
+    results = await asyncio.gather(*(_send(sub) for sub in subs))
+
     ok_count = 0
     stale_ids: list[int] = []
-
-    for sub in subs:
-        try:
-            webpush(
-                subscription_info={
-                    "endpoint": sub.endpoint,
-                    "keys": {"p256dh": sub.keys_p256dh, "auth": sub.keys_auth},
-                },
-                data=data,
-                vapid_private_key=_vapid_signer(private_pem),
-                vapid_claims={"sub": "mailto:admin@mylecommunity.com"},
-            )
+    for sub, exc in zip(subs, results):
+        if exc is None:
             ok_count += 1
-        except Exception as exc:  # noqa: BLE001
-            stale = False
-            if _PUSH_AVAILABLE:
-                try:
-                    if isinstance(exc, WebPushException) and exc.response is not None:
-                        if exc.response.status_code in (400, 404, 410):
-                            stale = True
-                except Exception:  # noqa: BLE001
-                    pass
-            if stale:
-                stale_ids.append(sub.id)
-            else:
-                logger.warning("Push send error for sub %s: %s", sub.id, exc)
+            continue
+        stale = False
+        if _PUSH_AVAILABLE:
+            try:
+                if isinstance(exc, WebPushException) and exc.response is not None:
+                    if exc.response.status_code in (400, 404, 410):
+                        stale = True
+            except Exception:  # noqa: BLE001
+                pass
+        if stale:
+            stale_ids.append(sub.id)
+        else:
+            logger.warning("Push send error for sub %s: %s", sub.id, exc)
 
     # Delete stale subscriptions
     for sub_id in stale_ids:

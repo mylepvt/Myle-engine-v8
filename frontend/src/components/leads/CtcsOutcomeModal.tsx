@@ -6,12 +6,12 @@ import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
 import { useBackClose } from '@/hooks/use-back-close'
 
-// Left column — lead INTEREST decision (drives the pipeline).
+// Left column — lead INTEREST decision (drives the pipeline). Payment is not here:
+// it always goes through "Send to Day 1" with the enrollment screenshot.
 const INTEREST_OPTIONS: { action: CtcsAction; label: string }[] = [
   { action: 'interested', label: 'Interested' },
   { action: 'call_later', label: 'Call Later' },
   { action: 'not_interested', label: 'Not Interested' },
-  { action: 'paid', label: 'Paid' },
 ]
 
 // Right column — what physically happened on the LINE (sets call_status only).

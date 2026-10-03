@@ -632,6 +632,7 @@ async def mark_watch_completed(
         link.view_count = int(link.view_count or 0) + 1
     link.last_viewed_at = now
     advanced = False
+    handed_to_leader_id: int | None = None
     if not link.status_synced:
         link.status_synced = True
         # Auto-advance the prospect past the team boundary: Enrollment-Live link
@@ -649,6 +650,7 @@ async def mark_watch_completed(
                     leader = await nearest_leader_for_user(session, owner_id)
                     if leader is not None and lead.assigned_to_user_id != leader.id:
                         from_uid = lead.assigned_to_user_id
+                        handed_to_leader_id = leader.id
                         lead.assigned_to_user_id = leader.id
                         lead.is_reassigned = True
                         lead.reassigned_at = now
@@ -687,6 +689,17 @@ async def mark_watch_completed(
                         else f"{lead.name} watched the video. Upload the enrollment screenshot to send to Day 1."
                     ),
                     url="/dashboard/work/leads",
+                )
+            except Exception:
+                pass
+        if handed_to_leader_id is not None:
+            try:
+                await send_push_to_user(
+                    session,
+                    handed_to_leader_id,
+                    title="New Day 1 lead",
+                    body=f"{lead.name} is now on your Day 1 — enrollment done, take it forward.",
+                    url="/dashboard/work/workboard",
                 )
             except Exception:
                 pass

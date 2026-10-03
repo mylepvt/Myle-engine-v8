@@ -6,6 +6,7 @@ Excel imports read a header row (Name / Phone / Email / City in any column order
 
 from __future__ import annotations
 
+import asyncio
 import io
 import re
 from dataclasses import dataclass
@@ -270,9 +271,9 @@ async def run_personal_lead_import(
     warnings: list[str] = []
 
     if fname.endswith(".pdf"):
-        rows, err = extract_leads_from_pdf_bytes(file_bytes)
+        rows, err = await asyncio.to_thread(extract_leads_from_pdf_bytes, file_bytes)
     elif fname.endswith(".xlsx"):
-        rows, err = extract_leads_from_xlsx_bytes(file_bytes)
+        rows, err = await asyncio.to_thread(extract_leads_from_xlsx_bytes, file_bytes)
     else:
         return LeadImportResult(0, 0, ["Only .pdf and .xlsx files are allowed."])
 

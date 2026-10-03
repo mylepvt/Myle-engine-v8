@@ -386,11 +386,21 @@ class SendBackRequest(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=300)
 
 
+def _send_queued_pushes(background_tasks: BackgroundTasks, service: LeadsService) -> None:
+    """Deliver the service's queued pushes after the response (never delays the save)."""
+    for user_id, title, body_text, url in service.queued_pushes:
+        background_tasks.add_task(
+            send_push_to_user_bg, AsyncSessionLocal, user_id, title=title, body=body_text, url=url
+        )
+    service.queued_pushes.clear()
+
+
 @router.post("/{lead_id}/send-to-day1", response_model=LeadPublic)
 async def send_to_day1(
     lead_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
+    background_tasks: BackgroundTasks,
     amount_rupees: int = Form(..., description="Enrollment amount paid (₹149–200)"),
     screenshot: UploadFile = File(..., description="Enrollment payment screenshot"),
 ) -> LeadPublic:
@@ -401,6 +411,7 @@ async def send_to_day1(
         amount_rupees=amount_rupees,
         screenshot=await screenshot.read(),
     )
+    _send_queued_pushes(background_tasks, service)
     return await service.serialize_lead_public(lead)
 
 
@@ -410,9 +421,11 @@ async def send_back_from_day1(
     body: SendBackRequest,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
+    background_tasks: BackgroundTasks,
 ) -> LeadPublic:
     """Leader/admin: enrollment proof looks wrong → return the lead to the member."""
     lead = await service.send_back_from_day1(lead_id=lead_id, user=user, reason=body.reason)
+    _send_queued_pushes(background_tasks, service)
     return await service.serialize_lead_public(lead)
 
 
@@ -562,6 +575,7 @@ async def update_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
     lead = await service.update_lead(lead_id=lead_id, body=body, user=user)
+    _send_queued_pushes(background_tasks, service)
     # NOTE: service.update_lead already broadcasts notify_topics("leads") on every
     # update, so the leads/workboard/lead-pool/retarget boards refresh live. We only
     # add "follow_ups" here because the "leads" topic does NOT invalidate the

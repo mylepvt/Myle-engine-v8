@@ -20,6 +20,9 @@ import {
 } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 
+/** Mirrors ``_GENERAL_NO_AUTO_ARCHIVE_STATUSES`` in backend execution_enforcement.py. */
+const NO_AUTO_ARCHIVE_STATUSES: ReadonlySet<string> = new Set(['new_lead', 'new', 'contacted', 'invited'])
+
 const ASSIGNEE_PALETTE = ['bg-info', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-500', 'bg-warning'] as const
 
 /** Compact status pill (NativeSelect): truncating label, chevron, native picker on tap. */
@@ -79,6 +82,8 @@ export function CtcsLeadCard({
   const currentRole = resolveDashboardSurfaceRole(role, serverRole) ?? 'team'
 
   const ms = timerRemainingMs(lead.last_action_at ?? null, lead.created_at, nowMs)
+  /** New / Contacted / Invited never auto-archive — overdue just means "call now". */
+  const archivesOnTimeout = !NO_AUTO_ARCHIVE_STATUSES.has(lead.status)
   const overdue = ms < 0
   const remainingSec = Math.max(0, Math.floor(ms / 1000))
   const colorKey = overdue ? 0 : remainingSec
@@ -268,7 +273,9 @@ export function CtcsLeadCard({
               <p className={cn('text-ds-caption font-semibold tabular-nums leading-tight', timeColors.text)}>
                 {overdue ? formatCountdown(ms) : formatLeadSlaTime(remainingSec)}
               </p>
-              <p className="text-ds-micro leading-tight text-muted-foreground">{overdue ? 'SLA over' : 'left'}</p>
+              <p className="text-ds-micro leading-tight text-muted-foreground">
+                {overdue ? (archivesOnTimeout ? 'SLA over' : 'call now') : 'left'}
+              </p>
             </div>
           </div>
 

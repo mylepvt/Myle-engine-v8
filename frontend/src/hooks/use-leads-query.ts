@@ -198,7 +198,7 @@ export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
 export type CtcsTab = 'all' | 'today' | 'retarget' | 'followups' | 'hot' | 'converted' | 'reassigned' | 'pending'
 
-export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
+export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested'
 
 export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null
@@ -843,7 +843,6 @@ export type LeadCtcsActionMutationVars = {
   id: number
   action: CtcsAction
   followupAt?: string | null
-  paidStatus?: 'day1'
 }
 
 export function useLeadCtcsActionMutation() {
@@ -854,10 +853,7 @@ export function useLeadCtcsActionMutation() {
     onMutate: async (variables) => {
       await qc.cancelQueries({ queryKey: ['leads', 'list', 'paged'], exact: false })
       const previous = qc.getQueriesData({ queryKey: ['leads', 'list', 'paged'], exact: false })
-      const optimisticOpts = {
-        followupAt: variables.followupAt,
-        paidStatus: variables.paidStatus,
-      }
+      const optimisticOpts = { followupAt: variables.followupAt }
       previous.forEach(([queryKey, data]) => {
         if (!isLeadsInfiniteData(data)) return
         qc.setQueryData(queryKey, {
