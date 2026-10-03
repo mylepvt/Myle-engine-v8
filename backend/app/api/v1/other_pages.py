@@ -421,7 +421,7 @@ async def upload_training_notes(
     await _ensure_training_day_exists(session, day_number)
     await _ensure_day_unlocked_for_user(session, user_id=user.user_id, day_number=day_number)
     try:
-        image_path = await save_training_notes_image(user.user_id, day_number, file)
+        image_path = await save_training_notes_image(session, user.user_id, day_number, file)
     except ValueError as exc:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

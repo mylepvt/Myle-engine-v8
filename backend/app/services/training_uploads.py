@@ -4,6 +4,9 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.db_media_storage import delete_media, put_media
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 _UPLOADS_ROOT = _BACKEND_ROOT / "uploads"
@@ -121,7 +124,13 @@ def _delete_matching_files(root: Path, stem: str) -> None:
                 candidate.unlink(missing_ok=True)
 
 
-def remove_training_audio_file(audio_url: str | None) -> None:
+_AUDIO_MEDIA_PREFIX = "/api/v1/media/training-audio/"
+
+
+async def remove_training_audio_file(session: AsyncSession, audio_url: str | None) -> None:
+    if audio_url and audio_url.startswith(_AUDIO_MEDIA_PREFIX):
+        await delete_media(session, kind="training-audio", name=audio_url.removeprefix(_AUDIO_MEDIA_PREFIX))
+        return
     if not audio_url or not audio_url.startswith("/uploads/training_audio/"):
         return
 
@@ -134,13 +143,11 @@ def remove_training_audio_file(audio_url: str | None) -> None:
     target.unlink(missing_ok=True)
 
 
-async def save_training_audio_file(day_number: int, file: UploadFile) -> str:
+async def save_training_audio_file(session: AsyncSession, day_number: int, file: UploadFile) -> str:
     if not _looks_like_audio_upload(file):
         raise ValueError("Unsupported audio file. Please upload .m4a, .mp3, .wav, .ogg, .aac, or .webm.")
 
-    _TRAINING_AUDIO_ROOT.mkdir(parents=True, exist_ok=True)
     stem = f"day_{day_number}"
-    _delete_matching_files(_TRAINING_AUDIO_ROOT, stem)
 
     ext = _pick_extension(
         filename=file.filename,
@@ -148,18 +155,17 @@ async def save_training_audio_file(day_number: int, file: UploadFile) -> str:
         allowed=_AUDIO_EXTENSIONS,
         default_ext=".mp3",
     )
-    destination = _TRAINING_AUDIO_ROOT / f"{stem}_{uuid4().hex}{ext}"
-    destination.write_bytes(await file.read())
-    return f"/uploads/training_audio/{destination.name}"
+    # Container disk is wiped on deploy — keep the audio in Postgres.
+    name = f"{stem}_{uuid4().hex}{ext}"
+    await put_media(session, kind="training-audio", name=name, data=await file.read(), replace_prefix=f"{stem}_")
+    return f"{_AUDIO_MEDIA_PREFIX}{name}"
 
 
-async def save_training_notes_image(user_id: int, day_number: int, file: UploadFile) -> str:
+async def save_training_notes_image(session: AsyncSession, user_id: int, day_number: int, file: UploadFile) -> str:
     if not _looks_like_image_upload(file):
         raise ValueError("Unsupported image file. Please upload .jpg, .jpeg, .png, .webp, .heic, .heif, or .gif.")
 
-    _TRAINING_NOTES_ROOT.mkdir(parents=True, exist_ok=True)
     stem = f"{user_id}_{day_number}"
-    _delete_matching_files(_TRAINING_NOTES_ROOT, stem)
 
     ext = _pick_extension(
         filename=file.filename,
@@ -167,6 +173,7 @@ async def save_training_notes_image(user_id: int, day_number: int, file: UploadF
         allowed=_IMAGE_EXTENSIONS,
         default_ext=".jpg",
     )
-    destination = _TRAINING_NOTES_ROOT / f"{stem}{ext}"
-    destination.write_bytes(await file.read())
-    return f"/uploads/training_notes/{destination.name}"
+    # Container disk is wiped on deploy — keep the notes photo in Postgres.
+    name = f"{stem}{ext}"
+    await put_media(session, kind="training-notes", name=name, data=await file.read(), replace_prefix=f"{stem}.")
+    return f"/api/v1/media/training-notes/{name}"
