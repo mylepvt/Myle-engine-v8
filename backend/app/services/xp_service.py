@@ -267,6 +267,9 @@ async def grant_xp(
     user.xp_level = _calculate_level(user.xp_total)
 
     if user.xp_level != prev_level:
+        from app.services.wins import record_win
+
+        record_win(session, user_id=user.id, kind="level_up", detail=user.xp_level)
         try:
             await send_push_to_user(
                 session,

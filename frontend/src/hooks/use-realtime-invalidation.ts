@@ -41,8 +41,12 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries()
     return
   }
+  if (t.has('wins')) {
+    void qc.invalidateQueries({ queryKey: ['wins'] })
+  }
   if (t.has('leads')) {
     void qc.invalidateQueries({ queryKey: ['leads'] })
+    void qc.invalidateQueries({ queryKey: ['wins'] })
     void qc.invalidateQueries({ queryKey: ['workboard'] })
     void qc.invalidateQueries({ queryKey: ['lead-pool'] })
     void qc.invalidateQueries({ queryKey: ['retarget'] })

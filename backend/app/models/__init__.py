@@ -20,6 +20,7 @@ from app.models.legacy_row_snapshot import LegacyRowSnapshot
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.models.win import Win, WinCheer
 from app.models.password_reset_token import PasswordResetToken
 from app.models.training_video import TrainingVideo
 from app.models.training_progress import TrainingProgress
@@ -61,6 +62,8 @@ __all__ = [
     "User",
     "WalletLedgerEntry",
     "WalletRecharge",
+    "Win",
+    "WinCheer",
     "PasswordResetToken",
     "TrainingVideo",
     "TrainingProgress",
