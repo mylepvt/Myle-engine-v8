@@ -7,7 +7,7 @@ import { ControlRoomCard } from './ControlRoomCard'
 const member = (user_id: number, name: string, status: string, calls: number) => ({
   user_id, name, role: 'team', status, calls_today: calls, last_work_at: null, last_seen_at: null,
   streak: 0, new_leads: 2, followups_due: 0, nudge_available_at: null,
-  leads_to_work: user_id === 1 ? 0 : 4, leader_id: 9,
+  leads_today: user_id === 1 ? 0 : 4, leader_id: 9,
 })
 
 const room = {
@@ -36,7 +36,7 @@ describe('ControlRoomCard', () => {
       </QueryClientProvider>,
     )
     expect(await screen.findByText('Amit Kumar')).toBeTruthy()
-    expect(screen.getAllByText('No leads').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('No leads today').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Nudge all 1 not working' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cheer Priya' })).toBeTruthy()
 

@@ -14,8 +14,8 @@ export type ControlRoomMember = {
   streak: number
   new_leads: number
   followups_due: number
-  /** Never-called leads + follow-ups due. 0 means the member has nothing to work on. */
-  leads_to_work: number
+  /** Leads the member got today (claimed, added or reassigned to them). */
+  leads_today: number
   /** Leader whose team this member is in (a leader's own id for leaders). */
   leader_id: number | null
   /** Set while a recent nudge is cooling down. */
