@@ -15,7 +15,7 @@ _ProcessJSON = JSON().with_variant(JSONB(), "postgresql")
 
 class Lead(Base):
     __tablename__ = "leads"
-    # Hot list / maintenance filters (see migration 20261003_0102).
+    # Hot list / maintenance filters (see migration 20261003_0103).
     __table_args__ = (
         Index("ix_leads_assignee_active", "assigned_to_user_id", "archived_at", "deleted_at"),
         Index("ix_leads_status_last_action", "status", "last_action_at"),

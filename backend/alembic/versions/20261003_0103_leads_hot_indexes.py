@@ -4,8 +4,8 @@ Every calling-board / workboard list filters ``leads`` by assignee + archived/de
 and the 30-min maintenance jobs scan by status + last_action_at — none of these were
 indexed, so each query was a full table scan.
 
-Revision ID: 20261003_0102
-Revises: 20261003_0101
+Revision ID: 20261003_0103
+Revises: 20261003_0102
 Create Date: 2026-10-03
 """
 from typing import Sequence, Union
@@ -13,8 +13,8 @@ from typing import Sequence, Union
 from alembic import op
 
 
-revision: str = "20261003_0102"
-down_revision: Union[str, Sequence[str], None] = "20261003_0101"
+revision: str = "20261003_0103"
+down_revision: Union[str, Sequence[str], None] = "20261003_0102"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
