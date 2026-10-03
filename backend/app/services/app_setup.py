@@ -22,14 +22,22 @@ PERMISSIONS = ("granted", "denied", "default", "unsupported")
 async def record_device_status(
     session: AsyncSession, *, user_id: int, platform: str, standalone: bool, push_permission: str
 ) -> None:
-    row = await session.get(UserDeviceStatus, user_id)
-    if row is None:
-        row = UserDeviceStatus(user_id=user_id)
-        session.add(row)
-    row.platform = platform if platform in PLATFORMS else "desktop"
-    row.standalone = bool(standalone)
-    row.push_permission = push_permission if push_permission in PERMISSIONS else "default"
-    row.updated_at = datetime.now(timezone.utc)
+    values = {
+        "platform": platform if platform in PLATFORMS else "desktop",
+        "standalone": bool(standalone),
+        "push_permission": push_permission if push_permission in PERMISSIONS else "default",
+        "updated_at": datetime.now(timezone.utc),
+    }
+    # One atomic upsert: the app reports from two places at once on first open, and a
+    # plain "insert if missing" would make the second request fail on the unique key.
+    dialect = session.bind.dialect.name if session.bind is not None else ""
+    if dialect == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as dialect_insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert as dialect_insert
+    stmt = dialect_insert(UserDeviceStatus).values(user_id=user_id, **values)
+    stmt = stmt.on_conflict_do_update(index_elements=[UserDeviceStatus.user_id], set_=values)
+    await session.execute(stmt)
     await session.commit()
 
 

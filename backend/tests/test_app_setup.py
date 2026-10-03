@@ -49,3 +49,17 @@ async def test_app_setup_classifies_every_member(Session):
     }
     assert (out["total"], out["ready"], out["installed"], out["notifications_on"]) == (4, 1, 2, 1)
     assert out["members"][-1]["user_id"] == READY  # not-ready people first
+
+
+async def test_two_first_reports_at_once_do_not_fail(Session):
+    """First open reports from two places at the same moment — the second must update, not 500."""
+    import asyncio
+
+    async def report(standalone: bool):
+        async with Session() as s:
+            await record_device_status(s, user_id=NEVER, platform="android", standalone=standalone, push_permission="default")
+
+    await asyncio.gather(report(False), report(True))
+    async with Session() as s:
+        out = await build_app_setup(s)
+    assert next(m for m in out["members"] if m["user_id"] == NEVER)["app"] in ("installed", "browser")
