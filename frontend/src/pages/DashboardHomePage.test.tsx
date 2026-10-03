@@ -21,6 +21,9 @@ const mockUseLosQuery = vi.fn()
 const mockUseLeaderCommandCenter = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
+vi.mock('@/components/control-room/ControlRoomCard', () => ({
+  ControlRoomCard: () => <div data-testid="control-room" />,
+}))
 vi.mock('@/components/wins/WinsFeedCard', () => ({
   WinsFeedCard: () => <div data-testid="wins-feed" />,
 }))
@@ -233,6 +236,7 @@ describe('DashboardHomePage', () => {
 
     // GateAssistantCard is rendered directly for leader role in the main layout
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
+    expect(screen.getByTestId('control-room')).toBeInTheDocument()
   })
 
   it('routes admin home to the command center surface', () => {

@@ -45,6 +45,7 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries({ queryKey: ['wins'] })
   }
   if (t.has('leads')) {
+    void qc.invalidateQueries({ queryKey: ['control-room'] })
     void qc.invalidateQueries({ queryKey: ['leads'] })
     void qc.invalidateQueries({ queryKey: ['wins'] })
     void qc.invalidateQueries({ queryKey: ['workboard'] })
