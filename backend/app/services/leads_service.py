@@ -493,6 +493,9 @@ class LeadsService:
         return None
 
     async def create_lead(self, *, body: LeadCreate, user: AuthUser) -> Lead:
+        from app.services.lead_file_import import lock_lead_phones
+
+        await lock_lead_phones(self._session)
         dup = await self._find_duplicate_phone_lead(body.phone)
         if dup is not None:
             dup_id, dup_name, dup_status, normalized = dup

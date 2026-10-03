@@ -347,11 +347,15 @@ async def import_leads_file(
     file: UploadFile = File(...),
     source_tag: str = Form("Import"),
 ) -> LeadFileImportResponse:
-    """Team / leader: bulk-create leads from a PDF or Excel (.xlsx) file (calling board)."""
-    if user.role not in ("leader", "team"):
+    """Team / leader / admin: bulk-create leads from a PDF or Excel (.xlsx) file (calling board).
+
+    Leads belong to the uploader and count as today's fresh leads. Any phone already in
+    Myle (or repeated in the file) is skipped.
+    """
+    if user.role not in ("leader", "team", "admin"):
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Only team and leader can import leads from a file",
+            detail="Only team, leader and admin can import leads from a file",
         )
     raw = await file.read()
     if not raw:
@@ -373,6 +377,8 @@ async def import_leads_file(
         imported=result.imported,
         skipped=result.skipped,
         warnings=result.warnings,
+        duplicates=result.duplicates,
+        invalid=result.invalid,
     )
 
 

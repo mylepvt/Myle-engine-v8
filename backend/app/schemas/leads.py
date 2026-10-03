@@ -173,6 +173,8 @@ class LeadFileImportResponse(BaseModel):
     imported: int = Field(..., ge=0)
     skipped: int = Field(..., ge=0)
     warnings: list[str] = Field(default_factory=list)
+    duplicates: int = Field(default=0, ge=0)
+    invalid: int = Field(default=0, ge=0)
 
 
 class LeadCreate(BaseModel):
