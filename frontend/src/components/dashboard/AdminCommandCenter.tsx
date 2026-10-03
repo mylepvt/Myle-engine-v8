@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
+import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -847,6 +848,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               </div>
             </section>
           ) : null}
+          <ControlRoomCard />
           <WinsFeedCard />
           <OverviewTab firstName={firstName} onCreateTask={() => setShowCreateTask(true)} />
         </TabsContent>

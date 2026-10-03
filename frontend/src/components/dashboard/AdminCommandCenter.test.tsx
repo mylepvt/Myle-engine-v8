@@ -26,6 +26,9 @@ vi.mock('@tanstack/react-query', async () => {
   }
 })
 
+vi.mock('@/components/wins/WinsFeedCard', () => ({ WinsFeedCard: () => null }))
+vi.mock('@/components/control-room/ControlRoomCard', () => ({ ControlRoomCard: () => null }))
+
 vi.mock('@/hooks/use-settings-query', () => ({
   useAppSettingsQuery: (...args: unknown[]) => mockUseAppSettingsQuery(...args),
   useSystemUsersSummaryQuery: (...args: unknown[]) => mockUseSystemUsersSummaryQuery(...args),

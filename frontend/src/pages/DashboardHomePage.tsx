@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, Layers, TrendingUp, Users, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle, Layers, TrendingUp, Zap } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
+import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
@@ -248,7 +249,6 @@ function WarRoomDashboard({
     )
   }
 
-  const s = los.data
   const h = lcc.data?.team_health
   const f = lcc.data?.fires
   const actions = lcc.data?.actions ?? []
@@ -491,26 +491,6 @@ function WarRoomDashboard({
             )}
           </div>
         </div>
-        <div className="rounded-2xl border bg-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-sm font-bold">
-              <Users className="size-4 text-info-ink" />
-              Team Members
-            </h3>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-ds-micro font-bold text-muted-foreground">
-              {s.total_members} total
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {s.members.slice(0, 8).map((m) => (
-              <div key={m.user_id} className="flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2.5 text-xs font-medium">
-                <span className={cn('size-2 shrink-0 rounded-full', m.is_active ? 'bg-success' : 'bg-destructive')} />
-                <span className="truncate">{m.name}</span>
-                <span className="ml-auto text-muted-foreground tabular-nums">{m.calls_today}</span>
-              </div>
-            ))}
-          </div>
-        </div>
 
       </div>
     </div>
@@ -681,6 +661,8 @@ export function DashboardHomePage() {
           Welcome back, {firstName}
         </h1>
       </div>
+
+      {role === 'leader' ? <ControlRoomCard /> : null}
 
       {role === 'leader' && (lcc.data?.fires?.members_at_risk ?? 0) > 0 && (
         <Card className="border-destructive/30">
