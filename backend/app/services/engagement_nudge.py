@@ -27,6 +27,7 @@ from app.models.user import User
 from app.models.xp_event import XpEvent
 from app.services.engagement_digest import build_morning_plans
 from app.services.live_metrics import ist_day_bounds
+from app.services.work_streak import current_work_streak
 from app.services.xp_service import NEXT_LEVEL_XP, XP_TABLE, _calculate_level
 
 NUDGE_ACTION = "engagement.nudge"
@@ -210,7 +211,7 @@ async def build_nudge_contexts(
             last_work_at=max(_aware(t) for t in last_times) if last_times else None,
             new_leads=plans[u.id].new_leads,
             followups_due=plans[u.id].followups_due,
-            streak=int(u.login_streak or 0),
+            streak=current_work_streak(u, today),
             calls_today=int(calls_today.get(u.id, 0)),
             rival_name=rival_name,
             rival_gap_xp=gap,

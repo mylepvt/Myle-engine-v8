@@ -2,7 +2,8 @@
  * Tiny pub/sub for the XP reward burst. The XP query notices a gain and emits;
  * <XpFlyLayer> (mounted once, app-wide) draws icons rising from the last tap.
  */
-export type XpFlyEvent = { amount: number; levelUp?: boolean }
+/** ``streak`` set = the call that just extended the work streak (flame burst). */
+export type XpFlyEvent = { amount: number; levelUp?: boolean; streak?: number }
 
 type Listener = (event: XpFlyEvent) => void
 const listeners = new Set<Listener>()
@@ -13,6 +14,6 @@ export function onXpFly(listener: Listener): () => void {
 }
 
 export function emitXpFly(event: XpFlyEvent): void {
-  if (event.amount <= 0) return
+  if (event.amount <= 0 && !event.streak) return
   listeners.forEach((listener) => listener(event))
 }

@@ -26,7 +26,11 @@ export function useXpRewardSound() {
     }
     // Make the reward visible, not just audible: icons + "+8 XP" float up
     // from where the user tapped (Instagram-heart style).
-    if (xpGained) emitXpFly({ amount: data.xp_total - p.xp_total, levelUp })
+    // The call that hits today's target extends the work streak: flame burst
+    // instead of the plain XP burst for that moment.
+    const streakUp = Boolean(data.streak_done_today) && data.streak > (p.streak ?? 0)
+    if (streakUp) emitXpFly({ amount: Math.max(0, data.xp_total - p.xp_total), streak: data.streak })
+    else if (xpGained) emitXpFly({ amount: data.xp_total - p.xp_total, levelUp })
     if (levelUp) {
       toast.success(`Level up! You're now ${data.level_label}.`, {
         description: `${data.xp_total} XP this season. Keep going.`,

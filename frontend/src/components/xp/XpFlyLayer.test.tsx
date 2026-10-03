@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { XpFlyLayer } from '@/components/xp/XpFlyLayer'
@@ -6,6 +6,7 @@ import { emitXpFly } from '@/lib/xp-fly'
 
 describe('XpFlyLayer', () => {
   afterEach(() => {
+    cleanup()
     vi.useRealTimers()
   })
 
@@ -23,6 +24,13 @@ describe('XpFlyLayer', () => {
       vi.advanceTimersByTime(1600)
     })
     expect(screen.queryByText('+8 XP')).toBeNull()
+  })
+
+  it('shows a flame burst with the streak when the call target is hit', () => {
+    const { container } = render(<XpFlyLayer />)
+    act(() => emitXpFly({ amount: 0, streak: 6 }))
+    expect(screen.getByText('6-day streak!')).toBeTruthy()
+    expect(container.querySelectorAll('.xp-fly-icon')).toHaveLength(10)
   })
 
   it('ignores zero/negative amounts', () => {

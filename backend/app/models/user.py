@@ -178,6 +178,11 @@ class User(Base):
     xp_level: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'rookie'"), default="rookie")
     login_streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     last_login_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # Work streak (migration 0100): consecutive IST days the daily call target was
+    # met. Unlike login_streak it only grows from real work. See services/work_streak.
+    work_streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    work_streak_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    work_streak_best: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     # Season tracking — which year/month this user's xp_total belongs to (migration 0032)
     xp_season_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     xp_season_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
