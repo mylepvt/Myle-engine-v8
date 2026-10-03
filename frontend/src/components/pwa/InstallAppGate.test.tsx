@@ -233,4 +233,38 @@ describe('InstallAppGate', () => {
     expect(screen.getByText(/Add to Home screen/i)).toBeInTheDocument()
     expect(screen.queryByText('dashboard content')).not.toBeInTheDocument()
   })
+
+  it('team and leaders on a phone cannot skip installing', async () => {
+    stubUserAgent(ANDROID_UA)
+    stubMatchMedia(false)
+
+    render(
+      <InstallAppGate allowSkip={false}>
+        <div>dashboard content</div>
+      </InstallAppGate>,
+    )
+    vi.advanceTimersByTime(1500)
+
+    await waitFor(() => {
+      expect(screen.getByText('Install Myle to continue')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Skip for now')).not.toBeInTheDocument()
+  })
+
+  it('desktop can still skip even when skipping is otherwise off', async () => {
+    stubUserAgent(DESKTOP_UA)
+    stubMatchMedia(false)
+
+    render(
+      <InstallAppGate allowSkip={false}>
+        <div>dashboard content</div>
+      </InstallAppGate>,
+    )
+    fireBeforeInstallPrompt(vi.fn().mockResolvedValue(undefined), 'dismissed')
+    vi.advanceTimersByTime(1500)
+
+    await waitFor(() => {
+      expect(screen.getByText('Skip for now')).toBeInTheDocument()
+    })
+  })
 })

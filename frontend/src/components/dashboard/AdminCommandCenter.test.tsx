@@ -27,6 +27,7 @@ vi.mock('@tanstack/react-query', async () => {
 })
 
 vi.mock('@/components/wins/WinsFeedCard', () => ({ WinsFeedCard: () => null }))
+vi.mock('@/components/dashboard/overview/AppSetupCard', () => ({ AppSetupCard: () => <div data-testid="app-setup" /> }))
 vi.mock('@/components/control-room/ControlRoomCard', () => ({ ControlRoomCard: () => <div data-testid="control-room" /> }))
 
 vi.mock('@/hooks/use-settings-query', () => ({
@@ -505,6 +506,7 @@ describe('AdminCommandCenter', () => {
 
     // Default landing is the simple Overview: who is working today.
     expect(screen.getByTestId('control-room')).toBeInTheDocument()
+    expect(screen.getByTestId('app-setup')).toBeInTheDocument()
     // Views are selected via a single Apple-style dropdown switcher; Overview is current.
     const switcher = screen.getByRole('button', { name: /Overview/ })
     expect(switcher).toHaveAttribute('aria-haspopup', 'menu')

@@ -8,6 +8,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
+import { useReportDeviceStatus } from '@/hooks/use-report-device-status'
 
 function BellIcon() {
   return (
@@ -27,8 +28,14 @@ function LoadingPulse() {
   )
 }
 
-export function PushNotificationGate({ children }: { children: ReactNode }) {
+/**
+ * `allowSkip` false (team / leader): notifications are required — no "Skip for now".
+ * Only a technical failure (not a refusal) offers a way through, so a server-side
+ * push problem can never lock the whole team out.
+ */
+export function PushNotificationGate({ children, allowSkip = true }: { children: ReactNode; allowSkip?: boolean }) {
   const push = usePushNotifications()
+  useReportDeviceStatus(true, push.isSubscribed)
   const [ready, setReady] = useState(false)
   const [skipped, setSkipped] = useState(false)
 
@@ -64,13 +71,16 @@ export function PushNotificationGate({ children }: { children: ReactNode }) {
           <EnableGate onSubscribe={() => void push.subscribe()} isLoading={push.isLoading} />
         )}
       </div>
-      {ready ? (
+      {ready && !allowSkip && push.errorMessage && push.permission !== 'denied' ? (
+        <p className="mt-4 max-w-sm text-center text-xs text-destructive-ink">{push.errorMessage}</p>
+      ) : null}
+      {ready && (allowSkip || (push.errorMessage && push.permission !== 'denied')) ? (
         <button
           type="button"
           onClick={() => setSkipped(true)}
           className="mt-5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
-          Skip for now
+          {allowSkip ? 'Skip for now' : 'Having trouble? Continue for now'}
         </button>
       ) : null}
     </div>
