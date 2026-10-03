@@ -412,6 +412,18 @@ async def put_alert_settings(
     return await get_alert_settings(user, session)
 
 
+@router.get("/app-setup")
+async def admin_app_setup(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Per member: app installed on the phone or used in the browser; notifications on/off."""
+    _require_admin(user)
+    from app.services.app_setup import build_app_setup
+
+    return await build_app_setup(session)
+
+
 @router.get("/today-pulse", response_model=TodayPulseResponse)
 async def admin_today_pulse(
     user: Annotated[AuthUser, Depends(require_auth_user)],

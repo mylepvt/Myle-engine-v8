@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
+import { AppSetupCard } from '@/components/dashboard/overview/AppSetupCard'
 
 type Props = {
   firstName: string
@@ -14,6 +15,7 @@ export function OverviewTab({ firstName, actionNeeded }: Props) {
     <div className="space-y-5">
       <h1 className="px-0.5 text-ds-h2 font-semibold capitalize tracking-tight text-foreground">Welcome back, {firstName}</h1>
       <ControlRoomCard groupByLeader />
+      <AppSetupCard />
       {actionNeeded}
     </div>
   )
