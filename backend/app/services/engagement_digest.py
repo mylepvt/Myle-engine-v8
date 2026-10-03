@@ -19,6 +19,7 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.models.xp_event import XpEvent
 from app.services.live_metrics import ist_day_bounds
+from app.services.work_streak import current_work_streak
 
 
 @dataclass
@@ -125,7 +126,7 @@ async def build_morning_plans(
         u.id: MorningPlan(
             new_leads=int(new_leads.get(u.id, 0)),
             followups_due=int(followups.get(u.id, 0)),
-            streak=int(u.login_streak or 0),
+            streak=current_work_streak(u, today),
         )
         for u in users
     }

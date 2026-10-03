@@ -1344,6 +1344,11 @@ class LeadsService:
             await _grant_xp(self._session, user.user_id, "call_logged", lead_id)
             if body.outcome in {"answered", "callback_requested"}:
                 await _grant_xp(self._session, user.user_id, "connected_call", lead_id)
+            # The call that reaches today's target extends the work streak.
+            from app.services.work_streak import bump_work_streak_after_call
+            caller = await self._session.get(User, user.user_id)
+            if caller is not None:
+                await bump_work_streak_after_call(self._session, caller)
             await self._session.commit()
         except Exception as exc:
             logger.warning("Connected-call XP grant failed user_id=%s lead_id=%s: %s", user.user_id, lead_id, exc)

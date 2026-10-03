@@ -64,7 +64,8 @@ async def ctx():
     async with Session() as s:
         s.add_all([
             User(id=ADMIN, fbo_id="f07800", email="a@t.myle", role="admin", name="Admin"),
-            User(id=ASHA, fbo_id="f07801", email="asha@t.myle", role="team", name="Asha", login_streak=4),
+            User(id=ASHA, fbo_id="f07801", email="asha@t.myle", role="team", name="Asha",
+                 work_streak=4, work_streak_date=today_ist() - timedelta(days=1)),
             User(id=BINA, fbo_id="f07802", email="bina@t.myle", role="team", name="Bina"),
         ])
         await s.flush()

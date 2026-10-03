@@ -7,7 +7,13 @@ export type XpMe = {
   level_label: string
   daily_xp: number
   daily_cap: number
+  /** Work streak: consecutive days the daily call target was met. */
   streak: number
+  streak_done_today?: boolean
+  best_streak?: number
+  calls_today?: number
+  call_target?: number
+  login_streak?: number
   next_level_xp: number | null
   progress_pct: number
   season_year: number | null

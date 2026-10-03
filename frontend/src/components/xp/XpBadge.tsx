@@ -30,6 +30,10 @@ export function XpBadge() {
     ? `${MONTH_NAMES[(data.season_month ?? 1) - 1]} ${data.season_year ?? ''}`
     : null
   const lastMonth = history?.[0]
+  const target = data.call_target ?? 0
+  const callsToday = Math.min(data.calls_today ?? 0, target)
+  const callsLeft = Math.max(0, target - (data.calls_today ?? 0))
+  const streakSaved = Boolean(data.streak_done_today)
 
   return (
     <Card className="border-primary/20 rounded-md">
@@ -56,6 +60,40 @@ export function XpBadge() {
           </span>
         </div>
 
+        {/* Work streak: today's call target keeps it alive */}
+        {target > 0 ? (
+          <div className="mb-3 rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                <Flame
+                  className={cn('size-4', data.streak > 0 ? 'fill-warning text-warning' : 'text-muted-foreground')}
+                  aria-hidden
+                />
+                {data.streak > 0 ? `${data.streak}-day streak` : 'Start a streak today'}
+              </span>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {callsToday}/{target} calls
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-warning transition-all duration-500"
+                style={{ width: `${target ? (callsToday / target) * 100 : 0}%` }}
+                role="progressbar"
+                aria-label="Calls toward today's target"
+                aria-valuenow={callsToday}
+                aria-valuemin={0}
+                aria-valuemax={target}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {streakSaved
+                ? 'Streak saved for today. See you tomorrow.'
+                : `${callsLeft} more ${callsLeft === 1 ? 'call' : 'calls'} today to ${data.streak > 0 ? 'keep' : 'start'} your streak.`}
+            </p>
+          </div>
+        ) : null}
+
         {/* Progress bar */}
         <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
           <span>Progress to next level</span>
@@ -79,11 +117,9 @@ export function XpBadge() {
             {' / '}
             <span>{data.daily_cap} XP today</span>
           </span>
-          {data.streak >= 2 && (
-            <span className="inline-flex items-center gap-1 font-medium text-warning-ink">
-              <Flame className="size-3.5" aria-hidden /> {data.streak} day streak
-            </span>
-          )}
+          {data.best_streak && data.best_streak >= 2 ? (
+            <span className="text-muted-foreground">Best streak: {data.best_streak} days</span>
+          ) : null}
         </div>
 
         {/* Last month result */}

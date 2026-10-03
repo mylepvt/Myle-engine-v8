@@ -41,6 +41,11 @@ XP_TABLE: dict[str, int] = {
     "lead_contacted": 10,
     "followup_completed": 20,     # process: +5
     "lead_won": 50,               # result: halved — process actions now dominate
+    # Work-streak milestone bonuses (services/work_streak.py)
+    "streak_3": 20,
+    "streak_7": 50,
+    "streak_14": 100,
+    "streak_30": 200,
 }
 
 # Excluded from process score (result-only actions)
@@ -217,7 +222,7 @@ async def grant_xp(
     await _maybe_reset_season(session, user)
 
     # Login/report actions are single-claim per day even if callers retry.
-    if action in {"login_daily", "report_submitted"}:
+    if action in {"login_daily", "report_submitted"} or action.startswith("streak_"):
         if await _already_granted_today(session, user_id, action, None):
             return None
 
@@ -439,12 +444,26 @@ async def get_user_xp_summary(session: AsyncSession, user_id: int) -> dict:
         span = next_xp - prev_threshold
         progress_pct = round(min(100.0, (xp_total - prev_threshold) / span * 100), 1) if span > 0 else 100.0
 
+    from app.core.time_ist import today_ist
+    from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
+    from app.services.work_streak import current_work_streak
+
+    today = today_ist()
+    call_target = await get_daily_call_target(session)
+    calls_today = (await fresh_call_counts_by_user(session, [user_id], today)).get(user_id, 0)
+
     return {
         "xp_total": xp_total,
         "level": level,
         "daily_xp": daily_xp,
         "daily_cap": DAILY_CAP,
-        "streak": user.login_streak or 0,
+        # Work streak: consecutive days the call target was met (not logins).
+        "streak": current_work_streak(user, today),
+        "streak_done_today": user.work_streak_date == today,
+        "best_streak": int(user.work_streak_best or 0),
+        "calls_today": int(calls_today),
+        "call_target": int(call_target),
+        "login_streak": user.login_streak or 0,
         "next_level_xp": next_xp,
         "progress_pct": progress_pct,
         "season_year": user.xp_season_year,

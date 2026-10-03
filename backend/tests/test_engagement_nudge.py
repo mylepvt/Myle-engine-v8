@@ -78,7 +78,8 @@ async def test_context_from_data(Session):
     now = datetime.now(timezone.utc)
     async with Session() as s:
         s.add_all([
-            User(id=1, fbo_id="f1", email="a@t", role="team", name="Asha Rao", login_streak=5, xp_total=90),
+            User(id=1, fbo_id="f1", email="a@t", role="team", name="Asha Rao", xp_total=90,
+                 work_streak=5, work_streak_date=now.astimezone(IST).date()),
             User(id=2, fbo_id="f2", email="b@t", role="team", name="Bina Shah"),
         ])
         await s.flush()
