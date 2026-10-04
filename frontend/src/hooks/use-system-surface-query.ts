@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 import { normalizeTrainingSurfacePayload } from '@/lib/training-surface'
 
-export type SystemSurface = 'training' | 'decision-engine' | 'coaching'
+export type SystemSurface = 'training'
 
 /** DB-backed training home (differs from stub shape). */
 export type TrainingSurfacePayload = {
@@ -25,8 +25,6 @@ export type TrainingSurfacePayload = {
 
 const PATHS: Record<SystemSurface, string> = {
   training: '/api/v1/system/training',
-  'decision-engine': '/api/v1/system/decision-engine',
-  coaching: '/api/v1/system/coaching',
 }
 
 async function fetchSystemSurface(

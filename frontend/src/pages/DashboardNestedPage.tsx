@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 
 import {
@@ -10,74 +10,62 @@ import {
 } from '@/config/dashboard-registry'
 import { PageTransition } from '@/components/ui/motion'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardPlaceholderPage } from '@/pages/DashboardPlaceholderPage'
-import { LeadsWorkPage } from '@/pages/LeadsWorkPage'
-import { EnrollmentAdminPage } from '@/pages/EnrollmentAdminPage'
-import { FollowUpsWorkPage } from '@/pages/FollowUpsWorkPage'
-import { LeadFlowPage } from '@/pages/LeadFlowPage'
-import { LeadGenPage } from '@/pages/LeadGenPage'
-import { LeadPoolWorkPage } from '@/pages/LeadPoolWorkPage'
-import { RecycleBinWorkPage } from '@/pages/RecycleBinWorkPage'
-import { TeamApprovalsPage } from '@/pages/TeamApprovalsPage'
-import { TeamMembersPage } from '@/pages/TeamMembersPage'
-import { TeamTrackingDetailPage } from '@/pages/TeamTrackingDetailPage'
-import { TeamTrackingPage } from '@/pages/TeamTrackingPage'
-import { MyTeamPage } from '@/pages/MyTeamPage'
-import { FlpMinBillingApprovalsPage } from '@/pages/FlpMinBillingApprovalsPage'
-import { SalesApprovalsPage } from '@/pages/SalesApprovalsPage'
-import { PendingAsProcessPage } from '@/pages/PendingAsProcessPage'
-import { AnalyticsSurfacePage } from '@/pages/AnalyticsSurfacePage'
-import { TrainingHubPage } from '@/pages/TrainingHubPage'
-import { SystemSurfacePage } from '@/pages/SystemSurfacePage'
-import { RetargetWorkPage } from '@/pages/RetargetWorkPage'
-import { WorkboardPage } from '@/pages/WorkboardPage'
-import { ShellStubPage } from '@/pages/ShellStubPage'
-import { WalletPage } from '@/pages/WalletPage'
-import { FinanceRechargesPage } from '@/pages/FinanceRechargesPage'
-import { LeadDetailPage } from '@/pages/LeadDetailPage'
-import { WalletRechargePage } from '@/pages/WalletRechargePage'
-import { WalletRechargeAdminPage } from '@/pages/WalletRechargeAdminPage'
-import { NoticeBoardPage } from '@/pages/NoticeBoardPage'
-import { TeamReportsPage } from '@/pages/TeamReportsPage'
-import { DailyReportFormPage } from '@/pages/DailyReportFormPage'
-import { CurrentCcPage } from '@/pages/CurrentCcPage'
-import { CurrentCcBoardPage } from '@/pages/CurrentCcBoardPage'
-import { CurrentCcBoardDetailPage } from '@/pages/CurrentCcBoardDetailPage'
-import AnalyticsPage from '@/pages/AnalyticsPage'
-import SettingsPage from '@/pages/SettingsPage'
-import { LeaderboardPage } from '@/pages/LeaderboardPage'
-import { LiveSessionPage } from '@/pages/LiveSessionPage'
-import { TrainingProgressPage } from '@/pages/TrainingProgressPage'
-import { BudgetExportPage } from '@/pages/BudgetExportPage'
-import { LeadControlPage } from '@/pages/LeadControlPage'
-import { SettingsAppPage } from '@/pages/SettingsAppPage'
-import { SettingsHelpPage } from '@/pages/SettingsHelpPage'
-import { SettingsOrgTreePage } from '@/pages/SettingsOrgTreePage'
-import { AllMembersPage } from '@/pages/AllMembersPage'
-import { AdminInvoicesPage } from '@/pages/AdminInvoicesPage'
-import { LeaderOSPage } from '@/pages/LeaderOSPage'
-import { DownloadsPage } from '@/pages/DownloadsPage'
-import { WhatsAppPanelPage } from '@/pages/WhatsAppPanelPage'
-import { AuditLogsPage } from '@/pages/AuditLogsPage'
-import { TeamAttendancePage } from '@/pages/TeamAttendancePage'
-import PerformerInsightsPage from '@/pages/PerformerInsightsPage'
+
+// Each dashboard page is its own chunk: a team member's phone only downloads the
+// screens they open, not every admin page.
+const LeadsWorkPage = lazy(() => import('@/pages/LeadsWorkPage').then((m) => ({ default: m.LeadsWorkPage })))
+const FollowUpsWorkPage = lazy(() => import('@/pages/FollowUpsWorkPage').then((m) => ({ default: m.FollowUpsWorkPage })))
+const LeadGenPage = lazy(() => import('@/pages/LeadGenPage').then((m) => ({ default: m.LeadGenPage })))
+const LeadPoolWorkPage = lazy(() => import('@/pages/LeadPoolWorkPage').then((m) => ({ default: m.LeadPoolWorkPage })))
+const RecycleBinWorkPage = lazy(() => import('@/pages/RecycleBinWorkPage').then((m) => ({ default: m.RecycleBinWorkPage })))
+const TeamApprovalsPage = lazy(() => import('@/pages/TeamApprovalsPage').then((m) => ({ default: m.TeamApprovalsPage })))
+const TeamMembersPage = lazy(() => import('@/pages/TeamMembersPage').then((m) => ({ default: m.TeamMembersPage })))
+const FlpMinBillingApprovalsPage = lazy(() => import('@/pages/FlpMinBillingApprovalsPage').then((m) => ({ default: m.FlpMinBillingApprovalsPage })))
+const SalesApprovalsPage = lazy(() => import('@/pages/SalesApprovalsPage').then((m) => ({ default: m.SalesApprovalsPage })))
+const PendingAsProcessPage = lazy(() => import('@/pages/PendingAsProcessPage').then((m) => ({ default: m.PendingAsProcessPage })))
+const TrainingHubPage = lazy(() => import('@/pages/TrainingHubPage').then((m) => ({ default: m.TrainingHubPage })))
+const WorkboardPage = lazy(() => import('@/pages/WorkboardPage').then((m) => ({ default: m.WorkboardPage })))
+const ShellStubPage = lazy(() => import('@/pages/ShellStubPage').then((m) => ({ default: m.ShellStubPage })))
+const WalletPage = lazy(() => import('@/pages/WalletPage').then((m) => ({ default: m.WalletPage })))
+const LeadDetailPage = lazy(() => import('@/pages/LeadDetailPage').then((m) => ({ default: m.LeadDetailPage })))
+const WalletRechargePage = lazy(() => import('@/pages/WalletRechargePage').then((m) => ({ default: m.WalletRechargePage })))
+const WalletAdminPage = lazy(() => import('@/pages/WalletAdminPage').then((m) => ({ default: m.WalletAdminPage })))
+const NoticeBoardPage = lazy(() => import('@/pages/NoticeBoardPage').then((m) => ({ default: m.NoticeBoardPage })))
+const TeamReportsPage = lazy(() => import('@/pages/TeamReportsPage').then((m) => ({ default: m.TeamReportsPage })))
+const DailyReportFormPage = lazy(() => import('@/pages/DailyReportFormPage').then((m) => ({ default: m.DailyReportFormPage })))
+const CurrentCcPage = lazy(() => import('@/pages/CurrentCcPage').then((m) => ({ default: m.CurrentCcPage })))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
+const LeaderboardPage = lazy(() => import('@/pages/LeaderboardPage').then((m) => ({ default: m.LeaderboardPage })))
+const LiveSessionPage = lazy(() => import('@/pages/LiveSessionPage').then((m) => ({ default: m.LiveSessionPage })))
+const TrainingProgressPage = lazy(() => import('@/pages/TrainingProgressPage').then((m) => ({ default: m.TrainingProgressPage })))
+const BudgetExportPage = lazy(() => import('@/pages/BudgetExportPage').then((m) => ({ default: m.BudgetExportPage })))
+const LeadControlPage = lazy(() => import('@/pages/LeadControlPage').then((m) => ({ default: m.LeadControlPage })))
+const SettingsAppPage = lazy(() => import('@/pages/SettingsAppPage').then((m) => ({ default: m.SettingsAppPage })))
+const SettingsHelpPage = lazy(() => import('@/pages/SettingsHelpPage').then((m) => ({ default: m.SettingsHelpPage })))
+const SettingsOrgTreePage = lazy(() => import('@/pages/SettingsOrgTreePage').then((m) => ({ default: m.SettingsOrgTreePage })))
+const AdminInvoicesPage = lazy(() => import('@/pages/AdminInvoicesPage').then((m) => ({ default: m.AdminInvoicesPage })))
+const DownloadsPage = lazy(() => import('@/pages/DownloadsPage').then((m) => ({ default: m.DownloadsPage })))
+const AuditLogsPage = lazy(() => import('@/pages/AuditLogsPage').then((m) => ({ default: m.AuditLogsPage })))
+
+function PageFallback() {
+  return (
+    <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-24 w-full max-w-2xl" />
+    </div>
+  )
+}
 
 function renderFullUi(ui: FullUiSurface, title: string) {
   switch (ui.kind) {
     case 'leads':
       return <LeadsWorkPage title={title} listMode={ui.listMode} />
-    case 'enroll-link':
-      return <EnrollmentAdminPage pageTitle={title} />
     case 'workboard':
       return <WorkboardPage title={title} />
     case 'follow-ups':
       return <FollowUpsWorkPage title={title} />
-    case 'retarget':
-      return <RetargetWorkPage title={title} />
-    case 'lead-flow':
-      return <LeadFlowPage title={title} />
     case 'lead-gen':
       return <LeadGenPage title={title} />
     case 'lead-pool':
@@ -86,45 +74,26 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RecycleBinWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
-    case 'team-attendance':
-      return <TeamAttendancePage title={title} />
-    case 'team-tracking':
-      return <TeamTrackingPage title={title} />
-    case 'leader-os':
-      return <LeaderOSPage />
     case 'team-approvals':
       return <TeamApprovalsPage title={title} />
-    case 'my-team':
-      return <MyTeamPage title={title} />
     case 'flp-min-billing':
       return <FlpMinBillingApprovalsPage title={title} />
     case 'sales-approvals':
       return <SalesApprovalsPage title={title} />
     case 'pending-as':
       return <PendingAsProcessPage title={title} />
-    case 'system':
-      return <SystemSurfacePage title={title} surface={ui.surface} />
     case 'lead-control':
       return <LeadControlPage title={title} />
-    case 'analytics':
-      if ('surface' in ui && ui.surface === 'activity-log') {
-        return <AuditLogsPage title={title} />
-      }
-      return 'surface' in ui ? (
-        <AnalyticsSurfacePage title={title} surface={ui.surface as 'activity-log'} />
-      ) : (
-        <AnalyticsPage />
-      )
+    case 'activity-log':
+      return <AuditLogsPage title={title} />
     case 'wallet':
       return <WalletPage title={title} />
-    case 'finance-recharges':
-      return <FinanceRechargesPage title={title} />
     case 'admin-invoices':
       return <AdminInvoicesPage title={title} />
     case 'wallet-recharge':
       return <WalletRechargePage title={title} />
-    case 'wallet-recharge-admin':
-      return <WalletRechargeAdminPage title={title} />
+    case 'wallet-admin':
+      return <WalletAdminPage title={title} />
     case 'notice-board':
       return <NoticeBoardPage title={title} />
     case 'team-reports':
@@ -133,8 +102,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <DailyReportFormPage title={title} />
     case 'current-cc':
       return <CurrentCcPage title={title} />
-    case 'current-cc-board':
-      return <CurrentCcBoardPage title={title} />
     case 'settings':
       return <SettingsPage />
     case 'leaderboard':
@@ -143,8 +110,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <LiveSessionPage title={title} />
     case 'training-hub':
       return <TrainingHubPage title={title} />
-    case 'redirect':
-      return <Navigate to={ui.to} replace />
     case 'training-progress':
       return <TrainingProgressPage title={title} />
     case 'downloads':
@@ -157,12 +122,6 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <SettingsHelpPage title={title} />
     case 'settings-org-tree':
       return <SettingsOrgTreePage title={title} />
-    case 'all-members':
-      return <AllMembersPage title={title} />
-    case 'whatsapp-panel':
-      return <WhatsAppPanelPage title={title} />
-    case 'performer-insights':
-      return <PerformerInsightsPage title={title} />
     case 'shell-api':
       return <ShellStubPage title={title} apiPath={ui.apiPath} />
     default: {
@@ -179,47 +138,25 @@ export function DashboardNestedPage() {
   const { '*': splat } = useParams()
   const path = (splat ?? '').replace(/^\/+|\/+$/g, '')
   const { role: navRole, isPending: rolePending } = useDashboardShellRole()
-  const { data: me } = useAuthMeQuery()
-  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
 
   const leadDetailMatch = /^work\/leads\/(\d+)$/.exec(path)
   if (leadDetailMatch) {
     const leadId = parseInt(leadDetailMatch[1], 10)
-    return <LeadDetailPage leadId={leadId} />
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <LeadDetailPage leadId={leadId} />
+      </Suspense>
+    )
   }
 
-  const ccBoardDetailMatch = /^team\/cc-board\/(\d+)$/.exec(path)
-  if (ccBoardDetailMatch) {
-    if (rolePending) {
-      return (
-        <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-24 w-full max-w-2xl" />
-        </div>
-      )
-    }
-    if (!navRole || (navRole !== 'admin' && navRole !== 'leader')) {
-      return <Navigate to="/dashboard" replace />
-    }
-    const targetUserId = parseInt(ccBoardDetailMatch[1], 10)
-    return <CurrentCcBoardDetailPage userId={targetUserId} />
+  // Retarget moved into the Calling Board as a tab — keep old links working.
+  if (path === 'work/retarget') {
+    return <Navigate to="/dashboard/work/leads?tab=retarget" replace />
   }
 
-  const trackingDetailMatch = /^team\/tracking\/(\d+)$/.exec(path)
-  if (trackingDetailMatch) {
-    if (rolePending) {
-      return (
-        <div className="space-y-3 p-4" aria-busy="true" aria-label="Loading">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-24 w-full max-w-2xl" />
-        </div>
-      )
-    }
-    if (!navRole || (navRole !== 'admin' && navRole !== 'leader')) {
-      return <Navigate to="/dashboard" replace />
-    }
-    const targetUserId = parseInt(trackingDetailMatch[1], 10)
-    return <TeamTrackingDetailPage title="Tracking detail" userId={targetUserId} />
+  // Enrollment Link page merged into the Calling Board "Enrollment Video" status.
+  if (path === 'work/enroll-link') {
+    return <Navigate to="/dashboard/work/leads" replace />
   }
 
   if (!path || !dashboardChildPathSet.has(path)) {
@@ -245,11 +182,6 @@ export function DashboardNestedPage() {
     return <Navigate to="/dashboard" replace />
   }
 
-  // Per-user capability gate: enrollment-link page needs the admin-granted flag.
-  if (def.surface === 'full' && def.ui.kind === 'enroll-link' && !enrollAllowed) {
-    return <Navigate to="/dashboard" replace />
-  }
-
   const title = resolveTitleForPath(path, navRole) ?? path
 
   let content: ReactNode
@@ -272,7 +204,7 @@ export function DashboardNestedPage() {
   // PageTransition no-ops under prefers-reduced-motion.
   return (
     <PageTransition key={path} className="h-full">
-      {content}
+      <Suspense fallback={<PageFallback />}>{content}</Suspense>
     </PageTransition>
   )
 }

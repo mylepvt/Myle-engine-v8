@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, event, func, inspect as sa_inspect, text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, event, func, inspect as sa_inspect, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,12 @@ _ProcessJSON = JSON().with_variant(JSONB(), "postgresql")
 
 class Lead(Base):
     __tablename__ = "leads"
+    # Hot list / maintenance filters (see migration 20261003_0103).
+    __table_args__ = (
+        Index("ix_leads_assignee_active", "assigned_to_user_id", "archived_at", "deleted_at"),
+        Index("ix_leads_status_last_action", "status", "last_action_at"),
+        Index("ix_leads_created_by_user_id", "created_by_user_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -151,6 +157,14 @@ class Lead(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    # Enrollment proof (₹149–200 screenshot) — required before a team lead goes to Day 1.
+    enrollment_amount_cents: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    enrollment_proof_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    enrollment_proof_uploaded_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    enrollment_proof_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     mindset_started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

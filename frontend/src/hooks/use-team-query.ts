@@ -56,13 +56,6 @@ export type TeamMemberListResponse = {
   offset: number
 }
 
-export type TeamMyTeamResponse = {
-  items: TeamMemberPublic[]
-  total: number
-  direct_members?: number
-  total_downline?: number
-}
-
 export type TeamFlpMinBillingListResponse = {
   items: TeamFlpMinBillingRequest[]
   total: number
@@ -135,12 +128,6 @@ export async function fetchTeamMembers(): Promise<TeamMemberListResponse> {
   }
 }
 
-async function fetchMyTeam(): Promise<TeamMyTeamResponse> {
-  const res = await apiFetch('/api/v1/team/my-team')
-  if (!res.ok) await parseError(res)
-  return res.json()
-}
-
 async function fetchFlpMinBillingRequests(): Promise<TeamFlpMinBillingListResponse> {
   const res = await apiFetch('/api/v1/team/flp-min-billing-requests')
   if (!res.ok) await parseError(res)
@@ -207,14 +194,6 @@ export function useTeamMembersQuery(enabled = true) {
     enabled,
     staleTime: 30_000,
     refetchInterval: 60_000,
-  })
-}
-
-export function useMyTeamQuery(enabled = true) {
-  return useQuery({
-    queryKey: ['team', 'my-team'],
-    queryFn: fetchMyTeam,
-    enabled,
   })
 }
 
@@ -479,6 +458,30 @@ export async function deleteMember(userId: number): Promise<void> {
   if (!res.ok && res.status !== 204) await parseError(res)
 }
 
+export type MemberPurgeResult = {
+  leads_moved: number
+  leads_moved_to_user_id: number
+  downline_moved: number
+}
+
+/** Irreversible: erases the member's identity and frees their FBO ID / email / phone. */
+export async function purgeMember(userId: number): Promise<MemberPurgeResult> {
+  const res = await apiFetch(`/api/v1/team/members/${userId}/purge`, { method: 'POST' })
+  if (!res.ok) await parseError(res)
+  return res.json() as Promise<MemberPurgeResult>
+}
+
+export function usePurgeMemberMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: purgeMember,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['team'] })
+      void queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+}
+
 export function useDeleteMemberMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -523,25 +526,3 @@ export function useToggleTrainingLockMutation() {
   })
 }
 
-async function toggleEnrollmentAccess(body: { userId: number; enabled: boolean }): Promise<{ enrollment_link_access: boolean }> {
-  const res = await apiFetch(`/api/v1/team/members/${body.userId}/enrollment-access`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ enabled: body.enabled }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error((err as { detail?: string }).detail ?? res.statusText)
-  }
-  return res.json()
-}
-
-export function useToggleEnrollmentAccessMutation() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: toggleEnrollmentAccess,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['team', 'members'] })
-    },
-  })
-}

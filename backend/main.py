@@ -29,21 +29,33 @@ from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
+import app.services.admin_alerts  # noqa: F401 — registers the live admin alert hooks
+
+import logging as _logging
+
+# Scheduled jobs log one INFO line per run ("morning_plan: targeted=… sent=…"). With no
+# handler on the root logger those were dropped, so they never reached Render's logs.
+_jobs_logger = _logging.getLogger("app.services.scheduled_jobs")
+if not _jobs_logger.handlers:
+    _h = _logging.StreamHandler()
+    _h.setFormatter(_logging.Formatter("%(levelname)s: %(name)s: %(message)s"))
+    _jobs_logger.addHandler(_h)
+    _jobs_logger.setLevel(_logging.INFO)
+    _jobs_logger.propagate = False
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
     job_closing_pipeline_maintenance,
-    job_daily_leader_team_summary,
-    job_daily_report_reminder,
-    job_eos_action_queue_digest,
+    job_evening_recap,
     job_eos_automation_rules,
     job_eos_mission_pregeneration,
     job_eos_verification_escalations,
     job_flp_min_billing_proof_alert,
+    job_inactivity_nudge,
     job_integrity_audit,
     job_general_pipeline_maintenance,
+    job_lead_booking_fulfillment,
+    job_morning_plan,
     job_leader_basics_enforcement,
-    job_management_updates,
-    job_management_weekly_report,
     job_tracking_report_reminder,
     job_watch_archive_maintenance,
     job_weekly_compliance_digest,
@@ -87,9 +99,23 @@ async def lifespan(_app: FastAPI):
             misfire_grace_time=3600,
         )
         _scheduler.add_job(
-            job_daily_report_reminder,
-            CronTrigger(hour=21, minute=0, timezone="Asia/Kolkata"),
-            id="daily_report_reminder",
+            job_morning_plan,
+            CronTrigger(hour=9, minute=0, timezone="Asia/Kolkata"),
+            id="morning_plan",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_inactivity_nudge,
+            CronTrigger(hour="11-16", minute="0,30", timezone="Asia/Kolkata"),
+            id="inactivity_nudge",
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
+        _scheduler.add_job(
+            job_evening_recap,
+            CronTrigger(hour=20, minute=30, timezone="Asia/Kolkata"),
+            id="evening_recap",
             replace_existing=True,
             misfire_grace_time=1800,
         )
@@ -129,32 +155,18 @@ async def lifespan(_app: FastAPI):
             misfire_grace_time=120,
         )
         _scheduler.add_job(
+            job_lead_booking_fulfillment,
+            IntervalTrigger(minutes=10),
+            id="lead_booking_fulfillment",
+            replace_existing=True,
+            misfire_grace_time=120,
+        )
+        _scheduler.add_job(
             job_leader_basics_enforcement,
             CronTrigger(hour=23, minute=30, timezone="Asia/Kolkata"),
             id="leader_basics_enforcement",
             replace_existing=True,
             misfire_grace_time=1800,
-        )
-        _scheduler.add_job(
-            job_daily_leader_team_summary,
-            CronTrigger(hour=22, minute=0, timezone="Asia/Kolkata"),
-            id="daily_leader_team_summary",
-            replace_existing=True,
-            misfire_grace_time=1800,
-        )
-        _scheduler.add_job(
-            job_management_updates,
-            CronTrigger(hour=21, minute=30, timezone="Asia/Kolkata"),
-            id="management_updates",
-            replace_existing=True,
-            misfire_grace_time=1800,
-        )
-        _scheduler.add_job(
-            job_management_weekly_report,
-            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone="Asia/Kolkata"),
-            id="management_weekly_report",
-            replace_existing=True,
-            misfire_grace_time=3600,
         )
         _scheduler.add_job(
             job_eos_mission_pregeneration,
@@ -174,13 +186,6 @@ async def lifespan(_app: FastAPI):
             job_eos_verification_escalations,
             CronTrigger(hour="11,18", minute=0, timezone="Asia/Kolkata"),
             id="eos_verification_escalations",
-            replace_existing=True,
-            misfire_grace_time=1800,
-        )
-        _scheduler.add_job(
-            job_eos_action_queue_digest,
-            CronTrigger(hour=9, minute=0, timezone="Asia/Kolkata"),
-            id="eos_action_queue_digest",
             replace_existing=True,
             misfire_grace_time=1800,
         )

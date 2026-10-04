@@ -1,15 +1,12 @@
 import { type HTMLAttributes, useEffect, useMemo, useState } from 'react'
-import { Eye, EyeOff, CheckCircle2, XCircle, Smartphone } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useAppSettingUpdateMutation,
   useAppSettingsQuery,
-  useWhatsAppStatusQuery,
-  useWhatsAppTestSendMutation,
 } from '@/hooks/use-settings-query'
 import { apiFetch } from '@/lib/api'
-import { type ReminderResult, type SendRemindersResponse } from '@/hooks/use-today-pulse-query'
+import { buildLiveSessionMessage, extractJoinUrl, extractPasscode } from '@/lib/live-session-message'
 
 type Props = { title: string }
 
@@ -36,24 +33,20 @@ const BATCH_VIDEO_FIELDS: readonly SettingsTextField[] = [
   { key: 'batch_d2_evening_v2', label: 'Day 2 - Evening Video 2', placeholder: 'https://youtube.com/watch?v=...', help: 'Video URL for watch/batch/d2_evening/2.' },
 ]
 
+// The 2 PM message text is fixed (src/lib/live-session-message.ts); only the
+// Zoom link and its passcode change day to day. The Meeting ID comes from the link.
 const LIVE_SESSION_FIELDS: readonly SettingsTextField[] = [
   {
     key: 'live_session_url',
-    label: 'Join Link (Zoom/Meet)',
+    label: 'Zoom link',
     placeholder: 'https://us06web.zoom.us/j/...',
-    help: 'Daily 2 PM session join link. Members tap this on the Home + Live Session screen.',
-  },
-  {
-    key: 'live_session_title',
-    label: 'Topic / Title',
-    placeholder: "Today's Live Session — topic + speaker",
-    help: 'Shown as the heading on the live card.',
+    help: 'The Zoom link for the day. You can also paste the whole Zoom "Copy Invitation" text: the link and passcode are filled in for you. The Meeting ID is read from the link.',
   },
   {
     key: 'live_session_schedule',
-    label: 'Time / Meeting ID / Passcode',
-    placeholder: '⏰ 2:00 PM · ID 836 4190 3667 · Passcode 303948',
-    help: 'Free text under the title — put the time, Meeting ID and Passcode here.',
+    label: 'Passcode',
+    placeholder: '331434',
+    help: 'Passcode of the current Zoom meeting. Leave empty to drop the Passcode line from the message.',
   },
 ]
 
@@ -88,28 +81,11 @@ export function SettingsAppPage({ title }: Props) {
     refetch: refetchAppSettings,
   } = useAppSettingsQuery()
   const updateAppSetting = useAppSettingUpdateMutation()
-  const {
-    data: waStatus,
-    isFetching: waStatusFetching,
-    refetch: refetchWaStatus,
-  } = useWhatsAppStatusQuery()
-  const waTestSend = useWhatsAppTestSendMutation()
-  const [waTestPhone, setWaTestPhone] = useState('')
-
   const [q, setQ] = useState('')
   const [contentEdits, setContentEdits] = useState<Record<string, string>>({})
-  const [enrollmentUrlValue, setEnrollmentUrlValue] = useState('')
-  const [enrollmentSaveMsg, setEnrollmentSaveMsg] = useState<string | null>(null)
-  const [enrollmentErrorMsg, setEnrollmentErrorMsg] = useState<string | null>(null)
   const [secureEnrollUrlValue, setSecureEnrollUrlValue] = useState('')
   const [secureEnrollSaveMsg, setSecureEnrollSaveMsg] = useState<string | null>(null)
   const [secureEnrollErrorMsg, setSecureEnrollErrorMsg] = useState<string | null>(null)
-  const [waEdits, setWaEdits] = useState<Record<string, string>>({})
-  const [showAccessToken, setShowAccessToken] = useState(false)
-  const [reminderSending, setReminderSending] = useState(false)
-  const [reminderSummary, setReminderSummary] = useState<Omit<SendRemindersResponse, 'results'> | null>(null)
-  const [reminderResults, setReminderResults] = useState<ReminderResult[] | null>(null)
-  const [reminderError, setReminderError] = useState<string | null>(null)
   const [batchEdits, setBatchEdits] = useState<Record<string, string>>({})
   const [batchSaveMsg, setBatchSaveMsg] = useState<string | null>(null)
   const [batchErrorMsg, setBatchErrorMsg] = useState<string | null>(null)
@@ -117,16 +93,9 @@ export function SettingsAppPage({ title }: Props) {
   const [liveSessionSaveMsg, setLiveSessionSaveMsg] = useState<string | null>(null)
   const [liveSessionErrorMsg, setLiveSessionErrorMsg] = useState<string | null>(null)
   const [contentSaveMsg, setContentSaveMsg] = useState<string | null>(null)
-  const [waSaveMsg, setWaSaveMsg] = useState<string | null>(null)
   const [contentErrorMsg, setContentErrorMsg] = useState<string | null>(null)
-  const [waErrorMsg, setWaErrorMsg] = useState<string | null>(null)
   const settingsSource = appSettingsData?.settings ?? {}
 
-  useEffect(() => {
-    if (!enrollmentUrlValue && settingsSource.flp_min_billing_video_source_url) {
-      setEnrollmentUrlValue(settingsSource.flp_min_billing_video_source_url)
-    }
-  }, [settingsSource.flp_min_billing_video_source_url])
   useEffect(() => {
     if (!secureEnrollUrlValue && settingsSource.enrollment_video_source_url) {
       setSecureEnrollUrlValue(settingsSource.enrollment_video_source_url)
@@ -134,8 +103,6 @@ export function SettingsAppPage({ title }: Props) {
   }, [settingsSource.enrollment_video_source_url])
   const resolvedContentValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(contentEdits, key) ? (contentEdits[key] ?? '') : (settingsSource[key] ?? '')
-  const resolvedWaValue = (key: string): string =>
-    Object.prototype.hasOwnProperty.call(waEdits, key) ? (waEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedBatchValue = (key: string): string =>
     Object.prototype.hasOwnProperty.call(batchEdits, key) ? (batchEdits[key] ?? '') : (settingsSource[key] ?? '')
   const resolvedLiveSessionValue = (key: string): string =>
@@ -158,11 +125,17 @@ export function SettingsAppPage({ title }: Props) {
     setLiveSessionErrorMsg(null)
     try {
       for (const field of LIVE_SESSION_FIELDS) {
-        const value = resolvedLiveSessionValue(field.key).trim()
+        const raw = resolvedLiveSessionValue(field.key).trim()
+        const value =
+          field.key === 'live_session_url'
+            ? extractJoinUrl(raw)
+            : field.key === 'live_session_schedule'
+              ? extractPasscode(raw)
+              : raw
         await updateAppSetting.mutateAsync({ key: field.key, value })
       }
       setLiveSessionEdits({})
-      setLiveSessionSaveMsg('Live session updated — visible to all members now.')
+      setLiveSessionSaveMsg('Live session updated — visible to all members now. Team & leaders get a notification when the link changes.')
       void refetchAppSettings()
     } catch (error) {
       setLiveSessionErrorMsg(error instanceof Error ? error.message : 'Could not save live session.')
@@ -201,21 +174,6 @@ export function SettingsAppPage({ title }: Props) {
     }
   }
 
-  const handleSaveEnrollmentUrl = async () => {
-    setEnrollmentSaveMsg(null)
-    setEnrollmentErrorMsg(null)
-    try {
-      await updateAppSetting.mutateAsync({
-        key: 'flp_min_billing_video_source_url',
-        value: enrollmentUrlValue.trim(),
-      })
-      setEnrollmentSaveMsg('Enrollment video URL saved.')
-      void refetchAppSettings()
-    } catch (error) {
-      setEnrollmentErrorMsg(error instanceof Error ? error.message : 'Could not save enrollment video URL.')
-    }
-  }
-
   const handleSaveSecureEnrollUrl = async () => {
     setSecureEnrollSaveMsg(null)
     setSecureEnrollErrorMsg(null)
@@ -224,168 +182,10 @@ export function SettingsAppPage({ title }: Props) {
         key: 'enrollment_video_source_url',
         value: secureEnrollUrlValue.trim(),
       })
-      setSecureEnrollSaveMsg('Secure enrollment link video saved.')
+      setSecureEnrollSaveMsg('Enrollment video saved.')
       void refetchAppSettings()
     } catch (error) {
       setSecureEnrollErrorMsg(error instanceof Error ? error.message : 'Could not save secure enrollment video URL.')
-    }
-  }
-
-  const WA_FIELDS = [
-    {
-      key: 'whatsapp.meta.phone_number_id',
-      label: 'Phone Number ID',
-      placeholder: '123456789012345',
-      help: 'Meta Developer Console → WhatsApp → API Setup → Phone Number ID.',
-    },
-    {
-      key: 'whatsapp.meta.access_token',
-      label: 'Access Token',
-      placeholder: 'EAAGm0PX4ZAisBOxxx...',
-      help: 'Meta Developer Console → WhatsApp → API Setup → Temporary or Permanent Token.',
-    },
-    {
-      key: 'whatsapp.meta.api_version',
-      label: 'API Version',
-      placeholder: 'v19.0',
-      help: 'Meta Graph API version. Default: v19.0',
-    },
-    {
-      key: 'whatsapp.meta.verify_token',
-      label: 'Webhook Verify Token',
-      placeholder: 'myle-webhook-secret-2026',
-      help: 'Create any string. Must match what is set in Meta Console.',
-    },
-    {
-      key: 'whatsapp.removal_template_name',
-      label: 'Removal Template Name',
-      placeholder: 'member_removal_v1',
-      help: 'Exact approved template name in Meta — for removal outreach. Delivers even outside the 24-hour window once set.',
-    },
-    {
-      key: 'whatsapp.removal_template_lang',
-      label: 'Removal Template Language',
-      placeholder: 'en',
-      help: 'Template language code, e.g. en, en_US, hi. Default: en',
-    },
-    {
-      key: 'whatsapp.report_reminder_template_name',
-      label: 'Report Reminder Template Name',
-      placeholder: 'daily_report_reminder',
-      help: 'Exact approved template name in Meta — for report reminders. Delivers even outside the 24-hour window once set.',
-    },
-    {
-      key: 'whatsapp.report_reminder_template_lang',
-      label: 'Report Reminder Template Language',
-      placeholder: 'en',
-      help: 'Template language code. Default: en',
-    },
-    {
-      key: 'whatsapp.daily_team_summary_template_name',
-      label: 'Daily Team Summary Template',
-      placeholder: 'daily_team_summary',
-      help: 'Leader ko daily report summary — jab kuch members ne submit nahi kiya ho.',
-    },
-    {
-      key: 'whatsapp.daily_team_summary_template_lang',
-      label: '… Language',
-      placeholder: 'en',
-      help: 'Template language code. Default: en',
-    },
-    {
-      key: 'whatsapp.daily_team_summary_all_clear_template_name',
-      label: 'Daily Team Summary (All Clear) Template',
-      placeholder: 'daily_team_summary_all_clear',
-      help: 'Leader ko daily report summary — jab saare members ne submit kar diya ho.',
-    },
-    {
-      key: 'whatsapp.daily_team_summary_all_clear_template_lang',
-      label: '… Language',
-      placeholder: 'en',
-      help: 'Template language code. Default: en',
-    },
-    {
-      key: 'whatsapp.leader_member_removed_template_name',
-      label: 'Member Removed (Leader Alert) Template',
-      placeholder: 'leader_member_removed',
-      help: 'Leader ko alert jab uske team se koi member remove kiya jaye.',
-    },
-    {
-      key: 'whatsapp.leader_member_removed_template_lang',
-      label: '… Language',
-      placeholder: 'en',
-      help: 'Template language code. Default: en',
-    },
-    {
-      key: 'whatsapp.leader_new_member_template_name',
-      label: 'New Member (Leader Alert) Template',
-      placeholder: 'leader_new_member',
-      help: 'Leader ko alert jab naya member approve hoke team mein add ho.',
-    },
-    {
-      key: 'whatsapp.leader_new_member_template_lang',
-      label: '… Language',
-      placeholder: 'en',
-      help: 'Template language code. Default: en',
-    },
-    {
-      key: 'whatsapp.leader_grace_requested_template_name',
-      label: 'Grace Requested (Leader Alert) Template',
-      placeholder: 'leader_grace_requested',
-      help: 'Leader ko alert jab kisi member ne grace period request kiya ho.',
-    },
-    {
-      key: 'whatsapp.leader_grace_requested_template_lang',
-      label: '… Language',
-      placeholder: 'en',
-      help: 'Template language code. Default: en',
-    },
-    {
-      key: 'whatsapp.member_removal_notice_template_name',
-      label: 'Member Removal Notice Template',
-      placeholder: 'member_removal_notice',
-      help: 'Member ko removal notification — jab use system se hata diya jaye.',
-    },
-    {
-      key: 'whatsapp.member_removal_notice_template_lang',
-      label: '… Language',
-      placeholder: 'en',
-      help: 'Template language code. Default: en',
-    },
-  ] as const
-
-  const handleSendReportReminders = async () => {
-    setReminderSending(true)
-    setReminderError(null)
-    setReminderSummary(null)
-    setReminderResults(null)
-    try {
-      const res = await apiFetch('/api/v1/admin/send-report-reminders', { method: 'POST' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: SendRemindersResponse = await res.json()
-      setReminderSummary({ sent: data.sent, failed: data.failed, no_phone: data.no_phone })
-      setReminderResults(data.results)
-    } catch (err) {
-      setReminderError(err instanceof Error ? err.message : 'Send failed')
-    } finally {
-      setReminderSending(false)
-    }
-  }
-
-  const handleSaveWhatsApp = async () => {
-    setWaSaveMsg(null)
-    setWaErrorMsg(null)
-    try {
-      for (const field of WA_FIELDS) {
-        const value = resolvedWaValue(field.key).trim()
-        await updateAppSetting.mutateAsync({ key: field.key, value })
-      }
-      setWaEdits({})
-      setWaSaveMsg('WhatsApp settings saved.')
-      void refetchAppSettings()
-      void refetchWaStatus()
-    } catch (error) {
-      setWaErrorMsg(error instanceof Error ? error.message : 'Could not save WhatsApp settings.')
     }
   }
 
@@ -401,7 +201,7 @@ export function SettingsAppPage({ title }: Props) {
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">🔴 Daily Live Session (2 PM)</h2>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><span className="size-2 rounded-full bg-destructive" aria-hidden />Daily Live Session (2 PM)</h2>
           <p className="text-xs text-muted-foreground">
             Roz ka naya Zoom link yahan paste karo. Ye turant sabhi members ke Home aur Live Session screen par dikhega.
           </p>
@@ -421,7 +221,23 @@ export function SettingsAppPage({ title }: Props) {
                 <input
                   type="text"
                   value={resolvedLiveSessionValue(field.key)}
-                  onChange={(e) => setLiveSessionEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (field.key === 'live_session_url' && /\s/.test(raw.trim())) {
+                      // whole Zoom invitation pasted: keep only the link, lift the passcode out of it
+                      const pass = extractPasscode(raw)
+                      setLiveSessionEdits((prev) => ({
+                        ...prev,
+                        live_session_url: extractJoinUrl(raw),
+                        ...(pass ? { live_session_schedule: pass } : {}),
+                      }))
+                      return
+                    }
+                    setLiveSessionEdits((prev) => ({
+                      ...prev,
+                      [field.key]: field.key === 'live_session_schedule' ? extractPasscode(raw) || raw : raw,
+                    }))
+                  }}
                   placeholder={field.placeholder}
                   className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
                 />
@@ -430,6 +246,18 @@ export function SettingsAppPage({ title }: Props) {
             ))}
           </div>
         )}
+
+        {extractJoinUrl(resolvedLiveSessionValue('live_session_url')) ? (
+          <div>
+            <p className="mb-1 text-ds-caption text-muted-foreground">Members see and copy exactly this message:</p>
+            <pre className="max-h-72 select-text overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/40 p-3 font-sans text-xs leading-relaxed text-foreground">
+              {buildLiveSessionMessage(
+                extractJoinUrl(resolvedLiveSessionValue('live_session_url')),
+                extractPasscode(resolvedLiveSessionValue('live_session_schedule')),
+              )}
+            </pre>
+          </div>
+        ) : null}
 
         <div className="flex items-center gap-3">
           <button
@@ -440,7 +268,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Update live session'}
           </button>
-          {liveSessionSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{liveSessionSaveMsg}</p> : null}
+          {liveSessionSaveMsg ? <p className="text-xs text-success-ink">{liveSessionSaveMsg}</p> : null}
           {liveSessionErrorMsg ? <p className="text-xs text-destructive">{liveSessionErrorMsg}</p> : null}
         </div>
       </section>
@@ -486,7 +314,7 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save content links'}
           </button>
-          {contentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{contentSaveMsg}</p> : null}
+          {contentSaveMsg ? <p className="text-xs text-success-ink">{contentSaveMsg}</p> : null}
           {contentErrorMsg ? <p className="text-xs text-destructive">{contentErrorMsg}</p> : null}
         </div>
       </section>
@@ -522,7 +350,7 @@ export function SettingsAppPage({ title }: Props) {
                         const field = BATCH_VIDEO_FIELDS.find((f) => f.key === key)
                         return (
                           <label key={key} className="block text-sm">
-                            <span className="mb-0.5 block text-ds-caption text-muted-foreground/60">Video {v}</span>
+                            <span className="mb-0.5 block text-ds-caption text-muted-foreground">Video {v}</span>
                             <input
                               type="text"
                               value={resolvedBatchValue(key)}
@@ -550,58 +378,18 @@ export function SettingsAppPage({ title }: Props) {
           >
             {updateAppSetting.isPending ? 'Saving...' : 'Save batch video links'}
           </button>
-          {batchSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{batchSaveMsg}</p> : null}
+          {batchSaveMsg ? <p className="text-xs text-success-ink">{batchSaveMsg}</p> : null}
           {batchErrorMsg ? <p className="text-xs text-destructive">{batchErrorMsg}</p> : null}
         </div>
       </section>
 
       <section className="surface-elevated space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Enrollment Live Video</h2>
+          <h2 className="text-sm font-semibold text-foreground">Enrollment Video</h2>
           <p className="text-xs text-muted-foreground">
-            When "Send Enrollment-Live video" is sent from the calling board, the lead receives a token link. Set the video URL here.
-          </p>
-        </div>
-
-        {appSettingsPending ? (
-          <Skeleton className="h-9 w-full" />
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load app settings.'}
-          </div>
-        ) : (
-          <label className="block text-sm">
-            <span className="mb-1 block text-ds-caption text-muted-foreground">Video URL</span>
-            <input
-              type="text"
-              value={enrollmentUrlValue}
-              onChange={(e) => setEnrollmentUrlValue(e.target.value)}
-              placeholder="https://pub-xxxx.r2.dev/enrollment.mp4"
-              className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-            />
-            <span className="mt-1 block text-muted-foreground/80">Direct hosted URL (R2 / .mp4 / HLS) — YouTube nahi.</span>
-          </label>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || appSettingsError}
-            onClick={() => void handleSaveEnrollmentUrl()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video URL'}
-          </button>
-          {enrollmentSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{enrollmentSaveMsg}</p> : null}
-          {enrollmentErrorMsg ? <p className="text-xs text-destructive">{enrollmentErrorMsg}</p> : null}
-        </div>
-      </section>
-
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">New Enrollment Link (Secure Video)</h2>
-          <p className="text-xs text-muted-foreground">
-            Secure enrollment link (Today tab 🔗 button + Enrollment Link page) sends this video. Set Cloudflare R2 link/key.
+            Sent from the Calling Board when a lead is moved to &quot;Enrollment Video&quot;. The prospect opens a private
+            link with their name + registered number; the video plays with a moving name/number watermark. Set the
+            Cloudflare R2 link/key.
           </p>
         </div>
 
@@ -621,7 +409,7 @@ export function SettingsAppPage({ title }: Props) {
               placeholder="videos/enrollment/master.mp4  ya  https://pub-xxxx.r2.dev/enrollment.mp4"
               className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
-            <span className="mt-1 block text-muted-foreground/80">R2 object key (recommended — private + signed) ya direct R2 URL. YouTube nahi.</span>
+            <span className="mt-1 block text-muted-foreground/80">R2 object key (recommended — private + signed) or a direct R2 URL. YouTube links are not supported.</span>
           </label>
         )}
 
@@ -632,204 +420,10 @@ export function SettingsAppPage({ title }: Props) {
             onClick={() => void handleSaveSecureEnrollUrl()}
             className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
           >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment link video'}
+            {updateAppSetting.isPending ? 'Saving...' : 'Save enrollment video'}
           </button>
-          {secureEnrollSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{secureEnrollSaveMsg}</p> : null}
+          {secureEnrollSaveMsg ? <p className="text-xs text-success-ink">{secureEnrollSaveMsg}</p> : null}
           {secureEnrollErrorMsg ? <p className="text-xs text-destructive">{secureEnrollErrorMsg}</p> : null}
-        </div>
-      </section>
-
-      {/* WhatsApp Meta API */}
-      <section className="surface-elevated space-y-3 p-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-foreground">WhatsApp (Meta Cloud API)</h2>
-            {waStatusFetching ? (
-              <span className="text-[11px] text-muted-foreground">Checking…</span>
-            ) : waStatus?.connected === true ? (
-              <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                Connected
-                {waStatus.display_phone_number ? (
-                  <span className="text-muted-foreground">({waStatus.display_phone_number})</span>
-                ) : null}
-              </span>
-            ) : waStatus?.connected === false ? (
-              <span className="flex items-center gap-1 text-[11px] text-destructive">
-                <span className="h-2 w-2 rounded-full bg-destructive" />
-                Not connected
-              </span>
-            ) : waStatus?.configured === false ? (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
-                Not configured
-              </span>
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Set Meta credentials here for automatic WhatsApp messages to removed members.
-            Ye settings env vars se override karti hain.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Webhook URL jo Meta Console mein dalna hai:{' '}
-            <code className="rounded bg-[color-mix(in_srgb,var(--foreground)_10%,transparent)] px-1 text-[10px]">
-              https://yourdomain.com/api/v1/webhooks/whatsapp/reply
-            </code>
-          </p>
-        </div>
-
-        {appSettingsPending ? (
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
-          </div>
-        ) : appSettingsError ? (
-          <div className="text-sm text-destructive" role="alert">
-            {appSettingsErrorObj instanceof Error ? appSettingsErrorObj.message : 'Could not load settings.'}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {WA_FIELDS.map((field) => {
-              const isTokenField = field.key === 'whatsapp.meta.access_token'
-              return (
-                <label key={field.key} className="block text-sm">
-                  <span className="mb-1 block text-ds-caption text-muted-foreground">{field.label}</span>
-                  <div className="relative">
-                    <input
-                      type={isTokenField && !showAccessToken ? 'password' : 'text'}
-                      value={resolvedWaValue(field.key)}
-                      onChange={(e) => setWaEdits((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                      placeholder={field.placeholder}
-                      autoComplete="off"
-                      className="w-full rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 pr-9 text-foreground shadow-glass-inset backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/35"
-                    />
-                    {isTokenField && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAccessToken((v) => !v)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        aria-label={showAccessToken ? 'Hide token' : 'Show token'}
-                      >
-                        {showAccessToken ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    )}
-                  </div>
-                  <span className="mt-1 block text-[11px] text-muted-foreground/70">{field.help}</span>
-                </label>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={updateAppSetting.isPending || appSettingsPending || !!appSettingsError}
-            onClick={() => void handleSaveWhatsApp()}
-            className="rounded-md border border-primary/35 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary disabled:opacity-50"
-          >
-            {updateAppSetting.isPending ? 'Saving...' : 'Save WhatsApp settings'}
-          </button>
-          {waSaveMsg ? <p className="text-xs text-emerald-600 dark:text-emerald-400">{waSaveMsg}</p> : null}
-          {waErrorMsg ? <p className="text-xs text-destructive">{waErrorMsg}</p> : null}
-          {waStatus?.connected === false && waStatus.error ? (
-            <p className="text-xs text-destructive/80">API error: {waStatus.error}</p>
-          ) : null}
-        </div>
-
-        {/* Test send — debug delivery */}
-        <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
-          <p className="mb-2 text-xs font-medium text-foreground">Send test message (debug)</p>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Send a test message to any number to see Meta's exact response — check if delivery is working.
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="tel"
-              value={waTestPhone}
-              onChange={(e) => setWaTestPhone(e.target.value)}
-              placeholder="10-digit number, e.g. 7230930370"
-              className="flex-1 min-w-[200px] rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-sm text-foreground"
-            />
-            <button
-              type="button"
-              disabled={waTestSend.isPending || !waTestPhone.trim()}
-              onClick={() => waTestSend.mutate(waTestPhone.trim())}
-              className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-400"
-            >
-              {waTestSend.isPending ? 'Sending…' : 'Send test message'}
-            </button>
-          </div>
-          {waTestSend.isError ? (
-            <p className="mt-2 text-xs text-destructive">
-              Error: {waTestSend.error instanceof Error ? waTestSend.error.message : 'Failed'}
-            </p>
-          ) : null}
-          {waTestSend.data ? (
-            <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/40 p-3 text-[11px] text-emerald-500 dark:text-emerald-300 ring-1 ring-white/10">
-              {JSON.stringify(waTestSend.data, null, 2)}
-            </pre>
-          ) : null}
-        </div>
-
-        {/* Report reminder resend panel */}
-        <div className="mt-4 border-t border-border dark:border-white/10 pt-3">
-          <p className="mb-1 text-xs font-medium text-foreground">Send report reminder manually</p>
-          <p className="mb-3 text-[11px] text-muted-foreground">
-            Send WhatsApp reminders to members who haven't submitted today's report and haven't received a reminder yet.
-            Members who already got a reminder today will be skipped.
-          </p>
-          <button
-            type="button"
-            disabled={reminderSending}
-            onClick={() => void handleSendReportReminders()}
-            className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
-          >
-            {reminderSending ? 'Sending…' : 'Send report reminders'}
-          </button>
-
-          {reminderError ? (
-            <p className="mt-2 text-xs text-destructive">Error: {reminderError}</p>
-          ) : null}
-
-          {reminderSummary ? (
-            <div className="mt-3 flex flex-wrap gap-3">
-              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">✅ {reminderSummary.sent} sent</span>
-              {reminderSummary.failed > 0 && (
-                <span className="text-[11px] font-semibold text-red-600 dark:text-red-400">❌ {reminderSummary.failed} failed</span>
-              )}
-              {reminderSummary.no_phone > 0 && (
-                <span className="text-[11px] font-semibold text-muted-foreground/60">📵 {reminderSummary.no_phone} no phone</span>
-              )}
-              {reminderSummary.sent === 0 && reminderSummary.failed === 0 && reminderSummary.no_phone === 0 && (
-                <span className="text-[11px] text-muted-foreground">No pending — everyone submitted or already reminded.</span>
-              )}
-            </div>
-          ) : null}
-
-          {reminderResults && reminderResults.length > 0 ? (
-            <div className="mt-3 max-h-64 overflow-y-auto rounded border border-border dark:border-white/[0.08] bg-black/30">
-              {reminderResults.map((r) => (
-                <div key={r.user_id} className="flex items-center gap-2 border-b border-border dark:border-white/[0.05] px-3 py-1.5 last:border-0">
-                  {r.status === 'sent' || r.status === 'stub'
-                    ? <CheckCircle2 className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    : r.status === 'no_phone'
-                    ? <Smartphone className="size-3 shrink-0 text-muted-foreground/40" />
-                    : <XCircle className="size-3 shrink-0 text-red-600 dark:text-red-400" />}
-                  <span className="flex-1 truncate text-[11px] text-foreground">{r.name}</span>
-                  <span className="text-[10px] text-muted-foreground/50">
-                    {r.phone_tail !== '—' ? `…${r.phone_tail}` : '—'}
-                  </span>
-                  <span className={`text-[10px] font-medium ${
-                    r.status === 'sent' || r.status === 'stub' ? 'text-emerald-600 dark:text-emerald-400'
-                    : r.status === 'no_phone' ? 'text-muted-foreground/40'
-                    : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {r.status === 'stub' ? 'sent' : r.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : null}
         </div>
       </section>
 
@@ -927,12 +521,12 @@ function XpRecalcSection() {
           type="button"
           disabled={state === 'loading'}
           onClick={() => setShowConfirm(true)}
-          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+          className="rounded-md border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning-ink hover:bg-warning/20 disabled:opacity-50"
         >
           {state === 'loading' ? 'Processing…' : 'Reset Pre-June XP'}
         </button>
         {result && (
-          <span className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+          <span className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-success-ink'}`}>
             {result}
           </span>
         )}

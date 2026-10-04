@@ -132,7 +132,7 @@ export function TeamApprovalsPage({ title }: Props) {
                         <span className="font-medium text-foreground">{row.upline_name}</span>
                       ) : null}
                       {row.upline_fbo_id ? (
-                        <span className="block font-mono text-[0.68rem] text-muted-foreground">{row.upline_fbo_id}</span>
+                        <span className="block font-mono text-ds-micro text-muted-foreground">{row.upline_fbo_id}</span>
                       ) : null}
                       {!row.upline_name && !row.upline_fbo_id ? '—' : null}
                     </TableCell>

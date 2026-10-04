@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import { useBackClose } from '@/hooks/use-back-close'
 
 type Props = {
   open: boolean
@@ -21,6 +22,7 @@ export function RejectReasonModal({
   onCancel,
 }: Props) {
   const [reason, setReason] = useState(defaultReason)
+  useBackClose({ open, onClose: onCancel })
 
   if (!open) return null
 

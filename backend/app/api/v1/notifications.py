@@ -1,7 +1,7 @@
 """Web Push notification endpoints."""
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -70,6 +70,71 @@ async def get_vapid_key(
     )
 
 
+class DeviceStatusBody(BaseModel):
+    platform: Literal["ios", "android", "desktop"]
+    standalone: bool
+    push_permission: Literal["granted", "denied", "default", "unsupported"]
+
+
+class LiveAlertsBody(BaseModel):
+    off: list[str]
+
+
+async def _live_alert_settings(session: AsyncSession, user: AuthUser) -> dict:
+    from app.services.admin_alerts import KINDS, user_disabled_kinds
+
+    admin_ids = {user.user_id} if user.role == "admin" else set()
+    off = (await user_disabled_kinds(session, [user.user_id], admin_ids))[user.user_id]
+    return {
+        "scope": "everyone" if user.role == "admin" else "team",
+        "kinds": [{"kind": k, "label": label, "on": k not in off} for k, label in KINDS.items()],
+    }
+
+
+@router.get("/live-alerts")
+async def get_live_alerts(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin / leader: which live work alerts reach my phone (leaders: my team only)."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admins and leaders only")
+    return await _live_alert_settings(session, user)
+
+
+@router.put("/live-alerts")
+async def put_live_alerts(
+    body: LiveAlertsBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admins and leaders only")
+    from app.services.admin_alerts import set_user_disabled_kinds
+
+    await set_user_disabled_kinds(session, user.user_id, set(body.off))
+    return await _live_alert_settings(session, user)
+
+
+@router.post("/device-status")
+async def report_device_status(
+    body: DeviceStatusBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """The app reports how it is opened (home-screen app vs browser) and push permission."""
+    from app.services.app_setup import record_device_status
+
+    await record_device_status(
+        session,
+        user_id=user.user_id,
+        platform=body.platform,
+        standalone=body.standalone,
+        push_permission=body.push_permission,
+    )
+    return {"ok": True}
+
+
 @router.post("/subscribe", status_code=http_status.HTTP_201_CREATED)
 async def subscribe_push(
     body: PushSubscribeBody,
@@ -104,7 +169,19 @@ async def subscribe_push(
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        # Race condition — already inserted, that's fine
+        # Only a concurrent duplicate is fine — anything else must surface,
+        # never a silent 201 for a row that was not saved.
+        raced = (
+            await session.execute(
+                select(PushSubscription.id).where(
+                    PushSubscription.user_id == user.user_id,
+                    PushSubscription.endpoint == body.endpoint,
+                )
+            )
+        ).scalar_one_or_none()
+        if raced is None:
+            raise
+        return {"ok": True, "created": False}
     return {"ok": True, "created": True}
 
 

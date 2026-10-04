@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -48,7 +48,15 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 }
 
 const low = isLowEndDevice()
-const queryClient = new QueryClient({
+const queryClient: QueryClient = new QueryClient({
+  // Any successful action (call logged, follow-up done, report sent, …) may have
+  // earned XP: refresh it right away so the "+XP" reward shows instantly
+  // instead of up to a minute later.
+  mutationCache: new MutationCache({
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['xp'] })
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: low ? 90_000 : 30_000,

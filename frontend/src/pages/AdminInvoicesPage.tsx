@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
@@ -100,7 +101,7 @@ export function AdminInvoicesPage({ title }: Props) {
             </label>
             <label className="block">
               <span className="mb-1 block text-xs text-muted-foreground">Type</span>
-              <select
+              <NativeSelect
                 value={bulkType}
                 onChange={(e) => setBulkType(e.target.value as typeof bulkType)}
                 className="field-input w-44"
@@ -108,7 +109,7 @@ export function AdminInvoicesPage({ title }: Props) {
                 <option value="all">All</option>
                 <option value="payment_receipt">Receipts only</option>
                 <option value="tax_invoice">Invoices only</option>
-              </select>
+              </NativeSelect>
             </label>
             <label className="block min-w-[10rem] flex-1">
               <span className="mb-1 block text-xs text-muted-foreground">Username (optional)</span>
@@ -159,11 +160,11 @@ export function AdminInvoicesPage({ title }: Props) {
         </label>
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Type</span>
-          <select value={docType} onChange={(e) => setDocType(e.target.value)} className="field-input w-40">
+          <NativeSelect value={docType} onChange={(e) => setDocType(e.target.value)} className="field-input w-40">
             <option value="all">All</option>
             <option value="payment_receipt">Receipt</option>
             <option value="tax_invoice">Tax invoice</option>
-          </select>
+          </NativeSelect>
         </label>
         <Button type="button" size="sm" onClick={() => setAppliedQ(q)}>
           Search

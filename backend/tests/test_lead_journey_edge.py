@@ -18,6 +18,8 @@ Matches conftest fixtures: team_client=201, leader_client=202, admin_client=203.
 """
 from __future__ import annotations
 
+import base64
+
 import pytest
 from contextlib import asynccontextmanager
 
@@ -120,6 +122,28 @@ async def _get_lead_row(engine, lead_id: int) -> Lead:
         assert lead is not None
         return lead
 
+_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+@pytest.fixture(autouse=True)
+def _local_uploads(tmp_path, monkeypatch):
+    import app.services.enrollment_proof_storage as storage
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr(storage, "r2_enabled", lambda: False)
+
+
+async def _send_to_day1(client: AsyncClient, lead_id: int, amount: int = 149, image: bytes = _PNG):
+    return await client.post(
+        f"/api/v1/leads/{lead_id}/send-to-day1",
+        data={"amount_rupees": str(amount)},
+        files={"screenshot": ("enroll.png", image, "image/png")},
+    )
+
+
 
 # ── 1. TEAM forward walk: new_lead → video_watched ────────────────────────────
 
@@ -133,11 +157,25 @@ async def test_team_walks_lead_to_video_watched(team_client: AsyncClient, engine
         assert resp.status_code == 200, f"team {target} should be allowed: {resp.text}"
         assert resp.json()["status"] == target
 
-    # Marking video_watched is the team's last step — it auto-advances the lead to
-    # Day 1 and hands it off to the upline leader (lands on the leader's workboard).
+    # Marking video_watched no longer hands off on its own — the lead stays with the
+    # member until the enrollment screenshot (₹149–200) is uploaded.
     resp = await _patch_status(team_client, lead_id, "video_watched")
-    assert resp.status_code == 200, f"team video_watched should be allowed: {resp.text}"
-    assert resp.json()["status"] == "day1"
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "video_watched"
+    assert (await _get_lead_row(engine, lead_id)).assigned_to_user_id == 201
+
+    # Amount outside ₹149–200 and non-image uploads are rejected.
+    assert (await _send_to_day1(team_client, lead_id, amount=100)).status_code == 400
+    assert (await _send_to_day1(team_client, lead_id, amount=201)).status_code == 400
+    assert (await _send_to_day1(team_client, lead_id, image=b"not an image")).status_code == 400
+
+    # "Send to Day 1" with the screenshot hands the lead to the upline leader on Day 1.
+    resp = await _send_to_day1(team_client, lead_id, amount=199)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "day1"
+    assert body["enrollment_amount_cents"] == 19900
+    assert body["enrollment_proof_url"].startswith("/api/v1/media/enrollment-proofs/enroll_")
 
     lead = await _get_lead_row(engine, lead_id)
     assert lead.owner_user_id == 201               # owner stays the team claimer (sticky)
@@ -152,9 +190,10 @@ async def test_team_walks_lead_to_video_watched(team_client: AsyncClient, engine
 async def test_team_cannot_jump_to_closing_stages(team_client: AsyncClient, engine, forbidden):
     await _seed_hierarchy(engine)
     lead_id = await _create_lead(team_client, f"90000100{['day1','day2','day3','converted'].index(forbidden)}")
-    # advance to video_watched (last team-allowed pre-handover stage)
-    for target in ("contacted", "invited", "video_sent", "video_watched"):
+    # advance to video_sent, then hand over with the enrollment screenshot
+    for target in ("contacted", "invited", "video_sent"):
         assert (await _patch_status(team_client, lead_id, target)).status_code == 200
+    assert (await _send_to_day1(team_client, lead_id)).status_code == 200
 
     # After video_watched the lead is handed off to the leader, so the team can no longer
     # push it forward — blocked either by the role gate (400) or loss of access (403).
@@ -174,8 +213,9 @@ async def test_closing_walk_per_day_roles(engine):
     # TEAM drives create + walk up to the team boundary (video_watched).
     async with _as_role(engine, "team", 201) as team:
         lead_id = await _create_lead(team, "9000000005")
-        for target in ("contacted", "invited", "video_sent", "video_watched"):
+        for target in ("contacted", "invited", "video_sent"):
             assert (await _patch_status(team, lead_id, target)).status_code == 200
+        assert (await _send_to_day1(team, lead_id)).status_code == 200
 
     # LEADER takes over with full status control: video_watched → day1 → day2 → day3.
     # Leader may advance straight into Day 3 without the Day-2 batch/test gate.
@@ -210,3 +250,30 @@ async def test_team_can_mark_terminal(team_client: AsyncClient, engine, terminal
     resp = await _patch_status(team_client, lead_id, terminal)
     assert resp.status_code == 200, f"team should mark {terminal}: {resp.text}"
     assert resp.json()["status"] == terminal
+
+
+# ── Enrollment proof: leader sends a wrong screenshot back ────────────────────
+
+@pytest.mark.asyncio
+async def test_leader_sends_back_bad_enrollment_proof(engine):
+    await _seed_hierarchy(engine)
+    async with _as_role(engine, "team", 201) as team:
+        lead_id = await _create_lead(team, "9000000077")
+        assert (await _send_to_day1(team, lead_id, amount=149)).status_code == 200
+
+    async with _as_role(engine, "leader", 202) as leader:
+        resp = await leader.post(f"/api/v1/leads/{lead_id}/send-back", json={"reason": "Amount not visible"})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["status"] == "video_watched"
+        assert body["enrollment_proof_url"] is None
+
+    lead = await _get_lead_row(engine, lead_id)
+    assert lead.assigned_to_user_id == 201   # back with the member
+
+    async with _as_role(engine, "team", 201) as team:
+        # Team cannot send back; but can re-upload a correct screenshot.
+        assert (await team.post(f"/api/v1/leads/{lead_id}/send-back", json={})).status_code == 403
+        resp = await _send_to_day1(team, lead_id, amount=150)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "day1"

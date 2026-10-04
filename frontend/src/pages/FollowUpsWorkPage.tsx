@@ -1,9 +1,10 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { ListChecks, Search } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
+import { EmptyState } from '@/components/ui/states'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
-import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useCreateFollowUpMutation,
@@ -37,7 +38,7 @@ export function FollowUpsWorkPage({ title }: Props) {
   const fuQ = useFollowUpsQuery(openOnly)
 
   const filteredFuItems = useMemo(() => {
-    if (!fuQ.data?.items) return [] as typeof fuQ.data.items
+    if (!fuQ.data?.items) return [] as NonNullable<typeof fuQ.data>['items']
     const q = fuSearch.trim().toLowerCase()
     if (!q) return fuQ.data.items
     return fuQ.data.items.filter(
@@ -99,7 +100,7 @@ export function FollowUpsWorkPage({ title }: Props) {
             <label htmlFor="fu-lead" className="mb-1 block text-xs text-muted-foreground">
               Lead
             </label>
-            <select
+            <NativeSelect
               id="fu-lead"
               value={leadId}
               onChange={(e) => setLeadId(e.target.value)}
@@ -112,7 +113,7 @@ export function FollowUpsWorkPage({ title }: Props) {
                   {l.name} (#{l.id})
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="min-w-[10rem] flex-1">
             <label htmlFor="fu-due" className="mb-1 block text-xs text-muted-foreground">
@@ -180,7 +181,7 @@ export function FollowUpsWorkPage({ title }: Props) {
             Total: {fuSearch.trim() ? filteredFuItems.length : fuQ.data.total}
           </p>
           {filteredFuItems.length === 0 ? (
-            <EmptyStatePremium
+            <EmptyState
               variant="tasks"
               title="No follow-ups"
               description={fuSearch.trim() ? 'No follow-ups match your search.' : openOnly ? 'All follow-ups are completed. Uncheck "Open only" to see them.' : 'Create a follow-up above to get started.'}

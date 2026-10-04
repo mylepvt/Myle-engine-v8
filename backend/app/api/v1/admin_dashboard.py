@@ -17,12 +17,9 @@ from app.models.call_event import CallEvent
 from app.models.daily_member_stat import DailyMemberStat
 from app.models.daily_report import DailyReport
 from app.models.lead import Lead
-from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.user import User
 from app.models.user_presence_session import UserPresenceSession
-from app.services.report_eligibility import report_eligibility_conditions
 from app.services.user_hierarchy import recursive_downline_user_ids
-from app.services.whatsapp_report_reminder import send_report_reminder
 
 IST = ZoneInfo("Asia/Kolkata")
 _PRESENCE_STALE_SECONDS = 45
@@ -365,7 +362,6 @@ class ReportStatusItem(BaseModel):
     role: str
     submitted: bool
     calls_in_report: int
-    reminded: bool = False
 
 
 class ZeroActivityItem(BaseModel):
@@ -384,21 +380,60 @@ class TodayPulseResponse(BaseModel):
     reports_total: int
     report_members: list[ReportStatusItem]
     zero_activity: list[ZeroActivityItem]
-    reminded_user_ids: list[int] = []
 
 
-class ReminderResultItem(BaseModel):
-    user_id: int
-    name: str
-    phone_tail: str
-    status: str
+class AlertSettingsBody(BaseModel):
+    off: list[str]
 
 
-class SendRemindersResponse(BaseModel):
-    sent: int
-    failed: int
-    no_phone: int
-    results: list[ReminderResultItem]
+@router.get("/alert-settings")
+async def get_alert_settings(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Which live alerts admins get on their phone."""
+    _require_admin(user)
+    from app.services.admin_alerts import KINDS, disabled_kinds
+
+    off = await disabled_kinds(session)
+    return {"kinds": [{"kind": k, "label": label, "on": k not in off} for k, label in KINDS.items()]}
+
+
+@router.put("/alert-settings")
+async def put_alert_settings(
+    body: AlertSettingsBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    _require_admin(user)
+    from app.services.admin_alerts import set_disabled_kinds
+
+    await set_disabled_kinds(session, set(body.off))
+    return await get_alert_settings(user, session)
+
+
+@router.get("/push-runs")
+async def admin_push_runs(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Today's automatic notifications: did each job run, how many it meant to reach, how many it reached."""
+    _require_admin(user)
+    from app.services.push_job_runs import todays_push_runs
+
+    return {"jobs": await todays_push_runs(session)}
+
+
+@router.get("/app-setup")
+async def admin_app_setup(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Per member: app installed on the phone or used in the browser; notifications on/off."""
+    _require_admin(user)
+    from app.services.app_setup import build_app_setup
+
+    return await build_app_setup(session)
 
 
 @router.get("/today-pulse", response_model=TodayPulseResponse)
@@ -464,17 +499,6 @@ async def admin_today_pulse(
         report_calls_map[int(r.user_id)] = int(r.total_calling or 0)
 
     report_members: list[ReportStatusItem] = []
-    # Who was already reminded via WhatsApp today
-    reminded_rows = (
-        await session.execute(
-            select(ReportReminderOutreach.user_id).where(
-                ReportReminderOutreach.reminder_date == today,
-                ReportReminderOutreach.send_status.in_(["sent", "stub"]),
-            )
-        )
-    ).scalars().all()
-    reminded_user_ids: set[int] = {int(r) for r in reminded_rows}
-
     for m in active_members:
         mid = int(m.id)
         submitted = mid in submitted_user_ids
@@ -485,7 +509,6 @@ async def admin_today_pulse(
             role=m.role or "team",
             submitted=submitted,
             calls_in_report=report_calls_map.get(mid, 0),
-            reminded=mid in reminded_user_ids,
         ))
 
     # submitted first, then by name
@@ -550,116 +573,4 @@ async def admin_today_pulse(
         reports_total=len(active_members),
         report_members=report_members,
         zero_activity=zero_activity,
-        reminded_user_ids=sorted(reminded_user_ids),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Send WhatsApp reminders to members who haven't submitted report today
-# ---------------------------------------------------------------------------
-
-@router.post("/send-report-reminders", response_model=SendRemindersResponse)
-async def admin_send_report_reminders(
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> SendRemindersResponse:
-    """Send WhatsApp reminder to every approved member who hasn't submitted today's report."""
-    _require_admin(user)
-    today = _today_ist()
-
-    # All report-eligible team + leader members
-    active_members = (
-        await session.execute(
-            select(User).where(
-                *report_eligibility_conditions(today)
-            ).order_by(User.name.asc())
-        )
-    ).scalars().all()
-
-    # Who has already submitted today
-    submitted_ids: set[int] = set(
-        (await session.execute(
-            select(DailyReport.user_id).where(DailyReport.report_date == today)
-        )).scalars().all()
-    )
-
-    # Who was already reminded successfully today (skip them)
-    already_reminded_ids: set[int] = set(
-        (await session.execute(
-            select(ReportReminderOutreach.user_id).where(
-                ReportReminderOutreach.reminder_date == today,
-                ReportReminderOutreach.send_status.in_(["sent", "stub"]),
-            )
-        )).scalars().all()
-    )
-
-    pending = [
-        m for m in active_members
-        if m.id not in submitted_ids and m.id not in already_reminded_ids
-    ]
-
-    results: list[ReminderResultItem] = []
-    sent_count = 0
-    failed_count = 0
-    no_phone_count = 0
-
-    for member in pending:
-        phone = getattr(member, "phone", None) or ""
-        phone_tail = phone[-4:] if phone else "—"
-        member_name = (
-            (member.name or "").strip()
-            or (getattr(member, "username", None) or "").strip()
-            or member.fbo_id
-            or "Member"
-        )
-
-        if not phone:
-            no_phone_count += 1
-            results.append(ReminderResultItem(
-                user_id=member.id,
-                name=member_name,
-                phone_tail="—",
-                status="no_phone",
-            ))
-            continue
-
-        try:
-            record = await send_report_reminder(
-                user=member,
-                reminder_date=today,
-                session=session,
-            )
-            if record.send_status in ("sent", "stub"):
-                sent_count += 1
-                results.append(ReminderResultItem(
-                    user_id=member.id,
-                    name=member_name,
-                    phone_tail=phone_tail,
-                    status=record.send_status,
-                ))
-            else:
-                failed_count += 1
-                results.append(ReminderResultItem(
-                    user_id=member.id,
-                    name=member_name,
-                    phone_tail=phone_tail,
-                    status="failed",
-                ))
-        except Exception as exc:
-            import logging as _log
-            _log.getLogger(__name__).error("report reminder failed user_id=%s: %s", member.id, exc)
-            failed_count += 1
-            results.append(ReminderResultItem(
-                user_id=member.id,
-                name=member_name,
-                phone_tail=phone_tail,
-                status="failed",
-            ))
-
-    await session.commit()
-    return SendRemindersResponse(
-        sent=sent_count,
-        failed=failed_count,
-        no_phone=no_phone_count,
-        results=results,
     )

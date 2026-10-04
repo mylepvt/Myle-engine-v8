@@ -13,6 +13,7 @@ Lifecycle per (lead, billing_stage):
 
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -186,11 +187,12 @@ class SalesService:
             return False, "Access denied", None, False
 
         data = await file.read()
-        ok_save, proof_url = await save_sale_invoice_bytes(data=data, lead_id=lead_id)
+        ok_save, proof_url = await save_sale_invoice_bytes(session=self.session, data=data, lead_id=lead_id)
         if not ok_save:
             return False, proof_url, None, False
 
-        ocr = extract_forever_invoice(data)
+        # Tesseract OCR takes seconds of CPU — keep it off the event loop.
+        ocr = await asyncio.to_thread(extract_forever_invoice, data)
 
         # Upsert the (lead, stage) row — re-upload replaces a prior pending/rejected.
         existing = (
@@ -375,11 +377,17 @@ class SalesService:
         stmt = stmt.order_by(LeadSale.created_at.asc())
         return list((await self.session.execute(stmt)).scalars().all())
 
-    async def dashboard(self, *, user_id: int, role: str) -> dict:
+    async def dashboard(self, *, user_id: int, role: str, period: str = "all") -> dict:
         owner_ids = await self._scope_owner_ids(user_id, role)
         scope = "all" if owner_ids is None else ("downline" if role == "leader" else "self")
 
         approved = LeadSale.status == "approved"
+        if period == "today":
+            from app.core.time_ist import today_ist
+            from app.services.live_metrics import ist_day_bounds
+
+            day_start, day_end = ist_day_bounds(today_ist())
+            approved = and_(approved, LeadSale.approved_at >= day_start, LeadSale.approved_at < day_end)
         base_where = [approved]
         pending_where = [LeadSale.status == "pending"]
         if owner_ids is not None:

@@ -1,145 +1,114 @@
-import { useMemo, useState } from 'react'
+import { createElement, useMemo, useState } from 'react'
 import { Activity, Pause, Play, RefreshCw, Search, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { activityIcon } from '@/lib/activity-icons'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
-
-// ── Icon per action ──────────────────────────────────────────────────────────
-const ACTION_ICONS: Record<string, string> = {
-  'commit_boundary':        '↻',
-  'lead_state':             '→',
-  'lead:created':           '+',
-  'lead:transitioned':      '→',
-  'lead:assigned':          '⇄',
-  'lead:auto_reassigned':   '!',
-  'lead:closed':            '✓',
-  'lead:claimed':           '⚑',
-  'lead:batch_claimed':     '⚑',
-  'lead:claim_duplicate':   '!!',
-  'lead:shadow_created':    '↑',
-  'lead:shadow_synced':     '↑',
-  'lead:shadow_deleted':    '✕',
-  'shadow_delivery':        '↑',
-  'LEAD_UPSERT':            '↑',
-  'LEAD_DELETE':            '✕',
-  'wallet:credited':        '₹',
-  'wallet:credited_worker': '₹',
-  'wallet.adjustment':      '₹',
-  'wallet.recharge_review': '₹',
-  'enrollment.link_generated': '🔗',
-  'performance:recomputed': '★',
-  'system:ranking_recalc':  '↑',
-  'system:scheduler_tick':  '⏱',
-  'fsm:validation_failed':  '✕',
-  'scheduler.failure':      '✕',
-  'scheduler.watch_archive':'⏱',
-  'scheduler.leader_enforcement': '⚑',
-}
 
 // ── Fun pop colours per action type ───────────────────────────────────────────
 type ActionColors = { bg: string; border: string; pill: string; pillText: string; tag: string }
 
 const ACTION_COLORS: Record<string, ActionColors> = {
   'commit_boundary': {
-    bg: 'bg-blue-400/20', border: 'border-l-blue-400',
-    pill: 'bg-blue-400/30', pillText: 'text-blue-200', tag: 'bg-blue-400/25 text-blue-200',
+    bg: 'bg-info/20', border: 'border-l-info',
+    pill: 'bg-info/30', pillText: 'text-info-ink', tag: 'bg-info/25 text-info-ink',
   },
   'lead:created': {
-    bg: 'bg-emerald-400/20', border: 'border-l-emerald-400',
-    pill: 'bg-emerald-400/30', pillText: 'text-emerald-200', tag: 'bg-emerald-400/25 text-emerald-200',
+    bg: 'bg-success/20', border: 'border-l-success',
+    pill: 'bg-success/30', pillText: 'text-success-ink', tag: 'bg-success/25 text-success-ink',
   },
   'lead:transitioned': {
     bg: 'bg-fuchsia-400/20', border: 'border-l-fuchsia-400',
-    pill: 'bg-fuchsia-400/30', pillText: 'text-fuchsia-200', tag: 'bg-fuchsia-400/25 text-fuchsia-200',
+    pill: 'bg-fuchsia-400/30', pillText: 'text-fuchsia-700 dark:text-fuchsia-200', tag: 'bg-fuchsia-400/25 text-fuchsia-700 dark:text-fuchsia-200',
   },
   'lead_state': {
     bg: 'bg-fuchsia-400/20', border: 'border-l-fuchsia-400',
-    pill: 'bg-fuchsia-400/30', pillText: 'text-fuchsia-200', tag: 'bg-fuchsia-400/25 text-fuchsia-200',
+    pill: 'bg-fuchsia-400/30', pillText: 'text-fuchsia-700 dark:text-fuchsia-200', tag: 'bg-fuchsia-400/25 text-fuchsia-700 dark:text-fuchsia-200',
   },
   'lead:assigned': {
     bg: 'bg-cyan-400/20', border: 'border-l-cyan-400',
-    pill: 'bg-cyan-400/30', pillText: 'text-cyan-200', tag: 'bg-cyan-400/25 text-cyan-200',
+    pill: 'bg-cyan-400/30', pillText: 'text-cyan-700 dark:text-cyan-200', tag: 'bg-cyan-400/25 text-cyan-700 dark:text-cyan-200',
   },
   'lead:auto_reassigned': {
     bg: 'bg-orange-400/20', border: 'border-l-orange-400',
-    pill: 'bg-orange-400/30', pillText: 'text-orange-200', tag: 'bg-orange-400/25 text-orange-200',
+    pill: 'bg-orange-400/30', pillText: 'text-orange-700 dark:text-orange-200', tag: 'bg-orange-400/25 text-orange-700 dark:text-orange-200',
   },
   'lead:closed': {
     bg: 'bg-lime-400/20', border: 'border-l-lime-400',
-    pill: 'bg-lime-400/30', pillText: 'text-lime-200', tag: 'bg-lime-400/25 text-lime-200',
+    pill: 'bg-lime-400/30', pillText: 'text-lime-700 dark:text-lime-200', tag: 'bg-lime-400/25 text-lime-700 dark:text-lime-200',
   },
   'lead:claimed': {
     bg: 'bg-indigo-400/20', border: 'border-l-indigo-400',
-    pill: 'bg-indigo-400/30', pillText: 'text-indigo-200', tag: 'bg-indigo-400/25 text-indigo-200',
+    pill: 'bg-indigo-400/30', pillText: 'text-indigo-700 dark:text-indigo-200', tag: 'bg-indigo-400/25 text-indigo-700 dark:text-indigo-200',
   },
   'lead:batch_claimed': {
     bg: 'bg-indigo-400/20', border: 'border-l-indigo-400',
-    pill: 'bg-indigo-400/30', pillText: 'text-indigo-200', tag: 'bg-indigo-400/25 text-indigo-200',
+    pill: 'bg-indigo-400/30', pillText: 'text-indigo-700 dark:text-indigo-200', tag: 'bg-indigo-400/25 text-indigo-700 dark:text-indigo-200',
   },
   'lead:claim_duplicate': {
-    bg: 'bg-rose-400/20', border: 'border-l-rose-400',
-    pill: 'bg-rose-400/30', pillText: 'text-rose-200', tag: 'bg-rose-400/25 text-rose-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'lead:shadow_created': {
     bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
   },
   'lead:shadow_synced': {
     bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
   },
   'shadow_delivery': {
     bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
   },
   'LEAD_UPSERT': {
     bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-200', tag: 'bg-sky-400/25 text-sky-200',
+    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
   },
   'lead:shadow_deleted': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'LEAD_DELETE': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'wallet:credited': {
-    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
-    pill: 'bg-yellow-400/30', pillText: 'text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'wallet:credited_worker': {
-    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
-    pill: 'bg-yellow-400/30', pillText: 'text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'wallet.adjustment': {
-    bg: 'bg-yellow-400/20', border: 'border-l-yellow-400',
-    pill: 'bg-yellow-400/30', pillText: 'text-yellow-200', tag: 'bg-yellow-400/25 text-yellow-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'wallet.recharge_review': {
-    bg: 'bg-amber-400/20', border: 'border-l-amber-400',
-    pill: 'bg-amber-400/30', pillText: 'text-amber-200', tag: 'bg-amber-400/25 text-amber-200',
+    bg: 'bg-warning/20', border: 'border-l-warning',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'enrollment.link_generated': {
     bg: 'bg-teal-400/20', border: 'border-l-teal-400',
-    pill: 'bg-teal-400/30', pillText: 'text-teal-200', tag: 'bg-teal-400/25 text-teal-200',
+    pill: 'bg-teal-400/30', pillText: 'text-teal-700 dark:text-teal-200', tag: 'bg-teal-400/25 text-teal-700 dark:text-teal-200',
   },
   'performance:recomputed': {
     bg: 'bg-teal-400/20', border: 'border-l-teal-400',
-    pill: 'bg-teal-400/30', pillText: 'text-teal-200', tag: 'bg-teal-400/25 text-teal-200',
+    pill: 'bg-teal-400/30', pillText: 'text-teal-700 dark:text-teal-200', tag: 'bg-teal-400/25 text-teal-700 dark:text-teal-200',
   },
   'system:ranking_recalc': {
     bg: 'bg-pink-400/20', border: 'border-l-pink-400',
-    pill: 'bg-pink-400/30', pillText: 'text-pink-200', tag: 'bg-pink-400/25 text-pink-200',
+    pill: 'bg-pink-400/30', pillText: 'text-pink-700 dark:text-pink-200', tag: 'bg-pink-400/25 text-pink-700 dark:text-pink-200',
   },
   'fsm:validation_failed': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'scheduler.failure': {
-    bg: 'bg-red-400/20', border: 'border-l-red-400',
-    pill: 'bg-red-400/30', pillText: 'text-red-200', tag: 'bg-red-400/25 text-red-200',
+    bg: 'bg-destructive/20', border: 'border-l-destructive',
+    pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'system:scheduler_tick': {
     bg: 'bg-slate-400/15', border: 'border-l-slate-400',
@@ -156,8 +125,8 @@ const ACTION_COLORS: Record<string, ActionColors> = {
 }
 
 const DEFAULT_COLORS: ActionColors = {
-  bg: 'bg-blue-400/15', border: 'border-l-blue-400',
-  pill: 'bg-blue-400/25', pillText: 'text-blue-200', tag: 'bg-blue-400/20 text-blue-200',
+  bg: 'bg-info/15', border: 'border-l-info',
+  pill: 'bg-info/25', pillText: 'text-info-ink', tag: 'bg-info/20 text-info-ink',
 }
 
 function getActionColors(action: string): ActionColors {
@@ -202,8 +171,8 @@ function friendlyLabel(action: string): string {
   return part.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function iconLabel(action: string): string {
-  return ACTION_ICONS[action] ?? action.split(':').pop()?.slice(0, 2).toUpperCase() ?? '?'
+function ActionIcon({ action }: { action: string }) {
+  return createElement(activityIcon(action), { className: 'size-3.5', 'aria-hidden': true })
 }
 
 function activityLink(entry: AdminActivityEntry): string {
@@ -225,23 +194,23 @@ function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
       className={`flex items-start gap-2.5 rounded-lg border-l-[3px] px-3 py-2.5 no-underline transition-all animate-in fade-in slide-in-from-left-2 duration-300 hover:brightness-110 active:brightness-125 cursor-pointer ${c.bg} ${c.border}`}
     >
       {/* colored icon pill */}
-      <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${c.pill} ${c.pillText}`}>
-        {iconLabel(entry.action)}
+      <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-ds-micro font-bold ${c.pill} ${c.pillText}`}>
+        <ActionIcon action={entry.action} />
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           {entry.actorName && (
-            <span className="text-[12px] font-semibold text-foreground/90">{entry.actorName}</span>
+            <span className="text-xs font-semibold text-foreground/90">{entry.actorName}</span>
           )}
-          <span className={`rounded px-1.5 py-0 text-[10px] font-medium leading-5 ${c.tag}`}>
+          <span className={`rounded px-1.5 py-0 text-ds-micro font-medium leading-5 ${c.tag}`}>
             {friendlyLabel(entry.action)}
           </span>
         </div>
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground/65">{entry.description}</p>
+        <p className="mt-0.5 truncate text-ds-micro text-muted-foreground">{entry.description}</p>
       </div>
 
-      <span className="mt-0.5 shrink-0 text-[10px] tabular-nums text-muted-foreground/40">{time}</span>
+      <span className="mt-0.5 shrink-0 text-ds-micro tabular-nums text-muted-foreground">{time}</span>
     </Link>
   )
 }
@@ -253,7 +222,7 @@ function FilterChip({ action, count, active, onClick }: { action: string; count:
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+      className={`rounded-full px-2 py-0.5 text-ds-micro font-medium transition-all ${
         active ? `${c.pill} ${c.pillText} ring-1 ring-inset ${c.border.replace('border-l-', 'ring-')}` : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
       }`}
     >
@@ -298,7 +267,7 @@ export function AdminActivityPanel() {
           <Activity className="h-4 w-4" />
           <CardTitle className="text-sm">Live Activity</CardTitle>
           {unreadCount > 0 && (
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-warning px-1.5 text-ds-micro font-bold text-white">
               {unreadCount}
             </span>
           )}
@@ -318,16 +287,16 @@ export function AdminActivityPanel() {
       <CardContent className="space-y-2">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/50" />
+          <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search activity..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-input/60 bg-muted/20 pl-7 pr-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground/40 focus:border-primary/40 focus:bg-muted/30"
+            className="w-full rounded-lg border border-input/60 bg-muted/20 pl-7 pr-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground focus:border-primary/40 focus:bg-muted/30"
           />
           {search && (
-            <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground">
+            <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="h-3 w-3" />
             </button>
           )}
@@ -351,7 +320,7 @@ export function AdminActivityPanel() {
         {/* Feed */}
         <div className="max-h-[400px] space-y-1.5 overflow-y-auto pr-0.5">
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground/50">
+            <p className="py-8 text-center text-xs text-muted-foreground">
               {!initialized ? 'Connecting to live stream...' : entries.length === 0 ? 'No activity yet' : 'No matching activity'}
             </p>
           ) : (

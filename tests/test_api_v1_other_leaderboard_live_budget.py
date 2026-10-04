@@ -143,31 +143,38 @@ def test_other_live_session_zoom_legacy_keys(monkeypatch: pytest.MonkeyPatch) ->
     assert "zoom" in (body.get("note") or "").lower() or "live_session" in (body.get("note") or "").lower()
 
 
-def test_premiere_schedule_survives_missing_viewer_table(monkeypatch: pytest.MonkeyPatch) -> None:
-    team = _client_role(monkeypatch, "team")
-    r = team.get("/api/v1/other/premiere/schedule")
+def test_live_session_link_update_stamps_date_and_pushes_leader_team(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.v1 import settings_enhanced
+
+    pushes: list[dict] = []
+
+    async def _fake_push(_factory, roles, **kwargs) -> None:
+        pushes.append({"roles": tuple(roles), **kwargs})
+
+    monkeypatch.setattr(settings_enhanced, "send_push_to_roles_bg", _fake_push)
+    admin = _client_role(monkeypatch, "admin")
+    url = "https://zoom.us/j/live-update-test"
+
+    r = admin.post("/api/v1/settings-enhanced/system/app-settings", json={"key": "live_session_url", "value": url})
     assert r.status_code == 200
-    body = r.json()
-    assert isinstance(body["slots"], list)
-    assert len(body["slots"]) >= 1
-    assert all(slot["viewer_count_today"] == 0 for slot in body["slots"])
+    assert len(pushes) == 1
+    assert pushes[0]["roles"] == ("leader", "team")
+    assert pushes[0]["url"] == "/dashboard/other/live-session"
+
+    item = admin.get("/api/v1/other/live-session").json()["items"][0]
+    assert item["external_href"] == url
+    assert item["updated_at"]
+
+    # Re-saving the same link must not notify everyone again.
+    r = admin.post("/api/v1/settings-enhanced/system/app-settings", json={"key": "live_session_url", "value": url})
+    assert r.status_code == 200
+    assert len(pushes) == 1
 
 
-def test_premiere_register_survives_missing_viewer_table() -> None:
-    c = TestClient(app)
-    r = c.post(
-        "/api/v1/other/premiere/register",
-        json={
-            "viewer_id": "viewer-missing-table",
-            "name": "Prospect",
-            "city": "Delhi",
-            "phone": "9999999999",
-            "session_hour": 11,
-            "state": "waiting",
-        },
-    )
-    assert r.status_code == 201
-    assert r.json() == {"ok": False, "tracking_disabled": True}
+def test_premiere_endpoints_are_removed(monkeypatch: pytest.MonkeyPatch) -> None:
+    team = _client_role(monkeypatch, "team")
+    assert team.get("/api/v1/other/premiere/schedule").status_code == 404
+    assert TestClient(app).post("/api/v1/other/premiere/register", json={}).status_code == 404
 
 
 def test_finance_budget_export_admin_returns_hierarchy(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -26,6 +26,11 @@ vi.mock('@tanstack/react-query', async () => {
   }
 })
 
+vi.mock('@/components/wins/WinsFeedCard', () => ({ WinsFeedCard: () => null }))
+vi.mock('@/components/dashboard/overview/AppSetupCard', () => ({ AppSetupCard: () => <div data-testid="app-setup" /> }))
+vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))
+vi.mock('@/components/control-room/ControlRoomCard', () => ({ ControlRoomCard: () => <div data-testid="control-room" /> }))
+
 vi.mock('@/hooks/use-settings-query', () => ({
   useAppSettingsQuery: (...args: unknown[]) => mockUseAppSettingsQuery(...args),
   useSystemUsersSummaryQuery: (...args: unknown[]) => mockUseSystemUsersSummaryQuery(...args),
@@ -110,15 +115,6 @@ describe('AdminCommandCenter', () => {
       if (queryKey[0] === 'team') {
         return {
           data: { total: 2, items: [] },
-          isPending: false,
-          isError: false,
-          error: null,
-          refetch: vi.fn(),
-        }
-      }
-      if (queryKey[0] === 'premiere') {
-        return {
-          data: [],
           isPending: false,
           isError: false,
           error: null,
@@ -509,9 +505,9 @@ describe('AdminCommandCenter', () => {
 
     renderWithProviders()
 
-    // Default landing is now the smart Overview tab.
-    expect(screen.getByText('Pipeline Board')).toBeInTheDocument()
-    expect(screen.getAllByText('Claimed today').length).toBeGreaterThan(0)
+    // Default landing is the simple Overview: who is working today.
+    expect(screen.getByTestId('control-room')).toBeInTheDocument()
+    expect(screen.getByTestId('app-setup')).toBeInTheDocument()
     // Views are selected via a single Apple-style dropdown switcher; Overview is current.
     const switcher = screen.getByRole('button', { name: /Overview/ })
     expect(switcher).toHaveAttribute('aria-haspopup', 'menu')

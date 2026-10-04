@@ -18,13 +18,13 @@ export function PushNotificationToggle() {
 
   if (!isSupported) {
     return (
-      <p className="max-w-xs text-right text-sm text-amber-700">{supportMessage}</p>
+      <p className="max-w-xs text-right text-sm text-warning-ink">{supportMessage}</p>
     )
   }
 
   if (permission === 'denied') {
     return (
-      <p className="max-w-xs text-right text-sm text-amber-700">
+      <p className="max-w-xs text-right text-sm text-warning-ink">
         Notifications are blocked for this device. Turn them back on in browser or app settings.
       </p>
     )
@@ -33,7 +33,7 @@ export function PushNotificationToggle() {
   if (isSubscribed) {
     return (
       <div className="flex flex-col items-end gap-2">
-        <span className="flex items-center gap-1 text-sm text-green-600">
+        <span className="flex items-center gap-1 text-sm text-success-ink">
           <CheckCircle className="h-4 w-4" />
           This device is connected for alerts
         </span>
@@ -55,7 +55,7 @@ export function PushNotificationToggle() {
             {isLoading ? 'Disabling…' : 'Disable'}
           </Button>
         </div>
-        {errorMessage ? <p className="max-w-xs text-right text-xs text-rose-600">{errorMessage}</p> : null}
+        {errorMessage ? <p className="max-w-xs text-right text-xs text-destructive-ink">{errorMessage}</p> : null}
       </div>
     )
   }
@@ -71,7 +71,7 @@ export function PushNotificationToggle() {
         {isLoading ? 'Enabling…' : permission === 'granted' ? 'Reconnect notifications' : 'Enable push notifications'}
       </Button>
       {errorMessage ? (
-        <p className="text-right text-xs text-rose-600">{errorMessage}</p>
+        <p className="text-right text-xs text-destructive-ink">{errorMessage}</p>
       ) : (
         <p className="text-right text-xs text-muted-foreground">
           Allow alerts once on this device and Myle will keep the connection synced automatically.

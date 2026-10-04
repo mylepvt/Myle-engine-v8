@@ -6,11 +6,12 @@ Excel imports read a header row (Name / Phone / Email / City in any column order
 
 from __future__ import annotations
 
+import asyncio
 import io
 import re
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity_log import ActivityLog
@@ -239,6 +240,19 @@ class LeadImportResult:
     imported: int
     skipped: int
     warnings: list[str]
+    duplicates: int = 0  # phone already in Myle, or repeated in the same file
+    invalid: int = 0  # missing / bad phone number
+
+
+# One lock id for "new leads are being written" — imports and manual adds take it so
+# two people uploading the same number at the same moment can't both get through.
+LEAD_PHONE_LOCK_ID = 7_011_001
+
+
+async def lock_lead_phones(session: AsyncSession) -> None:
+    """Serialize duplicate-phone checks for the rest of this transaction (Postgres only)."""
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        await session.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": LEAD_PHONE_LOCK_ID})
 
 
 async def run_personal_lead_import(
@@ -257,15 +271,16 @@ async def run_personal_lead_import(
     warnings: list[str] = []
 
     if fname.endswith(".pdf"):
-        rows, err = extract_leads_from_pdf_bytes(file_bytes)
+        rows, err = await asyncio.to_thread(extract_leads_from_pdf_bytes, file_bytes)
     elif fname.endswith(".xlsx"):
-        rows, err = extract_leads_from_xlsx_bytes(file_bytes)
+        rows, err = await asyncio.to_thread(extract_leads_from_xlsx_bytes, file_bytes)
     else:
         return LeadImportResult(0, 0, ["Only .pdf and .xlsx files are allowed."])
 
     if err:
         return LeadImportResult(0, 0, [err])
 
+    await lock_lead_phones(session)
     phones_db = (
         await session.execute(select(Lead.phone).where(Lead.deleted_at.is_(None)))
     ).scalars().all()
@@ -277,6 +292,8 @@ async def run_personal_lead_import(
 
     imported = 0
     skipped = 0
+    duplicates = 0
+    invalid = 0
     seen_in_file: set[str] = set()
 
     for row in rows:
@@ -285,12 +302,15 @@ async def run_personal_lead_import(
         norm = normalize_phone_digits(phone_raw)
         if not name and not phone_raw:
             skipped += 1
+            invalid += 1
             continue
         if not norm or len(norm) != 10:
             skipped += 1
+            invalid += 1
             continue
         if norm in existing or norm in seen_in_file:
             skipped += 1
+            duplicates += 1
             continue
         seen_in_file.add(norm)
         if not name:
@@ -341,4 +361,6 @@ async def run_personal_lead_import(
     await session.commit()
     if imported == 0 and not warnings:
         warnings.append("No new leads were imported (empty file, bad phone numbers, or all duplicates).")
-    return LeadImportResult(imported=imported, skipped=skipped, warnings=warnings)
+    return LeadImportResult(
+        imported=imported, skipped=skipped, warnings=warnings, duplicates=duplicates, invalid=invalid
+    )

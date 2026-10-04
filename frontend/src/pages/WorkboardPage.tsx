@@ -1,6 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { buildLiveSessionMessage, extractPasscode } from '@/lib/live-session-message'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useBackClose } from '@/hooks/use-back-close'
+import { useGoBack } from '@/hooks/use-go-back'
 import {
   ArrowLeftRight,
   Check,
@@ -17,8 +20,10 @@ import {
   X,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { NativeSelect } from '@/components/ui/native-select'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
+import { EnrollmentProofRow } from '@/components/leads/EnrollmentProofRow'
 import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,6 +39,7 @@ import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch, apiUrl } from '@/lib/api'
+import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
@@ -50,29 +56,13 @@ import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { isDay2AdvanceUnlocked } from '@/lib/workboard-stage'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
+import { stageBadgeClass } from '@/lib/stage-colors'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Props = { title: string }
 type Col = { status: string; total: number; items: LeadPublic[] }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const BADGE: Record<string, string> = {
-  new_lead:       'bg-primary/15 text-primary border-primary/25',
-  contacted:      'bg-sky-400/15 text-sky-300 border-sky-400/25',
-  invited:        'bg-violet-400/15 text-violet-300 border-violet-400/25',
-  whatsapp_sent:  'bg-pink-400/15 text-pink-300 border-pink-400/25',
-  video_sent:     'bg-indigo-400/15 text-indigo-300 border-indigo-400/25',
-  video_watched:  'bg-blue-400/15 text-blue-300 border-blue-400/25',
-  paid:           'bg-amber-400/15 text-amber-300 border-amber-400/25',
-  day1:           'bg-orange-400/15 text-orange-300 border-orange-400/25',
-  day2:           'bg-yellow-400/15 text-yellow-300 border-yellow-400/25',
-  day3:           'bg-lime-400/15 text-lime-300 border-lime-400/25',
-  day4:           'bg-emerald-400/15 text-emerald-300 border-emerald-400/25',
-  day5:           'bg-teal-400/15 text-teal-300 border-teal-400/25',
-  interview:      'bg-lime-400/15 text-lime-300 border-lime-400/25',
-  converted:      'bg-green-500/15 text-green-300 border-green-500/25',
-  lost:           'bg-destructive/15 text-destructive border-destructive/25',
-}
 const CLOSE:  LeadStatus[] = ['converted','lost']
 type BatchSlotKey = 'd1_morning' | 'd1_afternoon' | 'd1_evening' | 'd2_morning' | 'd2_afternoon' | 'd2_evening'
 type WorkboardStageKey =
@@ -118,6 +108,23 @@ function parseAdminTab(value: string | null): ATab {
   return (match?.id ?? 'day2') as ATab
 }
 
+/**
+ * Resolve once a pending history.back() (useBackClose dropping its placeholder
+ * after a modal closes) has landed, so a following page navigation is not
+ * cancelled by it. Falls back after 400 ms when no back() was queued.
+ */
+function waitForHistorySettle(): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      window.removeEventListener('popstate', done)
+      window.clearTimeout(timer)
+      resolve()
+    }
+    const timer = window.setTimeout(done, 400)
+    window.addEventListener('popstate', done)
+  })
+}
+
 function workboardBatchWhatsAppUrl(
   lead: LeadPublic,
   dayKey: 1 | 2 | 3 | 4 | 5 | 6,
@@ -129,12 +136,15 @@ function workboardBatchWhatsAppUrl(
   const isDay6 = dayKey === 6
   const slotLabel = slot === 'M' ? 'Morning' : slot === 'A' ? 'Afternoon' : slot === 'E' ? 'Evening' : slot === '6PM' ? '6 PM' : '8 PM'
   const linkBlock = isDay6
+    // emoji-ok: WhatsApp message text sent to the prospect
     ? (links?.v1 ? `📹 Final Video:\n${links.v1}\n` : '')
+    // emoji-ok: WhatsApp message text sent to the prospect
     : (links?.v1 ? `📹 Video 1:\n${links.v1}\n` : '') + (links?.v2 ? `📹 Video 2:\n${links.v2}\n` : '')
   const msg =
     `Hi ${name},\n` +
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
+    // emoji-ok: WhatsApp message text sent to the prospect
     (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
   const url = whatsAppChatWithTextHref(lead.phone, msg)
   return url === '#' ? null : url
@@ -156,13 +166,16 @@ async function readResponseError(res: Response): Promise<string> {
 }
 
 function processTaskDone(lead: LeadPublic, stage: string, task: string): boolean {
-  return Boolean(lead.process_tracking?.[stage]?.[task])
+  const tracking = lead.process_tracking?.[stage]
+  // Leads ticked under the old "2CC Paper Plan" step count as having watched the 2 PM session.
+  if (stage === 'day3' && task === 'day3_live_session' && tracking?.day3_2cc_plan) return true
+  return Boolean(tracking?.[task])
 }
 
 function stageChecklistComplete(lead: LeadPublic, stage: string): boolean {
   const def = checklistForStage(stage)
   if (!def) return true
-  return def.tasks.every((task) => processTaskDone(lead, stage, task.key))
+  return def.tasks.every((task) => task.optional || processTaskDone(lead, stage, task.key))
 }
 
 function cleanPersonName(value: string | null | undefined): string | null {
@@ -195,7 +208,7 @@ function Tabs({ tabs, active, onChange }: {
         <button key={t.id} type="button" onClick={() => onChange(t.id)}
           className={cn('-mb-px shrink-0 border-b-2 px-2.5 py-2 text-ds-caption font-medium transition min-[400px]:px-3 sm:px-4 sm:text-sm',
             active === t.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>
-          {t.label}{t.count != null ? <span className="ml-1 tabular-nums text-muted-foreground/60">({t.count})</span> : null}
+          {t.label}{t.count != null ? <span className="ml-1 tabular-nums text-muted-foreground">({t.count})</span> : null}
         </button>
       ))}
     </div>
@@ -262,36 +275,18 @@ const LeadCard = memo(function LeadCard({
     }
   }
 
-  // Enrollment-Live send: create the single open token /watch/{token} link (detail-form
-  // gate + first-open timer + auto video_sent→video_watched on finish), then WhatsApp it.
-  // Enrollment-Live send — one tokenized /watch link, no time-slot picker.
+  // Enrollment video: one tokenized /watch link, shared on WhatsApp (see lib/enrollment-send).
   async function handleSendFlpMinBillingVideo() {
     setSendError(null)
     try {
-      const res = await apiFetch('/api/v1/flp-min-billing/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: lead.id }),
-      })
-      if (!res.ok) throw new Error(await readResponseError(res))
-      const data = (await res.json()) as { link?: { share_url?: string } }
-      const share = data.link?.share_url
-      const watchUrl = share ? `${window.location.origin}${share}` : null
-      if (watchUrl) {
-        const digits = whatsappDigits(lead.phone ?? '')
-        const msg =
-          `Hi ${lead.name || 'there'},\n\n` +
-          `Aapki Enrollment-Live video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
-        const waUrl = digits ? `https://wa.me/${digits}?text=${encodeURIComponent(msg)}` : null
-        if (waUrl) openExternalShareUrl(waUrl)
-      }
+      await sendEnrollmentLiveLink(lead)
       await qc.refetchQueries({ queryKey: ['workboard'] })
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Could not send enrollment video')
     }
   }
 
-  const badge = BADGE[lead.status] ?? 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'
+  const badge = stageBadgeClass(lead.status)
   const isWatched = lead.status === 'video_watched' || lead.call_status === 'video_watched'
   const isSent = !isWatched && (lead.status === 'video_sent' || lead.call_status === 'video_sent')
   const isReassigned = Boolean(lead.is_reassigned)
@@ -337,7 +332,7 @@ const LeadCard = memo(function LeadCard({
           <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
         {!stageOpsCard && isWatched ? (
-          <div className="flex items-center gap-1.5 rounded-lg border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-ds-caption font-medium text-blue-700 dark:text-blue-300">
+          <div className="flex items-center gap-1.5 rounded-lg border border-info/25 bg-info/10 px-2 py-1 text-ds-caption font-medium text-info-ink">
             <Eye className="size-3.5 shrink-0" aria-hidden />
             <span>Prospect watched the video — call now!</span>
           </div>
@@ -349,13 +344,13 @@ const LeadCard = memo(function LeadCard({
           </div>
         ) : null}
         {isReassigned ? (
-          <span className="flex w-fit items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+          <span className="flex w-fit items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-ds-micro font-semibold text-warning-ink">
             <ArrowLeftRight className="size-3 shrink-0" aria-hidden />
             Reassigned
           </span>
         ) : null}
         {!stageOpsCard ? (
-          <select
+          <NativeSelect
             value={callValue}
             disabled={leadPatchBusy}
             aria-label={`Call status for ${lead.name}`}
@@ -363,7 +358,7 @@ const LeadCard = memo(function LeadCard({
             className="w-full min-w-0 rounded-md border border-border bg-muted/30 px-2 py-2 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           >
             {callOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          </NativeSelect>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-1.5">
@@ -423,7 +418,7 @@ const LeadCard = memo(function LeadCard({
               <>
                 <LeadContactActions phone={lead.phone} />
                 {!stageOpsCard ? (
-                  <IconBtn title="Send Enrollment-Live video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
+                  <IconBtn title="Send enrollment video" colorHover="hover:border-indigo-400/40 hover:text-indigo-400 disabled:opacity-50"
                     onClick={() => void handleSendFlpMinBillingVideo()}>
                     <Video className="h-3.5 w-3.5"/>
                   </IconBtn>
@@ -431,7 +426,7 @@ const LeadCard = memo(function LeadCard({
               </>
             ) : null}
             {canReassign ? (
-              <IconBtn title="Reassign lead" colorHover="hover:border-amber-400/40 hover:text-amber-400"
+              <IconBtn title="Reassign lead" colorHover="hover:border-warning/40 hover:text-warning-ink"
                 onClick={() => { setRevertNotice(null); setReassignOpen(true) }}>
                 <ArrowLeftRight className="h-3.5 w-3.5"/>
               </IconBtn>
@@ -452,13 +447,16 @@ const LeadCard = memo(function LeadCard({
             nextLabel={nextLabel}
           />
         ) : null}
+        {lead.status === 'day1' ? (
+          <EnrollmentProofRow lead={lead} canSendBack={surfaceRole === 'leader' || surfaceRole === 'admin'} />
+        ) : null}
         {showClosingActions && (
           <div className="flex gap-2">
             <button
               type="button"
               disabled={leadPatchBusy || lead.status === 'converted'}
               onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'converted' } })}
-              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-green-500/40 bg-green-500/10 text-ds-caption font-semibold text-green-300 transition hover:bg-green-500/20 disabled:cursor-default disabled:opacity-40"
+              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-success/40 bg-success/10 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:cursor-default disabled:opacity-40"
             >
               <Check className="size-3.5" />
               {lead.status === 'converted' ? 'Closed ✓' : 'Mark Closed'}
@@ -526,7 +524,7 @@ function Checkbox({
       className={cn(
         'flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition disabled:opacity-50',
         done
-          ? 'border-emerald-400 bg-emerald-400/20 text-emerald-400'
+          ? 'border-success bg-success/20 text-success-ink'
           : 'border-border bg-transparent text-transparent hover:border-primary/60',
       )}
     >
@@ -568,6 +566,13 @@ function ProcessChecklistSection({
     setTaskError(null)
     setBusyTask(taskKey)
     try {
+      // Unticking the 2 PM session must also clear an old "2CC Paper Plan" tick, which counts as it.
+      if (!done && stage === 'day3' && taskKey === 'day3_live_session' && lead.process_tracking?.day3?.day3_2cc_plan) {
+        await pm.mutateAsync({
+          id: lead.id,
+          body: { process_stage: 'day3', process_task: 'day3_2cc_plan', process_task_done: false },
+        })
+      }
       await pm.mutateAsync({
         id: lead.id,
         body: {
@@ -599,9 +604,29 @@ function ProcessChecklistSection({
     }
   }
 
+  // Day 3: send today's 2 PM Zoom link (the admin's Live Session setting) to the prospect.
+  async function sendLiveSessionLink(taskKey: string) {
+    setTaskError(null)
+    setBusyTask(taskKey)
+    try {
+      const res = await apiFetch('/api/v1/other/live-session')
+      if (!res.ok) throw new Error(await readResponseError(res))
+      const card = ((await res.json()) as { items?: { external_href?: string | null; detail?: string | null }[] }).items?.[0]
+      const href = card?.external_href?.trim()
+      if (!href) throw new Error("Today's live session link isn't set yet.")
+      const waUrl = whatsAppChatWithTextHref(lead.phone, buildLiveSessionMessage(href, extractPasscode(card?.detail)))
+      if (waUrl === '#') throw new Error('Phone number missing or invalid.')
+      if (!openExternalShareUrl(waUrl)) throw new Error('Could not open WhatsApp.')
+    } catch (err) {
+      setTaskError(err instanceof Error ? err.message : 'Could not send the session link')
+    } finally {
+      setBusyTask(null)
+    }
+  }
+
   const displayTasks = taskKeys ? def.tasks.filter((t) => taskKeys.includes(t.key)) : def.tasks
   const allDone = taskKeys
-    ? displayTasks.every((t) => processTaskDone(lead, stage, t.key))
+    ? displayTasks.every((t) => t.optional || processTaskDone(lead, stage, t.key))
     : stageChecklistComplete(lead, stage)
 
   return (
@@ -622,13 +647,13 @@ function ProcessChecklistSection({
               className={cn(
                 'flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition-all',
                 done
-                  ? 'border-emerald-400/20 bg-emerald-400/[0.06]'
+                  ? 'border-success/20 bg-success/[0.06]'
                   : 'border-border/50 bg-card/40',
               )}
             >
               <div className="flex min-w-0 items-center gap-2">
-                {done && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" aria-hidden />}
-                <p className={cn('text-sm font-medium', done ? 'text-emerald-300/80' : 'text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]')}>
+                {done && <Check className="h-3.5 w-3.5 shrink-0 text-success-ink" aria-hidden />}
+                <p className={cn('text-sm font-medium', done ? 'text-success-ink/80' : 'text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]')}>
                   {task.label}
                 </p>
               </div>
@@ -644,7 +669,7 @@ function ProcessChecklistSection({
                   className={cn(
                     'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
                     done
-                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                      ? 'border-success/30 bg-success/15 text-success-ink'
                       : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20',
                   )}
                 >
@@ -662,12 +687,26 @@ function ProcessChecklistSection({
                   className={cn(
                     'shrink-0 rounded-md border px-2 py-1 text-ds-caption font-semibold transition disabled:opacity-50',
                     done
-                      ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20',
+                      ? 'border-success/30 bg-success/15 text-success-ink'
+                      : 'border-success/30 bg-success/10 text-success-ink hover:bg-success/20',
                   )}
                 >
                   {busy ? 'Sending…' : done ? 'Sent ✓' : 'Send to WhatsApp'}
                 </button>
+              ) : task.kind === 'live_session' ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={leadPatchBusy || busy}
+                    onClick={() => void sendLiveSessionLink(task.key)}
+                    className="shrink-0 rounded-md border border-success/30 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
+                  >
+                    {busy ? 'Opening…' : 'Send link'}
+                  </button>
+                  <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
+                    aria-label={done ? `Mark "${task.label}" incomplete` : `Mark "${task.label}" complete`}
+                    onClick={() => void toggleTask(task.key, !done)} />
+                </div>
               ) : task.kind === 'open_video' ? (
                 <div className="flex shrink-0 items-center gap-2">
                   {task.settingKey && contentLinks?.[task.settingKey] ? (
@@ -680,7 +719,7 @@ function ProcessChecklistSection({
                       Watch
                     </a>
                   ) : (
-                    <span className="text-ds-caption text-muted-foreground/60">No link set</span>
+                    <span className="text-ds-caption text-muted-foreground">No link set</span>
                   )}
                   <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
                     aria-label={done ? `Mark "${task.label}" incomplete` : `Mark "${task.label}" complete`}
@@ -777,14 +816,14 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               className={cn(
                 'flex flex-col items-center rounded-lg border px-2 py-2 text-center transition disabled:opacity-50',
                 active
-                  ? 'border-cyan-400/50 bg-cyan-400/[0.12] text-cyan-200'
+                  ? 'border-cyan-400/50 bg-cyan-400/[0.12] text-cyan-700 dark:text-cyan-200'
                   : 'border-border/50 bg-card/40 text-[color-mix(in_srgb,var(--foreground)_80%,transparent)] hover:border-cyan-400/30',
               )}
             >
               <span className="text-sm font-bold">{s.label}</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.sub}</span>
+              <span className="text-ds-micro uppercase tracking-wide text-muted-foreground">{s.sub}</span>
               <span className="mt-1 text-xs font-semibold">{rupees(s.priceCents)}</span>
-              <span className="text-[10px] text-muted-foreground">seat {rupees(s.seatHoldCents)}</span>
+              <span className="text-ds-micro text-muted-foreground">seat {rupees(s.seatHoldCents)}</span>
             </button>
           )
         })}
@@ -797,11 +836,11 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               Seat-hold {seatHoldCents != null ? rupees(seatHoldCents) : ''}
             </span>
             {seatHeld ? (
-              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+              <span className="rounded-full border border-success/30 bg-success/15 px-2 py-0.5 text-ds-micro font-bold text-success-ink">
                 Held · {countdown}
               </span>
             ) : seatExpired ? (
-              <span className="rounded-full border border-amber-400/30 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+              <span className="rounded-full border border-warning/30 bg-warning/15 px-2 py-0.5 text-ds-micro font-bold text-warning-ink">
                 Expired
               </span>
             ) : null}
@@ -820,7 +859,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               type="button"
               disabled={leadPatchBusy || busy !== null}
               onClick={() => void patch({ collect_seat_hold: true }, 'collect')}
-              className="w-full rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+              className="w-full rounded-md border border-success/30 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
             >
               {busy === 'collect' ? 'Saving…' : seatExpired ? 'Re-collect seat-hold' : 'Collect seat-hold'}
             </button>
@@ -855,7 +894,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
 
   const upload = async () => {
     setErr(null)
-    if (!file) { setErr('Screenshot select karo.'); return }
+    if (!file) { setErr('Select a screenshot.'); return }
     const cents = Math.round(Number(amount) * 100)
     if (!Number.isFinite(cents) || cents <= 0) { setErr('Valid amount daalo.'); return }
     setBusy('upload')
@@ -891,8 +930,8 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
   }
 
   const badge = (() => {
-    if (status === 'approved') return ['Paid ✓ (recorded)', 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300']
-    if (status === 'proof_uploaded') return ['Pending review', 'border-amber-400/30 bg-amber-400/15 text-amber-300']
+    if (status === 'approved') return ['Paid ✓ (recorded)', 'border-success/30 bg-success/15 text-success-ink']
+    if (status === 'proof_uploaded') return ['Pending review', 'border-warning/30 bg-warning/15 text-warning-ink']
     if (status === 'rejected') return ['Rejected', 'border-destructive/30 bg-destructive/15 text-destructive']
     return ['Not paid', 'border-border/50 bg-muted text-muted-foreground']
   })()
@@ -903,7 +942,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
     <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
       <div className="flex items-center justify-between">
         <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Payment</p>
-        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[1])}>{badge[0]}</span>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-bold', badge[1])}>{badge[0]}</span>
       </div>
       <p className="text-ds-caption text-muted-foreground">Prospect ka payment leader ke account me. Screenshot upload → admin approve.</p>
 
@@ -936,7 +975,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
             type="button"
             disabled={leadPatchBusy || busy !== null}
             onClick={() => void upload()}
-            className="w-full rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-ds-caption font-semibold text-cyan-300 transition hover:bg-cyan-400/20 disabled:opacity-50"
+            className="w-full rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-ds-caption font-semibold text-cyan-700 dark:text-cyan-300 transition hover:bg-cyan-400/20 disabled:opacity-50"
           >
             {busy === 'upload' ? 'Uploading…' : 'Upload payment screenshot'}
           </button>
@@ -949,7 +988,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
             type="button"
             disabled={busy !== null}
             onClick={() => void review('approve')}
-            className="flex-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-ds-caption font-semibold text-emerald-300 transition hover:bg-emerald-400/20 disabled:opacity-50"
+            className="flex-1 rounded-md border border-success/30 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
           >
             {busy === 'approve' ? '…' : 'Approve'}
           </button>
@@ -976,8 +1015,8 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
   const done = status === 'passed' || status === 'failed'
   const badge: Record<string, string> = {
     pending: 'bg-muted text-muted-foreground border-border/50',
-    in_progress: 'bg-amber-400/15 text-amber-300 border-amber-400/30',
-    passed: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/30',
+    in_progress: 'bg-warning/15 text-warning-ink border-warning/30',
+    passed: 'bg-success/15 text-success-ink border-success/30',
     failed: 'bg-destructive/15 text-destructive border-destructive/30',
   }
   const label: Record<string, string> = {
@@ -990,7 +1029,7 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
     <div className="border-t border-border/40 pt-1.5 space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-ds-caption font-semibold text-muted-foreground">Day 2 Business Test</span>
-        <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badge[status])}>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-bold', badge[status])}>
           {label[status]}
         </span>
       </div>
@@ -998,7 +1037,7 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
         <button type="button"
           disabled={busy}
           onClick={onSend}
-          className="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-400/15 to-emerald-400/10 px-3 text-sm font-bold text-cyan-200 transition hover:border-cyan-400/60 hover:from-cyan-400/20 disabled:opacity-50">
+          className="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-400/15 to-success/10 px-3 text-sm font-bold text-cyan-700 dark:text-cyan-200 transition hover:border-cyan-400/60 hover:from-cyan-400/20 disabled:opacity-50">
           <Send className="h-4 w-4 shrink-0" />
           <span>{busy ? 'Preparing...' : status === 'in_progress' ? 'Resend test link' : 'Send test link'}</span>
         </button>
@@ -1049,6 +1088,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     if (sharingSlot != null || markingSlot != null) return
     setBatchModal(null)
   }
+  useBackClose({ open: batchModal != null, onClose: closeBatchModal })
 
   const handleBatchButtonClick = async (slot: BatchSlotChip, slotKey: BatchSlotKey) => {
     setBatchError(null)
@@ -1098,14 +1138,21 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     }
   }
 
-  const markBatchDone = async (slotKey: BatchSlotKey) => {
+  const markBatchDone = async (slotKey: BatchSlotKey): Promise<boolean> => {
     setBatchError(null)
     setMarkingSlot(slotKey)
     try {
-      await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      try {
+        await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      } catch {
+        // One quiet retry: a flaky phone connection shouldn't leave a sent batch grey.
+        await new Promise((resolve) => window.setTimeout(resolve, 800))
+        await pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } })
+      }
       // Optimistic cache update already painted; mutation onSettled invalidates
       // the board in the background — no awaited refetch needed.
       setBatchModal(null)
+      return true
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not update batch state'
       setBatchError(message)
@@ -1117,6 +1164,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             }
           : prev,
       )
+      return false
     } finally {
       setMarkingSlot(null)
     }
@@ -1149,13 +1197,16 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
       setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
       return
     }
+    // Mark first, then open WhatsApp. Closing the modal makes useBackClose drop
+    // its history placeholder with history.back(); if WhatsApp were already
+    // loading, that back() cancels the wa.me navigation and WhatsApp never opens.
+    const marked = await markBatchDone(batchModal.slotKey)
+    if (marked) await waitForHistorySettle()
     if (!openExternalShareUrl(waUrl)) {
       const message = 'Could not open WhatsApp share window.'
       setBatchError(message)
       setBatchModal((prev) => (prev ? { ...prev, error: message } : prev))
-      return
     }
-    await markBatchDone(batchModal.slotKey)
   }
 
   const handleCopyBatchLink = async (variant: BatchLinkVariant) => {
@@ -1164,7 +1215,16 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     if (!value) return
     try {
       await navigator.clipboard.writeText(value)
+      setBatchError(null)
       setBatchModal((prev) => (prev ? { ...prev, copied: variant } : prev))
+      // Copying the link to send it yourself counts as sending: turn the batch green
+      // (the modal stays open so the other video's link can be copied too).
+      const slotKey = batchModal.slotKey
+      if (!lead[slotKey]) {
+        void pm.mutateAsync({ id: lead.id, body: { [slotKey]: true } }).catch((err: unknown) => {
+          setBatchError(err instanceof Error ? err.message : 'Could not mark this batch as sent')
+        })
+      }
       window.setTimeout(() => {
         setBatchModal((prev) => (prev ? { ...prev, copied: null } : prev))
       }, 1800)
@@ -1209,7 +1269,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           stage={stageKey}
           pm={pm}
           leadPatchBusy={leadPatchBusy}
-          taskKeys={['day3_interview', 'day3_2cc_plan', 'day3_blueprint_video']}
+          taskKeys={['day3_interview', 'day3_live_session', 'day3_blueprint_video']}
         />
         <Day3StagePicker lead={lead} pm={pm} leadPatchBusy={leadPatchBusy} />
         <Day3StagePayment lead={lead} leadPatchBusy={leadPatchBusy} />
@@ -1218,7 +1278,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             type="button"
             disabled={leadPatchBusy || !day3Done}
             onClick={onMoveNext}
-            className="w-full rounded-md border border-green-500/40 bg-green-500/10 px-2 py-1 text-ds-caption font-semibold text-green-300 transition hover:bg-green-500/20 disabled:opacity-50"
+            className="w-full rounded-md border border-success/40 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
           >
             {nextLabel ?? 'Mark Converted'}
           </button>
@@ -1240,11 +1300,11 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             <span className="text-ds-caption font-medium text-muted-foreground">Batch progress</span>
             <span
               className={cn(
-                'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                'rounded-full border px-2 py-0.5 text-ds-micro font-semibold',
                 doneCount === 3
-                  ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
+                  ? 'border-success/30 bg-success/15 text-success-ink'
                   : doneCount > 0
-                    ? 'border-amber-400/30 bg-amber-400/15 text-amber-300'
+                    ? 'border-warning/30 bg-warning/15 text-warning-ink'
                     : 'border-border bg-muted/30 text-muted-foreground',
               )}
             >
@@ -1255,12 +1315,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             <div
               className={cn(
                 'h-full rounded-full transition-all',
-                doneCount === 3 ? 'bg-emerald-400' : doneCount > 0 ? 'bg-amber-400' : 'bg-border',
+                doneCount === 3 ? 'bg-success' : doneCount > 0 ? 'bg-warning' : 'bg-border',
               )}
               style={{ width: `${Math.round((doneCount / 3) * 100)}%` }}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground">{doneCount}/3 batches done</p>
+          <p className="text-ds-micro text-muted-foreground">{doneCount}/3 batches done</p>
           <div className="flex gap-2">
             {batchSlots.map((slotKey, i) => {
               const slot = slotTimeLabels[i]
@@ -1282,12 +1342,12 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                   className={cn(
                     'flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:opacity-50',
                     slotDone
-                      ? 'border-emerald-400/35 bg-emerald-400/12 text-emerald-300'
+                      ? 'border-success/35 bg-success/12 text-success-ink'
                       : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-primary',
                   )}
                 >
                   {busy ? (
-                    <span className="text-[11px]">...</span>
+                    <span className="text-ds-micro">...</span>
                   ) : slotDone ? (
                     <CheckSquare className="h-4 w-4" />
                   ) : (
@@ -1394,7 +1454,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                         </div>
                       ))}
                     <p className="text-xs text-muted-foreground">
-                      Send on WhatsApp to mark this batch done, or use already sent if the prospect already has the link.
+                      Send &amp; Mark or Copy a link and the batch turns green. Use Already Sent if the prospect already has the link.
                     </p>
                   </>
                 ) : (
@@ -1591,8 +1651,8 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
         <div className="space-y-3">
           {/* Day 3 summary chips */}
           <div className="flex flex-wrap gap-2">
-            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-emerald-400/15 text-emerald-300 border-emerald-400/25'],
-              ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-amber-400/15 text-amber-300 border-amber-400/25'],
+            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-success/15 text-success-ink border-success/25'],
+              ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-warning/15 text-warning-ink border-warning/25'],
               ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'],
             ].map(([label, count, cls]) =>
               <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
@@ -1611,7 +1671,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
         <div className="space-y-6">
           {CLOSE.map((s) => {
             const items = f([s])
-            const badge = BADGE[s] ?? ''
+            const badge = stageBadgeClass(s)
             return (
               <div key={s} className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -1640,7 +1700,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -1691,7 +1751,7 @@ export function WorkboardPage({ title }: Props) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <button type="button" onClick={() => navigate(-1)} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
+          <button type="button" onClick={goBack} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
           <h1 className="text-ds-h2">{title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {surfaceRole === 'admin'
@@ -1753,7 +1813,7 @@ export function WorkboardPage({ title }: Props) {
         />
       )}
       {toastMsg ? (
-        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-emerald-400/35 bg-emerald-400/15 px-3 py-2 text-ds-caption font-semibold text-emerald-200 shadow-lg">
+        <div className="fixed bottom-24 right-4 z-[85] rounded-md border border-success/35 bg-success/15 px-3 py-2 text-ds-caption font-semibold text-success-ink shadow-lg">
           {toastMsg}
         </div>
       ) : null}

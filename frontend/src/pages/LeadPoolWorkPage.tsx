@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Search, Users } from 'lucide-react'
 
+import { EmptyState } from '@/components/ui/states'
 import { Button } from '@/components/ui/button'
-import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
@@ -12,6 +12,7 @@ import {
   usePatchLeadMutation,
 } from '@/hooks/use-leads-query'
 import {
+  useClaimGateQuery,
   useLeadPoolBatchClaimMutation,
   useLeadPoolBatchPreviewQuery,
   useLeadPoolDefaultsMutation,
@@ -19,10 +20,9 @@ import {
   useLeadPoolQuery,
   type PoolLead,
 } from '@/hooks/use-lead-pool-query'
-import {
-  useFreePoolBatchClaimMutation,
-  useFreePoolBatchPreviewQuery,
-} from '@/hooks/use-free-lead-pool-query'
+import { AdminLeadBookingsCard } from '@/components/leads/AdminLeadBookingsCard'
+import { ClaimGateBanner } from '@/components/leads/ClaimGateBanner'
+import { LeadBookingCard } from '@/components/leads/LeadBookingCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -75,26 +75,12 @@ export function LeadPoolWorkPage({ title }: Props) {
   const poolDefaultsMut = useLeadPoolDefaultsMutation()
   const { data: walletData } = useWalletMeQuery(canClaimPool)
   const claimMut = useClaimLeadMutation()
+  const { data: claimGate } = useClaimGateQuery(canClaimPool)
+  const claimBlocked = claimGate?.blocked === true
   const batchClaimMut = useLeadPoolBatchClaimMutation()
   const patchMut = usePatchLeadMutation()
   const claimBusy = claimMut.isPending || batchClaimMut.isPending
   const claimError = claimMut.error ?? batchClaimMut.error
-
-  // Free pool hooks
-  const [freeBatchCountStr, setFreeBatchCountStr] = useState('1')
-  const [freeBatchConfirmOpen, setFreeBatchConfirmOpen] = useState(false)
-  const [freeImportFile, setFreeImportFile] = useState<File | null>(null)
-  const [freeImportBusy, setFreeImportBusy] = useState(false)
-  const [freeImportNote, setFreeImportNote] = useState<string | null>(null)
-  const requestedFreeBatchCount = Math.min(50, Math.max(1, Number.parseInt(freeBatchCountStr, 10) || 1))
-  const {
-    data: freePoolPreview,
-    isPending: isFreePoolPreviewPending,
-    isError: isFreePoolPreviewError,
-    error: freePoolPreviewError,
-    refetch: refetchFreePoolPreview,
-  } = useFreePoolBatchPreviewQuery(requestedFreeBatchCount, canClaimPool)
-  const freeClaimMut = useFreePoolBatchClaimMutation()
 
   // Confirm dialog state: which lead is being claimed
   const [confirmId, setConfirmId] = useState<number | null>(null)
@@ -222,43 +208,6 @@ export function LeadPoolWorkPage({ title }: Props) {
     }
   }
 
-  async function handleFreePoolImport() {
-    if (!freeImportFile) return
-    setFreeImportBusy(true)
-    setFreeImportNote(null)
-    try {
-      const fd = new FormData()
-      fd.append('file', freeImportFile)
-      const res = await apiFetch('/api/v1/free-lead-pool/import', { method: 'POST', body: fd })
-      const body = (await res.json().catch(() => ({}))) as {
-        created?: number
-        warnings?: string[]
-        error?: { message?: string }
-      }
-      if (!res.ok) {
-        throw new Error(body.error?.message ?? res.statusText)
-      }
-      const w = body.warnings?.length ? ` ${body.warnings.join(' ')}` : ''
-      setFreeImportNote(`Imported ${body.created ?? 0} free lead(s).${w}`)
-      setFreeImportFile(null)
-      await qc.invalidateQueries({ queryKey: ['free-lead-pool'] })
-    } catch (e) {
-      setFreeImportNote(e instanceof Error ? e.message : 'Import failed')
-    } finally {
-      setFreeImportBusy(false)
-    }
-  }
-
-  async function handleFreePoolBatchClaim() {
-    try {
-      await freeClaimMut.mutateAsync(requestedFreeBatchCount)
-      playAppSound('claim')
-      setFreeBatchConfirmOpen(false)
-    } catch {
-      /* surfaced below */
-    }
-  }
-
   async function handleTestDelivery() {
     setTestBusy(true)
     setTestNote(null)
@@ -308,6 +257,8 @@ export function LeadPoolWorkPage({ title }: Props) {
           admin account.
         </div>
       ) : null}
+
+      {canManagePool ? <AdminLeadBookingsCard /> : null}
 
       {canManagePool ? (
         <div className="surface-inset space-y-3 p-4 text-sm">
@@ -404,7 +355,7 @@ export function LeadPoolWorkPage({ title }: Props) {
       {canClaimPool && walletData !== undefined ? (
         <div className="surface-inset inline-flex items-center gap-2 px-3 py-1.5 text-sm">
           <span className="text-muted-foreground">Wallet balance:</span>
-          <span className={`font-semibold ${walletBalance > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
+          <span className={`font-semibold ${walletBalance > 0 ? 'text-success-ink' : 'text-destructive'}`}>
             {formatRupees(walletBalance)}
           </span>
           <Link to="/dashboard/finance/wallet" className="text-xs text-primary underline-offset-2 hover:underline">
@@ -431,6 +382,8 @@ export function LeadPoolWorkPage({ title }: Props) {
 
       {canClaimPool ? (
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
+          {claimGate ? <ClaimGateBanner gate={claimGate} /> : null}
+          {signedInRole === 'team' || signedInRole === 'leader' ? <LeadBookingCard /> : null}
           <p className="mb-3 font-medium text-foreground">
             In pool: {batchPreview?.available_count ?? (canViewPoolList ? data?.total ?? 0 : 0)}
           </p>
@@ -458,7 +411,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                 Leaders and team members can only claim in bulk from this screen.
               </p>
               {batchConfirmOpen ? (
-                <div className="mt-3 space-y-2 rounded-md border border-amber-400/30 bg-amber-400/5 p-2">
+                <div className="mt-3 space-y-2 rounded-md border border-warning/30 bg-warning/5 p-2">
                   <p className="text-foreground">
                     Claim up to <strong className="tabular-nums">{batchCountParsed}</strong> lead(s)? Exact
                     debit for the current FIFO slice:{' '}
@@ -470,7 +423,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
+                      disabled={claimBlocked || claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
                       onClick={() => void handleBatchClaim()}
                     >
                       {claimBusy ? 'Claiming…' : 'Confirm batch'}
@@ -502,7 +455,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
+                    disabled={claimBlocked || claimBusy || !canAffordBatchEstimate || batchCountParsed < 1}
                     title={
                       !canAffordBatchEstimate
                         ? `Need ${formatRupees(batchFifoEstimateCents)}; wallet has ${formatRupees(walletBalance)}`
@@ -518,7 +471,7 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {canViewPoolList && data != null && data.items.length === 0 && !poolQ.trim() ? (
-            <EmptyStatePremium
+            <EmptyState
               variant="leads"
               title="No leads in pool"
               description="Import leads or wait for admin to add them."
@@ -527,7 +480,7 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {!canViewPoolList && batchPreview != null && batchPreview.available_count === 0 ? (
-            <EmptyStatePremium
+            <EmptyState
               variant="leads"
               title="No leads in pool"
               description="No leads available to claim right now. Check back later."
@@ -589,8 +542,8 @@ export function LeadPoolWorkPage({ title }: Props) {
                       {/* Price badge */}
                       <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                         isFree
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                          ? 'bg-success/15 text-success-ink'
+                          : 'bg-warning/15 text-warning-ink'
                       }`}>
                         {isFree ? 'Free' : formatRupees(price)}
                       </span>
@@ -632,7 +585,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     {/* Claim flow */}
                     {canClaimPool ? (
                       isConfirming ? (
-                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2">
                           <p className="flex-1 text-xs text-foreground">
                             {isFree
                               ? 'Claim this lead for free?'
@@ -641,7 +594,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           <Button
                             type="button"
                             size="sm"
-                            disabled={claimBusy || (!isFree && !canAfford)}
+                            disabled={claimBlocked || claimBusy || (!isFree && !canAfford)}
                             onClick={() => void handleClaim(l.id)}
                           >
                             {claimBusy ? 'Claiming…' : 'Confirm'}
@@ -660,7 +613,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           type="button"
                           size="sm"
                           className="self-start"
-                          disabled={claimBusy || (!isFree && !canAfford)}
+                          disabled={claimBlocked || claimBusy || (!isFree && !canAfford)}
                           title={!isFree && !canAfford ? `Need ${formatRupees(price)}, wallet has ${formatRupees(walletBalance)}` : undefined}
                           onClick={() => setConfirmId(l.id)}
                         >
@@ -690,159 +643,6 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
         </div>
       ) : null}
-      {/* ── FREE LEAD POOL SECTION ── */}
-      <div className="surface-elevated p-4 text-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="font-semibold text-foreground">
-            Free Lead Pool{' '}
-            <span className="ml-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              Free
-            </span>
-          </p>
-          <span className="text-xs text-muted-foreground">
-            No wallet balance needed — claim for free
-          </span>
-        </div>
-
-        <p className="mb-4 text-xs text-muted-foreground">
-          Free leads added by admin — claim without any wallet debit. Server uses FIFO (oldest first). Max 50 per request.
-        </p>
-
-        {/* Admin: import free pool leads */}
-        {canManagePool ? (
-          <div className="surface-inset mb-4 space-y-3 p-4 text-sm">
-            <p className="font-medium text-foreground">Admin: Import leads to Free Pool (Excel)</p>
-            <p className="text-xs text-muted-foreground">
-              Same format as paid pool — .xlsx with Full Name, Phone, City, Age, Gender, AD Name columns.
-              These leads are completely free — no price will be set.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <label htmlFor="free-pool-import-file" className="sr-only">
-                Choose Excel file for free pool
-              </label>
-              <input
-                id="free-pool-import-file"
-                type="file"
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                className="max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-emerald-600 dark:file:bg-emerald-500 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white"
-                onChange={(e) => setFreeImportFile(e.target.files?.[0] ?? null)}
-              />
-              <Button
-                type="button"
-                size="sm"
-                disabled={!freeImportFile || freeImportBusy}
-                onClick={() => void handleFreePoolImport()}
-              >
-                {freeImportBusy ? 'Importing…' : 'Import to Free Pool'}
-              </Button>
-            </div>
-            {freeImportNote ? (
-              <p className="text-xs text-muted-foreground" role="status">
-                {freeImportNote}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        {/* Preview + claim */}
-        {canClaimPool ? (
-          <>
-            {isFreePoolPreviewPending ? (
-              <Skeleton className="mb-3 h-20 w-full" />
-            ) : null}
-
-            {isFreePoolPreviewError ? (
-              <div className="mb-3 text-xs text-destructive" role="alert">
-                <span>{freePoolPreviewError instanceof Error ? freePoolPreviewError.message : 'Could not load free pool preview'} </span>
-                <button type="button" className="underline underline-offset-2" onClick={() => void refetchFreePoolPreview()}>
-                  Retry
-                </button>
-              </div>
-            ) : null}
-
-            {freePoolPreview != null ? (
-              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3 text-xs">
-                <p className="font-medium text-foreground">
-                  Available free leads:{' '}
-                  <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {freePoolPreview.available_count}
-                  </span>
-                </p>
-
-                {freePoolPreview.available_count === 0 ? (
-                  <EmptyStatePremium
-                    variant="leads"
-                    title="No free leads available"
-                    description="Ask admin to add leads to the free pool."
-                    className="mt-2"
-                    icon={Users}
-                  />
-                ) : freeBatchConfirmOpen ? (
-                  <div className="mt-3 space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2">
-                    <p className="text-foreground">
-                      Claim <strong className="tabular-nums">{freePoolPreview.claim_count}</strong> free lead(s)?
-                      Completely free — nothing will be deducted from your wallet.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={freeClaimMut.isPending || freePoolPreview.claim_count < 1}
-                        onClick={() => void handleFreePoolBatchClaim()}
-                      >
-                        {freeClaimMut.isPending ? 'Claiming…' : 'Confirm — Claim Free'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFreeBatchConfirmOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <div>
-                      <label htmlFor="free-pool-batch-count" className="sr-only">
-                        Number of free leads to claim
-                      </label>
-                      <input
-                        id="free-pool-batch-count"
-                        type="number"
-                        min={1}
-                        max={Math.max(1, Math.min(50, freePoolPreview.available_count))}
-                        step={1}
-                        value={freeBatchCountStr}
-                        onChange={(e) => setFreeBatchCountStr(e.target.value)}
-                        className="w-20 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-emerald-500/35"
-                      />
-                      <span className="ml-2 text-muted-foreground">
-                        (max {Math.min(50, freePoolPreview.available_count)})
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={freeClaimMut.isPending || freePoolPreview.claim_count < 1}
-                      onClick={() => setFreeBatchConfirmOpen(true)}
-                    >
-                      Claim Free Leads
-                    </Button>
-                  </div>
-                )}
-
-                {freeClaimMut.isError ? (
-                  <p className="mt-2 text-xs text-destructive" role="alert">
-                    {freeClaimMut.error instanceof Error ? freeClaimMut.error.message : 'Claim failed'}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-          </>
-        ) : null}
-      </div>
     </div>
   )
 }

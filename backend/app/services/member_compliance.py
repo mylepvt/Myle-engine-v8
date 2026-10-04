@@ -12,14 +12,12 @@ from app.core.config import settings
 from app.core.time_ist import IST, today_ist
 from app.models.daily_report import DailyReport
 from app.models.user import User
-from app.models.whatsapp_log import WhatsAppLog
 from app.services.report_eligibility import is_user_report_eligible
 from app.services.live_metrics import (
     fresh_call_counts_by_user,
     fresh_lead_counts_by_user,
     get_daily_call_target,
 )
-from app.services.whatsapp_removal import send_removal_whatsapp
 
 ComplianceLevel = Literal[
     "clear",
@@ -314,34 +312,6 @@ def _summarize_active_stage(
     return title, " | ".join(labels)
 
 
-async def _final_warning_alert_sent_today(
-    session: AsyncSession, user_id: int, today: date
-) -> bool:
-    """True if a final-warning management WhatsApp for this member already went out today (IST).
-
-    ``build_compliance_snapshots(apply_actions=True)`` runs on essentially every
-    authenticated request, so without this guard a member sitting at final
-    warning would re-trigger the management alert on every request — spamming
-    management. We dedupe on the outbound WhatsApp log: one alert per member
-    per IST day.
-    """
-    day_start = datetime(today.year, today.month, today.day, tzinfo=IST)
-    day_end = day_start + timedelta(days=1)
-    existing = (
-        await session.execute(
-            select(func.count(WhatsAppLog.id)).where(
-                WhatsAppLog.direction == "out",
-                WhatsAppLog.message_type == "final_warning",
-                WhatsAppLog.related_user_id == user_id,
-                WhatsAppLog.status == "sent",
-                WhatsAppLog.created_at >= day_start,
-                WhatsAppLog.created_at < day_end,
-            )
-        )
-    ).scalar() or 0
-    return existing > 0
-
-
 async def build_compliance_snapshots(
     session: AsyncSession,
     user_ids: Iterable[int],
@@ -542,19 +512,6 @@ async def build_compliance_snapshots(
                     final_end_date=user.grace_end_date,
                 )
                 _mark_removed(user, reason=reason, removed_by_user_id=None, now=now)
-                try:
-                    await send_removal_whatsapp(user=user, session=session)
-                except Exception as wa_exc:
-                    logger.info("removal whatsapp failed user_id=%s during grace-expiry removal: %s", user.id, wa_exc)
-                try:
-                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
-                    await send_management_member_removed_alert(
-                        session, member_name=user.name or f"User #{user.id}",
-                        member_fbo=user.fbo_id or "", removed_by="System (grace-expiry)",
-                        reason=reason,
-                    )
-                except Exception as mgmt_exc:
-                    logger.info("management alert failed user_id=%s grace-expiry: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -618,19 +575,6 @@ async def build_compliance_snapshots(
             ) or "Removed for repeated non-compliance."
             if apply_actions:
                 _mark_removed(user, reason=reason, removed_by_user_id=None, now=now)
-                try:
-                    await send_removal_whatsapp(user=user, session=session)
-                except Exception as wa_exc:
-                    logger.info("removal whatsapp failed user_id=%s during streak removal: %s", user.id, wa_exc)
-                try:
-                    from app.services.whatsapp_management_updates import send_management_member_removed_alert
-                    await send_management_member_removed_alert(
-                        session, member_name=user.name or f"User #{user.id}",
-                        member_fbo=user.fbo_id or "", removed_by="System (streak)",
-                        reason=reason,
-                    )
-                except Exception as mgmt_exc:
-                    logger.info("management alert failed user_id=%s streak: %s", user.id, mgmt_exc)
                 changed = True
             snapshot.access_blocked = True
             snapshot.discipline_status = "removed"
@@ -649,26 +593,6 @@ async def build_compliance_snapshots(
             missing_report_streak=snapshot.missing_report_streak,
             call_target=call_target,
         )
-        if (
-            apply_actions
-            and winning_level == "final_warning"
-            and not await _final_warning_alert_sent_today(session, user.id, today_date)
-        ):
-            try:
-                from app.services.whatsapp_management_updates import send_management_final_warning_alert
-                await send_management_final_warning_alert(
-                    session,
-                    member_name=user.name or f"User #{user.id}",
-                    member_fbo=user.fbo_id or "",
-                    reason=snapshot.compliance_summary,
-                    streak_days=max(snapshot.calls_short_streak, snapshot.missing_report_streak),
-                    related_user_id=user.id,
-                )
-                # Persist the outbound-log row so the per-day dedup holds across
-                # requests (most GET requests would otherwise not commit it).
-                changed = True
-            except Exception as mgmt_exc:
-                logger.info("management final-warning alert failed user_id=%s: %s", user.id, mgmt_exc)
         snapshots[user.id] = snapshot
 
     if changed:

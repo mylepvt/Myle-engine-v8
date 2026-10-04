@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
-import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 export type UserProfileResponse = {
   id: number
@@ -98,12 +97,6 @@ export type AppSettingsResponse = {
 export type AppSettingUpdateRequest = {
   key: string
   value: string
-}
-
-export type FlpMinBillingVideoUploadResponse = {
-  source_url: string
-  file_name: string
-  message: string
 }
 
 export type PasswordChangeRequest = {
@@ -231,20 +224,6 @@ async function updateAppSetting(request: AppSettingUpdateRequest): Promise<{ mes
   })
   if (!res.ok) {
     throw new Error(`Update app setting HTTP ${res.status}`)
-  }
-  return res.json()
-}
-
-async function uploadFlpMinBillingVideo(file: File): Promise<FlpMinBillingVideoUploadResponse> {
-  const form = new FormData()
-  form.append('file', file)
-  const res = await apiFetch('/api/v1/settings-enhanced/system/app-settings/enrollment-video/upload', {
-    method: 'POST',
-    body: form,
-  })
-  if (!res.ok) {
-    const raw: unknown = await res.json().catch(() => null)
-    throw new Error(messageFromApiErrorPayload(raw, `Upload enrollment video HTTP ${res.status}`))
   }
   return res.json()
 }
@@ -384,18 +363,6 @@ export function useAppSettingUpdateMutation() {
   })
 }
 
-export function useFlpMinBillingVideoUploadMutation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: uploadFlpMinBillingVideo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'app-settings'] })
-      queryClient.invalidateQueries({ queryKey: ['settings', 'system', 'configuration'] })
-    },
-  })
-}
-
 export function useAppSettingDeleteMutation() {
   const queryClient = useQueryClient()
   
@@ -431,62 +398,5 @@ export function useEmailChangeMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
-  })
-}
-
-export type WhatsAppStatusResponse = {
-  configured: boolean
-  connected: boolean | null
-  display_phone_number?: string | null
-  verified_name?: string | null
-  error?: string | null
-}
-
-async function fetchWhatsAppStatus(): Promise<WhatsAppStatusResponse> {
-  const res = await apiFetch('/api/v1/webhooks/whatsapp/status')
-  if (!res.ok) throw new Error(`WhatsApp status HTTP ${res.status}`)
-  return res.json()
-}
-
-export function useWhatsAppStatusQuery(enabled = true) {
-  return useQuery({
-    queryKey: ['whatsapp', 'status'],
-    queryFn: fetchWhatsAppStatus,
-    enabled,
-    staleTime: 30_000,
-    retry: false,
-  })
-}
-
-export type WhatsAppTestSendResponse = {
-  ok: boolean
-  http_status?: number
-  to_digits?: string
-  phone_number_id?: string
-  api_version?: string
-  meta_response?: unknown
-  error?: string
-}
-
-async function sendWhatsAppTest(phone: string): Promise<WhatsAppTestSendResponse> {
-  const res = await apiFetch('/api/v1/webhooks/whatsapp/test-send', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone }),
-  })
-  if (!res.ok && res.status !== 200) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(
-      typeof err === 'object' && err !== null && 'detail' in err
-        ? String((err as { detail?: string }).detail)
-        : `HTTP ${res.status}`,
-    )
-  }
-  return res.json()
-}
-
-export function useWhatsAppTestSendMutation() {
-  return useMutation({
-    mutationFn: sendWhatsAppTest,
   })
 }

@@ -59,14 +59,14 @@ export function AutoView({ auto }: { auto: AutoReport }) {
       </div>
 
       {auto.recruitment_low ? (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+        <p className="rounded-lg border border-warning/30 bg-warning/[0.06] px-3 py-2 text-xs text-warning-ink">
           Direct team chhota hai ({auto.direct_count}) — front recruitment badhane ki zarurat.
         </p>
       ) : null}
 
       {/* Exact counts from app logs (activity_log + call_events) — cannot be inflated. */}
       <div className="space-y-1.5">
-        <p className="text-[11px] uppercase text-muted-foreground">
+        <p className="text-ds-micro uppercase text-muted-foreground">
           Aaj ka actual kaam (app logs se ginaa — claim nahi)
         </p>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -112,13 +112,13 @@ export function AutoView({ auto }: { auto: AutoReport }) {
                     <Val>{r.name}</Val>
                     <Val className="tabular-nums">{r.fresh_lead}</Val>
                     <Val className="tabular-nums">{r.old_lead}</Val>
-                    <span className="text-center font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    <span className="text-center font-semibold tabular-nums text-success-ink">
                       {(r.fresh_lead || 0) + (r.old_lead || 0)}
                     </span>
                   </div>
                 ))}
                 {auto.enrollment_split_approx ? (
-                  <p className="text-[11px] text-muted-foreground/70">Fresh/old split approximate (phone match).</p>
+                  <p className="text-ds-micro text-muted-foreground/70">Fresh/old split approximate (phone match).</p>
                 ) : null}
               </>
             )}
@@ -164,7 +164,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
         </div>
       </div>
 
-      <p className="text-[11px] text-muted-foreground/70">
+      <p className="text-ds-micro text-muted-foreground/70">
         Process Check &amp; Improvement Area system se nahi aate — wo leader khud bharta hai.
       </p>
     </div>
@@ -177,7 +177,7 @@ function Section({ title, right, children }: { title: string; right?: React.Reac
   return (
     <section className="space-y-2 rounded-lg border border-border/40 bg-background/40 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-medium uppercase text-muted-foreground">{title}</h3>
+        <h3 className="text-ds-micro font-medium uppercase text-muted-foreground">{title}</h3>
         {right}
       </div>
       {children}
@@ -219,7 +219,7 @@ function PersonRows({ rows }: { rows: PersonRow[] }) {
 
 function Head({ cols, grid }: { cols: string[]; grid: string }) {
   return (
-    <div className={cn('hidden gap-1.5 text-[10px] text-muted-foreground sm:grid', grid)}>
+    <div className={cn('hidden gap-1.5 text-ds-micro text-muted-foreground sm:grid', grid)}>
       {cols.map((c, i) => (
         <span key={i}>{c}</span>
       ))}
@@ -230,7 +230,7 @@ function Head({ cols, grid }: { cols: string[]; grid: string }) {
 function Val({ children, className }: { children: React.ReactNode; className?: string }) {
   const empty = children == null || children === ''
   return (
-    <span className={cn('truncate text-foreground', empty && 'text-muted-foreground/50', className)}>
+    <span className={cn('truncate text-foreground', empty && 'text-muted-foreground', className)}>
       {empty ? '—' : children}
     </span>
   )
@@ -238,7 +238,7 @@ function Val({ children, className }: { children: React.ReactNode; className?: s
 
 function Check({ on }: { on: boolean }) {
   return (
-    <span className={cn('text-center text-sm', on ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/40')}>
+    <span className={cn('text-center text-sm', on ? 'text-success-ink' : 'text-muted-foreground')}>
       {on ? '✓' : '—'}
     </span>
   )
@@ -248,14 +248,14 @@ function ReadLine({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex items-center gap-2 pt-1 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}:</span>
-      <span className={cn('text-foreground', !value && 'text-muted-foreground/50')}>{value || '—'}</span>
+      <span className={cn('text-foreground', !value && 'text-muted-foreground')}>{value || '—'}</span>
     </div>
   )
 }
 
 function Total({ label, value }: { label: string; value: number }) {
   return (
-    <span className="text-[11px] text-muted-foreground">
+    <span className="text-ds-micro text-muted-foreground">
       {label}: <span className="font-semibold tabular-nums text-foreground">{value}</span>
     </span>
   )
@@ -265,7 +265,7 @@ function Chip({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <span className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
       {label}:{' '}
-      <span className={cn('font-semibold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
+      <span className={cn('font-semibold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
       </span>
     </span>
@@ -275,14 +275,14 @@ function Chip({ label, value, accent }: { label: string; value: string; accent?:
 function Metric({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-2 text-center">
-      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>
+      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
       </p>
-      <p className="text-[10px] leading-tight text-muted-foreground">{label}</p>
+      <p className="text-ds-micro leading-tight text-muted-foreground">{label}</p>
     </div>
   )
 }
 
 function Empty() {
-  return <p className="text-sm text-muted-foreground/60">— System mein kuch nahi —</p>
+  return <p className="text-sm text-muted-foreground">— Nothing recorded by the system —</p>
 }

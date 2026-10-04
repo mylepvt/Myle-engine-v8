@@ -15,6 +15,7 @@ import sys
 
 # ── Must happen BEFORE any app import so settings + session.py pick up SQLite ──
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("ADMIN_ALERTS_DISABLED", "1")
 
 # Ensure backend root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

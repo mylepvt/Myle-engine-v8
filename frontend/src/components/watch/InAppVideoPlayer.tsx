@@ -93,14 +93,14 @@ export function InAppVideoPlayer({
   if (!playbackSource || playbackSource.kind === 'unsupported') {
     if (!fallbackUrl) {
       return (
-        <div className="flex aspect-video items-center justify-center rounded-[2rem] border border-white/10 bg-muted/40 text-sm text-white/55">
+        <div className="flex aspect-video items-center justify-center rounded-4xl border border-white/10 bg-muted/40 text-sm text-white/55">
           Video link is being prepared.
         </div>
       )
     }
 
     return (
-      <div className="flex aspect-video flex-col items-center justify-center rounded-[2rem] border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
+      <div className="flex aspect-video flex-col items-center justify-center rounded-4xl border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
         <p className="text-ds-h3 text-white">Video could not be played cleanly inside this room.</p>
         <p className="mt-2 max-w-md text-ds-body text-white/65">
           For the cleanest in-app player, use a direct hosted video file link like `.mp4` or `.webm` instead of a
@@ -121,7 +121,7 @@ export function InAppVideoPlayer({
 
   if (!playerActivated) {
     return (
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.2),transparent_38%),linear-gradient(145deg,rgba(6,15,32,0.98),rgba(3,8,18,0.92))] shadow-[0_30px_80px_-35px_rgba(56,189,248,0.45)]">
+      <div className="relative overflow-hidden rounded-4xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.2),transparent_38%),linear-gradient(145deg,rgba(6,15,32,0.98),rgba(3,8,18,0.92))] shadow-[0_30px_80px_-35px_rgba(56,189,248,0.45)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.2),transparent_34%)]" />
         <div className="relative flex aspect-video flex-col justify-end p-5 md:p-7">
           <div className="max-w-xl">
@@ -147,7 +147,7 @@ export function InAppVideoPlayer({
   }
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
+    <div className="overflow-hidden rounded-4xl border border-white/10 bg-black/70 shadow-[0_30px_80px_-35px_rgba(56,189,248,0.55)]">
       {playbackSource.kind === 'native' ? (
         <video
           className="aspect-video h-full w-full bg-black object-contain"

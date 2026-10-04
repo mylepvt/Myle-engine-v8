@@ -141,25 +141,6 @@ class CurrentCcSheetPublic(BaseModel):
     match: CurrentCcMatch = Field(default_factory=CurrentCcMatch)
 
 
-class CurrentCcOverviewRow(BaseModel):
-    subject_user_id: int
-    subject_name: str
-    filled: bool = False
-    current_ccs: float = 0.0
-    target_ccs: float = 0.0
-    gap: float = 0.0  # target - current
-    activity_total: int = 0  # calls + leads + follow-ups that day (reliable)
-    match_overall: str = "none"
-    flagged: bool = False
-
-
-class CurrentCcOverviewResponse(BaseModel):
-    sheet_date: date
-    rows: List[CurrentCcOverviewRow] = Field(default_factory=list)
-    flagged_count: int = 0
-    not_filled_count: int = 0
-
-
 class CurrentCcActivityBreakdown(BaseModel):
     """Exact, app-logged activity for the subject on the day — counted from
     ``activity_log`` + ``call_events`` (not the member's claim). Each lead action

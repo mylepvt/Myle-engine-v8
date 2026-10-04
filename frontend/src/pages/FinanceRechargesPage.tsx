@@ -1,5 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { InsightList } from '@/components/dashboard/InsightList'
 import { Button } from '@/components/ui/button'
 import { ListSearchInput } from '@/components/ui/list-search-input'
@@ -9,7 +10,8 @@ import { useTeamMembersQuery, type TeamMemberPublic } from '@/hooks/use-team-que
 import { directorySearchValues, filterCollectionByQuery } from '@/lib/search-filter'
 import { useWalletAdjustmentMutation } from '@/hooks/use-wallet-query'
 
-type Props = { title: string }
+/** `title` omitted = embedded in Wallet admin (the tab supplies the heading). */
+type Props = { title?: string }
 
 function memberSelectLabel(m: TeamMemberPublic): string {
   const display = (m.name && m.name.trim()) || m.username || m.email
@@ -73,7 +75,7 @@ export function FinanceRechargesPage({ title }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4 md:space-y-6">
-      <h1 className="text-ds-h2">{title}</h1>
+      {title ? <h1 className="text-ds-h2">{title}</h1> : null}
 
       {stub.isPending ? <Skeleton className="h-12 w-full" /> : null}
       {stub.data?.note ? (
@@ -116,7 +118,7 @@ export function FinanceRechargesPage({ title }: Props) {
               <label htmlFor="recharge-user" className="mb-1 block text-xs text-muted-foreground">
                 User
               </label>
-              <select
+              <NativeSelect
                 id="recharge-user"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
@@ -130,7 +132,7 @@ export function FinanceRechargesPage({ title }: Props) {
                     {memberSelectLabel(m)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               {searchActive && filteredMembers.length === 0 && !selectedMember ? (
                 <p className="mt-1 text-xs text-muted-foreground">No members match this search.</p>
               ) : null}
@@ -186,7 +188,7 @@ export function FinanceRechargesPage({ title }: Props) {
             {mut.error instanceof Error ? mut.error.message : 'Request failed'}
           </p>
         ) : null}
-        {mut.isSuccess ? <p className="text-xs text-emerald-500">Ledger line recorded.</p> : null}
+        {mut.isSuccess ? <p className="text-xs text-success-ink">Ledger line recorded.</p> : null}
       </form>
 
       {showConfirm && selectedMember ? (
@@ -202,7 +204,7 @@ export function FinanceRechargesPage({ title }: Props) {
             <h3 className="text-lg font-semibold text-foreground">Confirm wallet adjustment</h3>
             <div className="mt-3 space-y-2 text-sm">
               <p><span className="text-muted-foreground">User:</span> {memberSelectLabel(selectedMember)}</p>
-              <p><span className="text-muted-foreground">Amount:</span> <strong className={parsedCents >= 0 ? 'text-emerald-500' : 'text-destructive'}>{parsedCents >= 0 ? '+' : ''}{formatInr(Math.abs(parsedCents))}</strong></p>
+              <p><span className="text-muted-foreground">Amount:</span> <strong className={parsedCents >= 0 ? 'text-success-ink' : 'text-destructive'}>{parsedCents >= 0 ? '+' : ''}{formatInr(Math.abs(parsedCents))}</strong></p>
               {note.trim() ? <p><span className="text-muted-foreground">Note:</span> {note.trim()}</p> : null}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">This action cannot be undone. Review carefully before confirming.</p>

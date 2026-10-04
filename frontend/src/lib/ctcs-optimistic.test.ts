@@ -70,9 +70,4 @@ describe('applyCtcsOptimisticToLead', () => {
     const out = applyCtcsOptimisticToLead(lead, 'call_later')
     expect(out.last_action_at).toBe('2026-04-20T00:00:00.000Z')
   })
-
-  it('paid respects paidStatus for team', () => {
-    const out = applyCtcsOptimisticToLead(baseLead(), 'paid', { paidStatus: 'paid' })
-    expect(out.status).toBe('paid')
-  })
 })

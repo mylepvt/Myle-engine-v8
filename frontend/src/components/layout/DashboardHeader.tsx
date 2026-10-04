@@ -2,6 +2,7 @@ import { type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Bell, Home, Menu, PanelLeftClose, Search, Settings } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { NotificationsBell } from '@/components/layout/NotificationsBell'
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { Button } from '@/components/ui/button'
@@ -54,7 +55,7 @@ export function DashboardHeader({
   return (
     <header
       className={cn(
-        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-2 border-b border-border bg-background/96 px-3 md:px-4',
+        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-1 border-b border-border bg-background/96 px-2 min-[400px]:gap-2 min-[400px]:px-3 md:px-4',
         'supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-sm',
         isMainScrolled && 'dashboard-shell-header--scrolled',
       )}
@@ -84,11 +85,11 @@ export function DashboardHeader({
             <label htmlFor="header-view-as" className="sr-only">
               Preview dashboard as role
             </label>
-            <select
+            <NativeSelect
               id="header-view-as"
               className={cn(
                 'h-8 min-w-[5rem] max-w-[8rem] shrink-0 rounded border border-border bg-muted/60 py-0 pl-2 pr-6 text-ds-caption font-medium text-foreground',
-                'focus:outline-none focus:ring-2 focus:ring-primary/30',
+                'focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/30',
               )}
               value={viewAsRole ?? 'admin'}
               title="UI preview only — your account stays admin"
@@ -100,7 +101,7 @@ export function DashboardHeader({
               <option value="admin">Admin</option>
               <option value="leader">Leader</option>
               <option value="team">Team</option>
-            </select>
+            </NativeSelect>
           </>
         ) : null}
       </div>
@@ -141,7 +142,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
+          className="flex min-h-[44px] min-w-[44px] max-md:min-w-[36px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
           aria-label="Settings"
         >
           <Settings className="size-[17px]" />
@@ -153,14 +154,14 @@ export function DashboardHeader({
           <div className="relative">
             <Link
               to="/dashboard/other/notice-board"
-              className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
+              className="relative flex min-h-[44px] min-w-[44px] max-md:min-w-[36px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
               aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
             >
               <Bell className="size-[17px]" />
             </Link>
             {noticeBoardUnread > 0 ? (
               <span
-                className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-[10px] font-bold leading-4 text-white"
+                className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-ds-micro font-bold leading-4 text-white"
                 aria-hidden
               >
                 {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
@@ -188,7 +189,7 @@ export function DashboardHeader({
 
         <Link
           to="/dashboard/settings/profile"
-          className="relative ml-1 flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
+          className="relative ml-1 flex size-11 shrink-0 max-md:ml-0.5 max-md:size-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
           title={
             me?.fbo_id
               ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`

@@ -319,7 +319,7 @@ async def register(
             role,
             title="New Registration Pending",
             body=f"{username_display} has registered and is awaiting approval",
-            url="/dashboard/team/pending-registrations",
+            url="/dashboard/team/approvals",
         )
     return RegisterResponse()
 

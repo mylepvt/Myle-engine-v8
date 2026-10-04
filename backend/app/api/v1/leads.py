@@ -15,11 +15,10 @@ from app.api.deps import AuthUser, require_auth_user
 from app.core.time_ist import IST, now_ist
 from app.core.realtime_hub import notify_topics
 from app.models.app_setting import AppSetting
-from app.models.batch_day_submission import BatchDaySubmission
 from app.models.batch_share_link import BatchShareLink
 from app.models.lead import Lead
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.schemas.leads import (
     AllLeadsResponse,
     BatchShareUrlRequest,
@@ -36,13 +35,8 @@ from app.schemas.leads import (
     LeadTransitionResponse,
     LeadUpdate,
 )
-from app.schemas.watch import BatchWatchPageData, BatchWatchSubmissionPublic, Day6LivePageData
+from app.schemas.watch import BatchWatchPageData, Day6LivePageData
 from app.services.all_leads_service import AllLeadsService, get_all_leads_service
-from app.services.batch_watch_uploads import (
-    save_batch_submission_notes_file,
-    save_batch_submission_video_file,
-    save_batch_submission_voice_file,
-)
 from app.services import day2_test_service
 from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service
@@ -191,20 +185,6 @@ def _parse_batch_slot_time(raw_value: str, fallback: time) -> time:
 async def _batch_slot_gate(session: AsyncSession, slot: str) -> tuple[bool, datetime | None, str | None]:
     # No time gating — batch links are always open, same as the original app.
     return True, None, None
-
-
-def _to_batch_submission_public(
-    submission: BatchDaySubmission | None,
-) -> BatchWatchSubmissionPublic | None:
-    if submission is None:
-        return None
-    return BatchWatchSubmissionPublic(
-        notes_url=submission.notes_url,
-        voice_note_url=submission.voice_note_url,
-        video_url=submission.video_url,
-        notes_text=submission.notes_text,
-        submitted_at=submission.submitted_at,
-    )
 
 
 async def _resolve_batch_watch_context(
@@ -367,11 +347,15 @@ async def import_leads_file(
     file: UploadFile = File(...),
     source_tag: str = Form("Import"),
 ) -> LeadFileImportResponse:
-    """Team / leader: bulk-create leads from a PDF or Excel (.xlsx) file (calling board)."""
-    if user.role not in ("leader", "team"):
+    """Team / leader / admin: bulk-create leads from a PDF or Excel (.xlsx) file (calling board).
+
+    Leads belong to the uploader and count as today's fresh leads. Any phone already in
+    Myle (or repeated in the file) is skipped.
+    """
+    if user.role not in ("leader", "team", "admin"):
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Only team and leader can import leads from a file",
+            detail="Only team, leader and admin can import leads from a file",
         )
     raw = await file.read()
     if not raw:
@@ -393,7 +377,56 @@ async def import_leads_file(
         imported=result.imported,
         skipped=result.skipped,
         warnings=result.warnings,
+        duplicates=result.duplicates,
+        invalid=result.invalid,
     )
+
+
+class SendBackRequest(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=300)
+
+
+def _send_queued_pushes(background_tasks: BackgroundTasks, service: LeadsService) -> None:
+    """Deliver the service's queued pushes after the response (never delays the save)."""
+    for user_id, title, body_text, url in service.queued_pushes:
+        background_tasks.add_task(
+            send_push_to_user_bg, AsyncSessionLocal, user_id, title=title, body=body_text, url=url
+        )
+    service.queued_pushes.clear()
+
+
+@router.post("/{lead_id}/send-to-day1", response_model=LeadPublic)
+async def send_to_day1(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+    background_tasks: BackgroundTasks,
+    amount_rupees: int = Form(..., description="Enrollment amount paid (₹149–200)"),
+    screenshot: UploadFile = File(..., description="Enrollment payment screenshot"),
+) -> LeadPublic:
+    """Upload the enrollment screenshot → lead goes to the nearest leader's Day 1."""
+    lead = await service.send_to_day1_with_enrollment(
+        lead_id=lead_id,
+        user=user,
+        amount_rupees=amount_rupees,
+        screenshot=await screenshot.read(),
+    )
+    _send_queued_pushes(background_tasks, service)
+    return await service.serialize_lead_public(lead)
+
+
+@router.post("/{lead_id}/send-back", response_model=LeadPublic)
+async def send_back_from_day1(
+    lead_id: int,
+    body: SendBackRequest,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    service: Annotated[LeadsService, Depends(get_leads_service)],
+    background_tasks: BackgroundTasks,
+) -> LeadPublic:
+    """Leader/admin: enrollment proof looks wrong → return the lead to the member."""
+    lead = await service.send_back_from_day1(lead_id=lead_id, user=user, reason=body.reason)
+    _send_queued_pushes(background_tasks, service)
+    return await service.serialize_lead_public(lead)
 
 
 @router.post("/{lead_id}/claim", response_model=LeadPublic)
@@ -542,6 +575,7 @@ async def update_lead(
     service: Annotated[LeadsService, Depends(get_leads_service)],
 ):
     lead = await service.update_lead(lead_id=lead_id, body=body, user=user)
+    _send_queued_pushes(background_tasks, service)
     # NOTE: service.update_lead already broadcasts notify_topics("leads") on every
     # update, so the leads/workboard/lead-pool/retarget boards refresh live. We only
     # add "follow_ups" here because the "leads" topic does NOT invalidate the
@@ -668,7 +702,7 @@ async def lead_register_link(
     lead_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     service: Annotated[LeadsService, Depends(get_leads_service)],
-    resend: bool = Query(default=False, description="Also re-send the WhatsApp invite"),
+    resend: bool = Query(default=False, description="Kept for compatibility; the link is shared manually"),
 ) -> RegisterLinkOut:
     """Get or re-send a converted lead's register link (card copy / resend button)."""
     payload = await service.get_register_link(lead_id=lead_id, user=user, resend=resend)
@@ -775,14 +809,6 @@ async def watch_batch_video_payload(
         access_open = True
         gate_message = None
     video_url = await _resolve_batch_video_url(session, slot, v) if access_open else None
-    submission = (
-        await session.execute(
-            select(BatchDaySubmission).where(
-                BatchDaySubmission.lead_id == lead.id,
-                BatchDaySubmission.slot == slot,
-            )
-        )
-    ).scalar_one_or_none()
     day2_evaluation_ready = bool(
         day_number == 2 and getattr(lead, "d2_morning", False) and getattr(lead, "d2_afternoon", False) and getattr(lead, "d2_evening", False)
     )
@@ -797,7 +823,7 @@ async def watch_batch_video_payload(
         slot_label=slot_label,
         title=f"Day {day_number} {slot_label} Batch",
         subtitle=(
-            "Watch both videos inside Myle and upload your notes, voice note, video, or message here. After the final Day 2 batch, the business evaluation link is shared separately."
+            "Watch both videos inside Myle. After the final Day 2 batch, the business evaluation link is shared separately."
             if day_number == 2
             else "Watch your batch inside Myle with the same premium experience throughout."
         ),
@@ -809,8 +835,6 @@ async def watch_batch_video_payload(
         video_id=_youtube_video_id(video_url),
         watch_complete=watch_complete,
         day2_evaluation_ready=day2_evaluation_ready,
-        submission_enabled=day_number == 2,
-        submission=_to_batch_submission_public(submission),
     )
 
 
@@ -824,70 +848,6 @@ async def watch_batch_video(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid link")
     query = f"?token={token.strip()}" if token and token.strip() else ""
     return RedirectResponse(url=f"/watch/batch/{slot}/{v}{query}", status_code=http_status.HTTP_307_TEMPORARY_REDIRECT)
-
-
-@watch_router.post("/watch/batch/{slot}/submission", response_model=BatchWatchSubmissionPublic)
-async def submit_batch_day_submission(
-    slot: str,
-    session: Annotated[AsyncSession, Depends(get_db)],
-    token: str = Query(...),
-    notes_text: str | None = Form(default=None),
-    notes_file: UploadFile | None = File(default=None),
-    voice_file: UploadFile | None = File(default=None),
-    video_file: UploadFile | None = File(default=None),
-) -> BatchWatchSubmissionPublic:
-    if slot not in _BATCH_SLOTS:
-        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid slot")
-
-    day_number = _batch_day_number(slot)
-    if day_number != 2:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Submissions are available only on Day 2 batch pages",
-        )
-
-    clean_text = (notes_text or "").strip()
-    if not clean_text and not notes_file and not voice_file and not video_file:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Add notes, voice, or video before submitting",
-        )
-
-    link, lead = await _resolve_batch_watch_context(session=session, slot=slot, token=token)
-    submission = (
-        await session.execute(
-            select(BatchDaySubmission).where(
-                BatchDaySubmission.lead_id == lead.id,
-                BatchDaySubmission.slot == slot,
-            )
-        )
-    ).scalar_one_or_none()
-    now = datetime.now(timezone.utc)
-
-    if submission is None:
-        submission = BatchDaySubmission(
-            lead_id=lead.id,
-            batch_share_link_id=link.id,
-            day_number=day_number,
-            slot=slot,
-            submitted_at=now,
-        )
-        session.add(submission)
-    else:
-        submission.batch_share_link_id = link.id
-        submission.submitted_at = now
-
-    if notes_file is not None:
-        submission.notes_url = await save_batch_submission_notes_file(lead.id, slot, notes_file)
-    if voice_file is not None:
-        submission.voice_note_url = await save_batch_submission_voice_file(lead.id, slot, voice_file)
-    if video_file is not None:
-        submission.video_url = await save_batch_submission_video_file(lead.id, slot, video_file)
-    if clean_text:
-        submission.notes_text = clean_text
-
-    await session.commit()
-    return _to_batch_submission_public(submission) or BatchWatchSubmissionPublic()
 
 
 @watch_router.post("/watch/batch/heartbeat")

@@ -1,28 +1,61 @@
+import { Award, Bell, FolderOpen, Inbox, type LucideIcon, Search, TrendingUp, Users, Wallet, Zap } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+export type EmptyStateVariant =
+  | 'default'
+  | 'leads'
+  | 'search'
+  | 'notifications'
+  | 'analytics'
+  | 'wallet'
+  | 'achievements'
+  | 'files'
+  | 'tasks'
+
+const VARIANT_ICONS: Record<EmptyStateVariant, LucideIcon> = {
+  default: Inbox,
+  leads: Users,
+  search: Search,
+  notifications: Bell,
+  analytics: TrendingUp,
+  wallet: Wallet,
+  achievements: Award,
+  files: FolderOpen,
+  tasks: Zap,
+}
+
 type EmptyStateProps = {
   title: string
   description?: string
+  /** Picks the icon; override with `icon`. */
+  variant?: EmptyStateVariant
+  icon?: LucideIcon
   className?: string
   children?: React.ReactNode
 }
 
+/** The one "nothing here" screen used across the app. */
 export function EmptyState({
   title,
   description,
+  variant = 'default',
+  icon,
   className,
   children,
 }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded border border-dashed border-border bg-surface/30 px-6 py-10 text-center',
+        'flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface/30 px-6 py-10 text-center',
         className,
       )}
     >
+      <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        {React.createElement(icon ?? VARIANT_ICONS[variant], { className: 'size-6', strokeWidth: 1.75, 'aria-hidden': true })}
+      </div>
       <p className="font-heading text-ds-h3 text-foreground">{title}</p>
       {description ? (
         <p className="mt-2 max-w-sm text-ds-body text-muted-foreground">

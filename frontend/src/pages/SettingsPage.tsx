@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Bell, Lock, Mail, Shield, User } from 'lucide-react'
+import { ArrowRight, Bell, Lock, Mail, RotateCcw, Shield, User } from 'lucide-react'
 
+import { AdminLiveAlertsCard } from '@/components/notifications/AdminLiveAlertsCard'
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -269,7 +270,7 @@ export default function SettingsPage() {
                 <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
                   {updateProfile.isPending ? 'Saving...' : 'Save Profile'}
                 </Button>
-                {profileSuccess ? <p className="text-sm text-emerald-500" role="status">{profileSuccess}</p> : null}
+                {profileSuccess ? <p className="text-sm text-success-ink" role="status">{profileSuccess}</p> : null}
                 {profileError ? <p className="text-sm text-destructive" role="alert">{profileError}</p> : null}
               </CardContent>
             </Card>
@@ -320,6 +321,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="preferences" className="space-y-6">
+          {isAdmin || authData?.role === 'leader' ? <AdminLiveAlertsCard /> : null}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-lg">
@@ -439,7 +441,7 @@ export default function SettingsPage() {
                 </div>
                 {passwordError ? <p className="text-sm text-destructive" role="alert">{passwordError}</p> : null}
                 {changePassword.isSuccess ? (
-                  <p className="text-sm text-green-600" role="status">Password changed successfully.</p>
+                  <p className="text-sm text-success-ink" role="status">Password changed successfully.</p>
                 ) : null}
                 <Button onClick={handlePasswordChange} disabled={changePassword.isPending}>
                   {changePassword.isPending ? 'Changing...' : 'Change Password'}
@@ -506,7 +508,11 @@ function ShowTutorialButton() {
       onClick={handleClick}
       disabled={resetTutorial.isPending}
     >
-      {resetTutorial.isPending ? 'Loading…' : '🔄 Show Tutorial Again'}
+      {resetTutorial.isPending ? 'Loading…' : (
+        <>
+          <RotateCcw className="size-3.5" aria-hidden /> Show Tutorial Again
+        </>
+      )}
     </Button>
   )
 }

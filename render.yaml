@@ -4,6 +4,8 @@
 # Apply: Dashboard → New → Blueprint → connect this repo → apply.
 #
 # After first deploy, set these manually in Render dashboard:
+#   myle-crm-api   → DATABASE_URL       = postgresql://… (Render Postgres internal URL)
+#   myle-vl2-api   → DATABASE_URL       = postgresql+asyncpg://… (same DB)
 #   myle-vl2-api   → CRM_API_URL        = https://myle-crm-api.onrender.com
 #   myle-vl2-api   → BACKEND_CORS_ORIGINS = https://<your-frontend-domain>.onrender.com
 
@@ -26,7 +28,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://myle_db_v2_user:WTmYywzxEuVT2v30OKWZdgkZg0obtPDy@dpg-d7chigpj2pic73btjldg-a.singapore-postgres.render.com/myle_db_v2"
+        sync: false              # secret — set DATABASE_URL in the Render dashboard (never commit it)
       - key: REDIS_URL
         fromService:
           name: myle-vl2-redis
@@ -50,7 +52,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        value: "postgresql+asyncpg://myle_db_v2_user:WTmYywzxEuVT2v30OKWZdgkZg0obtPDy@dpg-d7chigpj2pic73btjldg-a.singapore-postgres.render.com/myle_db_v2"
+        sync: false              # secret — set DATABASE_URL in the Render dashboard (never commit it)
       - key: SECRET_KEY
         generateValue: true
       - key: APP_ENV
@@ -79,4 +81,4 @@ services:
       - key: PHASE1_OBSERVATION_ENABLED
         value: "true"
       - key: PHASE1_OBSERVATION_SAMPLE_RATE
-        value: "1.0"
+        value: "0.1"             # 10% of commits is enough signal; 1.0 logged every write

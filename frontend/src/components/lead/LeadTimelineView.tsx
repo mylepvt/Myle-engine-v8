@@ -35,9 +35,9 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
 }
 
 const EVENT_VARIANTS: Record<string, string> = {
-  created: 'border-blue-200 bg-blue-50/40 dark:bg-blue-950/10',
+  created: 'border-info/20 bg-info/40',
   claimed: 'border-purple-200 bg-purple-50/40 dark:bg-purple-950/10',
-  called: 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/10',
+  called: 'border-success/20 bg-success/40',
   whatsapp_sent: 'border-sky-200 bg-sky-50/40 dark:bg-sky-950/10',
   mindset_completed: 'border-violet-200 bg-violet-50/40 dark:bg-violet-950/10',
   day1: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
@@ -45,11 +45,11 @@ const EVENT_VARIANTS: Record<string, string> = {
   day3: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
   day4: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
   day5: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
-  day2_test: 'border-green-200 bg-green-50/40 dark:bg-green-950/10',
-  day2_test_failed: 'border-red-200 bg-red-50/40 dark:bg-red-950/10',
-  sale: 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/10',
-  converted: 'border-green-200 bg-green-50/40 dark:bg-green-950/10 text-green-700 font-bold',
-  dead: 'border-red-200 bg-red-50/40 dark:bg-red-950/10',
+  day2_test: 'border-success/20 bg-success/40',
+  day2_test_failed: 'border-destructive/20 bg-destructive/40',
+  sale: 'border-success/20 bg-success/40',
+  converted: 'border-success/20 bg-success/40 text-success-ink font-bold',
+  dead: 'border-destructive/20 bg-destructive/40',
   recycle: 'border-orange-200 bg-orange-50/40 dark:bg-orange-950/10',
   note: 'border-gray-200 bg-gray-50/40 dark:bg-gray-950/10',
 }
@@ -67,14 +67,14 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className={`text-xs font-semibold ${isOutcome ? 'text-current' : 'text-foreground'}`}>{event.label}</span>
-          <span className="text-[10px] text-muted-foreground">{new Date(event.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+          <span className="text-ds-micro text-muted-foreground">{new Date(event.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[11px] text-muted-foreground">{event.actor}</span>
+          <span className="text-ds-micro text-muted-foreground">{event.actor}</span>
           {event.detail && (
             <>
-              <span className="text-[10px] text-muted-foreground/50">·</span>
-              <span className="text-[11px] text-muted-foreground/70 truncate">{event.detail}</span>
+              <span className="text-ds-micro text-muted-foreground">·</span>
+              <span className="text-ds-micro text-muted-foreground/70 truncate">{event.detail}</span>
             </>
           )}
         </div>
@@ -122,7 +122,7 @@ export function LeadTimelineView({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-sm font-semibold">{data.lead_name}</CardTitle>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-ds-micro text-muted-foreground">
               Owner: {data.owner} · Worker: {data.assigned_to}
             </p>
           </div>
@@ -130,7 +130,7 @@ export function LeadTimelineView({
             <Badge variant={data.outcome === 'converted' ? 'default' : data.outcome === 'dead' ? 'destructive' : data.outcome === 'recycle' ? 'secondary' : 'outline'}>
               {data.outcome}
             </Badge>
-            <Badge variant="secondary" className="text-[10px]">{data.events.length} events</Badge>
+            <Badge variant="secondary" className="text-ds-micro">{data.events.length} events</Badge>
             {onClose && (
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onClose}>Close</Button>
             )}

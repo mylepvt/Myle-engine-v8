@@ -514,8 +514,9 @@ async def run_escalation_checks(session: AsyncSession) -> list[dict[str, Any]]:
             select(TaskAssignment).where(
                 TaskAssignment.status == "pending",
                 TaskAssignment.escalation_level < 3,
-                TaskAssignment.created_at
-                < now - timedelta(hours=24 * (TaskAssignment.escalation_level + 1)),
+                # Coarse SQL cut (24h); the per-level 24/48/72h thresholds are checked below.
+                # (timedelta can't take a SQL column — that made this job fail twice a day.)
+                TaskAssignment.created_at < now - timedelta(hours=24),
             )
         )
     ).scalars().all()
@@ -558,9 +559,8 @@ async def run_escalation_checks(session: AsyncSession) -> list[dict[str, Any]]:
 
     if escalated:
         await session.commit()
-        # Batch one digest per recipient (max 50 entries) instead of one
-        # WhatsApp per task, so a leader/senior isn't flooded with separate
-        # messages when many tasks cross the SLA in the same run.
+        # One push per recipient (not one per task), so a leader/senior isn't
+        # flooded when many tasks cross the SLA in the same run.
         groups: dict[int, tuple[User, list[str]]] = {}
         for esc in escalated:
             try:
@@ -575,35 +575,20 @@ async def run_escalation_checks(session: AsyncSession) -> list[dict[str, Any]]:
                 continue
             groups.setdefault(target.id, (target, []))[1].append(line)
 
-        from app.services.whatsapp_leader_alerts import send_system_alert
-        BATCH_SIZE = 50
+        from app.services.push_service import send_push_to_user
         for _target_id, (target, lines) in groups.items():
-            parts = (len(lines) + BATCH_SIZE - 1) // BATCH_SIZE
-            for part_index in range(parts):
-                chunk = lines[part_index * BATCH_SIZE : (part_index + 1) * BATCH_SIZE]
-                numbered = [
-                    f"{part_index * BATCH_SIZE + offset + 1}. {ln}"
-                    for offset, ln in enumerate(chunk)
-                ]
-                header = "⏰ *Task Escalations — Action Needed*"
-                if parts > 1:
-                    header += f"  ({part_index + 1}/{parts})"
-                body = (
-                    f"{header}\n\n"
-                    + "\n".join(numbered)
-                    + "\n\nPlease follow up and get these done.\n\n— Myle Team"
+            count = len(lines)
+            try:
+                await send_push_to_user(
+                    session,
+                    target.id,
+                    title="Task escalations — action needed",
+                    body=f"{count} task{'s' if count != 1 else ''} in your team crossed the deadline. "
+                    "Please follow up.",
+                    url="/dashboard",
                 )
-                try:
-                    from app.services.messaging_gate import can_receive_automated_message
-                    if can_receive_automated_message(target):
-                        await send_system_alert(
-                            target.phone, body, session,
-                            message_type="verification_escalation", related_user_id=target.id,
-                        )
-                except Exception as exc:
-                    logger.warning(
-                        "escalation digest send failed target_id=%s: %s", target.id, exc,
-                    )
+            except Exception as exc:
+                logger.warning("escalation push failed target_id=%s: %s", target.id, exc)
 
     return escalated
 
@@ -614,7 +599,7 @@ async def _escalation_target_and_line(
     """Resolve the recipient and a one-line summary for an escalated assignment.
 
     Level 1 → member's leader, level 2 → senior leader (chain snapshot).
-    Level 3 (admin) sends no WhatsApp — unchanged. Returns (None, None) when
+    Level 3 (admin) sends no notification — unchanged. Returns (None, None) when
     there is nothing to notify.
     """
     level = esc["escalation_level"]

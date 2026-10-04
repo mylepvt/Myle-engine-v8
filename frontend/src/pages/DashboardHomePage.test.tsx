@@ -17,10 +17,15 @@ const mockUseXpMeQuery = vi.fn()
 const mockUseXpHistoryQuery = vi.fn()
 const mockUseXpLeaderboardQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
-const mockUseLosQuery = vi.fn()
-const mockUseLeaderCommandCenter = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
+vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))
+vi.mock('@/components/control-room/ControlRoomCard', () => ({
+  ControlRoomCard: () => <div data-testid="control-room" />,
+}))
+vi.mock('@/components/wins/WinsFeedCard', () => ({
+  WinsFeedCard: () => <div data-testid="wins-feed" />,
+}))
 vi.mock('@/components/dashboard/GateAssistantCard', () => ({
   GateAssistantCard: () => <div data-testid="gate-assistant">Gate Assistant</div>,
 }))
@@ -38,10 +43,6 @@ vi.mock('@/components/dashboard/AdminCommandCenter', () => ({
 
 vi.mock('@/components/dashboard/VerificationHomePanel', () => ({
   VerificationHomePanel: () => <div data-testid="verification-home-panel" />,
-}))
-
-vi.mock('@/components/dashboard/DashboardFeedbackCard', () => ({
-  DashboardFeedbackCard: () => <div data-testid="dashboard-feedback-card" />,
 }))
 
 vi.mock('@/hooks/use-dashboard-shell-role', () => ({
@@ -85,6 +86,7 @@ vi.mock('@/hooks/use-xp-query', () => ({
   useXpMeQuery: () => mockUseXpMeQuery(),
   useXpHistoryQuery: () => mockUseXpHistoryQuery(),
   useXpLeaderboardQuery: () => mockUseXpLeaderboardQuery(),
+  useXpPeriodLeaderboardQuery: () => ({ data: { period: 'today', items: [], me: null, total: 0 }, isPending: false, isError: false }),
   LEVEL_COLORS: {
     rookie: { bg: 'bg-zinc-500/20', text: 'text-zinc-400', border: 'border-zinc-500/30' },
   },
@@ -93,14 +95,6 @@ vi.mock('@/hooks/use-xp-query', () => ({
 vi.mock('@/hooks/use-leads-query', () => ({
   LEAD_STATUS_OPTIONS: [],
   usePatchLeadMutation: () => mockUsePatchLeadMutation(),
-}))
-
-vi.mock('@/hooks/use-los-query', () => ({
-  useLosQuery: () => mockUseLosQuery(),
-}))
-
-vi.mock('@/hooks/use-leader-command-center-query', () => ({
-  useLeaderCommandCenter: () => mockUseLeaderCommandCenter(),
 }))
 
 function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
@@ -191,17 +185,6 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
     mutate: vi.fn(),
     isPending: false,
   })
-  mockUseLosQuery.mockReturnValue({
-    data: null,
-    isPending: false,
-    isError: false,
-  })
-  mockUseLeaderCommandCenter.mockReturnValue({
-    data: null,
-    isPending: false,
-    isError: false,
-    refetch: vi.fn(),
-  })
 }
 
 describe('DashboardHomePage', () => {
@@ -222,7 +205,7 @@ describe('DashboardHomePage', () => {
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
   })
 
-  it('renders leader war room dashboard on the leader path', () => {
+  it('renders the today-first leader home on the leader path', () => {
     seedBaseMocks('leader')
 
     render(
@@ -233,6 +216,8 @@ describe('DashboardHomePage', () => {
 
     // GateAssistantCard is rendered directly for leader role in the main layout
     expect(screen.getByTestId('gate-assistant')).toBeInTheDocument()
+    expect(screen.getByTestId('control-room')).toBeInTheDocument()
+    expect(screen.queryByText('Active leads')).toBeNull() // lifetime tiles are gone
   })
 
   it('routes admin home to the command center surface', () => {

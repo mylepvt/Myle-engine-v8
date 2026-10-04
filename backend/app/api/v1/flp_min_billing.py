@@ -40,6 +40,7 @@ from app.models.activity_log import ActivityLog
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.user_hierarchy import nearest_leader_for_user
 from app.services.observation_logger import observe_event
+from app.services.enrollment_video import presigned_r2_upstream
 from app.services.flp_min_billing_video import (
     absolute_video_source_url,
     build_flp_min_billing_stream_source_candidates,
@@ -58,13 +59,11 @@ from app.services.flp_min_billing_video import (
     normalize_video_source_url,
     normalize_phone_for_match,
     require_secure_flp_min_billing_video_source,
-    resolve_public_app_url,
     sanitize_public_token,
 )
 from app.services.lead_scope import user_can_mutate_lead
 from app.services.lead_owner import resolved_owner_user_id
 from app.services.push_service import send_push_to_user
-from app.services.whatsapp_flp_min_billing import send_flp_min_billing_video_whatsapp
 
 router = APIRouter()
 watch_router = APIRouter()
@@ -337,11 +336,11 @@ async def get_session_slots(
 @router.post("/send", response_model=FlpMinBillingVideoSendResponse, status_code=http_status.HTTP_201_CREATED)
 async def send_flp_min_billing_video(
     body: FlpMinBillingShareLinkCreate,
-    request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> FlpMinBillingVideoSendResponse:
-    """Create a secure link, send it over WhatsApp, and move the lead to video_sent."""
+    """Create the secure link and move the lead to video_sent. The member shares the
+    link on WhatsApp from their own phone (the response carries the link)."""
     lead = await _get_lead_or_404(session, body.lead_id)
     await _assert_lead_access(session, user, lead)
     if normalize_phone_for_match(lead.phone) is None:
@@ -359,25 +358,6 @@ async def send_flp_min_billing_video(
             title=selected_title,
             session_hour=slot_hour or body.session_hour,
         )
-        public_app_url = await resolve_public_app_url(session, request)
-        watch_url = f"{public_app_url}/watch/{link.token}"
-
-        delivery_meta = await send_flp_min_billing_video_whatsapp(
-            lead_id=lead.id,
-            phone=lead.phone,
-            lead_name=lead.name,
-            watch_url=watch_url,
-            expires_at=link.expires_at,
-            title=link.title or "Min. FLP Billing video",
-        )
-
-        if not delivery_meta.get("ok") and delivery_meta.get("channel") != "whatsapp_stub":
-            await session.rollback()
-            raise HTTPException(
-                status_code=http_status.HTTP_502_BAD_GATEWAY,
-                detail="WhatsApp delivery failed, so lead status was not changed.",
-            )
-
         should_sync_lead = _sync_lead_for_send(lead, now=now)
         await session.flush()
         if should_sync_lead:
@@ -388,7 +368,7 @@ async def send_flp_min_billing_video(
         await notify_topics("enroll", "leads", "workboard")
         return FlpMinBillingVideoSendResponse(
             link=_build_public_link(link),
-            delivery=FlpMinBillingVideoSendDelivery.model_validate(delivery_meta),
+            delivery=FlpMinBillingVideoSendDelivery(ok=True, channel="manual_share"),
         )
     except HTTPException:
         raise
@@ -652,6 +632,7 @@ async def mark_watch_completed(
         link.view_count = int(link.view_count or 0) + 1
     link.last_viewed_at = now
     advanced = False
+    handed_to_leader_id: int | None = None
     if not link.status_synced:
         link.status_synced = True
         # Auto-advance the prospect past the team boundary: Enrollment-Live link
@@ -659,33 +640,37 @@ async def mark_watch_completed(
         if lead.status == _VIDEO_SENT_STATUS:
             lead.status = "video_watched"
             advanced = True
-            # Auto-handoff: prospect watched the video → reassign to nearest upline leader
-            # so the lead surfaces on the leader's workboard for Day 1.
-            owner_id = resolved_owner_user_id(lead)
-            if owner_id:
-                leader = await nearest_leader_for_user(session, owner_id)
-                if leader is not None and lead.assigned_to_user_id != leader.id:
-                    from_uid = lead.assigned_to_user_id
-                    lead.assigned_to_user_id = leader.id
-                    lead.is_reassigned = True
-                    lead.reassigned_at = now
-                    session.add(
-                        ActivityLog(
-                            user_id=owner_id,
-                            action="leader_handoff_video_watched",
-                            entity_type="lead",
-                            entity_id=lead.id,
-                            meta={
-                                "from_user_id": from_uid,
-                                "to_user_id": leader.id,
-                                "leader_id": leader.id,
-                                "source": "auto_watch_complete",
-                            },
+            # Enrollment gate: without the ₹149–200 screenshot the lead stays with the
+            # member at video_watched; "Send to Day 1" (upload) does the handoff later.
+            if (lead.enrollment_proof_url or "").strip():
+                # Auto-handoff: prospect watched the video → reassign to nearest upline leader
+                # so the lead surfaces on the leader's workboard for Day 1.
+                owner_id = resolved_owner_user_id(lead)
+                if owner_id:
+                    leader = await nearest_leader_for_user(session, owner_id)
+                    if leader is not None and lead.assigned_to_user_id != leader.id:
+                        from_uid = lead.assigned_to_user_id
+                        handed_to_leader_id = leader.id
+                        lead.assigned_to_user_id = leader.id
+                        lead.is_reassigned = True
+                        lead.reassigned_at = now
+                        session.add(
+                            ActivityLog(
+                                user_id=owner_id,
+                                action="leader_handoff_video_watched",
+                                entity_type="lead",
+                                entity_id=lead.id,
+                                meta={
+                                    "from_user_id": from_uid,
+                                    "to_user_id": leader.id,
+                                    "leader_id": leader.id,
+                                    "source": "auto_watch_complete",
+                                },
+                            )
                         )
-                    )
-            # Auto-advance to Day 1 so the watched lead lands directly on the
-            # leader's workboard Day 1 instead of resting at video_watched.
-            lead.status = "day1"
+                # Auto-advance to Day 1 so the watched lead lands directly on the
+                # leader's workboard Day 1 instead of resting at video_watched.
+                lead.status = "day1"
     lead.last_action_at = now
 
     await session.commit()
@@ -697,9 +682,24 @@ async def mark_watch_completed(
                 await send_push_to_user(
                     session,
                     owner_id,
-                    title="Enrollment-Live watched 🎬",
-                    body=f"{lead.name} ne Day 1 video dekh li — ab Day 1 me aapke workboard par.",
+                    title="Enrollment video watched 🎬",
+                    body=(
+                        f"{lead.name} watched the video — now on Day 1 with your leader."
+                        if lead.status == "day1"
+                        else f"{lead.name} watched the video. Upload the enrollment screenshot to send to Day 1."
+                    ),
                     url="/dashboard/work/leads",
+                )
+            except Exception:
+                pass
+        if handed_to_leader_id is not None:
+            try:
+                await send_push_to_user(
+                    session,
+                    handed_to_leader_id,
+                    title="New Day 1 lead",
+                    body=f"{lead.name} is now on your Day 1 — enrollment done, take it forward.",
+                    url="/dashboard/work/workboard",
                 )
             except Exception:
                 pass
@@ -718,8 +718,17 @@ async def stream_watch_video(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verify your number to continue.")
 
     configured_source = await get_flp_min_billing_video_source(session)
-    source_candidates = build_flp_min_billing_stream_source_candidates(link.youtube_url, configured_source)
-    if not source_candidates:
+    # Always the CURRENT Settings video (never the source snapshotted on an older link),
+    # so only the secure enrollment video ever plays. (raw source, upstream URL):
+    # private R2 keys / R2 URLs get a short-lived presigned URL first.
+    upstream_candidates: list[tuple[str, str]] = []
+    presigned = await presigned_r2_upstream(configured_source)
+    if presigned:
+        upstream_candidates.append(((configured_source or "").strip(), presigned))
+    for source_url in build_flp_min_billing_stream_source_candidates(configured_source):
+        if not is_youtube_like_url(source_url):
+            upstream_candidates.append((source_url, absolute_video_source_url(request, source_url)))
+    if not upstream_candidates:
         await require_secure_flp_min_billing_video_source(session)
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video file is not available.")
 
@@ -731,10 +740,7 @@ async def stream_watch_video(
     upstream: httpx.Response | None = None
     resolved_source: str | None = None
 
-    for source_url in source_candidates:
-        if is_youtube_like_url(source_url):
-            continue
-        upstream_url = absolute_video_source_url(request, source_url)
+    for source_url, upstream_url in upstream_candidates:
         try:
             candidate_upstream = await client.send(
                 client.build_request("GET", upstream_url, headers=forward_headers),
@@ -755,7 +761,7 @@ async def stream_watch_video(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video file is not available.")
 
     normalized_link_source = normalize_video_source_url(link.youtube_url)
-    if resolved_source != normalized_link_source:
+    if resolved_source not in {normalized_link_source, (link.youtube_url or "").strip()}:
         link.youtube_url = resolved_source
         await session.commit()
 

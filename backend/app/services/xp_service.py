@@ -14,6 +14,7 @@ reset via the admin endpoint.
 from __future__ import annotations
 
 from collections import defaultdict
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -25,6 +26,8 @@ from app.models.user import User
 from app.models.xp_event import XpEvent
 from app.models.xp_monthly_archive import XpMonthlyArchive
 from app.services.push_service import send_push_to_user
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -38,6 +41,11 @@ XP_TABLE: dict[str, int] = {
     "lead_contacted": 10,
     "followup_completed": 20,     # process: +5
     "lead_won": 50,               # result: halved — process actions now dominate
+    # Work-streak milestone bonuses (services/work_streak.py)
+    "streak_3": 20,
+    "streak_7": 50,
+    "streak_14": 100,
+    "streak_30": 200,
 }
 
 # Excluded from process score (result-only actions)
@@ -214,7 +222,7 @@ async def grant_xp(
     await _maybe_reset_season(session, user)
 
     # Login/report actions are single-claim per day even if callers retry.
-    if action in {"login_daily", "report_submitted"}:
+    if action in {"login_daily", "report_submitted"} or action.startswith("streak_"):
         if await _already_granted_today(session, user_id, action, None):
             return None
 
@@ -259,6 +267,9 @@ async def grant_xp(
     user.xp_level = _calculate_level(user.xp_total)
 
     if user.xp_level != prev_level:
+        from app.services.wins import record_win
+
+        record_win(session, user_id=user.id, kind="level_up", detail=user.xp_level)
         try:
             await send_push_to_user(
                 session,
@@ -436,12 +447,26 @@ async def get_user_xp_summary(session: AsyncSession, user_id: int) -> dict:
         span = next_xp - prev_threshold
         progress_pct = round(min(100.0, (xp_total - prev_threshold) / span * 100), 1) if span > 0 else 100.0
 
+    from app.core.time_ist import today_ist
+    from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
+    from app.services.work_streak import current_work_streak
+
+    today = today_ist()
+    call_target = await get_daily_call_target(session)
+    calls_today = (await fresh_call_counts_by_user(session, [user_id], today)).get(user_id, 0)
+
     return {
         "xp_total": xp_total,
         "level": level,
         "daily_xp": daily_xp,
         "daily_cap": DAILY_CAP,
-        "streak": user.login_streak or 0,
+        # Work streak: consecutive days the call target was met (not logins).
+        "streak": current_work_streak(user, today),
+        "streak_done_today": user.work_streak_date == today,
+        "best_streak": int(user.work_streak_best or 0),
+        "calls_today": int(calls_today),
+        "call_target": int(call_target),
+        "login_streak": user.login_streak or 0,
         "next_level_xp": next_xp,
         "progress_pct": progress_pct,
         "season_year": user.xp_season_year,
@@ -603,3 +628,56 @@ async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
             "process_score_7d": 0,
         })
     return result
+
+
+LEADERBOARD_PERIODS = ("today", "week")
+
+
+async def get_period_leaderboard(
+    session: AsyncSession,
+    *,
+    period: str,
+    viewer_user_id: int,
+    limit: int = 10,
+) -> dict:
+    """XP earned today / this week (IST, week starts Monday) — fresh race each period.
+
+    Returns the top ``limit`` plus the viewer's own rank so members outside the
+    top 10 still see where they stand.
+    """
+    from app.core.time_ist import today_ist
+    from app.services.live_metrics import ist_day_bounds
+
+    today = today_ist()
+    start_day = today if period == "today" else today - timedelta(days=today.weekday())
+    start, _ = ist_day_bounds(start_day)
+
+    earned = func.sum(XpEvent.xp).label("xp")
+    rows = (
+        await session.execute(
+            select(User.id, User.name, User.username, User.fbo_id, User.role, earned)
+            .join(XpEvent, XpEvent.user_id == User.id)
+            .where(
+                XpEvent.created_at >= start,
+                User.role.in_(("leader", "team")),
+                User.removed_at.is_(None),
+                User.access_blocked.is_(False),
+            )
+            .group_by(User.id, User.name, User.username, User.fbo_id, User.role)
+            .having(func.sum(XpEvent.xp) > 0)
+            .order_by(earned.desc(), User.id.asc())
+        )
+    ).all()
+
+    ranked = [
+        {
+            "rank": i + 1,
+            "user_id": int(uid),
+            "name": name or username or fbo_id,
+            "role": role,
+            "xp": int(xp or 0),
+        }
+        for i, (uid, name, username, fbo_id, role, xp) in enumerate(rows)
+    ]
+    me = next((r for r in ranked if r["user_id"] == viewer_user_id), None)
+    return {"period": period, "items": ranked[:limit], "me": me, "total": len(ranked)}

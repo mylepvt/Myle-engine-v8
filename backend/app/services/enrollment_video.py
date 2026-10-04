@@ -53,16 +53,8 @@ async def _app_setting(session: AsyncSession, key: str) -> str:
 
 
 async def resolve_default_video_source(session: AsyncSession) -> str:
-    """Default enrollment video for per-lead quick links.
-
-    Prefers a dedicated key, then reuses the already-configured Enrollment-Live
-    video so no extra setup is needed.
-    """
-    for key in ("enrollment_video_source_url", "flp_min_billing_video_source_url", "flp_min_billing_video_url"):
-        value = await _app_setting(session, key)
-        if value:
-            return value
-    return ""
+    """The one enrollment video (Settings → General → "Enrollment Video")."""
+    return await _app_setting(session, "enrollment_video_source_url")
 
 
 def sanitize_public_token(raw_token: str) -> str:
@@ -200,6 +192,28 @@ def is_youtube_like(url: str | None) -> bool:
     return "youtube.com" in value or "youtu.be" in value
 
 
+def _r2_key_for_source(source: str) -> Optional[str]:
+    # R2 public URL → key; a bare value (no scheme, no leading "/") is an R2 object key.
+    key = r2_storage.r2_key_from_url(source)
+    if key is None and not _HAS_SCHEME_RE.match(source) and not source.startswith("/"):
+        key = source.lstrip("/")
+    return key or None
+
+
+async def presigned_r2_upstream(source: str | None) -> Optional[str]:
+    """R2 object key / R2 public URL → short-lived presigned GET URL (None if not R2 or R2 off)."""
+    value = (source or "").strip()
+    if not value or is_youtube_like(value):
+        return None
+    key = _r2_key_for_source(value)
+    if not key or not r2_storage.r2_enabled():
+        return None
+    try:
+        return await r2_storage.presign_get_url(key=key, expires_seconds=120)
+    except Exception:
+        return None
+
+
 async def resolve_stream_upstream(request: Request, link: EnrollmentShareLink) -> Optional[str]:
     """Resolve the link's ``video_source`` into an upstream URL to proxy.
 
@@ -215,17 +229,11 @@ async def resolve_stream_upstream(request: Request, link: EnrollmentShareLink) -
     if is_youtube_like(source):
         return None
 
-    # R2 public URL → key
-    key = r2_storage.r2_key_from_url(source)
-    if key is None and not _HAS_SCHEME_RE.match(source) and not source.startswith("/"):
-        # treat as a bare R2 object key
-        key = source.lstrip("/")
-
-    if key and r2_storage.r2_enabled():
-        try:
-            return await r2_storage.presign_get_url(key=key, expires_seconds=120)
-        except Exception:
-            return None
+    presigned = await presigned_r2_upstream(source)
+    if presigned:
+        return presigned
+    if _r2_key_for_source(source) and r2_storage.r2_enabled():
+        return None  # R2 source but presign failed — don't fall through to a public URL
 
     if _HAS_SCHEME_RE.match(source):
         return source

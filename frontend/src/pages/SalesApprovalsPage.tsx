@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+import { useGoBack } from '@/hooks/use-go-back'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,7 +32,7 @@ function stageLabel(stage: LeadSale['billing_stage']): string {
 }
 
 export function SalesApprovalsPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const { data: me } = useAuthMeQuery()
   const { data, isPending, isError, error, refetch } = usePendingSalesQuery()
   const approve = useApproveSaleMutation()
@@ -79,7 +80,7 @@ export function SalesApprovalsPage({ title }: Props) {
       <div className="space-y-1">
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           className="text-sm text-primary underline-offset-2 hover:underline"
         >
           ← Back
@@ -88,8 +89,8 @@ export function SalesApprovalsPage({ title }: Props) {
       </div>
       <p className="text-sm text-muted-foreground">
         {isAdmin
-          ? 'CC/sale invoices jo auto-verify nahi hui — yahan approve ya reject karo.'
-          : 'Aapke downline ki pending CC/sale invoices. Admin in ko approve/reject karta hai.'}
+          ? 'CC/sale invoices that were not auto-verified — approve or reject them here.'
+          : 'Pending CC/sale invoices from your downline. The admin approves or rejects them.'}
       </p>
 
       {isPending ? (
@@ -118,7 +119,7 @@ export function SalesApprovalsPage({ title }: Props) {
 
       {data && data.total === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded border border-dashed border-border dark:border-white/[0.12] py-14 text-center">
-          <ClipboardList className="size-10 text-muted-foreground/50" />
+          <ClipboardList className="size-10 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No pending CC/sale invoices</p>
           <p className="text-xs text-muted-foreground">Auto-verified sales skip this queue.</p>
         </div>
@@ -148,7 +149,7 @@ export function SalesApprovalsPage({ title }: Props) {
                     {isAdmin ? (
                       <div className="flex flex-wrap items-end gap-3 pt-1">
                         <label className="flex flex-col gap-0.5">
-                          <span className="text-[11px] font-medium text-muted-foreground">Case credits</span>
+                          <span className="text-ds-micro font-medium text-muted-foreground">Case credits</span>
                           <input
                             type="number"
                             step="0.001"
@@ -161,7 +162,7 @@ export function SalesApprovalsPage({ title }: Props) {
                           />
                         </label>
                         <label className="flex flex-col gap-0.5">
-                          <span className="text-[11px] font-medium text-muted-foreground">Amount (₹)</span>
+                          <span className="text-ds-micro font-medium text-muted-foreground">Amount (₹)</span>
                           <input
                             type="number"
                             step="0.01"
@@ -174,7 +175,7 @@ export function SalesApprovalsPage({ title }: Props) {
                           />
                         </label>
                         {row.invoice_number ? (
-                          <span className="pb-2 text-[11px] text-muted-foreground">#{row.invoice_number}</span>
+                          <span className="pb-2 text-ds-micro text-muted-foreground">#{row.invoice_number}</span>
                         ) : null}
                       </div>
                     ) : (
@@ -185,15 +186,15 @@ export function SalesApprovalsPage({ title }: Props) {
                       </div>
                     )}
                     {isAdmin && (!ccValue(row).trim() || !amountValue(row).trim()) ? (
-                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                      <p className="text-ds-micro text-warning-ink">
                         Enter CC and amount to book this invoice.
                       </p>
                     ) : null}
                     {row.verify_notes ? (
-                      <p className="text-xs text-amber-600/90 dark:text-amber-300/90">{row.verify_notes}</p>
+                      <p className="text-xs text-warning-ink/90">{row.verify_notes}</p>
                     ) : null}
                     {row.ocr_confidence ? (
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-ds-micro text-muted-foreground">
                         OCR confidence: {(Number(row.ocr_confidence) * 100).toFixed(0)}%
                       </p>
                     ) : null}

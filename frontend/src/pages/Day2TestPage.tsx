@@ -228,7 +228,7 @@ export function Day2TestPage() {
 
   return (
     <div
-      className="relative min-h-screen overflow-x-hidden bg-[#040915] text-white"
+      className="relative min-h-screen overflow-x-hidden bg-room-base text-white"
       style={{ userSelect: state?.status === 'active' ? 'none' : 'auto' }}
     >
       <div className="pointer-events-none absolute inset-0">
@@ -256,7 +256,7 @@ export function Day2TestPage() {
         {loading ? (
           <p className="text-center text-white/60">Loading…</p>
         ) : error && !state ? (
-          <div className="mx-auto max-w-xl rounded-[2rem] border border-red-400/20 bg-red-500/[0.08] px-6 py-8 text-center">
+          <div className="mx-auto max-w-xl rounded-4xl border border-red-400/20 bg-red-500/[0.08] px-6 py-8 text-center">
             <p className="text-base font-semibold text-white">This test could not be opened.</p>
             <p className="mt-2 text-sm text-white/70">{error}</p>
           </div>
@@ -264,11 +264,11 @@ export function Day2TestPage() {
           // ── Identity gate ──────────────────────────────────────────────
           <form
             onSubmit={(e) => void handleStart(e)}
-            className="mx-auto max-w-md rounded-[2rem] border border-white/10 bg-muted/50 p-6 backdrop-blur-xl"
+            className="mx-auto max-w-md rounded-4xl border border-white/10 bg-muted/50 p-6 backdrop-blur-xl"
           >
             <div className="mb-4 flex items-center gap-2">
               <Lock className="size-5 text-cyan-200" />
-              <h1 className="text-xl font-semibold">Apni details verify kariye</h1>
+              <h1 className="text-xl font-semibold">Verify your details</h1>
             </div>
             <p className="mb-5 text-sm text-white/62">
               Test sirf ek baar de sakte ho. Apne hi phone par, bina kisi ki madad ke complete kariye.
@@ -281,8 +281,8 @@ export function Day2TestPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Aapka pura naam"
-                className="mt-2 w-full rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
+                placeholder="Your full name"
+                className="mt-2 w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
               />
             </label>
             <label className="mt-4 block">
@@ -292,14 +292,14 @@ export function Day2TestPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 inputMode="numeric"
                 placeholder="Registered mobile number"
-                className="mt-2 w-full rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
+                className="mt-2 w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
               />
             </label>
             {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
             <Button type="submit" disabled={startBusy} className="mt-5 w-full">
               {startBusy ? 'Starting…' : 'Start test'}
             </Button>
-            <div className="mt-4 flex items-start gap-2 rounded-[1.25rem] border border-amber-300/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100">
+            <div className="mt-4 flex items-start gap-2 rounded-3xl border border-amber-300/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100">
               <ShieldCheck className="mt-0.5 size-4 shrink-0" />
               <span>
                 Tab switch, copy-paste aur back allowed nahi hai. Timer start hone ke baad test paused
@@ -323,7 +323,7 @@ export function Day2TestPage() {
               />
             </div>
 
-            <div className="mt-6 rounded-[2rem] border border-white/10 bg-muted/50 p-6 backdrop-blur-xl">
+            <div className="mt-6 rounded-4xl border border-white/10 bg-muted/50 p-6 backdrop-blur-xl">
               <p className="text-lg font-semibold leading-snug">{state.question.q}</p>
               <div className="mt-5 space-y-3">
                 {state.question.options.map((opt, idx) => (
@@ -331,7 +331,7 @@ export function Day2TestPage() {
                     key={idx}
                     type="button"
                     onClick={() => setChoice(idx)}
-                    className={`flex w-full items-center gap-3 rounded-[1.25rem] border px-4 py-3 text-left text-sm transition ${
+                    className={`flex w-full items-center gap-3 rounded-3xl border px-4 py-3 text-left text-sm transition ${
                       choice === idx
                         ? 'border-cyan-300/50 bg-cyan-300/[0.12] text-white'
                         : 'border-white/10 bg-black/20 text-white/80 hover:border-white/25'
@@ -364,7 +364,7 @@ export function Day2TestPage() {
             </div>
 
             {warning > 0 ? (
-              <div className="mt-4 flex items-center gap-2 rounded-[1.25rem] border border-red-400/20 bg-red-500/[0.08] px-4 py-3 text-sm text-red-200">
+              <div className="mt-4 flex items-center gap-2 rounded-3xl border border-red-400/20 bg-red-500/[0.08] px-4 py-3 text-sm text-red-200">
                 <AlertTriangle className="size-4 shrink-0" />
                 Warning: tab-switch / app-switch {warning} baar detect hua. Yeh record ho raha hai.
               </div>
@@ -372,14 +372,14 @@ export function Day2TestPage() {
           </div>
         ) : state?.status === 'submitted' ? (
           // ── Result ─────────────────────────────────────────────────────
-          <div className="mx-auto max-w-md rounded-[2rem] border border-white/10 bg-muted/50 p-8 text-center backdrop-blur-xl">
+          <div className="mx-auto max-w-md rounded-4xl border border-white/10 bg-muted/50 p-8 text-center backdrop-blur-xl">
             {state.passed ? (
               <CheckCircle2 className="mx-auto size-14 text-emerald-400" />
             ) : (
               <XCircle className="mx-auto size-14 text-red-400" />
             )}
             <h1 className="mt-4 text-2xl font-semibold">
-              {state.passed ? 'Congratulations! Aap pass ho gaye 🎉' : 'Aap pass nahi ho paaye'}
+              {state.passed ? 'Congratulations! You passed' : 'You did not pass this time'}
             </h1>
             <p className="mt-2 text-sm text-white/65">
               Aapka score: <span className="font-bold text-white">{state.score ?? 0}</span> / {state.total}
@@ -387,15 +387,15 @@ export function Day2TestPage() {
             </p>
             <p className="mt-4 text-sm text-white/55">
               {state.passed
-                ? 'Aapki team aapse Day 3 ke liye contact karegi.'
-                : 'Aapki team aapse contact karegi. Dhanyavaad.'}
+                ? 'Your team will contact you for Day 3.'
+                : 'Your team will contact you. Thank you.'}
             </p>
             {state.passed ? (
               <a
                 href={apiUrl(`/api/test/d2/${token}/certificate`)}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[1.25rem] border border-emerald-400/40 bg-emerald-400/15 px-4 py-3 text-sm font-bold text-emerald-200 transition hover:bg-emerald-400/25"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-3xl border border-emerald-400/40 bg-emerald-400/15 px-4 py-3 text-sm font-bold text-emerald-200 transition hover:bg-emerald-400/25"
               >
                 <ShieldCheck className="size-4" />
                 Download certificate

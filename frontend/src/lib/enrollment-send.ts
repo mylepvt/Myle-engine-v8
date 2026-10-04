@@ -5,6 +5,17 @@ import { whatsappDigits } from '@/lib/phone-links'
 type EnrollmentLead = { id: number; name?: string | null; phone?: string | null }
 
 /**
+ * WhatsApp text sent to the PROSPECT (not app UI). Intentionally Hinglish — it is
+ * customer messaging in the prospect's language; all in-app UI copy is English.
+ */
+export function enrollmentWhatsAppMessage(name: string | null | undefined, watchUrl: string): string {
+  return (
+    `Hi ${name || 'there'},\n\n` +
+    `Aapki enrollment video ready hai. Ye private link sirf aapke liye hai — apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
+  )
+}
+
+/**
  * Send the single Enrollment-Live token /watch link over WhatsApp.
  *
  * No time-slot picker — the backend `/flp-min-billing/send` creates one open token
@@ -29,8 +40,6 @@ export async function sendEnrollmentLiveLink(lead: EnrollmentLead): Promise<void
   if (!watchUrl) return
   const digits = whatsappDigits(lead.phone ?? '')
   if (!digits) throw new Error('Phone number missing for WhatsApp share.')
-  const msg =
-    `Hi ${lead.name || 'there'},\n\n` +
-    `Aapki Enrollment-Live video ready hai. Is link pe apna naam aur registered number daal ke dekhiye:\n${watchUrl}`
+  const msg = enrollmentWhatsAppMessage(lead.name, watchUrl)
   openExternalShareUrl(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`)
 }

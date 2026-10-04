@@ -30,7 +30,6 @@ from app.core.stage_pricing import (
 from app.core.realtime_hub import notify_topics
 from app.core.time_ist import IST
 from app.models.activity_log import ActivityLog
-from app.models.batch_day_submission import BatchDaySubmission
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
@@ -40,7 +39,6 @@ from app.schemas.call_events import CallEventCreate, CallEventListResponse, Call
 from app.schemas.leads import (
     LeadCreate,
     LeadCtcsActionRequest,
-    LeadBatchSubmissionPublic,
     LeadDetailPublic,
     LeadListResponse,
     MindsetLockCompleteResponse,
@@ -52,6 +50,8 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
+from app.services.enrollment_proof_storage import save_enrollment_proof_bytes
+from app.services.claim_gate import TODAY_WORKING_STATUSES, ensure_claim_allowed, pool_claim_exists
 from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
 from app.services.observation_logger import (
     correlation_id_for_lead,
@@ -65,17 +65,19 @@ from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.lead_payloads import build_lead_public_payloads
 from app.services.team_tracking import refresh_daily_member_stat_after_change
 from app.services.user_hierarchy import nearest_leader_for_user
-from app.services.whatsapp_ctcs import send_interested_flp_min_billing_assets
 from app.services.execution_enforcement import run_completed_watch_pipeline_maintenance
 from app.validators.leads_validator import lead_list_conditions, parse_status_query, validate_list_flags
 
+logger = logging.getLogger(__name__)
+
 _POOL_CLAIM_ROLES: frozenset[str] = frozenset({"team", "leader", "admin"})
+
+# Enrollment proof gate (team → leader Day 1 handoff).
+ENROLLMENT_MIN_RUPEES = 149
+ENROLLMENT_MAX_RUPEES = 200
+ENROLLMENT_SENDABLE_STATUSES = frozenset({"new_lead", "contacted", "invited", "video_sent", "video_watched"})
 _POOL_SINGLE_CLAIM_ROLES: frozenset[str] = frozenset({"admin"})
 _PHONE_DIGIT_RE = re.compile(r"\D")
-
-
-async def _deliver_ctcs_interested_whatsapp(lead_id: int, phone: str | None) -> None:
-    await send_interested_flp_min_billing_assets(lead_id=lead_id, phone=phone)
 
 
 def _display_name_from_fields(name: str | None, username: str | None, email: str | None) -> str:
@@ -115,15 +117,6 @@ def _lead_pool_available_clause() -> Any:
     )
 
 
-def _free_pool_available_clause() -> Any:
-    return and_(
-        Lead.in_pool.is_(True),
-        Lead.pool_type == "free",
-        Lead.deleted_at.is_(None),
-        Lead.archived_at.is_(None),
-    )
-
-
 def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if ctcs_filter is None:
         return None
@@ -135,19 +128,12 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
     if key in ("", "all"):
         return None
     if key == "today":
-        # "Today" = leads claimed today (IST) via PAID recharge claim only.
-        # Paid claim is recorded as ActivityLog action "lead.claimed"
-        # (free-pool claims use "lead.claimed_free" and are excluded here).
-        # There is no claimed_at column, so we read it from ActivityLog.
-        return exists(
-            select(1).where(
-                ActivityLog.entity_type == "lead",
-                ActivityLog.entity_id == Lead.id,
-                ActivityLog.action == "lead.claimed",
-                ActivityLog.created_at >= day_start,
-                ActivityLog.created_at < day_end,
-            )
-        )
+        # "Today" = leads the member claimed from a pool (any day) that are still being
+        # worked (New Lead → Video Watched). They stay here — no daily reset — until the
+        # status moves to Retarget / Lost / Day 1+.
+        return and_(pool_claim_exists(), Lead.status.in_(TODAY_WORKING_STATUSES))
+    if key == "retarget":
+        return Lead.status == "retarget"
     if key in ("followups", "follow_ups"):
         return Lead.next_followup_at.is_not(None)
     if key == "hot":
@@ -180,7 +166,7 @@ def _ctcs_filter_clause(ctcs_filter: Optional[str]) -> Any:
         )
     raise HTTPException(
         status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
-        detail="Invalid ctcs_filter (use: all|today|followups|hot|converted|reassigned|pending)",
+        detail="Invalid ctcs_filter (use: all|today|retarget|followups|hot|converted|reassigned|pending)",
     )
 
 
@@ -293,6 +279,26 @@ def _toggle_process_task(
     lead.process_tracking = tracking
 
 
+# List-time maintenance (auto-archive watched leads, lapse seat-holds) used to run
+# on EVERY list call. Each lead save broadcasts "leads" to ~90 open apps, which all
+# re-list at once -> ~90 archive scans + writes per save, and those writes hold the
+# same lead row locks a save waits on. The scheduler already runs the archive pass
+# every 30 min; here we only keep lists fresh, at most once a minute per database.
+_LIST_MAINTENANCE_EVERY = timedelta(seconds=60)
+_last_list_maintenance: dict[int, datetime] = {}
+
+
+async def _maybe_run_list_maintenance(session: AsyncSession) -> None:
+    key = id(session.bind)
+    now = datetime.now(timezone.utc)
+    last = _last_list_maintenance.get(key)
+    if last is not None and now - last < _LIST_MAINTENANCE_EVERY:
+        return
+    _last_list_maintenance[key] = now
+    await run_completed_watch_pipeline_maintenance(session)
+    await expire_stale_seat_holds(session)
+
+
 async def expire_stale_seat_holds(
     session: AsyncSession, *, now: datetime | None = None
 ) -> int:
@@ -333,9 +339,31 @@ class LeadsService:
         self._repository = repository
         self._notifier = notifier
         self._session = session
+        # (user_id, title, body, url) pushes for the route to send after the response.
+        self.queued_pushes: list[tuple[int, str, str, str]] = []
 
-    async def _get_lead_or_404(self, lead_id: int) -> Lead:
-        lead = await self._repository.get_lead(lead_id)
+    def _queue_leader_handoff_push(self, leader_id: int | None, lead: Lead, *, actor_user_id: int) -> None:
+        if leader_id is None or leader_id == actor_user_id:
+            return
+        self.queued_pushes.append(
+            (
+                leader_id,
+                "New Day 1 lead",
+                f"{lead.name} is now on your Day 1 — enrollment done, take it forward.",
+                "/dashboard/work/workboard",
+            )
+        )
+
+    async def _get_lead_or_404(self, lead_id: int, *, for_update: bool = False) -> Lead:
+        # for_update: row-lock so concurrent writes to one lead (e.g. rapid taps on
+        # the calling board) run one after another. Without it both requests read
+        # the same crm_shadow_version and the second outbox insert hit the
+        # unique idempotency key -> 500.
+        lead = await (
+            self._repository.get_lead_for_update(lead_id)
+            if for_update
+            else self._repository.get_lead(lead_id)
+        )
         if lead is None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         return lead
@@ -413,8 +441,7 @@ class LeadsService:
         leader_team_scope: bool = False,
         generated_only: bool = False,
     ) -> LeadListResponse:
-        await run_completed_watch_pipeline_maintenance(self._session)
-        await expire_stale_seat_holds(self._session)
+        await _maybe_run_list_maintenance(self._session)
         validate_list_flags(archived_only=archived_only, deleted_only=deleted_only, user=user)
         cross_section_search = search_all_sections and bool((q or "").strip())
         condition = lead_list_conditions(
@@ -480,6 +507,9 @@ class LeadsService:
         return None
 
     async def create_lead(self, *, body: LeadCreate, user: AuthUser) -> Lead:
+        from app.services.lead_file_import import lock_lead_phones
+
+        await lock_lead_phones(self._session)
         dup = await self._find_duplicate_phone_lead(body.phone)
         if dup is not None:
             dup_id, dup_name, dup_status, normalized = dup
@@ -511,6 +541,7 @@ class LeadsService:
     async def claim_lead(self, *, lead_id: int, user: AuthUser) -> Lead:
         if user.role not in _POOL_SINGLE_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        await ensure_claim_allowed(self._session, user.user_id)
         lead = await self._repository.get_lead_for_update(lead_id)
         if lead is None or lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -600,6 +631,7 @@ class LeadsService:
     ) -> tuple[list[Lead], int]:
         if user.role not in _POOL_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        await ensure_claim_allowed(self._session, user.user_id)
 
         cap = max(1, min(int(count), 50))
         stmt = (
@@ -679,66 +711,6 @@ class LeadsService:
             await self._session.refresh(lead)
         await self._notifier("leads", "wallet")
         return claimed, total_price_cents
-
-    async def preview_free_lead_pool_batch(
-        self,
-        *,
-        count: int,
-        user: AuthUser,
-    ) -> tuple[int, int]:
-        if user.role not in _POOL_CLAIM_ROLES:
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        cap = max(1, min(int(count), 50))
-        cond = _free_pool_available_clause()
-        total_available = int(
-            (await self._session.execute(select(func.count()).select_from(Lead).where(cond))).scalar_one()
-        )
-        preview_rows = (
-            await self._session.execute(
-                select(Lead.id).where(cond).order_by(Lead.created_at.asc(), Lead.id.asc()).limit(cap)
-            )
-        ).scalars().all()
-        return total_available, len(preview_rows)
-
-    async def claim_free_lead_pool_batch(
-        self,
-        *,
-        count: int,
-        user: AuthUser,
-    ) -> list[Lead]:
-        if user.role not in _POOL_CLAIM_ROLES:
-            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        cap = max(1, min(int(count), 50))
-        stmt = (
-            select(Lead)
-            .where(_free_pool_available_clause())
-            .order_by(Lead.created_at.asc(), Lead.id.asc())
-            .limit(cap)
-            .with_for_update()
-        )
-        leads = list((await self._session.execute(stmt)).scalars().all())
-        if not leads:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail="No leads available in the free pool",
-            )
-        claimed: list[Lead] = []
-        for lead in leads:
-            await self._repository.mark_lead_claimed(lead, user.user_id)
-            await self._repository.add_lead_activity(
-                user_id=user.user_id,
-                action="lead.claimed_free",
-                lead_id=lead.id,
-                meta={"free_pool": True, "batch_claim_count": len(leads)},
-            )
-            await self._session.flush()
-            enqueue_lead_shadow_upsert(self._session, lead)
-            claimed.append(lead)
-        await self._repository.commit()
-        for lead in claimed:
-            await self._session.refresh(lead)
-        await self._notifier("leads")
-        return claimed
 
     async def preview_mindset_lock(self, *, lead_id: int, user: AuthUser) -> MindsetLockPreviewResponse:
         if user.role not in {"team", "leader"}:
@@ -933,8 +905,150 @@ class LeadsService:
         await self._notifier("leads", "workboard")
         return lead
 
+    async def _handoff_to_leader_day1(self, lead: Lead, *, actor: AuthUser, now: datetime) -> int | None:
+        """Reassign to the owner's nearest upline leader and advance to Day 1.
+
+        Returns the leader's user id when the lead changed hands (for the push)."""
+        owner_id = lead.owner_user_id or lead.assigned_to_user_id or lead.created_by_user_id
+        leader = await self._nearest_leader(owner_id) if owner_id else None
+        handed_to: int | None = None
+        if leader is not None and lead.assigned_to_user_id != leader[0]:
+            handed_to = leader[0]
+            from_uid = lead.assigned_to_user_id
+            lead.assigned_to_user_id = leader[0]
+            lead.is_reassigned = True
+            lead.reassigned_at = now
+            await self._repository.add_lead_activity(
+                user_id=actor.user_id,
+                action="leader_handoff_video_watched",
+                lead_id=lead.id,
+                meta={"from_user_id": from_uid, "to_user_id": leader[0], "leader_id": leader[0]},
+            )
+        # Auto-advance to Day 1 so the handed-off lead lands directly on the
+        # leader's workboard Day 1 instead of resting at video_watched on the
+        # calling board. video_watched stays a transient record of the watch.
+        previous = lead.status
+        lead.status = "day1"
+        _apply_status_side_effects(lead, previous_status=previous, new_status="day1", now=now)
+        await self._repository.add_lead_activity(
+            user_id=actor.user_id,
+            action="auto_advance_day1_on_video_watched",
+            lead_id=lead.id,
+            meta={"from_status": previous, "to_status": "day1"},
+        )
+        return handed_to
+
+    async def send_to_day1_with_enrollment(
+        self,
+        *,
+        lead_id: int,
+        user: AuthUser,
+        amount_rupees: int,
+        screenshot: bytes,
+    ) -> Lead:
+        """Member uploads the enrollment screenshot (₹149–200) → lead goes to the leader's Day 1."""
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
+        if lead.deleted_at is not None or lead.archived_at is not None:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Restore the lead first")
+        if not await self._repository.can_mutate_lead(user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if lead.status not in ENROLLMENT_SENDABLE_STATUSES:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Only leads before Day 1 can be sent to Day 1",
+            )
+        if not (ENROLLMENT_MIN_RUPEES <= int(amount_rupees) <= ENROLLMENT_MAX_RUPEES):
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail=f"Enrollment amount must be between ₹{ENROLLMENT_MIN_RUPEES} and ₹{ENROLLMENT_MAX_RUPEES}.",
+            )
+        ok, result = await save_enrollment_proof_bytes(session=self._session, data=screenshot, lead_id=lead.id)
+        if not ok:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=result)
+
+        # A re-upload after the leader sent the lead back is the same enrollment —
+        # don't post a second win for it.
+        already_enrolled_before = (
+            await self._session.execute(
+                select(ActivityLog.id)
+                .where(
+                    ActivityLog.entity_type == "lead",
+                    ActivityLog.entity_id == lead.id,
+                    ActivityLog.action == "lead.enrollment_proof_uploaded",
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none() is not None
+
+        now = datetime.now(timezone.utc)
+        lead.enrollment_amount_cents = int(amount_rupees) * 100
+        lead.enrollment_proof_url = result
+        lead.enrollment_proof_uploaded_at = now
+        lead.enrollment_proof_by_user_id = user.user_id
+        lead.last_action_at = now
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="lead.enrollment_proof_uploaded",
+            lead_id=lead.id,
+            meta={"amount_cents": lead.enrollment_amount_cents, "proof_url": result, "from_status": lead.status},
+        )
+        leader_id = await self._handoff_to_leader_day1(lead, actor=user, now=now)
+        from app.services.wins import record_win
+
+        if not already_enrolled_before:
+            record_win(self._session, user_id=user.user_id, kind="enrollment")
+        lead = await self._commit_with_shadow_upsert(lead)
+        self._queue_leader_handoff_push(leader_id, lead, actor_user_id=user.user_id)
+        await self._notifier("leads", "workboard")
+        return lead
+
+    async def send_back_from_day1(self, *, lead_id: int, user: AuthUser, reason: str | None) -> Lead:
+        """Leader/admin rejects the enrollment proof: lead returns to the member, proof cleared."""
+        if user.role not in ("leader", "admin"):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
+        if not await self._repository.can_mutate_lead(user, lead):
+            raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if lead.status != "day1":
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Only Day 1 leads can be sent back")
+        member_id = lead.enrollment_proof_by_user_id or lead.owner_user_id
+        now = datetime.now(timezone.utc)
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="lead.enrollment_proof_rejected",
+            lead_id=lead.id,
+            meta={
+                "reason": (reason or "").strip() or None,
+                "amount_cents": lead.enrollment_amount_cents,
+                "proof_url": lead.enrollment_proof_url,
+                "returned_to_user_id": member_id,
+            },
+        )
+        lead.status = "video_watched"
+        _apply_status_side_effects(lead, previous_status="day1", new_status="video_watched", now=now)
+        if member_id:
+            lead.assigned_to_user_id = member_id
+        lead.enrollment_amount_cents = None
+        lead.enrollment_proof_url = None
+        lead.enrollment_proof_uploaded_at = None
+        lead.enrollment_proof_by_user_id = None
+        lead.last_action_at = now
+        lead = await self._commit_with_shadow_upsert(lead)
+        await self._notifier("leads", "workboard")
+        if member_id:
+            why = f" Reason: {reason.strip()}" if reason and reason.strip() else ""
+            self.queued_pushes.append(
+                (
+                    member_id,
+                    "Enrollment screenshot sent back",
+                    f"{lead.name}: your leader sent this lead back from Day 1.{why} Upload a correct screenshot.",
+                    "/dashboard/work/leads?tab=today",
+                )
+            )
+        return lead
+
     async def update_lead(self, *, lead_id: int, body: LeadUpdate, user: AuthUser) -> Lead:
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
         if lead.deleted_at is not None and body.restored is not True:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
@@ -1032,48 +1146,18 @@ class LeadsService:
                 drop_notes=body.drop_notes,
                 drop_recorded_by_user_id=user.user_id,
             )
-            # Team → leader handoff: marking the Enrollment-Live video watched is the team's
-            # last step. Reassign the lead to the owner's nearest upline leader so it surfaces
-            # on the leader's board for Day 1 (replaces the removed mindset-lock handoff).
-            # Admin is exempt — they have full status control.
-            if body.status == "video_watched" and prev_status != "video_watched" and user.role != "admin":
-                owner_id = (
-                    lead.owner_user_id
-                    or lead.assigned_to_user_id
-                    or lead.created_by_user_id
-                )
-                leader = await self._nearest_leader(owner_id) if owner_id else None
-                if leader is not None and lead.assigned_to_user_id != leader[0]:
-                    from_uid = lead.assigned_to_user_id
-                    lead.assigned_to_user_id = leader[0]
-                    lead.is_reassigned = True
-                    lead.reassigned_at = now
-                    await self._repository.add_lead_activity(
-                        user_id=user.user_id,
-                        action="leader_handoff_video_watched",
-                        lead_id=lead.id,
-                        meta={
-                            "from_user_id": from_uid,
-                            "to_user_id": leader[0],
-                            "leader_id": leader[0],
-                        },
-                    )
-                # Auto-advance to Day 1 so the handed-off lead lands directly on the
-                # leader's workboard Day 1 instead of resting at video_watched on the
-                # calling board. video_watched stays a transient record of the watch.
-                lead.status = "day1"
-                _apply_status_side_effects(
-                    lead,
-                    previous_status="video_watched",
-                    new_status="day1",
-                    now=now,
-                )
-                await self._repository.add_lead_activity(
-                    user_id=user.user_id,
-                    action="auto_advance_day1_on_video_watched",
-                    lead_id=lead.id,
-                    meta={"from_status": "video_watched", "to_status": "day1"},
-                )
+            # Team → leader handoff happens only with the enrollment screenshot (₹149–200).
+            # Without it, a team member marking video_watched keeps the lead at
+            # video_watched with them; "Send to Day 1" (upload) does the handoff later.
+            # Leader (own leads) keeps the old instant handoff; admin is exempt.
+            if (
+                body.status == "video_watched"
+                and prev_status != "video_watched"
+                and user.role != "admin"
+                and (user.role != "team" or (lead.enrollment_proof_url or "").strip())
+            ):
+                leader_id = await self._handoff_to_leader_day1(lead, actor=user, now=now)
+                self._queue_leader_handoff_push(leader_id, lead, actor_user_id=user.user_id)
         if body.archived is True:
             lead.archived_at = now
             lead.in_pool = False
@@ -1135,6 +1219,15 @@ class LeadsService:
                 task=body.process_task.strip(),
                 done=body.process_task_done,
             )
+            if body.process_task_done:
+                # process_tracking holds yes/no only; *when* it was ticked lives in the
+                # activity log (today's closing list reads it).
+                await self._repository.add_lead_activity(
+                    user_id=user.user_id,
+                    action="process.task_done",
+                    lead_id=lead.id,
+                    meta={"stage": body.process_stage.strip(), "task": body.process_task.strip()},
+                )
         # Day 3 closing — Stage picker (price auto-set) + seat-hold reserve window.
         if body.stage_selected is not None:
             if user.role not in ("leader", "admin"):
@@ -1213,7 +1306,12 @@ class LeadsService:
         if lead.status != "converted" or previous_status == "converted":
             return
         from app.services.lead_conversion import handle_lead_converted
+        from app.services.wins import record_win
+
+        closer = lead.assigned_to_user_id or lead.owner_user_id
         try:
+            if closer is not None:
+                record_win(self._session, user_id=closer, kind="conversion")
             await handle_lead_converted(self._session, lead=lead)
             await self._session.commit()
         except Exception as exc:  # noqa: BLE001 - onboarding side-effects are best-effort
@@ -1267,20 +1365,11 @@ class LeadsService:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_access_lead(user, lead):
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        submissions = (
-            await self._session.execute(
-                select(BatchDaySubmission)
-                .where(BatchDaySubmission.lead_id == lead.id)
-                .order_by(BatchDaySubmission.submitted_at.desc())
-            )
-        ).scalars().all()
         lead_public = await self.serialize_lead_public(lead)
-        detail = LeadDetailPublic.model_validate(lead_public.model_dump())
-        detail.batch_submissions = [LeadBatchSubmissionPublic.model_validate(row) for row in submissions]
-        return detail
+        return LeadDetailPublic.model_validate(lead_public.model_dump())
 
     async def log_call(self, *, lead_id: int, body: CallEventCreate, user: AuthUser) -> CallEventPublic:
-        lead = await self._get_lead_or_404(lead_id)
+        lead = await self._get_lead_or_404(lead_id, for_update=True)
         if lead.deleted_at is not None:
             raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
         if not await self._repository.can_mutate_lead(user, lead) and lead.assigned_to_user_id != user.user_id:
@@ -1307,6 +1396,11 @@ class LeadsService:
             await _grant_xp(self._session, user.user_id, "call_logged", lead_id)
             if body.outcome in {"answered", "callback_requested"}:
                 await _grant_xp(self._session, user.user_id, "connected_call", lead_id)
+            # The call that reaches today's target extends the work streak.
+            from app.services.work_streak import bump_work_streak_after_call
+            caller = await self._session.get(User, user.user_id)
+            if caller is not None:
+                await bump_work_streak_after_call(self._session, caller)
             await self._session.commit()
         except Exception as exc:
             logger.warning("Connected-call XP grant failed user_id=%s lead_id=%s: %s", user.user_id, lead_id, exc)
@@ -1440,17 +1534,11 @@ class LeadsService:
             lead.heat_score = clamp_ctcs_heat(
                 int(lead.heat_score or 0) + settings.ctcs_heat_interested_bonus,
             )
-            lead.whatsapp_sent_at = now
-            if settings.ctcs_whatsapp_async and background_tasks is not None:
-                background_tasks.add_task(_deliver_ctcs_interested_whatsapp, lead.id, lead.phone)
-                wa_meta: dict[str, Any] = {"queued": True, "channel": "whatsapp"}
-            else:
-                wa_meta = await send_interested_flp_min_billing_assets(lead_id=lead.id, phone=lead.phone)
             await self._repository.add_lead_activity(
                 user_id=user.user_id,
                 action="ctcs.interested",
                 lead_id=lead.id,
-                meta={"whatsapp": wa_meta},
+                meta={"from_status": prev_status},
             )
         elif action == "not_picked":
             advance_lead_status_toward(lead=lead, target_slug="contacted", role=user.role)
@@ -1497,6 +1585,9 @@ class LeadsService:
                 drop_recorded_by_user_id=user.user_id if action == "not_interested" else None,
             )
         _sync_stage_anchor(lead, previous_status=prev_status, now=now)
+        from app.services.admin_alerts import mark_call_outcome
+
+        mark_call_outcome(self._session, lead, action)
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads")
         return lead

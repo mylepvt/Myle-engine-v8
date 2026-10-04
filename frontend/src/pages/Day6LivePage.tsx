@@ -155,19 +155,19 @@ function JoinFeed({ entries }: { entries: JoinEntry[] }) {
   if (entries.length === 0) return null
   const visible = entries.slice(-5)
   return (
-    <div className="w-full max-w-2xl overflow-hidden rounded-[1.6rem] border border-white/8 bg-white/[0.03] px-4 py-3 backdrop-blur-xl">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#6b83a8]">Live activity</p>
+    <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-white/8 bg-white/[0.03] px-4 py-3 backdrop-blur-xl">
+      <p className="mb-2 text-ds-micro font-semibold uppercase tracking-[0.25em] text-room-subtle">Live activity</p>
       <div className="space-y-1.5">
         {visible.map((e, i) => (
           <div
             key={e.id}
             style={{ opacity: 0.35 + 0.65 * ((i + 1) / visible.length) }}
-            className="flex items-center gap-2 text-[13px]"
+            className="flex items-center gap-2 text-ds-caption"
           >
             <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
-            <span className="text-[#c9d9ff]">
+            <span className="text-room-soft">
               <span className="font-semibold">{e.name}</span>
-              <span className="text-[#7a94c4]"> from {e.city} joined</span>
+              <span className="text-room-subtle"> from {e.city} joined</span>
             </span>
           </div>
         ))}
@@ -225,7 +225,7 @@ function Day6VideoPlayer({
     <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
       <video
         ref={externalRef}
-        className="pointer-events-none h-full w-full select-none rounded-[1.4rem] object-contain"
+        className="pointer-events-none h-full w-full select-none rounded-3xl object-contain"
         playsInline
         muted
         disableRemotePlayback
@@ -245,14 +245,14 @@ function Day6VideoPlayer({
         }}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-[1.4rem] bg-gradient-to-b from-black/60 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 rounded-b-[1.4rem] bg-gradient-to-t from-black/70 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-3xl bg-gradient-to-b from-black/60 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 rounded-b-3xl bg-gradient-to-t from-black/70 to-transparent" />
 
       {paused && (
         <button
           type="button"
           aria-label="Play"
-          className="absolute inset-0 flex items-center justify-center rounded-[1.4rem] bg-black/50"
+          className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/50"
           onClick={togglePlay}
         >
           <span className="flex size-20 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm ring-1 ring-white/20">
@@ -324,28 +324,28 @@ function LiveSection({
 
   if (!data.video_url) {
     return (
-      <div className="w-full max-w-2xl rounded-[2.25rem] border border-white/8 bg-muted/30 px-5 py-8 text-center md:px-8 md:py-12">
-        <p className="text-sm text-[#7a94c4]">Video is being prepared. Please refresh in a moment.</p>
+      <div className="w-full max-w-2xl rounded-4xl border border-white/8 bg-muted/30 px-5 py-8 text-center md:px-8 md:py-12">
+        <p className="text-sm text-room-subtle">Video is being prepared. Please refresh in a moment.</p>
       </div>
     )
   }
 
   return (
     <div className="w-full space-y-3">
-      <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
-        <div className="bg-[#070d1d] p-3 sm:p-4">
+      <section className="overflow-hidden rounded-4xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
+        <div className="bg-room-surface p-3 sm:p-4">
           <Day6VideoPlayer
             src={data.video_url}
             liveStartsAt={data.live_starts_at}
             externalRef={videoRef}
           />
-          <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-5 py-4">
+          <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.045] px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-base font-semibold text-white">You're in, {firstName}</p>
-                <p className="mt-0.5 text-sm text-[#b6c6e7]">Session is live right now — watch till the end</p>
+                <p className="mt-0.5 text-sm text-room-muted">Session is live right now — watch till the end</p>
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white">
+              <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white">
                 <span className="relative flex size-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex size-2 rounded-full bg-red-400" />
@@ -397,14 +397,14 @@ export function Day6LivePage() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#02040a] px-5 text-center text-white">
-        <p className="text-base font-medium text-[#7a94c4]">This link is incomplete. Please use the link sent by your team.</p>
+      <div className="flex min-h-screen items-center justify-center bg-room-base px-5 text-center text-white">
+        <p className="text-base font-medium text-room-subtle">This link is incomplete. Please use the link sent by your team.</p>
       </div>
     )
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#1a2d50_0%,#0d1525_32%,#060a17_66%,#02040a_100%)] text-[#f3f7ff]">
+    <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#1a2d50_0%,#0d1525_32%,#060a17_66%,#02040a_100%)] text-room-text">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(130,180,255,0.12),transparent_60%)]" />
       {state === 'waiting' && (
         <div className="pointer-events-none absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_40%,rgba(99,102,241,0.07),transparent_55%)]" />
@@ -413,15 +413,15 @@ export function Day6LivePage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
 
         {/* Header */}
-        <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 backdrop-blur-2xl">
+        <header className="rounded-4xl border border-white/10 bg-muted/40 px-5 py-4 backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
+              <p className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-room-muted">Myle</p>
               <h1 className="mt-1 text-ds-h2">Private Live Session</h1>
             </div>
             <div className="flex items-center gap-3">
               {(state === 'waiting' || state === 'live') && viewerCount > 0 && (
-                <span className="flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[12px] font-semibold text-red-300 tabular-nums transition-all duration-700">
+                <span className="flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 tabular-nums transition-all duration-700">
                   <span className="relative flex size-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
@@ -430,7 +430,7 @@ export function Day6LivePage() {
                 </span>
               )}
               {state === 'live' && (
-                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
                   <span className="relative flex size-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex size-2 rounded-full bg-red-400" />
@@ -439,7 +439,7 @@ export function Day6LivePage() {
                 </span>
               )}
               {data && (
-                <p className="hidden rounded-full border border-[#3f537d] bg-[#0b1120] px-4 py-2 text-[11px] font-semibold text-[#c9d9ff] sm:block">
+                <p className="hidden rounded-full border border-room-border-strong bg-room-surface px-4 py-2 text-ds-micro font-semibold text-room-soft sm:block">
                   {formatDateIST(data.live_starts_at)}
                 </p>
               )}
@@ -449,11 +449,11 @@ export function Day6LivePage() {
 
         {/* Greeting */}
         {data && (
-          <div className="mt-4 rounded-[1.6rem] border border-white/8 bg-white/[0.035] px-5 py-4 backdrop-blur-xl">
-            <p className="text-base font-medium text-[#c9d9ff]">
-              {wish}, <span className="font-bold text-[#f7f9ff]">{firstName}</span>
+          <div className="mt-4 rounded-3xl border border-white/8 bg-white/[0.035] px-5 py-4 backdrop-blur-xl">
+            <p className="text-base font-medium text-room-soft">
+              {wish}, <span className="font-bold text-room-text">{firstName}</span>
             </p>
-            <p className="mt-0.5 text-sm text-[#7a94c4]">
+            <p className="mt-0.5 text-sm text-room-subtle">
               Session starts at {formatTimeIST(data.live_starts_at)} IST
             </p>
           </div>
@@ -462,21 +462,21 @@ export function Day6LivePage() {
         <main className="flex flex-1 flex-col items-center justify-center gap-5 py-8">
 
           {isError && (
-            <div className="rounded-[2rem] border border-[#5b2327] bg-[#100708] px-6 py-8 text-center" role="alert">
-              <p className="text-base font-semibold text-[#ffb8bd]">Could not load session.</p>
-              <p className="mt-2 text-sm text-[#d6c3c7]">Please refresh or use the latest link from your team.</p>
+            <div className="rounded-4xl border border-room-danger-border bg-room-danger-bg px-6 py-8 text-center" role="alert">
+              <p className="text-base font-semibold text-room-danger">Could not load session.</p>
+              <p className="mt-2 text-sm text-room-danger-soft">Please refresh or use the latest link from your team.</p>
             </div>
           )}
 
           {/* UPCOMING */}
           {state === 'upcoming' && data && (
             <section className="w-full max-w-2xl space-y-4">
-              <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-5 py-8 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-10">
-                <p className="text-xs font-semibold uppercase tracking-widest text-[#9db0d6]">Private session</p>
-                <p className="mt-4 text-[clamp(3rem,8vw,5rem)] font-bold tabular-nums tracking-tight text-[#f7f9ff]">
+              <div className="rounded-4xl border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] px-5 py-8 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-10">
+                <p className="text-xs font-semibold uppercase tracking-widest text-room-muted">Private session</p>
+                <p className="mt-4 text-[clamp(3rem,8vw,5rem)] font-bold tabular-nums tracking-tight text-room-text">
                   {formatTimeIST(data.live_starts_at)}
                 </p>
-                <p className="mt-3 text-sm font-medium text-[#7a94c4]">
+                <p className="mt-3 text-sm font-medium text-room-subtle">
                   Waiting room opens at {formatTimeIST(data.waiting_starts_at)} — join a few minutes early
                 </p>
               </div>
@@ -486,10 +486,10 @@ export function Day6LivePage() {
                   ['Access', 'Private link', 'Invited only'],
                   ['Action', 'Join on time', 'Limited seats'],
                 ] as const).map(([label, title, sub]) => (
-                  <div key={label} className="rounded-[1.4rem] border border-white/8 bg-muted/30 px-4 py-4 text-center backdrop-blur-xl">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#9db0d6]">{label}</p>
-                    <p className="mt-2 text-sm font-semibold text-[#f0f4ff]">{title}</p>
-                    <p className="mt-0.5 text-xs text-[#7a94c4]">{sub}</p>
+                  <div key={label} className="rounded-3xl border border-white/8 bg-muted/30 px-4 py-4 text-center backdrop-blur-xl">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-room-muted">{label}</p>
+                    <p className="mt-2 text-sm font-semibold text-room-text">{title}</p>
+                    <p className="mt-0.5 text-xs text-room-subtle">{sub}</p>
                   </div>
                 ))}
               </div>
@@ -499,12 +499,12 @@ export function Day6LivePage() {
           {/* WAITING */}
           {state === 'waiting' && data && (
             <>
-              <section className="w-full max-w-2xl rounded-[2.25rem] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-5 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-14">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#a5b4fc]">Starting in</p>
-                <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-[#f7f9ff]">
+              <section className="w-full max-w-2xl rounded-4xl border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(99,102,241,0.08),rgba(255,255,255,0.03))] px-5 py-10 text-center shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl md:px-8 md:py-14">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-room-accent">Starting in</p>
+                <p className="mt-6 text-[clamp(4rem,12vw,7rem)] font-bold tabular-nums leading-none tracking-tight text-room-text">
                   {formatCountdown(data.live_starts_at, nowMs)}
                 </p>
-                <p className="mt-6 text-sm font-medium text-[#818cf8]">
+                <p className="mt-6 text-sm font-medium text-room-accent">
                   Your session is about to go live, {firstName}
                 </p>
               </section>
@@ -524,9 +524,9 @@ export function Day6LivePage() {
 
           {/* ENDED */}
           {state === 'ended' && (
-            <section className="w-full max-w-2xl space-y-5 rounded-[2.25rem] border border-white/8 bg-muted/30 px-5 py-8 text-center backdrop-blur-2xl md:px-8 md:py-12">
-              <p className="text-2xl font-semibold text-[#f7f9ff]">Today's session has ended</p>
-              <p className="text-base text-[#7a94c4]">
+            <section className="w-full max-w-2xl space-y-5 rounded-4xl border border-white/8 bg-muted/30 px-5 py-8 text-center backdrop-blur-2xl md:px-8 md:py-12">
+              <p className="text-2xl font-semibold text-room-text">Today's session has ended</p>
+              <p className="text-base text-room-subtle">
                 {firstName ? `Well done, ${firstName}.` : 'Well done.'} Your team will follow up with the next step.
               </p>
             </section>

@@ -1,18 +1,12 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  Headphones,
-  MessageSquareText,
-  NotebookPen,
-  Video,
-} from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LEAD_STATUS_OPTIONS, type LeadStatus, useAvailableTransitionsQuery } from '@/hooks/use-leads-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import {
-  type LeadBatchSubmission,
   useLeadCallsQuery,
   useLeadDetailQuery,
   useLogCallMutation,
@@ -22,12 +16,11 @@ import {
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { LeadNextStepPanel } from '@/components/leads/LeadNextStepPanel'
-import { LeadNotesPanel } from '@/components/leads/LeadNotesPanel'
-import { apiUrl } from '@/lib/api'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
+import { stageBadgeClass } from '@/lib/stage-colors'
 
 type Props = {
   leadId: number
@@ -46,25 +39,10 @@ function outcomeLabel(v: string): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const cls: Record<string, string> = {
-    new: 'bg-primary/15 text-primary',
-    new_lead: 'bg-primary/15 text-primary',
-    contacted: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400',
-    invited: 'bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-400',
-    whatsapp_sent: 'bg-pink-500/10 text-pink-600 dark:bg-pink-400/15 dark:text-pink-400',
-    video_sent: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-400',
-    video_watched: 'bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400',
-    paid: 'bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400',
-    day1: 'bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-400',
-    day2: 'bg-yellow-500/10 text-yellow-600 dark:bg-yellow-400/15 dark:text-yellow-400',
-    day3: 'bg-lime-500/10 text-lime-600 dark:bg-lime-400/15 dark:text-lime-400',
-    converted: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
-    lost: 'bg-destructive/15 text-destructive',
-  }
-  const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
+  const c = stageBadgeClass(status)
   const label = LEAD_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${c}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${c}`}>
       {label}
     </span>
   )
@@ -72,7 +50,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function PaymentStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
-    pending: 'bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400',
+    pending: 'bg-warning/10 text-warning-ink dark:bg-warning/15',
     proof_uploaded: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400',
     approved: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     rejected: 'bg-destructive/15 text-destructive',
@@ -90,107 +68,6 @@ function PaymentStatusBadge({ status }: { status: string }) {
     </span>
   )
 }
-
-function resolveAssetUrl(url: string | null | undefined): string | null {
-  if (!url) return null
-  return url.startsWith('http') ? url : apiUrl(url)
-}
-
-function batchSubmissionLabel(slot: string): string {
-  const match = slot.match(/^d(\d+)_(.+)$/)
-  if (!match) return slot.replace(/_/g, ' ')
-  return `Day ${match[1]} ${match[2].replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())}`
-}
-
-function BatchSubmissionCard({ submission }: { submission: LeadBatchSubmission }) {
-  const notesUrl = resolveAssetUrl(submission.notes_url)
-  const voiceUrl = resolveAssetUrl(submission.voice_note_url)
-  const videoUrl = resolveAssetUrl(submission.video_url)
-
-  return (
-    <div className="surface-inset space-y-3 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            {batchSubmissionLabel(submission.slot)}
-          </span>
-          <span className="rounded-full border border-border dark:border-white/10 bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
-            Day {submission.day_number}
-          </span>
-        </div>
-        <span className="text-xs text-muted-foreground">
-          {new Date(submission.submitted_at).toLocaleString()}
-        </span>
-      </div>
-
-      {submission.notes_text ? (
-        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
-          <div className="mb-2 flex items-center gap-2 text-ds-label uppercase text-muted-foreground">
-            <MessageSquareText className="size-3.5" />
-            Lead message
-          </div>
-          <p className="text-ds-body text-foreground">{submission.notes_text}</p>
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-3">
-        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <NotebookPen className="size-4" />
-            Notes file
-          </div>
-          {notesUrl ? (
-            <a
-              href={notesUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
-            >
-              Open uploaded notes
-            </a>
-          ) : (
-            <p className="mt-2 text-xs text-muted-foreground">No notes file uploaded in this submission.</p>
-          )}
-        </div>
-
-        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Headphones className="size-4" />
-            Voice note
-          </div>
-          {voiceUrl ? (
-            <audio controls src={voiceUrl} preload="metadata" className="mt-3 w-full" />
-          ) : (
-            <p className="mt-2 text-xs text-muted-foreground">No voice note uploaded in this submission.</p>
-          )}
-        </div>
-
-        <div className="rounded-md border border-border dark:border-white/10 bg-muted/40 p-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Video className="size-4" />
-            Practice video
-          </div>
-          {videoUrl ? (
-            <div className="mt-3 space-y-2">
-              <video controls src={videoUrl} preload="metadata" className="aspect-video w-full rounded-md bg-black" />
-              <a
-                href={videoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block text-xs text-primary underline-offset-2 hover:underline"
-              >
-                Open uploaded video in new tab
-              </a>
-            </div>
-          ) : (
-            <p className="mt-2 text-xs text-muted-foreground">No practice video uploaded in this submission.</p>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 
 export function LeadDetailPage({ leadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
@@ -423,7 +300,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     </button>
                   </>
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -431,7 +308,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 {lead.email ? (
                   <span className="text-foreground break-all">{lead.email}</span>
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -467,7 +344,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 >
                   Status
                 </label>
-                <select
+                <NativeSelect
                   id="pipeline-status"
                   value={pipelineStatus}
                   onChange={(e) => setPipelineStatus(e.target.value)}
@@ -478,7 +355,7 @@ export function LeadDetailPage({ leadId }: Props) {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <div>
                 <label
@@ -487,7 +364,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 >
                   Call status
                 </label>
-                <select
+                <NativeSelect
                   id="pipeline-call-status"
                   value={pipelineCallStatus}
                   onChange={(e) => setPipelineCallStatus(e.target.value)}
@@ -499,7 +376,7 @@ export function LeadDetailPage({ leadId }: Props) {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
               <Button
                 type="button"
@@ -515,7 +392,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 </p>
               ) : null}
               {surfaceRole === 'admin' ? (
-                <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 dark:border-amber-400/20 dark:bg-amber-400/5">
+                <div className="rounded-md border border-warning/20 bg-warning/5 p-3 dark:border-warning/20 dark:bg-warning/5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-medium text-foreground">Stage Clock Control</p>
@@ -602,7 +479,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   >
                     Outcome
                   </label>
-                  <select
+                  <NativeSelect
                     id="call-outcome"
                     value={callOutcome}
                     onChange={(e) => setCallOutcome(e.target.value)}
@@ -613,7 +490,7 @@ export function LeadDetailPage({ leadId }: Props) {
                         {o.label}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </div>
                 <div>
                   <label
@@ -719,28 +596,6 @@ export function LeadDetailPage({ leadId }: Props) {
             </div>
           </div>
 
-          {/* Lead Notes */}
-          <LeadNotesPanel leadId={leadId} />
-
-          <div className="surface-elevated p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-ds-label uppercase text-muted-foreground">Batch submissions</p>
-              <span className="text-xs text-muted-foreground">Day 2 review wall · also in Day 2 Review</span>
-            </div>
-            {lead.batch_submissions.length > 0 ? (
-              <div className="space-y-3">
-                {lead.batch_submissions.map((submission) => (
-                  <BatchSubmissionCard key={submission.id} submission={submission} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-ds-body text-muted-foreground">
-                Lead ne abhi Day 2 notes, voice note, video, ya message submit nahi kiya. Jaise hi batch room se submission aayegi,
-                admin yahi ya Day 2 Review page par dekh paayega.
-              </p>
-            )}
-          </div>
-
           {/* Payment card */}
           <div className="surface-elevated p-4 space-y-3">
             <p className="text-ds-label uppercase text-muted-foreground">Payment</p>
@@ -750,7 +605,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 {lead.payment_status ? (
                   <PaymentStatusBadge status={lead.payment_status} />
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -760,7 +615,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     ₹{(lead.payment_amount_cents / 100).toFixed(2)}
                   </span>
                 ) : (
-                  <span className="text-muted-foreground/60">—</span>
+                  <span className="text-muted-foreground">—</span>
                 )}
               </div>
               <div className="flex flex-wrap items-start gap-2">

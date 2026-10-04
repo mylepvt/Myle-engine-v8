@@ -46,6 +46,9 @@
             window.matchMedia('(display-mode: fullscreen)').matches
           var ios = window.navigator.standalone === true
           if (dm || fs || ios) document.documentElement.classList.add('pwa-standalone')
+          // iOS home-screen app: status bar text is always white (black-translucent),
+          // so index.css paints a dark strip behind it in light mode
+          if (ios) document.documentElement.classList.add('ios-standalone')
         } catch (e) {
           /* ignore */
         }
@@ -69,7 +72,13 @@
 
     <!-- Android / Chrome -->
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="theme-color" content="#050208" />
+    <!-- Android status bar: same as --background (dark default; light swapped below and by ThemeAndFeedbackProvider) -->
+    <meta name="theme-color" content="#111214" />
+    <script>
+      if (!document.documentElement.classList.contains('dark')) {
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#e9edf4')
+      }
+    </script>
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />

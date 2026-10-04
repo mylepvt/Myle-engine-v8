@@ -17,6 +17,7 @@ sys.path.insert(0, str(_BACKEND))
 
 # Disable APScheduler background jobs during tests — prevents DB connection hangs
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
+os.environ.setdefault("ADMIN_ALERTS_DISABLED", "1")
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -26,7 +27,6 @@ from app.models.activity_log import ActivityLog  # noqa: F401
 from app.models.announcement import Announcement  # noqa: F401
 from app.models.call_event import CallEvent  # noqa: F401
 from app.models.batch_share_link import BatchShareLink  # noqa: F401
-from app.models.batch_day_submission import BatchDaySubmission  # noqa: F401
 from app.models.crm_outbox import CrmOutbox  # noqa: F401
 from app.models.daily_member_stat import DailyMemberStat  # noqa: F401
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink  # noqa: F401
@@ -47,9 +47,6 @@ from app.models.app_setting import AppSetting  # noqa: F401
 from app.models.training_question import TrainingQuestion  # noqa: F401
 from app.models.training_test_attempt import TrainingTestAttempt  # noqa: F401
 from app.models.admin_activity_feed import AdminActivityFeed  # noqa: F401
-from app.models.member_removal_outreach import MemberRemovalOutreach  # noqa: F401
-from app.models.report_reminder_outreach import ReportReminderOutreach  # noqa: F401
-from app.models.whatsapp_log import WhatsAppLog  # noqa: F401
 from app.constants.roles import DEV_FBO_BY_ROLE
 from app.services.dev_users import DEV_EMAIL_BY_ROLE
 

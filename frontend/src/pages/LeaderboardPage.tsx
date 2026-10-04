@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { RankBadge } from '@/components/ui/rank-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { parseLeaderboardStubItem } from '@/lib/leaderboard-row'
@@ -9,10 +10,10 @@ type Props = { title: string }
 
 const LEVEL_META: Record<string, { label: string; cls: string }> = {
   rookie:    { label: 'Rookie',    cls: 'bg-muted/60 text-muted-foreground' },
-  hustler:   { label: 'Hustler',   cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
+  hustler:   { label: 'Hustler',   cls: 'bg-info/15 text-info-ink' },
   closer:    { label: 'Closer',    cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
-  champion:  { label: 'Champion',  cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
-  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-600 dark:text-amber-300 font-bold' },
+  champion:  { label: 'Champion',  cls: 'bg-warning/15 text-warning-ink' },
+  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-warning/20 to-orange-400/20 text-warning-ink font-bold' },
 }
 
 function LevelBadge({ level }: { level: string }) {
@@ -66,9 +67,8 @@ export function LeaderboardPage({ title }: Props) {
           {topThree.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {topThree.map((r) => {
-                const medals = ['🥇', '🥈', '🥉']
                 const golds = [
-                  'border-amber-400/40 bg-amber-500/8',
+                  'border-warning/40 bg-warning/8',
                   'border-slate-400/30 bg-slate-500/8',
                   'border-orange-400/30 bg-orange-500/8',
                 ]
@@ -80,7 +80,7 @@ export function LeaderboardPage({ title }: Props) {
                       golds[r.rank - 1] ?? 'border-border bg-card/30',
                     )}
                   >
-                    <span className="text-2xl" aria-label={`Rank ${r.rank}`}>{medals[r.rank - 1] ?? r.rank}</span>
+                    <RankBadge rank={r.rank} size="lg" />
                     <p className="max-w-full truncate text-sm font-semibold text-foreground">{r.name}</p>
                     <LevelBadge level={r.level} />
                     <p className="tabular-nums text-xs text-muted-foreground">
@@ -98,7 +98,7 @@ export function LeaderboardPage({ title }: Props) {
               <table className="w-full min-w-[28rem] border-collapse text-left">
                 <caption className="sr-only">Full leaderboard</caption>
                 <thead>
-                  <tr className="border-b border-border/60 text-[0.7rem] text-muted-foreground">
+                  <tr className="border-b border-border/60 text-ds-micro text-muted-foreground">
                     <th scope="col" className="px-4 py-2.5 font-medium">#</th>
                     <th scope="col" className="px-4 py-2.5 font-medium">Member</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden sm:table-cell">Level</th>
@@ -116,7 +116,7 @@ export function LeaderboardPage({ title }: Props) {
                       <td className="px-4 py-2.5 font-medium">
                         <div className="min-w-0">
                           <p className="truncate">{r.name}</p>
-                          <p className="truncate text-[0.65rem] text-muted-foreground md:hidden">{r.email}</p>
+                          <p className="truncate text-ds-micro text-muted-foreground md:hidden">{r.email}</p>
                         </div>
                       </td>
                       <td className="px-4 py-2.5 hidden sm:table-cell">

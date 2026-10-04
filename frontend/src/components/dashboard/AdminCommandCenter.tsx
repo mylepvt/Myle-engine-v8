@@ -23,7 +23,6 @@ import {
   Search,
   Settings,
   ShieldAlert,
-  ShieldCheck,
   Users,
   Video,
   Wallet,
@@ -34,10 +33,9 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
-import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ErrorState } from '@/components/ui/states'
-import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { EmptyState, ErrorState } from '@/components/ui/states'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
@@ -57,7 +55,6 @@ import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { RiskDashboard } from '@/components/dashboard/RiskDashboard'
 import { BlockerIntelligencePanel } from '@/components/dashboard/BlockerIntelligencePanel'
 import { CreateTaskModal } from '@/components/dashboard/CreateTaskModal'
-import { DashboardFeedbackCard } from '@/components/dashboard/DashboardFeedbackCard'
 import { OverviewTab } from '@/components/dashboard/overview/OverviewTab'
 import { AutomationPanel } from '@/components/dashboard/AutomationPanel'
 import { apiFetch } from '@/lib/api'
@@ -72,48 +69,6 @@ import { useOutcomeSummary, useDeadReasons, useZombieLeads, useRecycleLeads } fr
 type Props = {
   firstName: string
 }
-
-type PremiereViewerRow = {
-  viewer_id: string
-  name: string
-  masked_phone: string
-  phone: string | null
-  city: string
-  session_date: string
-  session_hour: number
-  session_day: number
-  percentage_watched: number
-  current_time_sec: number
-  first_seen_at: string | null
-  last_seen_at: string | null
-  lead_score: number
-  watch_completed: boolean
-  rejoined: boolean
-  referred_by_name: string | null
-}
-
-async function fetchPremiereViewers(date?: string): Promise<PremiereViewerRow[]> {
-  const params = date ? `?date=${encodeURIComponent(date)}` : ''
-  const res = await apiFetch(`/api/v1/other/premiere/viewers${params}`)
-  const body = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(messageFromApiErrorPayload(body, `HTTP ${res.status}`))
-  return body as PremiereViewerRow[]
-}
-
-function usePremiereViewersQuery(enabled: boolean, date?: string) {
-  return useQuery({
-    queryKey: ['premiere', 'viewers', date ?? 'today'],
-    queryFn: () => fetchPremiereViewers(date),
-    enabled,
-    refetchInterval: date ? false : 15_000,
-  })
-}
-
-function isActiveNow(lastSeenAt: string | null): boolean {
-  if (!lastSeenAt) return false
-  return Date.now() - new Date(lastSeenAt).getTime() < 45_000
-}
-
 
 type PendingRegistrationRow = {
   id: number
@@ -187,11 +142,11 @@ function CampaignMetricsMini({ campaignId }: { campaignId: number }) {
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">Implementation</span>
-        <span className={`font-semibold tabular-nums ${data.implementation_pct >= 50 ? 'text-green-600' : 'text-amber-600'}`}>{data.implementation_pct}%</span>
+        <span className={`font-semibold tabular-nums ${data.implementation_pct >= 50 ? 'text-success-ink' : 'text-warning-ink'}`}>{data.implementation_pct}%</span>
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">Success</span>
-        <span className={`font-semibold tabular-nums ${data.success_pct >= 50 ? 'text-green-600' : data.success_pct >= 20 ? 'text-amber-600' : 'text-red-600'}`}>{data.success_pct}%</span>
+        <span className={`font-semibold tabular-nums ${data.success_pct >= 50 ? 'text-success-ink' : data.success_pct >= 20 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{data.success_pct}%</span>
       </div>
     </div>
   )
@@ -249,8 +204,8 @@ function StatCard({
     <div title={hint} className="flex h-[68px] items-center gap-3 px-4">
       <div className={`h-7 w-[3px] shrink-0 rounded-full ${styles.accent}`} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.62rem] font-medium tracking-[0.08em] text-muted-foreground/60" style={{ textTransform: 'none' }}>{label}</p>
-        <p className={`mt-0.5 font-heading text-[1.7rem] font-semibold leading-none tabular-nums ${styles.value}`}>{value}</p>
+        <p className="truncate text-ds-caption font-medium text-muted-foreground">{label}</p>
+        <p className={`mt-0.5 font-heading text-ds-display font-semibold leading-none tabular-nums ${styles.value}`}>{value}</p>
       </div>
     </div>
   )
@@ -287,14 +242,14 @@ function DeskShortcut({
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{title}</p>
           {badge != null && Number(badge) > 0 ? (
-            <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+            <span className="rounded-full bg-warning/15 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
               {badge}
             </span>
           ) : null}
         </div>
         <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
       </div>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
     </Link>
   )
 }
@@ -352,7 +307,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
       {/* Presence indicator */}
       <div className="absolute right-4 top-4 flex items-center gap-1.5">
         <span className={`size-2 rounded-full ${presenceDot}`} />
-        <span className="text-[10px] capitalize text-muted-foreground">{leader.presence_status}</span>
+        <span className="text-ds-micro capitalize text-muted-foreground">{leader.presence_status}</span>
       </div>
 
       {/* Progress ring */}
@@ -382,7 +337,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
         </svg>
         <div className="absolute text-center">
           <p className="text-xl font-bold leading-none tabular-nums text-foreground">{score}</p>
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">score</p>
+          <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">score</p>
         </div>
       </div>
 
@@ -394,42 +349,42 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
 
       {/* Personal stats */}
       <div className="w-full space-y-1.5 rounded border border-border/40 bg-muted/20 p-3">
-        <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Personal Today</p>
+        <p className="text-ds-micro font-semibold uppercase tracking-widest text-muted-foreground">Personal Today</p>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_calls_today}</p>
-            <p className="text-[9px] text-muted-foreground">Calls</p>
+            <p className="text-ds-micro text-muted-foreground">Calls</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_leads_added}</p>
-            <p className="text-[9px] text-muted-foreground">Leads</p>
+            <p className="text-ds-micro text-muted-foreground">Leads</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.personal_followups_done}</p>
-            <p className="text-[9px] text-muted-foreground">Followups</p>
+            <p className="text-ds-micro text-muted-foreground">Followups</p>
           </div>
         </div>
       </div>
 
       {/* Team stats */}
       <div className="w-full space-y-1.5 rounded border border-border/40 bg-muted/20 p-3">
-        <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">Team</p>
+        <p className="text-ds-micro font-semibold uppercase tracking-widest text-muted-foreground">Team</p>
         <div className="grid grid-cols-2 gap-2 text-center">
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_calls_today}</p>
-            <p className="text-[9px] text-muted-foreground">Calls Today</p>
+            <p className="text-ds-micro text-muted-foreground">Calls Today</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_size}</p>
-            <p className="text-[9px] text-muted-foreground">Members</p>
+            <p className="text-ds-micro text-muted-foreground">Members</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_online_count}</p>
-            <p className="text-[9px] text-muted-foreground">Online Now</p>
+            <p className="text-ds-micro text-muted-foreground">Online Now</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-foreground">{leader.team_avg_score}</p>
-            <p className="text-[9px] text-muted-foreground">Avg Score</p>
+            <p className="text-ds-micro text-muted-foreground">Avg Score</p>
           </div>
         </div>
       </div>
@@ -449,7 +404,7 @@ function LeaderRingCard({ leader }: { leader: LeaderHealthItem }) {
         >
           {leader.day2_leads_count}
         </p>
-        <p className="text-[9px] text-muted-foreground">Day 2 Leads Active</p>
+        <p className="text-ds-micro text-muted-foreground">Day 2 Leads Active</p>
       </div>
     </div>
   )
@@ -463,9 +418,9 @@ const GRACE_RISK_CONFIG = {
 
 const GRACE_OUTCOME_LABEL: Record<string, { text: string; cls: string }> = {
   auto_restored: { text: 'Last: worked through it ✓', cls: 'text-success' },
-  auto_removed:  { text: 'Last: removed at expiry ✗', cls: 'text-red-600 dark:text-red-400' },
+  auto_removed:  { text: 'Last: removed at expiry ✗', cls: 'text-destructive-ink' },
   approved:      { text: 'Last: completed',            cls: 'text-muted-foreground' },
-  cleared:       { text: 'Last: cleared early',        cls: 'text-amber-600 dark:text-amber-400' },
+  cleared:       { text: 'Last: cleared early',        cls: 'text-warning-ink' },
 }
 
 function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
@@ -495,11 +450,11 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
           {member.username ?? member.fbo_id}
           <span className="ml-2 text-xs font-normal text-muted-foreground">{member.fbo_id}</span>
         </p>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskCfg.cls}`}>
+        <span className={`rounded-full px-2 py-0.5 text-ds-micro font-semibold ${riskCfg.cls}`}>
           {riskCfg.label}
         </span>
         {count30d >= 2 && (
-          <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:text-red-400">
+          <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-ds-micro font-semibold text-destructive-ink">
             Over monthly limit
           </span>
         )}
@@ -514,7 +469,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
           {member.grace_request_reason ? ` · ${member.grace_request_reason}` : ''}
         </p>
         {/* Grace intelligence context */}
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-ds-micro">
           <span className="text-muted-foreground">
             {count30d === 0 ? '1st grace this month' : `${count30d + 1}${count30d + 1 === 2 ? 'nd' : count30d + 1 === 3 ? 'rd' : 'th'} this month`}
           </span>
@@ -522,7 +477,7 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
             <span className={lastOutcomeCfg.cls}>{lastOutcomeCfg.text}</span>
           )}
           {streakNote && (
-            <span className="text-amber-600 dark:text-amber-400">{streakNote}</span>
+            <span className="text-warning-ink">{streakNote}</span>
           )}
         </div>
       </div>
@@ -555,6 +510,58 @@ function GraceRequestRow({ member }: { member: TeamMemberPublic }) {
   )
 }
 
+type DoNowItem = {
+  title: string
+  count: number
+  icon: ReactNode
+  urgent: boolean
+  /** route to open, or… */
+  to?: string
+  /** …a command-center view to switch to (no standalone page) */
+  tab?: string
+}
+
+function DoNowTile({ item, onTab }: { item: DoNowItem; onTab: (tab: string) => void }) {
+  const active = item.count > 0
+  const className = cn(
+    'group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition',
+    active && item.urgent
+      ? 'border-destructive/40 bg-destructive/[0.06] hover:bg-destructive/[0.1]'
+      : active
+        ? 'border-warning/30 bg-warning/[0.06] hover:bg-warning/[0.1]'
+        : 'border-border/50 bg-card/40 hover:bg-muted/40',
+  )
+  const body = (
+    <>
+      <span className={cn(
+        'grid size-10 shrink-0 place-items-center rounded-lg',
+        active && item.urgent ? 'bg-destructive/15 text-destructive-ink' :
+        active ? 'bg-warning/15 text-warning-ink' : 'bg-muted/50 text-muted-foreground'
+      )}>
+        {item.icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold leading-tight text-foreground">{item.title}</span>
+      </span>
+      <span className={cn(
+        'shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums',
+        active && item.urgent ? 'bg-destructive/20 text-destructive-ink' :
+        active ? 'bg-warning/20 text-warning-ink' : 'text-muted-foreground'
+      )}>
+        {item.count}
+      </span>
+    </>
+  )
+  if (item.to) {
+    return <Link to={item.to} className={className}>{body}</Link>
+  }
+  return (
+    <button type="button" className={className} onClick={() => item.tab && onTab(item.tab)}>
+      {body}
+    </button>
+  )
+}
+
 const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon }[] = [
   { value: 'overview', label: 'Overview', Icon: LayoutDashboard },
   { value: 'war-room', label: 'War Room', Icon: ShieldAlert },
@@ -564,13 +571,15 @@ const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon 
   { value: 'system', label: 'System', Icon: Cog },
 ]
 
+/** Open by default so admins actually see the reports; collapse is opt-in. */
 function ReportsSection({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   return (
     <div className="border-t border-border/40 pt-4 mt-6">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
         className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
       >
         {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
@@ -625,7 +634,7 @@ function DashboardViewSwitcher({
         <CurrentIcon className="size-4 text-primary" />
         <span>{current.label}</span>
         {totalAlerts > 0 && (
-          <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+          <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
             {totalAlerts}
           </span>
         )}
@@ -658,7 +667,7 @@ function DashboardViewSwitcher({
                 <Icon className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
                 <span className="flex-1 text-left">{t.label}</span>
                 {badge > 0 && (
-                  <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                  <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
                     {badge}
                   </span>
                 )}
@@ -732,7 +741,6 @@ export function AdminCommandCenter({ firstName }: Props) {
   })
   const appSettings = useAppSettingsQuery(activeTab === 'system')
   const leaderHealth = useLeaderHealthQuery(activeTab === 'people')
-  const premiereViewers = usePremiereViewersQuery(true)
   const leadSearchResults = useLeadsQuery(
     deferredLeadSearch.length > 0,
     { q: deferredLeadSearch, status: '' },
@@ -772,32 +780,77 @@ export function AdminCommandCenter({ firstName }: Props) {
     pendingRechargeItems.length +
     pendingGraceCount
 
+  const viewBadges: Record<string, number> = {
+    'war-room': pendingTotal,
+    leads: zombieLeads.data?.leads?.length ?? 0,
+    people: pendingGraceCount,
+    execution: vSummary.data?.pending_verifications ?? 0,
+  }
+
+  const approvalItems: DoNowItem[] = [
+    { title: 'Pending registrations', count: pendingRegistrations.data?.total ?? 0, icon: <Users className="size-4" />, to: '/dashboard/team/approvals', urgent: true },
+    { title: 'Min. FLP Billing', count: enrollmentPending.data?.total ?? 0, icon: <ClipboardCheck className="size-4" />, to: '/dashboard/team/flp-min-billing', urgent: false },
+    { title: 'Recharge requests', count: pendingRechargeItems.length, icon: <Wallet className="size-4" />, to: '/dashboard/finance/recharge-admin', urgent: false },
+    { title: 'Grace requests', count: pendingGraceCount, icon: <Clock className="size-4" />, to: '/dashboard/team/members', urgent: pendingGraceCount > 3 },
+  ]
+  const openApprovals = approvalItems.filter((item) => item.count > 0)
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="mb-5 flex items-center justify-between gap-3">
-          <DashboardViewSwitcher
-            active={activeTab}
-            badges={{
-              'war-room': pendingTotal,
-              leads: zombieLeads.data?.leads?.length ?? 0,
-              people: pendingGraceCount,
-              execution: vSummary.data?.pending_verifications ?? 0,
-            }}
-            onSelect={setActiveTab}
-          />
-          <Link
-            to="/dashboard/team/cc-board"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/25"
-          >
-            <Activity className="size-4" />
-            Tracking Reports
-          </Link>
+          {/* Phone/tablet: one compact switcher. Desktop: every view visible as a tab so
+              War Room / People / Execution are discoverable without opening a menu. */}
+          <div className="lg:hidden">
+            <DashboardViewSwitcher active={activeTab} badges={viewBadges} onSelect={setActiveTab} />
+          </div>
+          <TabsList className="hidden h-auto rounded-lg p-1 lg:flex">
+            {DASHBOARD_TABS.map((t) => {
+              const badge = viewBadges[t.value] ?? 0
+              return (
+                <TabsTrigger key={t.value} value={t.value} className="gap-1.5 rounded-md px-3 py-1.5 text-sm">
+                  <t.Icon className="size-4" aria-hidden />
+                  {t.label}
+                  {badge > 0 ? (
+                    <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-ds-micro font-bold text-warning-ink">
+                      {badge}
+                    </span>
+                  ) : null}
+                </TabsTrigger>
+              )
+            })}
+          </TabsList>
         </div>
 
         {/* ==================== OVERVIEW ==================== */}
         <TabsContent value="overview" className="space-y-6">
-          <OverviewTab firstName={firstName} onCreateTask={() => setShowCreateTask(true)} />
+          <OverviewTab
+            firstName={firstName}
+            actionNeeded={
+              openApprovals.length > 0 ? (
+                <section aria-label="Action needed" className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <BellRing className="size-4 text-warning-ink" aria-hidden />
+                      Action needed
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('war-room')}
+                      className="text-ds-caption font-semibold text-primary hover:underline"
+                    >
+                      Open War Room
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    {openApprovals.map((item) => (
+                      <DoNowTile key={item.title} item={item} onTab={setActiveTab} />
+                    ))}
+                  </div>
+                </section>
+              ) : null
+            }
+          />
         </TabsContent>
 
         {/* ==================== WAR ROOM ==================== */}
@@ -818,7 +871,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <span className="text-xs text-muted-foreground">
                       {orgScore.data.total_members} members · {orgScore.data.total_leads} leads
                     </span>
-                    <Badge variant="secondary" className="text-[10px]">
+                    <Badge variant="secondary" className="text-ds-micro">
                       {new Date(orgScore.data.computed_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </Badge>
                   </div>
@@ -829,7 +882,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <div className="flex shrink-0 items-center justify-center">
                     <div className="flex size-24 items-center justify-center rounded-full border-4 border-primary/20">
                       <span className={`text-3xl font-bold tabular-nums ${
-                        orgScore.data.overall_score >= 70 ? 'text-green-600' : orgScore.data.overall_score >= 40 ? 'text-amber-600' : 'text-red-600'
+                        orgScore.data.overall_score >= 70 ? 'text-success-ink' : orgScore.data.overall_score >= 40 ? 'text-warning-ink' : 'text-destructive-ink'
                       }`}>{orgScore.data.overall_score}</span>
                     </div>
                   </div>
@@ -840,11 +893,11 @@ export function AdminCommandCenter({ firstName }: Props) {
                       { key: 'lead_activity', label: 'Lead Activity', value: orgScore.data.components.lead_activity },
                       { key: 'zombie_leads', label: 'Zombie Score', value: orgScore.data.components.zombie_leads },
                     ].map((c) => {
-                      const barColor = c.value >= 70 ? 'bg-green-500' : c.value >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                      const barColor = c.value >= 70 ? 'bg-success' : c.value >= 40 ? 'bg-warning' : 'bg-destructive'
                       return (
                         <div key={c.key} className="rounded-lg border border-border/40 p-2.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-medium text-muted-foreground">{c.label}</span>
+                            <span className="text-ds-micro font-medium text-muted-foreground">{c.label}</span>
                             <span className="text-sm font-bold tabular-nums text-foreground">{c.value}</span>
                           </div>
                           <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -860,11 +913,11 @@ export function AdminCommandCenter({ firstName }: Props) {
           )}
 
           {/* 🔥 Do Now — Action-oriented queue */}
-          <Card className="border-amber-500/30 bg-gradient-to-br from-card to-amber-500/[0.03]">
+          <Card className="border-warning/30 bg-gradient-to-br from-card to-warning/[0.03]">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <BellRing className="size-4 text-amber-400" />
+                  <BellRing className="size-4 text-warning-ink" />
                   Do Now
                 </CardTitle>
                 <Badge variant="warning" className="text-xs">
@@ -875,50 +928,15 @@ export function AdminCommandCenter({ firstName }: Props) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {[
-                  { title: 'Pending registrations', count: pendingRegistrations.data?.total ?? 0, icon: <Users className="size-4" />, to: '/dashboard/team/approvals', urgent: true },
-                  { title: 'Min. FLP Billing', count: enrollmentPending.data?.total ?? 0, icon: <ClipboardCheck className="size-4" />, to: '/dashboard/team/flp-min-billing', urgent: false },
-                  { title: 'Recharge requests', count: pendingRechargeItems.length, icon: <Wallet className="size-4" />, to: '/dashboard/finance/recharge-admin', urgent: false },
-                  { title: 'Grace requests', count: pendingGraceCount, icon: <Clock className="size-4" />, to: '/dashboard/team/members', urgent: pendingGraceCount > 3 },
-                  { title: 'Pending verifications', count: vSummary.data?.pending_verifications ?? 0, icon: <ListChecks className="size-4" />, to: '#', urgent: (vSummary.data?.pending_verifications ?? 0) > 5 },
+                {([
+                  ...approvalItems,
+                  { title: 'Pending verifications', count: vSummary.data?.pending_verifications ?? 0, icon: <ListChecks className="size-4" />, tab: 'execution', urgent: (vSummary.data?.pending_verifications ?? 0) > 5 },
                   { title: 'Zombie leads', count: zombieLeads.data?.leads?.length ?? 0, icon: <ShieldAlert className="size-4" />, to: '/dashboard/work/leads', urgent: (zombieLeads.data?.leads?.length ?? 0) > 10 },
                   { title: 'Reassign ready', count: leadControl.data?.queue_total ?? 0, icon: <ArrowRightLeft className="size-4" />, to: '/dashboard/system/lead-control', urgent: false },
                   { title: 'Archive incubation', count: leadControl.data?.incubation_total ?? 0, icon: <Layers3 className="size-4" />, to: '/dashboard/system/lead-control', urgent: false },
-                ].map((item) => {
-                  const active = item.count > 0
-                  return (
-                    <Link
-                      key={item.title}
-                      to={item.to}
-                      className={cn(
-                        'group flex items-center gap-3 rounded-xl border px-3 py-3 transition',
-                        active && item.urgent
-                          ? 'border-red-400/40 bg-red-400/[0.06] hover:bg-red-400/[0.1]'
-                          : active
-                            ? 'border-amber-400/30 bg-amber-400/[0.06] hover:bg-amber-400/[0.1]'
-                            : 'border-border/50 bg-card/40 hover:bg-muted/40',
-                      )}
-                    >
-                      <span className={cn(
-                        'grid size-10 shrink-0 place-items-center rounded-lg',
-                        active && item.urgent ? 'bg-red-400/15 text-red-400' :
-                        active ? 'bg-amber-400/15 text-amber-300' : 'bg-muted/50 text-muted-foreground'
-                      )}>
-                        {item.icon}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-foreground">{item.title}</span>
-                      </span>
-                      <span className={cn(
-                        'shrink-0 rounded-full px-2.5 py-0.5 text-sm font-bold tabular-nums',
-                        active && item.urgent ? 'bg-red-400/20 text-red-400' :
-                        active ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground/40'
-                      )}>
-                        {item.count}
-                      </span>
-                    </Link>
-                  )
-                })}
+                ] as DoNowItem[]).map((item) => (
+                  <DoNowTile key={item.title} item={item} onTab={setActiveTab} />
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -935,21 +953,21 @@ export function AdminCommandCenter({ firstName }: Props) {
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Claimed today</p>
+                  <p className="mt-2 text-ds-display font-bold leading-none tabular-nums text-foreground">{liveDash.claimedToday || (liveSummary?.leads_claimed_today ?? 0)}</p>
                 </div>
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Approved today</p>
+                  <p className="mt-2 text-ds-display font-bold leading-none tabular-nums text-foreground">
                     {liveDash.approvedToday || (liveSummary?.payment_proofs_approved_today ?? 0)}
                   </p>
                 </div>
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
-                  <p className="mt-2 text-[1.75rem] font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Lead pool visible</p>
+                  <p className="mt-2 text-ds-display font-bold leading-none tabular-nums text-foreground">{leadPool.data?.total ?? 0}</p>
                 </div>
                 <div className="surface-inset rounded-md p-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
+                  <p className="text-ds-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Latest reassignment</p>
                   <p className="mt-2 text-sm font-semibold text-foreground">
                     {leadControl.data?.history?.[0]?.lead_name ?? 'No movement yet'}
                   </p>
@@ -971,7 +989,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Clock className="size-4" />
                     Pending Grace Requests
-                    <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-400">{pendingGraceCount}</span>
+                    <span className="rounded-full bg-warning/20 px-2 py-0.5 text-xs font-bold text-warning-ink">{pendingGraceCount}</span>
                   </CardTitle>
                   <CardDescription>Review and action each request without leaving the dashboard.</CardDescription>
                 </CardHeader>
@@ -1013,11 +1031,11 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <input value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} placeholder="Search any lead across active, archived, retarget, and more" className="w-full rounded border border-border/60 bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/40" />
               </label>
               {deferredLeadSearch.length === 0 ? (
-                <EmptyStatePremium title="Start typing to search" description="This search is meant for admin jump-and-review across sections." />
+                <EmptyState title="Start typing to search" description="This search is meant for admin jump-and-review across sections." />
               ) : leadSearchResults.isError ? (
                 <ErrorState title="Lead search failed" message={leadSearchResults.error instanceof Error ? leadSearchResults.error.message : 'Please try again.'} onRetry={() => void leadSearchResults.refetch()} />
               ) : (leadSearchResults.data?.items ?? []).length === 0 ? (
-                <EmptyStatePremium variant="search" title="No leads matched" description="Try a broader phone, name, city, or note fragment." />
+                <EmptyState variant="search" title="No leads matched" description="Try a broader phone, name, city, or note fragment." />
               ) : (
                 <div className="space-y-3">
                   {(leadSearchResults.data?.items ?? []).slice(0, 8).map((lead) => (<LeadResultRow key={lead.id} lead={lead} />))}
@@ -1057,7 +1075,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 {zombieLeads.isPending ? (
                   <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                 ) : (zombieLeads.data?.leads ?? []).length === 0 ? (
-                  <EmptyStatePremium variant="default" title="No zombies" description="All active leads have been touched recently." />
+                  <EmptyState variant="default" title="No zombies" description="All active leads have been touched recently." />
                 ) : (
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {(zombieLeads.data?.leads ?? []).slice(0, 20).map((lead) => (
@@ -1067,8 +1085,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                           <p className="text-xs text-muted-foreground">{lead.assigned_to_name ?? 'Unassigned'} · {lead.status}</p>
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className={`text-xs font-bold tabular-nums ${(lead.days_inactive ?? 0) >= 14 ? 'text-red-600' : 'text-amber-600'}`}>{lead.days_inactive}d</p>
-                          <p className="text-[10px] text-muted-foreground">inactive</p>
+                          <p className={`text-xs font-bold tabular-nums ${(lead.days_inactive ?? 0) >= 14 ? 'text-destructive-ink' : 'text-warning-ink'}`}>{lead.days_inactive}d</p>
+                          <p className="text-ds-micro text-muted-foreground">inactive</p>
                         </div>
                       </div>
                     ))}
@@ -1090,14 +1108,14 @@ export function AdminCommandCenter({ firstName }: Props) {
                   {deadReasons.isPending ? (
                     <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                   ) : (deadReasons.data?.members ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="default" title="No dead leads" description="Dead leads with reasons will appear here." />
+                    <EmptyState variant="default" title="No dead leads" description="Dead leads with reasons will appear here." />
                   ) : (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                       {(deadReasons.data?.members ?? []).slice(0, 20).map((m) => (
                         <div key={m.user_id} className="surface-inset rounded-md p-3">
                           <div className="flex items-center justify-between"><p className="text-sm font-medium">{m.name}</p><Badge variant="secondary">{m.total_dead}</Badge></div>
                           <div className="mt-1.5 flex flex-wrap gap-1">{Object.entries(m.reasons).map(([reason, count]) => (
-                            <span key={reason} className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${reason === 'known_zone_miss' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : reason === 'no_budget' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>{reason.replace(/_/g, ' ')}: {count}</span>
+                            <span key={reason} className={`inline-block rounded-full px-2 py-0.5 text-ds-micro font-medium ${reason === 'known_zone_miss' ? 'bg-destructive/10 text-destructive-ink ' : reason === 'no_budget' ? 'bg-warning/10 text-warning-ink ' : 'bg-muted text-muted-foreground'}`}>{reason.replace(/_/g, ' ')}: {count}</span>
                           ))}</div>
                         </div>
                       ))}
@@ -1117,7 +1135,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <>{(['active', 'converted', 'dead', 'recycle'] as const).map((oc) => {
                       const count = outcomeSummary.data?.outcomes?.[oc] ?? 0
                       const pct = outcomeSummary.data?.[`${oc}_pct` as keyof typeof outcomeSummary.data] as number ?? 0
-                      const barColor = oc === 'active' ? 'bg-blue-500' : oc === 'converted' ? 'bg-green-500' : oc === 'dead' ? 'bg-red-500' : 'bg-amber-500'
+                      const barColor = oc === 'active' ? 'bg-info' : oc === 'converted' ? 'bg-success' : oc === 'dead' ? 'bg-destructive' : 'bg-warning'
                       return (<div key={oc}><div className="flex items-center justify-between text-sm"><span className="font-medium capitalize">{oc}</span><span className="text-muted-foreground">{count} ({pct}%)</span></div><div className="mt-1 h-2 w-full rounded-full bg-muted"><div className={`h-2 rounded-full ${barColor}`} style={{ width: `${pct}%` }} /></div></div>)
                     })}</>
                   )}
@@ -1132,12 +1150,12 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {recycleLeads.isPending ? (<div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
-                  ) : (recycleLeads.data?.leads ?? []).length === 0 ? (<EmptyStatePremium variant="default" title="No recycle leads" description="Leads in recycle bucket will appear here." />
+                  ) : (recycleLeads.data?.leads ?? []).length === 0 ? (<EmptyState variant="default" title="No recycle leads" description="Leads in recycle bucket will appear here." />
                   ) : (
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {(recycleLeads.data?.leads ?? []).slice(0, 15).map((lead) => (
                         <div key={lead.id} className="surface-inset flex items-center justify-between rounded-md p-3">
-                          <div><p className="text-sm font-medium">{lead.name}</p><p className="text-xs text-muted-foreground">{lead.assigned_to_name ?? 'Unassigned'}</p>{lead.recycle_reason && <p className="text-[10px] text-muted-foreground">Reason: {lead.recycle_reason.replace(/_/g, ' ')}</p>}</div>
+                          <div><p className="text-sm font-medium">{lead.name}</p><p className="text-xs text-muted-foreground">{lead.assigned_to_name ?? 'Unassigned'}</p>{lead.recycle_reason && <p className="text-ds-micro text-muted-foreground">Reason: {lead.recycle_reason.replace(/_/g, ' ')}</p>}</div>
                           <p className="text-xs text-muted-foreground">{lead.days_in_recycle ?? '?'}d ago</p>
                         </div>
                       ))}
@@ -1174,7 +1192,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               ) : leaderHealth.isError ? (
                 <ErrorState title="Could not load leader health" message={leaderHealth.error instanceof Error ? leaderHealth.error.message : 'Please try again.'} onRetry={() => void leaderHealth.refetch()} />
               ) : (leaderHealth.data?.leaders ?? []).length === 0 ? (
-                <EmptyStatePremium variant="analytics" title="No leaders found" description="Approved leaders will appear here with their daily health metrics." />
+                <EmptyState variant="analytics" title="No leaders found" description="Approved leaders will appear here with their daily health metrics." />
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {leaderHealth.data!.leaders.map((leader) => (<LeaderRingCard key={leader.leader_id} leader={leader} />))}
@@ -1197,7 +1215,6 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 gap-3">
                   <DeskShortcut to="/dashboard/team/members" title="Team members" description="Role changes, compliance, password reset, lock/unlock, and training toggles." icon={<Users className="size-4" />} badge={teamMembers.data?.total ?? 0} />
-                  <DeskShortcut to="/dashboard/team/tracking" title="Team tracking" description="Operational tracking by member with discipline visibility." icon={<ShieldCheck className="size-4" />} />
                   <DeskShortcut to="/dashboard/team/reports" title="Team reports" description="Daily conversion and pipeline reporting by hierarchy." icon={<FileDown className="size-4" />} />
                 </CardContent>
               </Card>
@@ -1208,7 +1225,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {flaggedMembers.length === 0 ? (
-                    <EmptyStatePremium variant="notifications" title="No urgent member flags" description="Training locks, access blocks, and compliance warnings will surface here." />
+                    <EmptyState variant="notifications" title="No urgent member flags" description="Training locks, access blocks, and compliance warnings will surface here." />
                   ) : (
                     <div className="space-y-3">
                       {flaggedMembers.map((member) => (
@@ -1251,13 +1268,13 @@ export function AdminCommandCenter({ firstName }: Props) {
                 ) : effectiveness.isError ? (
                   <ErrorState title="Could not load effectiveness" message={effectiveness.error instanceof Error ? effectiveness.error.message : 'Please try again.'} onRetry={() => effectiveness.refetch()} />
                 ) : (effectiveness.data?.leaders ?? []).length === 0 ? (
-                  <EmptyStatePremium variant="default" title="No leader data" description="Leaders with team members will appear once they have activity." />
+                  <EmptyState variant="default" title="No leader data" description="Leaders with team members will appear once they have activity." />
                 ) : (
                   <div className="space-y-4">
                     {effectiveness.data!.leaders.map((leader) => {
                       const { components } = leader
-                      const bandColor = leader.band === 'elite' ? 'text-green-600' : leader.band === 'average' ? 'text-amber-600' : 'text-red-600'
-                      const bandBg = leader.band === 'elite' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : leader.band === 'average' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                      const bandColor = leader.band === 'elite' ? 'text-success-ink' : leader.band === 'average' ? 'text-warning-ink' : 'text-destructive-ink'
+                      const bandBg = leader.band === 'elite' ? 'bg-success/10 text-success-ink ' : leader.band === 'average' ? 'bg-warning/10 text-warning-ink ' : 'bg-destructive/10 text-destructive-ink '
                       return (
                         <div key={leader.user_id} className="rounded-lg border border-border/60 p-4">
                           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1272,10 +1289,10 @@ export function AdminCommandCenter({ firstName }: Props) {
                               { key: 'zombie_lead_score', label: 'Zombie', value: components.zombie_lead_score, pct: 20, weak: leader.weakest_component === 'Zombie Leads' },
                               { key: 'blocker_resolution', label: 'Blocker', value: components.blocker_resolution, pct: 10, weak: leader.weakest_component === 'Blocker Resolution' },
                             ].map((bar) => {
-                              const barColor = bar.value >= 80 ? 'bg-green-500' : bar.value >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                              const barColor = bar.value >= 80 ? 'bg-success' : bar.value >= 40 ? 'bg-warning' : 'bg-destructive'
                               return (
-                                <div key={bar.key} className={`rounded border p-2 ${bar.weak ? 'border-red-400/50 bg-red-50 dark:bg-red-950/20' : 'border-border/40'}`}>
-                                  <div className="flex items-center justify-between"><span className="text-[10px] font-medium text-muted-foreground">{bar.label} ({bar.pct}%)</span><span className={`text-xs font-bold tabular-nums ${bar.value >= 80 ? 'text-green-600' : bar.value >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{bar.value}</span></div>
+                                <div key={bar.key} className={`rounded border p-2 ${bar.weak ? 'border-destructive/50 bg-destructive/10' : 'border-border/40'}`}>
+                                  <div className="flex items-center justify-between"><span className="text-ds-micro font-medium text-muted-foreground">{bar.label} ({bar.pct}%)</span><span className={`text-xs font-bold tabular-nums ${bar.value >= 80 ? 'text-success-ink' : bar.value >= 40 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{bar.value}</span></div>
                                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${barColor}`} style={{ width: `${bar.value}%` }} /></div>
                                 </div>
                               )
@@ -1304,7 +1321,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                       <div key={leader.leader_id} className="surface-inset rounded-md p-4">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className={`size-2 rounded-full ${leader.presence_status === 'online' ? 'bg-emerald-500' : leader.presence_status === 'idle' ? 'bg-amber-400' : 'bg-muted-foreground/30'}`} aria-label={leader.presence_status} />
+                            <span className={`size-2 rounded-full ${leader.presence_status === 'online' ? 'bg-success' : leader.presence_status === 'idle' ? 'bg-warning' : 'bg-muted-foreground/30'}`} aria-label={leader.presence_status} />
                             <p className="font-medium text-foreground">{leader.leader_name}</p>
                           </div>
                           <div className="flex gap-3 text-xs text-muted-foreground">
@@ -1317,7 +1334,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                           <div className="h-full bg-primary/70 transition-all" style={{ width: `${(leader.personal_calls_today / maxTotal) * 100}%` }} />
                           <div className="h-full bg-primary/30 transition-all" style={{ width: `${(leader.team_calls_today / maxTotal) * 100}%` }} />
                         </div>
-                        <div className="mt-1.5 flex gap-4 text-[10px] text-muted-foreground">
+                        <div className="mt-1.5 flex gap-4 text-ds-micro text-muted-foreground">
                           <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-sm bg-primary/70" /> Personal</span>
                           <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-sm bg-primary/30" /> Team</span>
                           <span className="ml-auto">{leader.team_size} team member{leader.team_size !== 1 ? 's' : ''}</span>
@@ -1360,7 +1377,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 {vSummary.isPending ? (
                   <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                 ) : (vSummary.data?.leader_ranking ?? []).length === 0 ? (
-                  <EmptyStatePremium variant="default" title="No data yet" description="Assign tasks to start tracking verification." />
+                  <EmptyState variant="default" title="No data yet" description="Assign tasks to start tracking verification." />
                 ) : (
                   <div className="space-y-2">
                     {(vSummary.data?.leader_ranking ?? []).map((l) => (
@@ -1368,8 +1385,8 @@ export function AdminCommandCenter({ firstName }: Props) {
                         <div className="min-w-0 flex-1"><p className="text-sm font-medium">{l.name}</p><p className="text-xs text-muted-foreground">Team: {l.total_assigned}</p></div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground">{l.verified_count} verified</span>
-                          <span className={`text-xs font-bold tabular-nums ${l.verification_rate_pct >= 80 ? 'text-green-600' : l.verification_rate_pct >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{l.verification_rate_pct}%</span>
-                          {l.total_assigned - l.verified_count > 5 && <ShieldAlert className="size-4 text-red-500" />}
+                          <span className={`text-xs font-bold tabular-nums ${l.verification_rate_pct >= 80 ? 'text-success-ink' : l.verification_rate_pct >= 50 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{l.verification_rate_pct}%</span>
+                          {l.total_assigned - l.verified_count > 5 && <ShieldAlert className="size-4 text-destructive-ink" />}
                         </div>
                       </div>
                     ))}
@@ -1391,12 +1408,10 @@ export function AdminCommandCenter({ firstName }: Props) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-foreground">Create Task</p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Define a new verification task</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">Define a verification task and assign it to one or many members</p>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary/70" />
                   </button>
-                  <DeskShortcut to="#" title="Bulk Assign" description="Assign a task to multiple members" icon={<Users className="size-4" />} />
-                  <DeskShortcut to="#" title="Pending Review" description={`${vSummary.data?.pending_verifications ?? 0} tasks awaiting verification`} icon={<ClipboardCheck className="size-4" />} badge={vSummary.data?.pending_verifications ?? 0} />
                 </CardContent>
               </Card>
               <Card>
@@ -1428,13 +1443,13 @@ export function AdminCommandCenter({ firstName }: Props) {
                   {missionSummary.isPending ? (
                     <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
                   ) : (missionSummary.data?.leader_breakdown ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="default" title="No data yet" description="Create templates to start tracking daily missions." />
+                    <EmptyState variant="default" title="No data yet" description="Create templates to start tracking daily missions." />
                   ) : (
                     <div className="space-y-2">
                       {(missionSummary.data?.leader_breakdown ?? []).map((l) => (
                         <div key={l.user_id} className="surface-inset flex items-center justify-between gap-3 rounded-md p-3">
                           <div className="min-w-0 flex-1"><p className="text-sm font-medium">{l.name}</p><p className="text-xs text-muted-foreground">Team: {l.team_size} · Assigned: {l.assigned}</p></div>
-                          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{l.completed} done</span><span className={`text-xs font-bold tabular-nums ${l.completion_rate_pct >= 60 ? 'text-green-600' : l.completion_rate_pct >= 20 ? 'text-amber-600' : 'text-red-600'}`}>{l.completion_rate_pct}%</span></div>
+                          <div className="flex items-center gap-3"><span className="text-xs text-muted-foreground">{l.completed} done</span><span className={`text-xs font-bold tabular-nums ${l.completion_rate_pct >= 60 ? 'text-success-ink' : l.completion_rate_pct >= 20 ? 'text-warning-ink' : 'text-destructive-ink'}`}>{l.completion_rate_pct}%</span></div>
                         </div>
                       ))}
                     </div>
@@ -1457,7 +1472,7 @@ export function AdminCommandCenter({ firstName }: Props) {
             ) : campaignList.isError ? (
               <ErrorState title="Failed to load" message="Could not load campaigns" onRetry={() => campaignList.refetch()} />
             ) : (campaignList.data ?? []).length === 0 ? (
-              <EmptyStatePremium variant="default" title="No campaigns yet" description="Create a campaign after a webinar to track training implementation." />
+              <EmptyState variant="default" title="No campaigns yet" description="Create a campaign after a webinar to track training implementation." />
             ) : (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {campaignList.data!.map((camp) => (
@@ -1465,7 +1480,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between"><CardTitle className="text-sm font-semibold">{camp.name}</CardTitle><Badge variant="secondary">{camp.enrollment_count} enrolled</Badge></div>
                       {camp.description && <CardDescription className="line-clamp-2 text-xs">{camp.description}</CardDescription>}
-                      {camp.webinar_date && <p className="text-[10px] text-muted-foreground">Webinar: {new Date(camp.webinar_date).toLocaleDateString()}</p>}
+                      {camp.webinar_date && <p className="text-ds-micro text-muted-foreground">Webinar: {new Date(camp.webinar_date).toLocaleDateString()}</p>}
                     </CardHeader>
                     <CardContent className="flex-1"><CampaignMetricsMini campaignId={camp.id} /></CardContent>
                   </Card>
@@ -1533,14 +1548,6 @@ export function AdminCommandCenter({ firstName }: Props) {
             <AutomationPanel />
           </section>
 
-          <ReportsSection title="Live Attendee Monitoring">
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <StatCard label="Total Attendees Today" value={(premiereViewers.data ?? []).length} hint="Unique viewers across Day 1, Day 2, Day 3 live sessions." />
-              <StatCard label="Watching Now" value={(premiereViewers.data ?? []).filter((v) => isActiveNow(v.last_seen_at)).length} hint="Active in last 45 seconds." variant={(premiereViewers.data ?? []).some((v) => isActiveNow(v.last_seen_at)) ? 'danger' : 'default'} />
-              <StatCard label="Completed" value={(premiereViewers.data ?? []).filter((v) => v.watch_completed).length} hint="Marked watch complete." variant="success" />
-            </section>
-          </ReportsSection>
-
           <ReportsSection title="Audit & Finance Reports">
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.05fr]">
               <Card>
@@ -1562,7 +1569,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                   {invoices.isError ? (
                     <ErrorState title="Invoices failed" message={invoices.error instanceof Error ? invoices.error.message : 'Please try again.'} onRetry={() => void invoices.refetch()} />
                   ) : (invoices.data?.items ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="wallet" title="No invoices yet" description="Recent invoice documents will show here." />
+                    <EmptyState variant="wallet" title="No invoices yet" description="Recent invoice documents will show here." />
                   ) : (
                     <div className="space-y-3">{invoices.data?.items.map((invoice) => (
                       <div key={invoice.invoice_number} className="surface-inset rounded-md p-4">
@@ -1584,7 +1591,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {(leadControl.data?.history ?? []).length === 0 ? (
-                    <EmptyStatePremium variant="default" title="No movement yet" description="Auto and manual reassignment rows will appear here." />
+                    <EmptyState variant="default" title="No movement yet" description="Auto and manual reassignment rows will appear here." />
                   ) : (
                     <div className="space-y-3">
                       {leadControl.data?.history.slice(0, 6).map((row) => (
@@ -1604,17 +1611,14 @@ export function AdminCommandCenter({ firstName }: Props) {
         </TabsContent>
       </Tabs>
 
-      <div className="mt-6">
-        <DashboardFeedbackCard />
-      </div>
-
       <CreateTaskModal open={showCreateTask} onClose={() => setShowCreateTask(false)} />
 
-      {/* Floating Create Task button — always visible */}
+      {/* Floating Create Task button — always visible. On phones it sits above the
+          bottom tab bar (60px pill + padding + home-indicator inset) instead of on it. */}
       <button
         type="button"
         onClick={() => setShowCreateTask(true)}
-        className="fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-95"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-50 flex size-14 md:bottom-6 md:right-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-95"
         aria-label="Create Task"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-6"><path d="M5 12h14"/><path d="M12 5v14"/></svg>

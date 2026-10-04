@@ -1,12 +1,12 @@
-import { type CSSProperties, type FormEvent, type UIEvent, useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, type FormEvent, type UIEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { WifiOff, X } from 'lucide-react'
+import { AlertTriangle, RefreshCw, WifiOff, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useShallow } from 'zustand/react/shallow'
 
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
 import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
 import { DashboardSidebar } from '@/components/layout/DashboardSidebar'
-import { LocationPermissionGate } from '@/components/layout/LocationPermissionGate'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -14,8 +14,12 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
 import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useOnline } from '@/hooks/use-online'
+import { useAppUpdate } from '@/hooks/use-app-update'
+import { PULL_TRIGGER_PX, usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
+import { useWinsToaster } from '@/hooks/use-wins-toaster'
 import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
+import { useReportDeviceStatus } from '@/hooks/use-report-device-status'
 import { InstallAppGate } from '@/components/pwa/InstallAppGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { cn } from '@/lib/utils'
@@ -25,8 +29,6 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { useShellStore } from '@/stores/shell-store'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
-import { useLocationPingMutation } from '@/hooks/use-location-query'
-import { getGps } from '@/lib/geolocation'
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour'
 import { ONBOARDING_STEPS } from '@/lib/onboarding-steps'
 import { useCompleteTutorialMutation } from '@/hooks/use-tutorial-query'
@@ -39,9 +41,27 @@ function isEditableElement(node: Element | null): boolean {
 export function DashboardLayout() {
   useSyncRoleFromMe()
   useRealtimeInvalidation(true)
+  useWinsToaster(true)
   const isOnline = useOnline()
+  const queryClient = useQueryClient()
+  const [mainEl, setMainEl] = useState<HTMLElement | null>(null)
+  const appUpdate = useAppUpdate()
+  const checkAppUpdate = appUpdate.check
+  const handlePullRefresh = useCallback(async () => {
+    // A newer deploy wins over a data refetch: reload into the new build.
+    if (await checkAppUpdate()) {
+      window.location.reload()
+      return
+    }
+    await queryClient.refetchQueries({ type: 'active' })
+  }, [checkAppUpdate, queryClient])
+  const pullToRefresh = usePullToRefresh(mainEl, handlePullRefresh)
   const location = useLocation()
   const { data: me } = useAuthMeQuery()
+  // Team and leaders must install the app and turn notifications on; admins may skip.
+  const mustSetUpApp = me?.authenticated === true && (me.role === 'team' || me.role === 'leader')
+  // Report even while an install / notification screen is blocking, so the admin sees "Using browser".
+  useReportDeviceStatus(me?.authenticated === true, false)
   const { role: shellRole } = useDashboardShellRole()
   const navigate = useNavigate()
   const {
@@ -68,21 +88,6 @@ export function DashboardLayout() {
   const enrollmentAlert = useFlpMinBillingApprovalsAlertBanner(pendingEnrollCount, {
     enabled: approverForEnroll,
   })
-  const locationPing = useLocationPingMutation()
-  useEffect(() => {
-    if (shellRole !== 'team' && shellRole !== 'leader') return
-    const doPing = () => {
-      void getGps().then((coords) => {
-        // Only ping if we actually got a location — never overwrite with empty coords
-        if (coords.latitude !== undefined) locationPing.mutate(coords)
-      })
-    }
-    doPing()
-    const id = setInterval(doPing, 15 * 60 * 1000)
-    return () => clearInterval(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shellRole])
-
   const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
@@ -243,25 +248,16 @@ export function DashboardLayout() {
 
   const onTrainingRoute =
     location.pathname === '/dashboard/system/training' ||
-    location.pathname.startsWith('/dashboard/system/training/') ||
-    location.pathname === '/dashboard/other/training' ||
-    location.pathname.startsWith('/dashboard/other/training/')
+    location.pathname.startsWith('/dashboard/system/training/')
 
-  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
   const sections = useMemo(() => {
     if (shellRole == null) return []
-    const full = filterDashboardNav(shellRole)
-    // Hide the Enrollment Link page unless this user is admin-granted access.
-    const capped = enrollAllowed
-      ? full
-      : full
-          .map((s) => ({ ...s, items: s.items.filter((i) => i.path !== 'work/enroll-link') }))
-          .filter((s) => s.items.length > 0)
+    const capped = filterDashboardNav(shellRole)
     if (!trainingLocked) return capped
     const flat = capped.flatMap((s) => s.items)
     const tr = flat.find((i) => i.path === 'system/training')
     return tr ? [{ id: 'training-only', label: '', items: [tr] }] : capped
-  }, [shellRole, trainingLocked, enrollAllowed])
+  }, [shellRole, trainingLocked])
 
   const currentPageLabel = useMemo(() => {
     const rel = location.pathname.replace('/dashboard/', '')
@@ -310,8 +306,8 @@ export function DashboardLayout() {
   }
 
   return (
-    <InstallAppGate>
-    <PushNotificationGate>
+    <InstallAppGate allowSkip={!mustSetUpApp}>
+    <PushNotificationGate allowSkip={!mustSetUpApp}>
     <div
       className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
       style={shellStyle}
@@ -389,7 +385,7 @@ export function DashboardLayout() {
             aria-live="assertive"
             className="flex shrink-0 items-center gap-3 border-b border-red-600/40 bg-red-600/10 px-3 py-3 dark:border-red-500/30 dark:bg-red-500/10"
           >
-            <span className="shrink-0 text-lg" aria-hidden>⚠️</span>
+            <AlertTriangle className="size-5 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
             <p className="min-w-0 flex-1 text-sm text-red-900 dark:text-red-100">
               <span className="font-bold">Final Warning — You will be removed tomorrow.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' You have not met your daily targets for 3 days in a row. Complete today\'s calls and daily report before midnight to avoid removal.'}
@@ -401,11 +397,31 @@ export function DashboardLayout() {
             aria-live="polite"
             className="flex shrink-0 items-center gap-3 border-b border-orange-500/40 bg-orange-500/10 px-3 py-2.5 dark:border-orange-400/30 dark:bg-orange-400/10"
           >
-            <span className="shrink-0 text-base" aria-hidden>⚠️</span>
+            <AlertTriangle className="size-4 shrink-0 text-orange-600 dark:text-orange-400" aria-hidden />
             <p className="min-w-0 flex-1 text-sm text-orange-900 dark:text-orange-100">
               <span className="font-semibold">Strong Warning.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}
             </p>
+          </div>
+        ) : null}
+
+        {appUpdate.updateAvailable ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex shrink-0 items-center gap-2.5 border-b border-primary/30 bg-primary/10 px-3 py-2"
+          >
+            <RefreshCw className="size-3.5 shrink-0 text-primary" aria-hidden />
+            <p className="min-w-0 flex-1 text-xs text-foreground">
+              <span className="font-semibold">New version of Myle is ready.</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground"
+            >
+              Update
+            </button>
           </div>
         ) : null}
 
@@ -424,10 +440,10 @@ export function DashboardLayout() {
           </div>
         ) : null}
 
-        {(shellRole === 'team' || shellRole === 'leader') && <LocationPermissionGate />}
         </div>
 
         <main
+          ref={setMainEl}
           data-tour="dashboard"
           className={cn(
             'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
@@ -435,6 +451,29 @@ export function DashboardLayout() {
           )}
           onScroll={handleMainScroll}
         >
+          {pullToRefresh.pull > 0 ? (
+            <div
+              aria-hidden={!pullToRefresh.refreshing}
+              role={pullToRefresh.refreshing ? 'status' : undefined}
+              aria-label={pullToRefresh.refreshing ? 'Refreshing' : undefined}
+              className={cn(
+                'flex items-end justify-center overflow-hidden',
+                !pullToRefresh.refreshing && pullToRefresh.pull === 0 && 'transition-[height]',
+              )}
+              style={{ height: pullToRefresh.pull }}
+            >
+              <span className="mb-2 flex size-8 items-center justify-center rounded-full border border-border bg-card shadow-sm">
+                <RefreshCw
+                  className={cn('size-4 text-primary', pullToRefresh.refreshing && 'animate-spin')}
+                  style={
+                    pullToRefresh.refreshing
+                      ? undefined
+                      : { transform: `rotate(${Math.round((pullToRefresh.pull / PULL_TRIGGER_PX) * 270)}deg)` }
+                  }
+                />
+              </span>
+            </div>
+          ) : null}
           <DashboardOutletErrorBoundary>
             <Outlet />
           </DashboardOutletErrorBoundary>
@@ -450,7 +489,7 @@ export function DashboardLayout() {
           />
         ) : null}
         {debugViewport && viewportDebug ? (
-          <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-amber-300/60 bg-black/80 px-2 py-1 text-[10px] leading-tight text-amber-200 md:hidden">
+          <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-amber-300/60 bg-black/80 px-2 py-1 text-ds-micro leading-tight text-amber-200 md:hidden">
             <div>inner:{viewportDebug.innerH} vv:{viewportDebug.vvH} client:{viewportDebug.clientH}</div>
             <div>shell:{viewportDebug.shellH} main:{viewportDebug.mainH} nav:{viewportDebug.navH}</div>
             <div>gap:{viewportDebug.navBottomGap} safeB:{viewportDebug.safeBottom} kb:{keyboardInset}</div>
@@ -459,7 +498,7 @@ export function DashboardLayout() {
         {shellProbe && androidShellProbe ? (
           <div
             className={cn(
-              'fixed right-2 top-[60px] z-[120] rounded-md border px-2 py-1 text-[10px] leading-tight md:hidden',
+              'fixed right-2 top-[60px] z-[120] rounded-md border px-2 py-1 text-ds-micro leading-tight md:hidden',
               androidShellProbe.navBottomGap > 0
                 ? 'border-rose-300/70 bg-rose-950/85 text-rose-100'
                 : 'border-emerald-300/70 bg-emerald-950/85 text-emerald-100',

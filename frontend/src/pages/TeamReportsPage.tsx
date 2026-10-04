@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Lock } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -48,7 +49,7 @@ function MetricCard({
 }) {
   return (
     <div className="surface-elevated rounded px-4 py-4">
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+      <p className="text-ds-micro font-semibold uppercase tracking-[0.2em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-2 text-ds-h1">{value}</p>
@@ -73,7 +74,7 @@ function ReportMetric({
     <div className="text-center">
       <div className={cn('text-sm font-semibold tabular-nums', tone)}>{reported}</div>
       {showSystem ? (
-        <div className={cn('text-[0.68rem] tabular-nums', mismatch ? 'text-amber-400' : 'text-muted-foreground')}>
+        <div className={cn('text-ds-micro tabular-nums', mismatch ? 'text-warning-ink' : 'text-muted-foreground')}>
           sys {system}
         </div>
       ) : null}
@@ -109,28 +110,28 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
 
       <div className="mt-3 grid grid-cols-3 gap-3">
         <div className="surface-inset rounded-lg px-2 py-2">
-          <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Calls</p>
+          <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Calls</p>
           <ReportMetric reported={item.total_calling} system={item.calls_made_actual} tone="text-primary" />
         </div>
         <div className="surface-inset rounded-lg px-2 py-2">
-          <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Picked</p>
-          <div className="text-center text-sm font-semibold tabular-nums text-emerald-300">{item.calls_picked}</div>
+          <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Picked</p>
+          <div className="text-center text-sm font-semibold tabular-nums text-success-ink">{item.calls_picked}</div>
         </div>
         <div className="surface-inset rounded-lg px-2 py-2">
-          <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">Min. FLP</p>
-          <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-amber-300" />
+          <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Min. FLP</p>
+          <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-warning-ink" />
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap gap-2 text-ds-micro text-muted-foreground">
         <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">2CC {item.plan_2cc}</span>
         <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">Seat {item.seat_holdings}</span>
       </div>
 
       {item.remarks ? <p className="mt-3 text-sm text-muted-foreground">{item.remarks}</p> : null}
       {item.private_feedback ? (
-        <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
-          🔒 Private feedback: {item.private_feedback}
+        <p className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning-ink">
+          <Lock className="mr-1 inline size-3.5" aria-hidden />Private feedback: {item.private_feedback}
         </p>
       ) : null}
     </article>
@@ -139,8 +140,8 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
 
 const TILES: { key: keyof TeamReportsLiveSummary; label: string; color: string }[] = [
   { key: 'leads_claimed_today', label: 'Claimed (day)', color: 'text-primary' },
-  { key: 'calls_made_today', label: 'Calls (day)', color: 'text-emerald-400' },
-  { key: 'flp_min_billing_today', label: 'Proof uploaded (day)', color: 'text-amber-400' },
+  { key: 'calls_made_today', label: 'Calls (day)', color: 'text-success-ink' },
+  { key: 'flp_min_billing_today', label: 'Proof uploaded (day)', color: 'text-warning-ink' },
   {
     key: 'payment_proofs_approved_today',
     label: 'FLP invoice approved (day)',
@@ -339,7 +340,7 @@ export function TeamReportsPage({ title }: Props) {
                                 />
                               </td>
                               <td className="py-4 px-3 text-center">
-                                <span className="text-sm font-semibold tabular-nums text-emerald-300">
+                                <span className="text-sm font-semibold tabular-nums text-success-ink">
                                   {item.calls_picked}
                                 </span>
                               </td>
@@ -347,19 +348,19 @@ export function TeamReportsPage({ title }: Props) {
                                 <ReportMetric
                                   reported={item.day1_count + item.day2_count + item.day3_count}
                                   system={item.payments_actual}
-                                  tone="text-amber-300"
+                                  tone="text-warning-ink"
                                 />
                               </td>
                               <td className="py-4 px-3 text-center">
-                                <span className="text-sm font-semibold tabular-nums text-violet-300">
+                                <span className="text-sm font-semibold tabular-nums text-violet-700 dark:text-violet-300">
                                   {item.plan_2cc}
                                 </span>
                               </td>
                               <td className="py-4 pl-4 text-sm text-muted-foreground">
                                 <div>{item.remarks ? item.remarks : '—'}</div>
                                 {item.private_feedback ? (
-                                  <div className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-200">
-                                    🔒 Private feedback: {item.private_feedback}
+                                  <div className="mt-2 rounded-lg border border-warning/30 bg-warning/10 px-2 py-1.5 text-xs text-warning-ink">
+                                    <Lock className="mr-1 inline size-3.5" aria-hidden />Private feedback: {item.private_feedback}
                                   </div>
                                 ) : null}
                               </td>

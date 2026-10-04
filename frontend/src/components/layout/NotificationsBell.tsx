@@ -60,7 +60,7 @@ export function NotificationsBell() {
       count: registrations.data?.total ?? 0,
       to: '/dashboard/team/members',
       Icon: UserPlus,
-      accent: 'text-amber-600 dark:text-amber-400',
+      accent: 'text-warning-ink',
     },
     {
       key: 'flp',
@@ -68,7 +68,7 @@ export function NotificationsBell() {
       count: flpApprovals.data?.total ?? 0,
       to: '/dashboard/team/flp-min-billing',
       Icon: ClipboardCheck,
-      accent: 'text-emerald-600 dark:text-emerald-400',
+      accent: 'text-success-ink',
     },
     {
       key: 'recharge',
@@ -76,7 +76,7 @@ export function NotificationsBell() {
       count: rechargePending,
       to: '/dashboard/finance/recharge-admin',
       Icon: Banknote,
-      accent: 'text-blue-600 dark:text-blue-400',
+      accent: 'text-info-ink',
     },
     {
       key: 'grace',
@@ -136,7 +136,7 @@ export function NotificationsBell() {
       >
         <Bell className="size-[17px]" />
         {badge > 0 ? (
-          <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-[10px] font-bold leading-4 text-white">
+          <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-ds-micro font-bold leading-4 text-white">
             {badge > 9 ? '9+' : badge}
           </span>
         ) : null}
@@ -151,7 +151,7 @@ export function NotificationsBell() {
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-4 py-2.5">
             <span className="text-sm font-semibold text-foreground">Notifications</span>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-ds-micro text-muted-foreground">
               {pendingTotal > 0 ? `${pendingTotal} pending` : 'All clear'}
             </span>
           </div>
@@ -174,11 +174,11 @@ export function NotificationsBell() {
                   <Icon className={cn('size-4 shrink-0', has ? r.accent : 'text-muted-foreground')} />
                   <span className="flex-1 text-left text-foreground/90">{r.label}</span>
                   {has ? (
-                    <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">
+                    <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-ds-micro font-bold text-destructive">
                       {r.count}
                     </span>
                   ) : (
-                    <span className="text-[11px] text-muted-foreground/60">0</span>
+                    <span className="text-ds-micro text-muted-foreground">0</span>
                   )}
                 </Link>
               )
@@ -193,7 +193,7 @@ export function NotificationsBell() {
             <Megaphone className="size-4 shrink-0 text-muted-foreground" />
             <span className="flex-1 text-left">Notice board</span>
             {noticeUnread > 0 ? (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-ds-micro font-bold text-primary">
                 {noticeUnread}
               </span>
             ) : null}

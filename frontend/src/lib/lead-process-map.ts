@@ -1,6 +1,6 @@
 import type { LeadStatus } from '@/hooks/use-leads-query'
 
-export type ProcessTaskKind = 'check' | 'share_video' | 'open_video' | 'whatsapp_video'
+export type ProcessTaskKind = 'check' | 'share_video' | 'open_video' | 'whatsapp_video' | 'live_session'
 
 export type ProcessTaskDef = {
   key: string
@@ -8,6 +8,8 @@ export type ProcessTaskDef = {
   kind?: ProcessTaskKind
   /** AppSetting key for video URL — used by open_video kind */
   settingKey?: string
+  /** Tracked (e.g. for today's closing list) but not required to move the lead on. */
+  optional?: boolean
 }
 
 export type ProcessStageDef = {
@@ -47,12 +49,13 @@ export const PROCESS_STAGE_DEFS: Record<string, ProcessStageDef> = {
   day3: {
     status: 'day3',
     title: 'Day 3',
-    helper: 'Closing environment — leader. Interview → 2CC paper plan → Blueprint video → Stage selection (1/2/3) → seat-hold → converted.',
+    helper: 'Closing environment — leader. Interview → 2 PM session (2CC paper plan) → Blueprint video → Stage selection (1/2/3) → seat-hold → converted.',
     nextStatus: 'converted',
     nextLabel: 'Mark Converted',
     tasks: [
       { key: 'day3_interview', label: 'Interview' },
-      { key: 'day3_2cc_plan', label: '2CC Paper Plan' },
+      // The 2 PM live session IS the 2CC paper plan session (replaces the old "2CC Paper Plan" step).
+      { key: 'day3_live_session', label: 'Watched 2 PM session', kind: 'live_session' },
       { key: 'day3_blueprint_video', label: 'Blueprint Video', kind: 'share_video' },
       { key: 'day3_stage_selection', label: 'Stage Selection (1 / 2 / 3)' },
       { key: 'day3_seat_hold', label: 'Seat-Hold' },

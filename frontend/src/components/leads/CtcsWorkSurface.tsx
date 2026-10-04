@@ -22,12 +22,8 @@ import {
 } from '@/hooks/use-leads-query'
 import { useLeadControlRevertMutation } from '@/hooks/use-lead-control-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { apiUrl } from '@/lib/api'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
-import { openExternalShareUrl } from '@/lib/external-share-window'
-import { whatsappDigits } from '@/lib/phone-links'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
@@ -41,6 +37,7 @@ function nextLeadId(items: LeadPublic[], current: number | null): number | null 
 
 const TABS: { id: CtcsTab; label: string }[] = [
   { id: 'today', label: 'Today' },
+  { id: 'retarget', label: 'Retarget' },
   { id: 'followups', label: 'Follow-ups' },
   { id: 'hot', label: 'Hot' },
   { id: 'pending', label: 'Pending Work' },
@@ -52,6 +49,11 @@ const TABS: { id: CtcsTab; label: string }[] = [
 const TAB_STORAGE_KEY = 'ctcs-active-tab'
 
 function initialTab(): CtcsTab {
+  // Deep link (e.g. "Calling Board -> Retarget") wins over the remembered tab.
+  if (typeof window !== 'undefined') {
+    const fromUrl = new URLSearchParams(window.location.search).get('tab') as CtcsTab | null
+    if (fromUrl && TABS.some((t) => t.id === fromUrl)) return fromUrl
+  }
   if (typeof sessionStorage === 'undefined') return 'all'
   const saved = sessionStorage.getItem(TAB_STORAGE_KEY) as CtcsTab | null
   return saved && TABS.some((t) => t.id === saved) ? saved : 'all'
@@ -65,14 +67,10 @@ type Props = {
 export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const { data: me } = useAuthMeQuery()
-  const enrollAllowed = me?.role === 'admin' || me?.enrollment_link_access === true
   const [tab, setTab] = useState<CtcsTab>(initialTab)
   const [generated, setGenerated] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [sendingLeadId, setSendingLeadId] = useState<number | null>(null)
-  const [enrollBusyLeadId, setEnrollBusyLeadId] = useState<number | null>(null)
-  const [enrollCopiedLeadId, setEnrollCopiedLeadId] = useState<number | null>(null)
   const [reassignTarget, setReassignTarget] = useState<{ id: number; name: string; isReassigned: boolean } | null>(null)
   const [revertNotice, setRevertNotice] = useState<string | null>(null)
   const searchMode =
@@ -101,8 +99,13 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       }
     }
     if (tab === 'today') {
-      // Today = leads claimed today via paid recharge, shown at ANY pipeline stage.
+      // Today = leads claimed via paid recharge (any day) still being worked
+      // (New Lead → Video Watched). No midnight reset.
       return { ctcsFilter: 'today' as const, ctcsPrioritySort: true as const }
+    }
+    if (tab === 'retarget') {
+      // Retarget = leads whose status was set to Retarget; they stay here until moved.
+      return { ctcsFilter: 'retarget' as const, ctcsPrioritySort: true as const }
     }
     if (tab === 'pending') {
       // Pending Work = zombie/untouched leads at ANY stage — no pre-enrollment limit.
@@ -162,16 +165,24 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   // After a reload (dialer round-trip), scroll the restored active lead back into
   // view once it has rendered — so the user lands on the same card, not the top.
+  // Also, in calling mode, scroll the next active lead into view after each call so
+  // the user doesn't lose their place when the list re-sorts on refetch.
   const scrollRestoredRef = useRef(false)
   useEffect(() => {
-    if (scrollRestoredRef.current) return
     if (activeLeadId == null || items.length === 0) return
     const el = document.querySelector(`[data-ctcs-lead="${activeLeadId}"]`)
-    if (el) {
+    if (!el) return
+    // First mount after reload — restore once, no animation.
+    if (!scrollRestoredRef.current) {
       el.scrollIntoView({ block: 'center' })
       scrollRestoredRef.current = true
+      return
     }
-  }, [activeLeadId, items])
+    // Calling-mode auto-advance — keep the next lead in view.
+    if (callMode) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [activeLeadId, items, callMode])
 
   const outcomeLead = useMemo(
     () => items.find((x) => x.id === outcomeLeadId) ?? null,
@@ -202,46 +213,6 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     [items, leadsQ, patchMut],
   )
 
-  const onCopyEnrollLink = useCallback(
-    async (lead: LeadPublic) => {
-      setEnrollBusyLeadId(lead.id)
-      try {
-        const res = await fetch(apiUrl('/api/v1/enroll/generate'), {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ viewer_name: lead.name ?? null, viewer_phone: lead.phone ?? null }),
-        })
-        if (!res.ok) {
-          const err = (await res.json().catch(() => ({}))) as { detail?: string }
-          throw new Error(err.detail ?? `HTTP ${res.status}`)
-        }
-        const { token } = (await res.json()) as { token: string }
-        const link = `${window.location.origin}/enroll/${token}`
-        const digits = whatsappDigits(lead.phone ?? '')
-        if (!digits) {
-          throw new Error('Lead has no valid WhatsApp number.')
-        }
-        // Copy as backup, then open WhatsApp to the lead with the link prefilled.
-        await navigator.clipboard.writeText(link).catch(() => {})
-        const msg =
-          `Hi ${lead.name || 'there'},\n\n` +
-          `Aapki enrollment video ready hai. Ye private link sirf aapke liye hai — kholiye aur dekhiye:\n${link}`
-        openExternalShareUrl(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`)
-        setEnrollCopiedLeadId(lead.id)
-        window.setTimeout(
-          () => setEnrollCopiedLeadId((c) => (c === lead.id ? null : c)),
-          2000,
-        )
-      } catch (err) {
-        window.alert('Could not create enrollment link: ' + (err instanceof Error ? err.message : 'Unknown error'))
-      } finally {
-        setEnrollBusyLeadId(null)
-      }
-    },
-    [],
-  )
-
   const onPatchStatus = useCallback(
     (id: number, status: LeadStatus) => {
       if (status === 'video_sent' || status === 'day1') {
@@ -265,12 +236,12 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
   const onCtcsAction = useCallback(
     async (id: number, action: CtcsAction, opts?: { followupAt?: string | null }) => {
-      await ctcsMut.mutateAsync({
-        id,
-        action,
-        followupAt: opts?.followupAt,
-        paidStatus: 'day1',
-      })
+      try {
+        await ctcsMut.mutateAsync({ id, action, followupAt: opts?.followupAt })
+      } catch (err) {
+        window.alert('Could not save outcome: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        return
+      }
       const ref = await leadsQ.refetch()
       const fresh = ref.data?.pages.flatMap((p) => p.items) ?? []
       if (callMode) {
@@ -321,7 +292,11 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   const onFollowUp = useCallback(
     async (id: number) => {
       const at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      await patchMut.mutateAsync({ id, body: { next_followup_at: at } })
+      try {
+        await patchMut.mutateAsync({ id, body: { next_followup_at: at } })
+      } catch (err) {
+        window.alert('Follow-up save failed: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      }
     },
     [patchMut],
   )
@@ -358,7 +333,12 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     }
   }, [reassignTarget, revertMut])
 
-  const actionBusy = ctcsMut.isPending || callLogMut.isPending
+  // Only the card being saved is locked — the rest of the board stays usable.
+  const actionBusyLeadId = ctcsMut.isPending
+    ? ctcsMut.variables?.id ?? null
+    : callLogMut.isPending
+      ? callLogMut.variables ?? null
+      : null
   const sendBusyLeadId = sendingLeadId
 
   return (
@@ -451,17 +431,13 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             lead={l}
             nowMs={nowMs}
             isActive={callMode && activeLeadId === l.id}
-            patchBusy={patchBusyLeadId === l.id || sendBusyLeadId === l.id || patchMut.isPending}
-            actionBusy={actionBusy}
+            patchBusy={patchBusyLeadId === l.id || sendBusyLeadId === l.id || (patchMut.isPending && patchMut.variables?.id === l.id)}
+            actionBusy={actionBusyLeadId === l.id}
             onPatchStatus={onPatchStatus}
             onPatchCallStatus={onPatchCallStatus}
             onCall={onCall}
             onFollowUp={onFollowUp}
             onReassign={surfaceRole === 'leader' || surfaceRole === 'admin' ? onReassign : undefined}
-            showEnrollLink={tab === 'today' && enrollAllowed}
-            enrollLinkBusy={enrollBusyLeadId === l.id}
-            enrollLinkCopied={enrollCopiedLeadId === l.id}
-            onCopyEnrollLink={onCopyEnrollLink}
           />
           </div>
         ))}

@@ -113,7 +113,7 @@ export function LeaderReassignSheet({
                       className={cn(
                         'flex w-full items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-left transition',
                         'hover:border-primary/40 hover:bg-muted/60 active:scale-[0.98] disabled:opacity-50',
-                        idx === 0 && !search.trim() && 'border-amber-500/30 bg-amber-500/[0.06]',
+                        idx === 0 && !search.trim() && 'border-warning/30 bg-warning/[0.06]',
                       )}
                     >
                       <span className="w-4 shrink-0 text-center text-xs font-bold text-muted-foreground tabular-nums">
@@ -124,7 +124,7 @@ export function LeaderReassignSheet({
                           {entry.name}
                         </span>
                         {entry.role === 'leader' ? (
-                          <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                          <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-ds-micro font-semibold uppercase text-primary">
                             Leader
                           </span>
                         ) : null}

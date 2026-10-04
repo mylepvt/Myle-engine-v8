@@ -5,11 +5,8 @@ Aggregate all v1 routers here. New domains: add `your_module.router` + `include_
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    landing_inquiries,
     admin_activity,
     admin_dashboard,
-    admin_management_updates,
-    admin_performer_insights,
     admin_training,
     action_queue,
     automation,
@@ -29,20 +26,17 @@ from app.api.v1 import (
     auth,
     capture_links,
     current_cc,
-    location,
     media,
     certificate,
     downloads,
     enrollment,
-    feedback,
     flp_min_billing,
     execution,
     finance_surfaces,
     follow_ups,
-    free_lead_pool,
     gate_assistant,
     hello,
-    lead_notes,
+    lead_bookings,
     lead_pool,
     leads,
     meta,
@@ -60,12 +54,13 @@ from app.api.v1 import (
     skill_training,
     system,
     team,
-    team_tracking,
     wallet,
     wallet_enhanced,
-    webhooks,
     workboard,
     crm_proxy,
+    wins,
+    closing,
+    control_room,
     xp,
 )
 
@@ -74,8 +69,6 @@ api_router.include_router(meta.router, prefix="/meta", tags=["meta"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin_training.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["admin"])
-api_router.include_router(admin_performer_insights.router, prefix="/admin", tags=["admin"])
-api_router.include_router(admin_management_updates.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_activity.router, prefix="/admin", tags=["admin"])
 api_router.include_router(action_queue.router, tags=["action-queue"])
 api_router.include_router(automation.router, tags=["automation"])
@@ -86,7 +79,6 @@ api_router.include_router(hello.router, prefix="/hello", tags=["hello"])
 api_router.include_router(leads.router, prefix="/leads", tags=["leads"])
 api_router.include_router(leads.watch_router, tags=["watch"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])
-api_router.include_router(team_tracking.router, prefix="/team", tags=["team-tracking"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(skill_training.router, prefix="/system", tags=["skills-training"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
@@ -103,14 +95,12 @@ api_router.include_router(
 api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(invoices.router, tags=["invoices"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
-api_router.include_router(free_lead_pool.router, prefix="/free-lead-pool", tags=["free-lead-pool"])
+api_router.include_router(lead_bookings.router, prefix="/lead-bookings", tags=["lead-bookings"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(pending_as.router, prefix="/pending-as", tags=["pending-as"])
 api_router.include_router(follow_ups.router, prefix="/follow-ups", tags=["follow-ups"])
-api_router.include_router(lead_notes.router, prefix="/leads", tags=["lead-notes"])
 api_router.include_router(workboard.router, prefix="/workboard", tags=["workboard"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
-api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(current_cc.router, prefix="/current-cc", tags=["current-cc"])
 api_router.include_router(
     gate_assistant.router, prefix="/gate-assistant", tags=["gate-assistant"]
@@ -127,8 +117,10 @@ api_router.include_router(sales.router, tags=["sales"])
 api_router.include_router(wallet_enhanced.router, prefix="/wallet", tags=["wallet-enhanced"])
 api_router.include_router(crm_proxy.router, tags=["crm"])
 api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
+api_router.include_router(control_room.router, prefix="/control-room", tags=["control-room"])
+api_router.include_router(closing.router, prefix="/closing", tags=["closing"])
+api_router.include_router(wins.router, prefix="/wins", tags=["wins"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
-api_router.include_router(location.router, prefix="/location", tags=["location"])
 api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])
 api_router.include_router(leader_command_center.router, tags=["leader-command-center"])
@@ -140,5 +132,3 @@ api_router.include_router(org_execution.router, tags=["org-execution"])
 api_router.include_router(predictive_risk.router, tags=["predictive-risk"])
 api_router.include_router(training_campaign.router, tags=["training-campaign"])
 api_router.include_router(capture_links.router, tags=["capture-links"])
-api_router.include_router(webhooks.router, tags=["webhooks"])
-api_router.include_router(landing_inquiries.router, prefix="/landing-inquiries", tags=["landing-inquiries"])

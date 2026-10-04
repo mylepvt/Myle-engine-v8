@@ -1,5 +1,6 @@
 """Shared lead pool: unclaimed rows with ``in_pool`` set by an admin."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
@@ -13,6 +14,8 @@ from app.db.session import AsyncSessionLocal
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.schemas.leads import (
+    ClaimGateLead,
+    ClaimGateResponse,
     LeadListResponse,
     LeadPoolBatchPreviewResponse,
     LeadPoolClaimBatchRequest,
@@ -21,6 +24,7 @@ from app.schemas.leads import (
     LeadPoolDefaultsUpdateRequest,
     LeadPoolImportResponse,
 )
+from app.services.claim_gate import claim_blocked_message, uncovered_claimed_leads
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_pool_defaults import (
     APP_KEY_LEAD_POOL_DEFAULT_PRICE_CENTS,
@@ -98,6 +102,25 @@ async def list_lead_pool(
     return LeadListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
+@router.get("/claim-gate", response_model=ClaimGateResponse)
+async def get_claim_gate(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ClaimGateResponse:
+    """Blocked when the member still has untouched fresh leads from a previous day."""
+    uncovered = await uncovered_claimed_leads(session, user.user_id)
+    if not uncovered:
+        return ClaimGateResponse(blocked=False)
+    return ClaimGateResponse(
+        blocked=True,
+        message=claim_blocked_message(len(uncovered)),
+        uncovered_leads=[
+            ClaimGateLead(id=lead.id, name=lead.name or f"Lead #{lead.id}", phone=lead.phone)
+            for lead in uncovered
+        ],
+    )
+
+
 @router.get("/batch-preview", response_model=LeadPoolBatchPreviewResponse)
 async def preview_lead_pool_batch(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -133,6 +156,16 @@ async def claim_lead_pool_batch(
 
 
 _MAX_IMPORT_BYTES = 12 * 1024 * 1024
+
+
+async def _fulfill_bookings_bg() -> None:
+    from app.services.lead_booking_service import fulfill_open_bookings
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await fulfill_open_bookings(session)
+    except Exception:
+        logging.getLogger(__name__).exception("lead booking fulfilment after import failed")
 
 
 @router.post("/import", response_model=LeadPoolImportResponse)
@@ -198,6 +231,8 @@ async def import_lead_pool_xlsx(
     )
     await session.commit()
     await notify_topics("leads")
+    # Booked members get their leads first, straight onto their Calling Board.
+    background_tasks.add_task(_fulfill_bookings_bg)
     background_tasks.add_task(
         send_push_to_roles_bg,
         AsyncSessionLocal,

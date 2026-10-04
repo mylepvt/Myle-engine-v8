@@ -1,8 +1,10 @@
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useGoBack } from '@/hooks/use-go-back'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { ArchivedLeadCard } from '@/components/leads/ArchivedLeadCard'
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
@@ -11,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_GROUPS,
   LEAD_STATUS_OPTIONS,
+  type LeadFileImportResult,
   type LeadPublic,
   type LeadListFilters,
   type LeadStatus,
@@ -25,6 +28,7 @@ import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
+import { useBackClose } from '@/hooks/use-back-close'
 
 type Props = {
   title: string
@@ -58,12 +62,25 @@ function emptyListHint(role: Role | null, archivedOnly: boolean): string {
   return 'No leads match this view — adjust filters or add one above. You see only leads you created.'
 }
 
+/** "Added 20 new leads (fresh for today) · 5 already in Myle, skipped · 2 bad phone numbers" */
+function importSummary(r: LeadFileImportResult): string {
+  const parts = [
+    r.imported > 0 ? `Added ${r.imported} new lead${r.imported === 1 ? '' : 's'} (fresh for today)` : 'No new leads added',
+  ]
+  if (r.duplicates) parts.push(`${r.duplicates} already in Myle, skipped`)
+  if (r.invalid) parts.push(`${r.invalid} bad phone number${r.invalid === 1 ? '' : 's'}`)
+  const known = (r.duplicates ?? 0) + (r.invalid ?? 0)
+  if (r.skipped > known) parts.push(`${r.skipped - known} skipped`)
+  const warn = r.imported > 0 ? [] : (r.warnings ?? []).filter((w) => !w.startsWith('No new leads were imported'))
+  return [...parts, ...warn].join(' · ')
+}
+
 export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const archivedOnly = listMode === 'archived'
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const [searchParams] = useSearchParams()
   const qParam = searchParams.get('q') ?? ''
   const stageParam = searchParams.get('stage') ?? ''
@@ -83,10 +100,11 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  useBackClose({ open: quickAddOpen, onClose: () => setQuickAddOpen(false) })
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
-  const canFileImport = surfaceRole === 'leader' || surfaceRole === 'team'
+  const canFileImport = surfaceRole === 'leader' || surfaceRole === 'team' || surfaceRole === 'admin'
 
   useEffect(() => {
     setQInput(qParam)
@@ -195,8 +213,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
     setImportHint(null)
     try {
       const r = await importMut.mutateAsync({ file: f })
-      const extra = r.warnings?.length ? ` ${r.warnings.join(' ')}` : ''
-      setImportHint(`Imported ${r.imported}, skipped ${r.skipped}.${extra}`)
+      setImportHint(importSummary(r))
     } catch (err) {
       setImportHint(err instanceof Error ? err.message : 'Import failed')
     }
@@ -368,7 +385,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
         <div className="border-b border-border/30 bg-card/30 px-4 py-1.5">
-          <button type="button" onClick={() => navigate(-1)} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
+          <button type="button" onClick={goBack} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
         </div>
         <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
           <div className="flex flex-wrap items-center gap-2">
@@ -437,7 +454,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             <label htmlFor="lead-filter-status-crm" className="mb-1 block text-ds-caption font-medium text-muted-foreground">
               Status
             </label>
-            <select
+            <NativeSelect
               id="lead-filter-status-crm"
               value={filters.status}
               data-ui-silent
@@ -463,7 +480,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   })}
                 </optgroup>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         ) : null}
 
@@ -608,7 +625,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="qa-lead-name" className="mb-1 block text-xs font-semibold text-foreground">
-                      Full name <span className="text-red-500">*</span>
+                      Full name <span className="text-destructive-ink">*</span>
                     </label>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -627,7 +644,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   </div>
                   <div>
                     <label htmlFor="qa-lead-phone" className="mb-1 block text-xs font-semibold text-foreground">
-                      Phone <span className="text-red-500">*</span>
+                      Phone <span className="text-destructive-ink">*</span>
                     </label>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -695,7 +712,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                       <span className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-muted-foreground">
                         <Share2 className="size-4" aria-hidden />
                       </span>
-                      <select
+                      <NativeSelect
                         id="qa-lead-source"
                         value={newSource}
                         onChange={(e) => setNewSource(e.target.value)}
@@ -707,14 +724,14 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                             {o.label}
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </div>
                   </div>
                   <div>
                     <label htmlFor="qa-lead-status" className="mb-1 block text-xs font-semibold text-foreground">
                       Lead status
                     </label>
-                    <select
+                    <NativeSelect
                       id="qa-lead-status"
                       value={newStatus}
                       onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
@@ -726,11 +743,11 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                           {o.label}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </div>
                 </div>
                 {createHint ? (
-                  <p className="text-xs text-amber-700 dark:text-amber-400" role="status">
+                  <p className="text-xs text-warning-ink" role="status">
                     {createHint}
                   </p>
                 ) : null}
@@ -753,7 +770,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                     type="submit"
                     data-ui-silent
                     disabled={createMut.isPending || !name.trim() || !newPhone.trim()}
-                    className="border-0 bg-gradient-to-r from-emerald-600 to-[var(--palette-cyan-dull)] font-semibold text-primary-foreground shadow-md hover:opacity-90"
+                    className="border-0 bg-gradient-to-r from-success to-[var(--palette-cyan-dull)] font-semibold text-primary-foreground shadow-md hover:opacity-90"
                   >
                     {createMut.isPending ? 'Adding…' : 'Add Lead'}
                   </Button>

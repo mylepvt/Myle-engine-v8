@@ -1,60 +1,18 @@
-import { useState } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { ArrowRight, Check, Copy } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
-import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { cn } from '@/lib/utils'
-
-type ScheduleSlot = {
-  hour: number
-  label: string
-  state: 'past' | 'upcoming' | 'waiting' | 'live'
-  live_starts_at: string
-  live_ends_at: string
-  viewer_count_today: number
-  live_viewer_count: number
-}
-
-type ViewerRecord = {
-  viewer_id: string
-  name: string
-  masked_phone: string
-  phone: string | null
-  city: string
-  session_date: string
-  session_hour: number
-  percentage_watched: number
-  watch_completed: boolean
-  lead_score: number
-  first_seen_at: string | null
-  last_seen_at: string | null
-  referred_by_name: string | null
-}
-
-async function fetchViewers(date: string, hour: number | null): Promise<ViewerRecord[]> {
-  const params = new URLSearchParams({ date })
-  if (hour !== null) params.set('hour', String(hour))
-  const res = await apiFetch(`/api/v1/other/premiere/viewers?${params}`)
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<ViewerRecord[]>
-}
-
-type ScheduleResponse = {
-  slots: ScheduleSlot[]
-  premiere_link: string
-  active_hour: number | null
-}
-
-async function fetchSchedule(): Promise<ScheduleResponse> {
-  const res = await apiFetch('/api/v1/other/premiere/schedule')
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<ScheduleResponse>
-}
+import { buildLiveSessionMessage, extractPasscode, formatLiveSessionUpdatedAt } from '@/lib/live-session-message'
 
 type LiveSessionStub = {
-  items: { title: string; detail?: string | null; external_href?: string | null }[]
+  items: {
+    title: string
+    detail?: string | null
+    external_href?: string | null
+    updated_at?: string | null
+  }[]
 }
 
 async function fetchLiveSession(): Promise<LiveSessionStub> {
@@ -63,304 +21,29 @@ async function fetchLiveSession(): Promise<LiveSessionStub> {
   return res.json() as Promise<LiveSessionStub>
 }
 
-function slotLink(baseOrigin: string, hour: number, day: number): string {
-  return `${baseOrigin}/premiere?day=${day}&slot=${hour}`
-}
-
-function buildWhatsAppMessage(slots: ScheduleSlot[], baseOrigin: string, day: number): string {
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long',
-    timeZone: 'Asia/Kolkata',
-  })
-
-  const upcoming = slots.filter((s) => s.state !== 'past')
-
-  const lines = upcoming.map((s) => {
-    const start = new Date(s.live_starts_at).toLocaleTimeString('en-IN', {
-      hour: '2-digit', minute: '2-digit',
-      timeZone: 'Asia/Kolkata', hour12: true,
-    })
-    const badge = s.state === 'live' ? '🔴 LIVE NOW' : s.state === 'waiting' ? '⏳ Starting soon' : '🎯'
-    return `${badge} *${start}* — ${slotLink(baseOrigin, s.hour, day)}`
-  })
-
-  return [
-    `🎬 *Myle Day ${day} Live Session — ${today}*`,
-    ``,
-    `📅 *Aaj ke sessions (apne time ka link share karo):*`,
-    ...lines,
-    ``,
-    `_Session 49 minute ka hai. Time pe join karo — no replay._`,
-  ].join('\n')
-}
-
-function SlotCard({ slot, baseOrigin, day }: { slot: ScheduleSlot; baseOrigin: string; day: number }) {
-  const [copied, setCopied] = useState(false)
-  const link = slotLink(baseOrigin, slot.hour, day)
-  const isLive = slot.state === 'live'
-  const isWaiting = slot.state === 'waiting'
-  const isPast = slot.state === 'past'
-
-  const startTime = new Date(slot.live_starts_at).toLocaleTimeString('en-IN', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata', hour12: true,
-  })
-  const endTime = new Date(slot.live_ends_at).toLocaleTimeString('en-IN', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata', hour12: true,
-  })
-
-  function handleCopy() {
-    void navigator.clipboard.writeText(link).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }
-
-  return (
-    <div
-      className={cn(
-        'rounded-xl border p-4 transition-all',
-        isLive ? 'border-red-500/30 bg-red-500/[0.05]' :
-        isWaiting ? 'border-indigo-400/30 bg-indigo-400/[0.05]' :
-        isPast ? 'border-border/40 opacity-50' :
-        'border-border bg-card/40',
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={cn(
-            'text-[22px] font-black tabular-nums leading-none',
-            isLive ? 'text-red-300' : isWaiting ? 'text-indigo-300' : 'text-foreground',
-          )}>
-            {startTime}
-          </p>
-          <p className="mt-1 text-ds-caption text-muted-foreground">→ {endTime}</p>
-        </div>
-
-        <div className="flex flex-col items-end gap-1.5">
-          {isLive ? (
-            <span className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-300">
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
-              </span>
-              Live
-            </span>
-          ) : isWaiting ? (
-            <span className="rounded-full border border-indigo-400/25 bg-indigo-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
-              Starting soon
-            </span>
-          ) : isPast ? (
-            <span className="text-[10px] text-muted-foreground/50">Done</span>
-          ) : (
-            <span className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-              Upcoming
-            </span>
-          )}
-          {slot.live_viewer_count > 0 ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-red-400">
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
-              </span>
-              {slot.live_viewer_count} live
-            </span>
-          ) : slot.viewer_count_today > 0 ? (
-            <span className="text-[10px] text-muted-foreground">{slot.viewer_count_today} reg.</span>
-          ) : null}
-        </div>
-      </div>
-
-      {!isPast && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
-          <p className="flex-1 truncate font-mono text-[11px] text-primary">{link}</p>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={cn(
-              'shrink-0 rounded-md border px-2.5 py-1 text-[11px] font-bold transition-all',
-              copied
-                ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-300'
-                : 'border-border bg-muted/50 text-foreground hover:border-primary/40 hover:text-primary',
-            )}
-          >
-            {copied ? '✓ Copied' : 'Copy'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AttendanceHistory({ slots }: { slots: ScheduleSlot[] }) {
-  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-  const [histDate, setHistDate] = useState(todayStr)
-  const [histHour, setHistHour] = useState<number | null>(null)
-
-  const viewersQ = useQuery({
-    queryKey: ['premiere', 'viewers', histDate, histHour],
-    queryFn: () => fetchViewers(histDate, histHour),
-    staleTime: 20_000,
-  })
-
-  const viewers = viewersQ.data ?? []
-
-  return (
-    <div className="surface-elevated space-y-4 p-5">
-      <div>
-        <p className="text-ds-label uppercase text-muted-foreground">Attendance History</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">Slot-wise prospects jo session mein aaye</p>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <input
-          type="date"
-          value={histDate}
-          max={todayStr}
-          onChange={(e) => setHistDate(e.target.value)}
-          className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm text-foreground focus:border-primary/50 focus:outline-none"
-        />
-        <select
-          value={histHour ?? ''}
-          onChange={(e) => setHistHour(e.target.value === '' ? null : Number(e.target.value))}
-          className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm text-foreground focus:border-primary/50 focus:outline-none"
-        >
-          <option value="">All slots</option>
-          {slots.map((s) => (
-            <option key={s.hour} value={s.hour}>{s.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {viewersQ.isPending ? (
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-        </div>
-      ) : viewersQ.isError ? (
-        <p className="text-sm text-destructive">Could not load viewers</p>
-      ) : viewers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Koi viewer nahi mila is slot ke liye.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border/60 text-left text-muted-foreground">
-                <th className="pb-2 pr-4 font-medium">Name</th>
-                <th className="pb-2 pr-4 font-medium">Phone</th>
-                <th className="pb-2 pr-4 font-medium">Slot</th>
-                <th className="pb-2 pr-4 font-medium">Watched</th>
-                <th className="pb-2 pr-4 font-medium">Score</th>
-                <th className="pb-2 font-medium">Leader</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {viewers.map((v) => (
-                <tr key={`${v.viewer_id}-${v.session_hour}`} className="text-foreground">
-                  <td className="py-2 pr-4 font-medium">{v.name || '—'}</td>
-                  <td className="py-2 pr-4 font-mono text-muted-foreground">{v.phone ?? v.masked_phone}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{v.session_hour}:00</td>
-                  <td className="py-2 pr-4">
-                    {v.watch_completed ? (
-                      <span className="text-green-400">✓ Full</span>
-                    ) : (
-                      <span className="text-muted-foreground">{v.percentage_watched.toFixed(0)}%</span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4">
-                    <span className={`font-semibold ${v.lead_score >= 60 ? 'text-green-400' : v.lead_score >= 30 ? 'text-amber-400' : 'text-muted-foreground'}`}>
-                      {v.lead_score}
-                    </span>
-                  </td>
-                  <td className="py-2 text-muted-foreground">{v.referred_by_name || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-[10px] text-muted-foreground">{viewers.length} viewers</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
 type Props = { title: string }
 
-const DAY_LABELS: Record<number, string> = {
-  1: 'Day 1 — Power of Digital India',
-  2: 'Day 2 — Secret Industry Reveal',
-  3: 'Day 3 — Final Day',
-}
+const URL_OR_BOLD = /(https?:\/\/\S+|\*[^*\n]+\*)/g
 
-function DayScheduleSection({
-  day,
-  slots,
-  baseOrigin,
-  isPending,
-  isError,
-  error,
-}: {
-  day: number
-  slots: ScheduleSlot[]
-  baseOrigin: string
-  isPending: boolean
-  isError: boolean
-  error: Error | null
-}) {
-  const [msgCopied, setMsgCopied] = useState(false)
-
-  function handleCopyMessage() {
-    const msg = buildWhatsAppMessage(slots, baseOrigin, day)
-    void navigator.clipboard.writeText(msg).then(() => {
-      setMsgCopied(true)
-      setTimeout(() => setMsgCopied(false), 2000)
-    })
-  }
-
-  return (
-    <div className="surface-elevated space-y-3 p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-ds-label uppercase text-muted-foreground">
-            {DAY_LABELS[day] ?? `Day ${day}`}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Prospect ko Day {day} ka link bhejo — har slot ka alag link
-          </p>
-        </div>
-        {slots.length > 0 && (
-          <Button type="button" size="sm" variant="secondary" onClick={handleCopyMessage}>
-            {msgCopied ? '✓ Copied!' : `Copy D${day} WA msg`}
-          </Button>
-        )}
-      </div>
-
-      {isPending ? (
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-        </div>
-      ) : isError ? (
-        <p className="text-sm text-destructive">
-          {error instanceof Error ? error.message : 'Could not load schedule'}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {slots.map((slot) => (
-            <SlotCard key={slot.hour} slot={slot} baseOrigin={baseOrigin} day={day} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-export function LiveSessionPage({ title }: Props) {
-  const { data, isPending, isError, error } = useQuery({
-    queryKey: ['premiere', 'schedule'],
-    queryFn: fetchSchedule,
-    refetchInterval: 30_000,
+/** Render one WhatsApp line: `*bold*` as bold, URLs as links — so the page shows exactly what gets copied. */
+function renderWhatsAppLine(line: string): ReactNode[] {
+  return line.split(URL_OR_BOLD).map((part, i) => {
+    if (/^https?:\/\//.test(part)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="break-all text-primary underline-offset-2 hover:underline">
+          {part}
+        </a>
+      )
+    }
+    if (part.length > 2 && part.startsWith('*') && part.endsWith('*')) {
+      return <strong key={i} className="font-semibold text-foreground">{part.slice(1, -1)}</strong>
+    }
+    return <Fragment key={i}>{part}</Fragment>
   })
-  const authMe = useAuthMeQuery()
-  const isAdmin = authMe.data?.role === 'admin'
+}
 
+/** Admin's daily live (Zoom) session — the `live_session_*` app settings. */
+export function LiveSessionPage({ title }: Props) {
   const liveSession = useQuery({
     queryKey: ['other', 'live-session'],
     queryFn: fetchLiveSession,
@@ -368,62 +51,92 @@ export function LiveSessionPage({ title }: Props) {
   })
   const liveCard = liveSession.data?.items?.[0]
   const joinHref = liveCard?.external_href?.trim() || null
+  const [copied, setCopied] = useState(false)
 
-  const baseOrigin = window.location.origin
+  const updatedLabel = formatLiveSessionUpdatedAt(liveCard?.updated_at)
+  // The admin's "Passcode" setting (older saves held "⏰ 2:00 PM · ID … · Passcode 303948").
+  const passcode = extractPasscode(liveCard?.detail)
+  const message = joinHref ? buildLiveSessionMessage(joinHref, passcode) : ''
+
+  async function copyMessage() {
+    if (!message) return
+    const text = message
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Clipboard API blocked (older WebView / non-secure context) — fall back to a hidden textarea.
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-ds-h1">{title}</h1>
-        {data?.active_hour != null && (
-          <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-label font-bold uppercase text-white">
-            <span className="relative flex size-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
-            </span>
-            Live now
-          </span>
-        )}
-      </div>
+      <h1 className="text-ds-h1">{title}</h1>
 
-      {/* Admin's daily 2 PM training session — the live_session_* app settings. */}
-      {joinHref ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-4">
-          <p className="text-ds-label font-bold uppercase tracking-wider text-red-500 dark:text-red-300">
-            🔴 Today's Live Session
-          </p>
-          <p className="mt-1 text-base font-semibold text-foreground">
-            {liveCard?.title || "Today's Live Session"}
-          </p>
-          {liveCard?.detail ? (
-            <p className="mt-1 whitespace-pre-line text-ds-caption text-muted-foreground">{liveCard.detail}</p>
-          ) : null}
-          <a
-            href={joinHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-500"
-          >
-            👉 Join Now
-          </a>
-        </div>
+      {liveSession.isPending ? <Skeleton className="h-32 w-full" /> : null}
+      {liveSession.isError ? (
+        <p className="text-sm text-destructive" role="alert">
+          Could not load the live session.
+        </p>
       ) : null}
 
-      {/* 3 day sections — same time slots, different day param in links */}
-      {([1, 2, 3] as const).map((day) => (
-        <DayScheduleSection
-          key={day}
-          day={day}
-          slots={data?.slots ?? []}
-          baseOrigin={baseOrigin}
-          isPending={isPending}
-          isError={isError}
-          error={error instanceof Error ? error : null}
-        />
-      ))}
-
-      {/* Attendance history — admin only */}
-      {isAdmin && <AttendanceHistory slots={data?.slots ?? []} />}
+      {joinHref ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/[0.06] p-4">
+          <p className="text-ds-label font-bold uppercase tracking-wider text-destructive-ink">
+            <span className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-destructive align-middle" aria-hidden />
+            Today&apos;s Live Session
+          </p>
+          {/* the exact WhatsApp message members copy — same text, bold + links rendered */}
+          <div className="mt-3 select-text whitespace-pre-wrap break-words rounded-lg border border-border bg-card p-3 text-sm leading-relaxed text-card-foreground">
+            {message.split('\n').map((line, i) => (
+              <Fragment key={i}>
+                {renderWhatsAppLine(line)}
+                {'\n'}
+              </Fragment>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={joinHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-destructive px-5 text-sm font-semibold text-white transition hover:bg-destructive"
+            >
+              Join Now <ArrowRight className="ml-1.5 size-4" aria-hidden />
+            </a>
+            <button
+              type="button"
+              onClick={() => void copyMessage()}
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-destructive/40 bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-destructive/10"
+            >
+              {copied ? (
+                <>
+                  <Check className="mr-1.5 size-4 text-success-ink" aria-hidden /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1.5 size-4" aria-hidden /> Copy message
+                </>
+              )}
+            </button>
+          </div>
+          {updatedLabel ? (
+            <p className="mt-1 text-ds-caption text-muted-foreground">Link updated: {updatedLabel}</p>
+          ) : null}
+        </div>
+      ) : liveSession.data ? (
+        <p className="text-sm text-muted-foreground">No live session link has been published yet.</p>
+      ) : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+import { useGoBack } from '@/hooks/use-go-back'
 import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,11 +12,11 @@ import { cn } from '@/lib/utils'
 type Chip = { bg: string; text: string; border: string }
 
 function actionChip(action: string): Chip {
-  if (action.startsWith('user.login'))        return { bg: 'bg-blue-500/15',    text: 'text-blue-600 dark:text-blue-300',    border: 'border-blue-500/30' }
-  if (action.startsWith('daily_report'))      return { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-300', border: 'border-emerald-500/30' }
+  if (action.startsWith('user.login'))        return { bg: 'bg-info/15',    text: 'text-info-ink',    border: 'border-info/30' }
+  if (action.startsWith('daily_report'))      return { bg: 'bg-success/15', text: 'text-success-ink', border: 'border-success/30' }
   if (action.startsWith('lead'))              return { bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-600 dark:text-fuchsia-300', border: 'border-fuchsia-500/30' }
-  if (action.startsWith('wallet'))            return { bg: 'bg-amber-500/15',   text: 'text-amber-600 dark:text-amber-300',   border: 'border-amber-500/30' }
-  if (action.startsWith('wa.') || action.startsWith('whatsapp')) return { bg: 'bg-green-500/15', text: 'text-green-600 dark:text-green-300', border: 'border-green-500/30' }
+  if (action.startsWith('wallet'))            return { bg: 'bg-warning/15',   text: 'text-warning-ink',   border: 'border-warning/30' }
+  if (action.startsWith('wa.') || action.startsWith('whatsapp')) return { bg: 'bg-success/15', text: 'text-success-ink', border: 'border-success/30' }
   if (action.startsWith('enrollment'))        return { bg: 'bg-teal-500/15',    text: 'text-teal-600 dark:text-teal-300',    border: 'border-teal-500/30' }
   return { bg: 'bg-slate-500/15', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-500/30' }
 }
@@ -76,14 +77,14 @@ function LogRow({ entry }: { entry: AuditLogEntry }) {
       </td>
       <td className="px-4 py-2.5 text-sm text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">{entry.actor}</td>
       <td className="px-4 py-2.5">
-        <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', chip.bg, chip.text, chip.border)}>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-medium', chip.bg, chip.text, chip.border)}>
           {friendlyAction(entry.action)}
         </span>
       </td>
       <td className="px-4 py-2.5 text-xs text-muted-foreground/70">
         {entry.entity_type ? `${entry.entity_type}${entry.entity_id ? ` #${entry.entity_id}` : ''}` : '—'}
       </td>
-      <td className="px-4 py-2.5 text-xs text-muted-foreground/60">{summary || '—'}</td>
+      <td className="px-4 py-2.5 text-xs text-muted-foreground">{summary || '—'}</td>
     </tr>
   )
 }
@@ -97,16 +98,16 @@ function LogCard({ entry }: { entry: AuditLogEntry }) {
   return (
     <div className="rounded-xl border border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] p-3 space-y-1.5">
       <div className="flex items-start justify-between gap-2">
-        <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', chip.bg, chip.text, chip.border)}>
+        <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-medium', chip.bg, chip.text, chip.border)}>
           {friendlyAction(entry.action)}
         </span>
-        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/50">
+        <span className="shrink-0 text-ds-micro tabular-nums text-muted-foreground">
           {date} {time}
         </span>
       </div>
       <p className="text-sm font-medium text-[color-mix(in_srgb,var(--foreground)_90%,transparent)]">{entry.actor}</p>
       {(entry.entity_type || summary) ? (
-        <p className="text-xs text-muted-foreground/60">
+        <p className="text-xs text-muted-foreground">
           {entry.entity_type ? `${entry.entity_type}${entry.entity_id ? ` #${entry.entity_id}` : ''}` : ''}
           {entry.entity_type && summary ? ' · ' : ''}
           {summary}
@@ -123,7 +124,7 @@ const DAY_OPTIONS = [7, 30, 90] as const
 type Props = { title: string }
 
 export function AuditLogsPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const { data: me } = useAuthMeQuery()
   const isAdmin = me?.role === 'admin'
 
@@ -179,7 +180,7 @@ export function AuditLogsPage({ title }: Props) {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="text-sm text-primary hover:underline underline-offset-2"
           >
             ← Back
@@ -198,7 +199,7 @@ export function AuditLogsPage({ title }: Props) {
       </div>
 
       {!isAdmin && (
-        <p className="text-xs text-muted-foreground/60">Showing your own activity only.</p>
+        <p className="text-xs text-muted-foreground">Showing your own activity only.</p>
       )}
 
       {/* Filters */}
@@ -232,7 +233,7 @@ export function AuditLogsPage({ title }: Props) {
               type="button"
               onClick={() => handleActionFilter(action)}
               className={cn(
-                'rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-all',
+                'rounded-full border px-2.5 py-0.5 text-ds-micro font-medium transition-all',
                 active ? cn(chip.bg, chip.text, chip.border) : 'border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03] text-muted-foreground hover:text-foreground',
               )}
             >
@@ -246,7 +247,7 @@ export function AuditLogsPage({ title }: Props) {
           <button
             type="button"
             onClick={() => { setFilterAction(undefined); setPage(1) }}
-            className="text-xs text-muted-foreground/60 hover:text-muted-foreground"
+            className="text-xs text-muted-foreground hover:text-muted-foreground"
           >
             Clear filter ×
           </button>
@@ -294,7 +295,7 @@ export function AuditLogsPage({ title }: Props) {
               <thead>
                 <tr className="border-b border-border dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.03]">
                   {['Time', 'Who', 'Action', 'Entity', 'Details'].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                    <th key={h} className="px-4 py-2.5 text-ds-micro font-medium uppercase tracking-wider text-muted-foreground">
                       {h}
                     </th>
                   ))}
@@ -315,7 +316,7 @@ export function AuditLogsPage({ title }: Props) {
 
       {/* Empty */}
       {data && filteredItems.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground/50">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           {qText.trim() ? 'No activity matches your search.' : `No activity in the last ${days} days.`}
         </p>
       ) : null}
@@ -323,7 +324,7 @@ export function AuditLogsPage({ title }: Props) {
       {/* Pagination */}
       {data && totalPages > 1 ? (
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-xs text-muted-foreground/60">
+          <span className="text-xs text-muted-foreground">
             Page {data.page} of {data.pages} · {data.total} total
           </span>
           <div className="flex items-center gap-1">

@@ -19,14 +19,12 @@ describe('BatchWatchPage', () => {
       day_number: 2,
       slot_label: 'Morning',
       title: 'Day 2 Morning Batch',
-      subtitle: 'Watch both videos inside Myle and submit your work from the same page.',
+      subtitle: 'Watch both videos inside Myle.',
       lead_name: 'rahul sharma',
       youtube_url: 'https://m.youtube.com/watch?v=dQw4w9WgXcQ&feature=youtu.be',
       video_id: null,
       watch_complete: false,
       day2_evaluation_ready: false,
-      submission_enabled: true,
-      submission: null,
     }
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
@@ -46,8 +44,6 @@ describe('BatchWatchPage', () => {
     })
 
     expect(screen.getByText('Tap play to watch this video inside Myle.')).toBeInTheDocument()
-    expect(screen.getByText('Post-batch upload')).toBeInTheDocument()
-    expect(screen.getByText('Upload after this batch')).toBeInTheDocument()
     expect(screen.queryByTitle('Day 2 Morning Batch')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Play video' }))
@@ -67,20 +63,12 @@ describe('BatchWatchPage', () => {
       day_number: 2,
       slot_label: 'Morning',
       title: 'Day 2 Morning Batch',
-      subtitle: 'Watch both videos inside Myle and submit your work from the same page.',
+      subtitle: 'Watch both videos inside Myle.',
       lead_name: 'rahul sharma',
       youtube_url: 'https://cdn.myle.in/videos/day-2-morning.mp4?token=abc123',
       video_id: null,
       watch_complete: false,
       day2_evaluation_ready: true,
-      submission_enabled: true,
-      submission: {
-        notes_url: '/uploads/batch_day_notes/11_d2_morning.jpg',
-        voice_note_url: null,
-        video_url: null,
-        notes_text: 'Done with the main points.',
-        submitted_at: '2026-04-21T12:00:00Z',
-      },
     }
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
@@ -110,7 +98,6 @@ describe('BatchWatchPage', () => {
     expect(video).toHaveAttribute('src', 'https://cdn.myle.in/videos/day-2-morning.mp4?token=abc123')
     expect(container.querySelector('iframe')).not.toBeInTheDocument()
     expect(screen.getByText('Playback stays inside Myle with native controls and fullscreen available from the player.')).toBeInTheDocument()
-    expect(screen.getByText('Latest upload for this batch')).toBeInTheDocument()
   })
 
   it('shows a locked state before the scheduled slot opens', async () => {
@@ -130,8 +117,6 @@ describe('BatchWatchPage', () => {
       video_id: null,
       watch_complete: false,
       day2_evaluation_ready: false,
-      submission_enabled: false,
-      submission: null,
     }
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),

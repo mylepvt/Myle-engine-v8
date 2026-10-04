@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Bell } from 'lucide-react'
+import { createElement, useState } from 'react'
+import { Bell, Briefcase, ClipboardList, KeyRound, LifeBuoy, type LucideIcon, UserRound } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
@@ -7,11 +7,11 @@ import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 
 type Props = { title: string }
 
-const ICONS: Record<number, string> = {
-  0: '🔐',
-  1: '👤',
-  2: '💼',
-  3: '🛟',
+const ICONS: Record<number, LucideIcon> = {
+  0: KeyRound,
+  1: UserRound,
+  2: Briefcase,
+  3: LifeBuoy,
 }
 
 function HelpArticleCard({
@@ -32,8 +32,8 @@ function HelpArticleCard({
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors"
         aria-expanded={open}
       >
-        <span className="text-lg" aria-hidden="true">
-          {ICONS[idx] ?? '📋'}
+        <span className="text-primary" aria-hidden="true">
+          {createElement(ICONS[idx] ?? ClipboardList, { className: 'size-5' })}
         </span>
         <span className="flex-1 text-sm font-medium text-foreground">{titleText}</span>
         <span

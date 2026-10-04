@@ -1,8 +1,8 @@
-"""Post-close onboarding: mint a register link when a lead converts, auto-send it
-to the prospect over WhatsApp, and alert the closer's leader / management of the win.
+"""Post-close onboarding: mint a register link when a lead converts (the closer shares
+it manually) and push-notify the closer's leader of the win.
 
-Kept separate from ``leads_service`` so the conversion side-effects (token, WhatsApp,
-win alert) stay in one place and can be reused by every path that reaches
+Kept separate from ``leads_service`` so the conversion side-effects (token, win
+alert) stay in one place and can be reused by every path that reaches
 ``converted`` (status PATCH, stage transition).
 """
 from __future__ import annotations
@@ -76,32 +76,26 @@ async def ensure_register_token(session: AsyncSession, lead: Lead) -> str:
 
 
 async def _notify_win(session: AsyncSession, lead: Lead, closer: User | None) -> None:
-    """Tell the closer's leader + management that a lead was closed."""
+    """Tell the closer's leader (in-app push) that a lead was closed."""
+    from app.services.push_service import send_push_to_user
     from app.services.user_hierarchy import nearest_leader_for_user
-    from app.services.whatsapp_leader_alerts import send_system_alert
-    from app.services.whatsapp_management_updates import get_management_phone
 
-    closer_name = (closer.username or closer.name) if closer else "A team member"
-    msg = f"\U0001F3C6 Win! {closer_name} closed lead '{lead.name}'."
-
-    phones: set[str] = set()
-    if closer is not None:
-        leader = await nearest_leader_for_user(session, closer.id)
-        if leader is not None:
-            leader_user = (
-                await session.execute(select(User).where(User.id == leader.id))
-            ).scalar_one_or_none()
-            if leader_user and leader_user.phone:
-                phones.add(leader_user.phone)
-    mgmt = await get_management_phone(session)
-    if mgmt:
-        phones.add(mgmt)
-
-    for phone in phones:
-        try:
-            await send_system_alert(phone, msg, session, message_type="conversion_win")
-        except Exception as exc:  # noqa: BLE001 - never block conversion on alert
-            logger.warning("conversion win alert failed lead_id=%s: %s", lead.id, exc)
+    if closer is None:
+        return
+    leader = await nearest_leader_for_user(session, closer.id)
+    if leader is None:
+        return
+    closer_name = closer.username or closer.name or "A team member"
+    try:
+        await send_push_to_user(
+            session,
+            leader.id,
+            title="Lead closed",
+            body=f"{closer_name} closed lead '{lead.name}'.",
+            url="/dashboard/work/workboard",
+        )
+    except Exception as exc:  # noqa: BLE001 - never block conversion on alert
+        logger.warning("conversion win push failed lead_id=%s: %s", lead.id, exc)
 
 
 async def handle_lead_converted(
@@ -112,12 +106,11 @@ async def handle_lead_converted(
 ) -> dict:
     """Run once when a lead first enters ``converted``.
 
-    Mints the register token, auto-sends the register link to the prospect over
-    WhatsApp, and alerts the closer's leader / management. Idempotent: if the lead
-    already registered we skip. Returns the link payload for the API response.
+    Mints the register token and alerts the closer's leader. The register link is
+    shared manually by the closer ("Register link" button → WhatsApp); there is no
+    automatic WhatsApp send. Idempotent: if the lead already registered we skip.
+    Returns the link payload for the API response.
     """
-    from app.services.whatsapp_leader_alerts import send_system_alert
-
     if lead.registered_user_id is not None:
         return {"already_registered": True}
 
@@ -126,17 +119,6 @@ async def handle_lead_converted(
     register_url = build_register_url(base, token)
     message = build_register_message(lead.name, register_url)
     manual_share_url = build_manual_share_url(lead.phone, message)
-
-    sent = False
-    if lead.phone:
-        try:
-            sent = await send_system_alert(
-                lead.phone, message, session, message_type="register_invite"
-            )
-        except Exception as exc:  # noqa: BLE001 - fall back to manual share
-            logger.warning("register link auto-send failed lead_id=%s: %s", lead.id, exc)
-    if sent:
-        lead.register_link_sent_at = datetime.now(timezone.utc)
 
     closer = None
     if lead.assigned_to_user_id is not None:
@@ -148,7 +130,7 @@ async def handle_lead_converted(
     return {
         "register_url": register_url,
         "manual_share_url": manual_share_url,
-        "auto_sent": sent,
+        "auto_sent": False,
     }
 
 
@@ -159,32 +141,20 @@ async def build_or_resend_register_link(
     resend: bool = False,
     public_app_url: str | None = None,
 ) -> dict:
-    """Ensure a register token exists and return its link payload. When ``resend`` is
-    set, also re-send the WhatsApp invite. Does NOT re-fire the win alert (that only
-    happens on the first conversion)."""
+    """Ensure a register token exists and return its link payload for manual sharing.
+    ``resend`` is accepted for API compatibility (no automatic send). Does NOT re-fire
+    the win alert (that only happens on the first conversion)."""
     base = public_app_url or await resolve_public_app_url(session)
     token = await ensure_register_token(session, lead)
     register_url = build_register_url(base, token)
     message = build_register_message(lead.name, register_url)
     manual_share_url = build_manual_share_url(lead.phone, message)
 
-    auto_sent = False
-    if resend and lead.phone and lead.registered_user_id is None:
-        from app.services.whatsapp_leader_alerts import send_system_alert
-
-        try:
-            auto_sent = await send_system_alert(
-                lead.phone, message, session, message_type="register_invite"
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("register link resend failed lead_id=%s: %s", lead.id, exc)
-        if auto_sent:
-            lead.register_link_sent_at = datetime.now(timezone.utc)
-
+    del resend
     return {
         "register_url": register_url,
         "manual_share_url": manual_share_url,
-        "auto_sent": auto_sent,
+        "auto_sent": False,
         "already_registered": lead.registered_user_id is not None,
     }
 

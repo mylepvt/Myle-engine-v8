@@ -11,6 +11,9 @@ import uuid
 
 from app.core.config import settings
 from app.services.avatar_storage import detect_image_suffix
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.db_media_storage import put_media
 from app.services.r2_storage import r2_enabled, upload_to_r2
 
 _MAX_BYTES = 5 * 1024 * 1024
@@ -33,6 +36,7 @@ def training_certificate_disk_path(filename: str) -> Path:
 
 async def save_training_certificate_bytes(
     *,
+    session: AsyncSession,
     data: bytes,
     user_id: int,
 ) -> tuple[bool, str]:
@@ -55,7 +59,7 @@ async def save_training_certificate_bytes(
         )
         return True, url
 
-    root = _root() / "training_certificates"
-    root.mkdir(parents=True, exist_ok=True)
-    (root / filename).write_bytes(data)
+    # No R2 in production: the container disk is wiped on every deploy, so the
+    # bytes go to Postgres (served by /api/v1/media/training-certificates/...).
+    await put_media(session, kind="training-certificates", name=filename, data=data)
     return True, f"/api/v1/media/training-certificates/{filename}"

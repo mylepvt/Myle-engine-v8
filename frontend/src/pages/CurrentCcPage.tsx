@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -274,7 +276,7 @@ export function CurrentCcPage({ title }: Props) {
         {isLeaderOrAdmin ? (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Team Member</span>
-            <select
+            <NativeSelect
               value={subjectId ?? ''}
               onChange={(e) => setSubjectId(parseInt(e.target.value, 10))}
               className={inputCls}
@@ -284,7 +286,7 @@ export function CurrentCcPage({ title }: Props) {
                   {m.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
         ) : null}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -309,8 +311,8 @@ export function CurrentCcPage({ title }: Props) {
             className={cn(inputCls, 'w-28 tabular-nums')}
           />
         </label>
-        <span className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-sm">
-          Current CCs: <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{closedTotalCcs.toFixed(3)}</span>
+        <span className="rounded-lg border border-success/25 bg-success/[0.06] px-3 py-2 text-sm">
+          Current CCs: <span className="font-bold tabular-nums text-success-ink">{closedTotalCcs.toFixed(3)}</span>
         </span>
       </div>
 
@@ -322,7 +324,7 @@ export function CurrentCcPage({ title }: Props) {
       {autoQ.data ? (
         <details open className="space-y-2">
           <summary className="cursor-pointer text-sm font-semibold text-primary">
-            🔎 System ne aaj kya detect kiya — apni entry se milao (reference)
+            <Search className="mr-1.5 inline size-4" aria-hidden />What the system detected today — compare with your entry (reference)
           </summary>
           <div className="mt-2">
             <AutoView auto={autoQ.data} />
@@ -400,7 +402,7 @@ export function CurrentCcPage({ title }: Props) {
                   <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { name: e.target.value })} className={inputCls} />
                   <input type="number" min={0} value={r.fresh_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { fresh_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
                   <input type="number" min={0} value={r.old_lead} disabled={disabled} onChange={(e) => updateRow('enrollment_rows', i, { old_lead: int(e.target.value) })} className={cn(inputCls, 'tabular-nums')} />
-                  <div className="flex items-center justify-center text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{(r.fresh_lead || 0) + (r.old_lead || 0)}</div>
+                  <div className="flex items-center justify-center text-sm font-semibold tabular-nums text-success-ink">{(r.fresh_lead || 0) + (r.old_lead || 0)}</div>
                   <RemoveBtn onClick={() => removeRow('enrollment_rows', i)} />
                 </div>
               ))}
@@ -431,11 +433,11 @@ export function CurrentCcPage({ title }: Props) {
                 <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem_1.25rem] items-center gap-1.5">
                   <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { name: e.target.value })} className={inputCls} />
                   <input value={r.current_state} placeholder="State" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { current_state: e.target.value })} className={inputCls} />
-                  <select value={r.drop_continue} disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { drop_continue: e.target.value })} className={inputCls}>
+                  <NativeSelect value={r.drop_continue} disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { drop_continue: e.target.value })} className={inputCls}>
                     <option value="">—</option>
                     <option value="continue">Continue</option>
                     <option value="drop">Drop</option>
-                  </select>
+                  </NativeSelect>
                   <input value={r.day1} placeholder="D1" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { day1: e.target.value })} className={inputCls} />
                   <RemoveBtn onClick={() => removeRow('enrollment_tracking_rows', i)} />
                 </div>
@@ -459,7 +461,7 @@ export function CurrentCcPage({ title }: Props) {
             className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]">
             {mut.isPending ? 'Saving…' : 'Save sheet'}
           </button>
-          {mut.isSuccess ? <span className="text-sm text-emerald-600 dark:text-emerald-400/90">Saved.</span> : null}
+          {mut.isSuccess ? <span className="text-sm text-success-ink">Saved.</span> : null}
           {mut.isError ? (
             <span className="text-sm text-destructive" role="alert">
               {mut.error instanceof Error ? mut.error.message : 'Save failed'}
@@ -525,7 +527,7 @@ function PersonTable({ rows, disabled, onChange, onAdd, onRemove }: {
 
 function RowHeader({ cols, grid }: { cols: string[]; grid: string }) {
   return (
-    <div className={cn('hidden gap-1.5 text-[11px] text-muted-foreground sm:grid', grid)}>
+    <div className={cn('hidden gap-1.5 text-ds-micro text-muted-foreground sm:grid', grid)}>
       {cols.map((c, i) => <span key={i}>{c}</span>)}
     </div>
   )
@@ -534,7 +536,7 @@ function RowHeader({ cols, grid }: { cols: string[]; grid: string }) {
 function CheckCell({ checked, disabled, onChange }: { checked: boolean; disabled: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center justify-center">
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-emerald-500" />
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-success" />
     </label>
   )
 }
@@ -561,13 +563,13 @@ function AddBtn({ onClick }: { onClick: () => void }) {
 }
 
 function RemoveBtn({ onClick }: { onClick: () => void }) {
-  return <button type="button" onClick={onClick} aria-label="Remove row" className="text-muted-foreground hover:text-destructive">✕</button>
+  return <button type="button" onClick={onClick} aria-label="Remove row" className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><X className="size-4" aria-hidden /></button>
 }
 
 const MATCH_STYLE: Record<string, { dot: string; text: string; label: string }> = {
-  match: { dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', label: 'Matches system' },
-  partial: { dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', label: 'Partly backed' },
-  mismatch: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400', label: "Doesn't match — flagged" },
+  match: { dot: 'bg-success', text: 'text-success-ink', label: 'Matches system' },
+  partial: { dot: 'bg-warning', text: 'text-warning-ink', label: 'Partly backed' },
+  mismatch: { dot: 'bg-destructive', text: 'text-destructive-ink', label: "Doesn't match — flagged" },
   none: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground', label: 'Nothing claimed' },
 }
 
@@ -606,7 +608,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
         })}
       </div>
       {match.flagged ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/[0.06] px-3 py-2 text-xs text-red-600 dark:text-red-400">
+        <p className="rounded-lg border border-destructive/30 bg-destructive/[0.06] px-3 py-2 text-xs text-destructive-ink">
           Flagged: what you wrote is more than the system shows. Admin can see this.
         </p>
       ) : null}
@@ -617,8 +619,8 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
-      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground')}>{value}</p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>{value}</p>
+      <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
   )
 }

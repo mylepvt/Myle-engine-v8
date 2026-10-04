@@ -62,7 +62,7 @@ async def admin_put_training_day(
     if body.audio_url is not None:
         next_audio_url = normalize_training_audio_url(body.audio_url)
         if row.audio_url != next_audio_url:
-            remove_training_audio_file(row.audio_url)
+            await remove_training_audio_file(session, row.audio_url)
         row.audio_url = next_audio_url
     await session.commit()
     return {"day_number": day_number, "title": row.title, "youtube_url": row.youtube_url, "audio_url": row.audio_url}
@@ -82,9 +82,9 @@ async def admin_upload_training_audio(
     ).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Training day not found")
-    remove_training_audio_file(row.audio_url)
+    await remove_training_audio_file(session, row.audio_url)
     try:
-        audio_path = await save_training_audio_file(day_number, file)
+        audio_path = await save_training_audio_file(session, day_number, file)
     except ValueError as exc:
         raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     row.audio_url = audio_path

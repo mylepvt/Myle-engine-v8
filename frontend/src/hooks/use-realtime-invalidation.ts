@@ -2,21 +2,21 @@ import { useEffect, useRef } from 'react'
 
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 
-import { apiBase } from '@/lib/api'
+import { apiBase, silentAuthRefresh } from '@/lib/api'
 import { isLowEndDevice } from '@/lib/device-performance'
 import {
   clearScrollGatePolling,
   flushRealtimeTopicsOrDefer,
 } from '@/lib/main-scroll-gate'
 import { mergeTopicBatches } from '@/lib/merge-topic-batches'
-import {
-  applyTeamTrackingPresenceEvent,
-  type TeamTrackingPresenceEvent,
-} from '@/hooks/use-team-tracking-query'
 
 type InvalidateMsg = { v: number; type: 'invalidate'; topics: string[] }
-type RealtimeMsg = InvalidateMsg | TeamTrackingPresenceEvent
+type RealtimeMsg = InvalidateMsg
 type PresenceAction = 'ping' | 'idle' | 'resume'
+
+/** Server closes with this when the access cookie is missing/expired (see realtime_ws.py). */
+const WS_CLOSE_AUTH_REQUIRED = 4401
+const MAX_RECONNECT_MS = 60_000
 
 function buildWsUrl(): string {
   const path = '/api/v1/ws'
@@ -41,8 +41,13 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries()
     return
   }
+  if (t.has('wins')) {
+    void qc.invalidateQueries({ queryKey: ['wins'] })
+  }
   if (t.has('leads')) {
+    void qc.invalidateQueries({ queryKey: ['control-room'] })
     void qc.invalidateQueries({ queryKey: ['leads'] })
+    void qc.invalidateQueries({ queryKey: ['wins'] })
     void qc.invalidateQueries({ queryKey: ['workboard'] })
     void qc.invalidateQueries({ queryKey: ['lead-pool'] })
     void qc.invalidateQueries({ queryKey: ['retarget'] })
@@ -52,19 +57,16 @@ function applyTopics(qc: QueryClient, topics: string[]) {
     void qc.invalidateQueries({ queryKey: ['shell-stub'] })
     void qc.invalidateQueries({ queryKey: ['analytics'] })
     void qc.invalidateQueries({ queryKey: ['system'] })
-    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
     void qc.invalidateQueries({ queryKey: ['execution'] })
   }
   if (t.has('follow_ups')) {
     void qc.invalidateQueries({ queryKey: ['follow-ups'] })
-    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
   }
   if (t.has('team')) {
     void qc.invalidateQueries({ queryKey: ['team'] })
     void qc.invalidateQueries({ queryKey: ['team', 'flp-min-billing-requests'] })
   }
   if (t.has('team_tracking') || t.has('team_tracking.presence')) {
-    void qc.invalidateQueries({ queryKey: ['team', 'tracking'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'leader-health'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'online-now'] })
     void qc.invalidateQueries({ queryKey: ['admin', 'today-pulse'] })
@@ -147,12 +149,24 @@ export function useRealtimeInvalidation(enabled: boolean) {
       flushRealtimeTopicsOrDefer(topics, deliver)
     }
 
+    let failedAttempts = 0
+    const scheduleReconnect = () => {
+      // Exponential backoff so a dead session / outage is not hammered every few seconds.
+      const delay = Math.min(reconnectMs * 2 ** failedAttempts, MAX_RECONNECT_MS)
+      failedAttempts += 1
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined
+        connect()
+      }, delay)
+    }
+
     const connect = () => {
       const url = buildWsUrl()
       const ws = new WebSocket(url)
       wsRef.current = ws
 
       ws.onopen = () => {
+        failedAttempts = 0
         sendPresence(document.visibilityState === 'hidden' ? 'idle' : 'resume')
         startHeartbeat()
       }
@@ -160,14 +174,6 @@ export function useRealtimeInvalidation(enabled: boolean) {
       ws.onmessage = (ev) => {
         try {
           const raw = JSON.parse(String(ev.data)) as RealtimeMsg
-          if (
-            raw?.type === 'team_tracking.presence' &&
-            typeof raw.user_id === 'number' &&
-            typeof raw.last_seen_at === 'string'
-          ) {
-            applyTeamTrackingPresenceEvent(qc, raw)
-            return
-          }
           if (raw?.type === 'invalidate' && Array.isArray(raw.topics)) {
             scheduleTopics(raw.topics)
           }
@@ -176,11 +182,21 @@ export function useRealtimeInvalidation(enabled: boolean) {
         }
       }
 
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         wsRef.current = null
         clearHeartbeat()
         if (closed) return
-        reconnectTimer = window.setTimeout(connect, reconnectMs)
+        if (ev.code === WS_CLOSE_AUTH_REQUIRED) {
+          // Access cookie expired (e.g. app idle in background): refresh it like
+          // REST calls do, then reconnect. A rejected refresh means the session
+          // is over — stop retrying; the next API call routes to login.
+          void silentAuthRefresh().then((ok) => {
+            if (closed || ok === false) return
+            scheduleReconnect()
+          })
+          return
+        }
+        scheduleReconnect()
       }
 
       ws.onerror = () => {
@@ -189,6 +205,14 @@ export function useRealtimeInvalidation(enabled: boolean) {
     }
 
     const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !wsRef.current && reconnectTimer !== undefined) {
+        // Back in the foreground while waiting out a backoff: reconnect now.
+        window.clearTimeout(reconnectTimer)
+        reconnectTimer = undefined
+        failedAttempts = 0
+        connect()
+        return
+      }
       sendPresence(document.visibilityState === 'hidden' ? 'idle' : 'resume')
     }
     const onFocus = () => sendPresence('resume')

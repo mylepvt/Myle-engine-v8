@@ -133,7 +133,7 @@ export function TeamMembersPage({ title }: Props) {
                       <div className="flex flex-wrap items-start gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="break-all text-sm font-semibold text-foreground sm:text-[0.95rem]">
+                            <span className="break-all text-sm font-semibold text-foreground sm:text-ds-body">
                               {m.fbo_id}
                             </span>
                             <Badge variant={memberRoleBadgeVariant(m.role)} className="shrink-0">
@@ -165,12 +165,12 @@ export function TeamMembersPage({ title }: Props) {
                               {m.compliance_title}
                             </Badge>
                             {m.grace_end_date ? (
-                              <span className="text-[0.68rem] text-muted-foreground">
+                              <span className="text-ds-micro text-muted-foreground">
                                 Grace till {formatMemberDate(m.grace_end_date)}
                               </span>
                             ) : null}
                             {m.grace_request_end_date ? (
-                              <span className="text-[0.68rem] text-primary">
+                              <span className="text-ds-micro text-primary">
                                 Request till {formatMemberDate(m.grace_request_end_date)}
                               </span>
                             ) : null}
@@ -178,18 +178,18 @@ export function TeamMembersPage({ title }: Props) {
                         ) : null}
                         {!m.compliance_title && m.grace_request_end_date ? (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className="text-[0.68rem] text-primary">
+                            <span className="text-ds-micro text-primary">
                               Request till {formatMemberDate(m.grace_request_end_date)}
                             </span>
                           </div>
                         ) : null}
                         {m.compliance_summary && m.compliance_level !== 'not_applicable' ? (
-                          <p className={`text-[0.7rem] ${complianceTone(m.compliance_level)}`}>
+                          <p className={`text-ds-micro ${complianceTone(m.compliance_level)}`}>
                             {m.compliance_summary}
                           </p>
                         ) : null}
                         {m.grace_request_end_date && m.grace_request_reason ? (
-                          <p className="text-[0.7rem] text-muted-foreground">{m.grace_request_reason}</p>
+                          <p className="text-ds-micro text-muted-foreground">{m.grace_request_reason}</p>
                         ) : null}
                       </div>
                     </div>
@@ -248,7 +248,7 @@ export function TeamMembersPage({ title }: Props) {
       ) : null}
 
       {toastMsg ? (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-emerald-500/35 bg-emerald-500/15 px-3 py-2 text-ds-caption font-semibold text-emerald-600 dark:text-emerald-200 shadow-lg">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-success/35 bg-success/15 px-3 py-2 text-ds-caption font-semibold text-success-ink shadow-lg">
           {toastMsg}
         </div>
       ) : null}

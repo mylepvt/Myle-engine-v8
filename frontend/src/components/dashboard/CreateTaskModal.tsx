@@ -15,6 +15,7 @@ import {
 import { useCreateTask, useBulkAssignTask } from '@/hooks/use-verification-query'
 import { useTeamMembersQuery } from '@/hooks/use-team-query'
 import { cn } from '@/lib/utils'
+import { useBackClose } from '@/hooks/use-back-close'
 
 type Props = {
   open: boolean
@@ -80,6 +81,7 @@ const TEMPLATES: Template[] = [
 
 export function CreateTaskModal({ open, onClose }: Props) {
   const [step, setStep] = useState<'form' | 'done'>('form')
+  useBackClose({ open, onClose })
   const [templateKey, setTemplateKey] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -88,7 +90,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
   const [target, setTarget] = useState<Target>('team')
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [notifyWhatsApp, setNotifyWhatsApp] = useState(true)
   const [assignedCount, setAssignedCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -138,7 +139,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
     setTarget('team')
     setSearch('')
     setSelectedIds(new Set())
-    setNotifyWhatsApp(true)
     setAssignedCount(0)
     setError(null)
   }
@@ -170,7 +170,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
       await bulkAssign.mutateAsync({
         verification_task_id: taskId,
         user_ids: targetIds,
-        notify_via_whatsapp: notifyWhatsApp,
       })
       setAssignedCount(targetIds.length)
       setStep('done')
@@ -344,18 +343,6 @@ export function CreateTaskModal({ open, onClose }: Props) {
               )}
             </div>
 
-            {/* WhatsApp notify */}
-            <label className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
-              <input
-                type="checkbox"
-                checked={notifyWhatsApp}
-                onChange={(e) => setNotifyWhatsApp(e.target.checked)}
-                className="size-4 accent-primary"
-              />
-              <span className="text-sm text-foreground">Notify on WhatsApp</span>
-              <span className="ml-auto text-xs text-muted-foreground">they get an alert</span>
-            </label>
-
             {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
 
             <div className="flex justify-end gap-3 pt-1">
@@ -381,8 +368,8 @@ export function CreateTaskModal({ open, onClose }: Props) {
         {step === 'done' && (
           <div className="px-6 py-8">
             <div className="flex flex-col items-center text-center">
-              <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
-                <Check className="size-6 text-emerald-500" />
+              <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-success/15">
+                <Check className="size-6 text-success-ink" />
               </div>
               <p className="text-sm text-foreground">
                 Task assigned to {assignedCount} {assignedCount === 1 ? 'person' : 'people'}.

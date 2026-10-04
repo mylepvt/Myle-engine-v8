@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { apiFetch } from '@/lib/api'
+import { apiFetch, apiUrl } from '@/lib/api'
 
 export type DownloadItem = {
   id: number
@@ -10,6 +10,8 @@ export type DownloadItem = {
   mime_type: string
   description: string | null
   created_at: string
+  /** False when the stored file is gone from the server (needs a re-upload). */
+  available: boolean
 }
 
 async function fetchDownloads(): Promise<DownloadItem[]> {
@@ -85,5 +87,5 @@ export function useDownloadsMutations() {
 }
 
 export function getDownloadFileUrl(id: number): string {
-  return `/api/v1/downloads/${id}/file`
+  return apiUrl(`/api/v1/downloads/${id}/file`)
 }

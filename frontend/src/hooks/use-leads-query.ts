@@ -30,7 +30,7 @@ export const LEAD_STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
   { value: 'new_lead',       label: 'New Lead' },
   { value: 'contacted',      label: 'Contacted' },
   { value: 'invited',        label: 'Invited' },
-  { value: 'video_sent',     label: 'Enrollment Live' },
+  { value: 'video_sent',     label: 'Enrollment Video' },
   { value: 'video_watched',  label: 'Video Watched' },
   { value: 'day1',           label: 'Day 1' },
   { value: 'day2',           label: 'Day 2' },
@@ -109,6 +109,9 @@ export type LeadPublic = {
   payment_status: string | null
   payment_amount_cents: number | null
   payment_proof_url: string | null
+  enrollment_amount_cents?: number | null
+  enrollment_proof_url?: string | null
+  enrollment_proof_uploaded_at?: string | null
   payment_proof_uploaded_at: string | null
   mindset_started_at?: string | null
   mindset_completed_at?: string | null
@@ -193,9 +196,9 @@ async function parseError(res: Response): Promise<never> {
 
 export type LeadsListMode = 'active' | 'archived' | 'recycle'
 
-export type CtcsTab = 'all' | 'today' | 'followups' | 'hot' | 'converted' | 'reassigned' | 'pending'
+export type CtcsTab = 'all' | 'today' | 'retarget' | 'followups' | 'hot' | 'converted' | 'reassigned' | 'pending'
 
-export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested' | 'paid'
+export type CtcsAction = 'not_picked' | 'interested' | 'call_later' | 'not_interested'
 
 export type CtcsListOptions = {
   ctcsFilter?: CtcsTab | null
@@ -571,6 +574,10 @@ export type LeadFileImportResult = {
   imported: number
   skipped: number
   warnings: string[]
+  /** Phone already in Myle, or repeated in the file. */
+  duplicates?: number
+  /** Missing or bad phone number. */
+  invalid?: number
 }
 
 export async function importLeadsFile(file: File, sourceTag?: string): Promise<LeadFileImportResult> {
@@ -836,7 +843,6 @@ export type LeadCtcsActionMutationVars = {
   id: number
   action: CtcsAction
   followupAt?: string | null
-  paidStatus?: 'day1'
 }
 
 export function useLeadCtcsActionMutation() {
@@ -847,10 +853,7 @@ export function useLeadCtcsActionMutation() {
     onMutate: async (variables) => {
       await qc.cancelQueries({ queryKey: ['leads', 'list', 'paged'], exact: false })
       const previous = qc.getQueriesData({ queryKey: ['leads', 'list', 'paged'], exact: false })
-      const optimisticOpts = {
-        followupAt: variables.followupAt,
-        paidStatus: variables.paidStatus,
-      }
+      const optimisticOpts = { followupAt: variables.followupAt }
       previous.forEach(([queryKey, data]) => {
         if (!isLeadsInfiniteData(data)) return
         qc.setQueryData(queryKey, {
@@ -882,6 +885,54 @@ export function useLeadCallLogMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => postLeadCallLog(id),
+    onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+
+/** Team stages from which "Send to Day 1" (enrollment screenshot upload) is allowed. */
+export const ENROLLMENT_SENDABLE_STATUSES: readonly string[] = [
+  'new_lead',
+  'contacted',
+  'invited',
+  'video_sent',
+  'video_watched',
+]
+export const ENROLLMENT_MIN_RUPEES = 149
+export const ENROLLMENT_MAX_RUPEES = 200
+
+async function postSendToDay1(leadId: number, amountRupees: number, screenshot: File): Promise<LeadPublic> {
+  const fd = new FormData()
+  fd.append('amount_rupees', String(amountRupees))
+  fd.append('screenshot', screenshot)
+  const res = await apiFetch(`/api/v1/leads/${leadId}/send-to-day1`, { method: 'POST', body: fd })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useSendToDay1Mutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leadId, amountRupees, screenshot }: { leadId: number; amountRupees: number; screenshot: File }) =>
+      postSendToDay1(leadId, amountRupees, screenshot),
+    onSuccess: () => invalidateLeadRelated(qc),
+  })
+}
+
+async function postSendBack(leadId: number, reason: string): Promise<LeadPublic> {
+  const res = await apiFetch(`/api/v1/leads/${leadId}/send-back`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: reason.trim() || null }),
+  })
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useSendBackFromDay1Mutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leadId, reason }: { leadId: number; reason: string }) => postSendBack(leadId, reason),
     onSuccess: () => invalidateLeadRelated(qc),
   })
 }

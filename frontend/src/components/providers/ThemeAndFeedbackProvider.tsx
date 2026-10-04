@@ -3,9 +3,10 @@ import { Toaster } from 'sonner'
 
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
+/** Android status bar / browser chrome colour — must equal --background in index.css. */
 const THEME_COLOR: Record<'light' | 'dark', string> = {
   dark: '#111214',
-  light: '#eef2fb',
+  light: '#e9edf4',
 }
 
 export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) {
@@ -27,6 +28,8 @@ export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) 
         richColors
         closeButton
         position="bottom-right"
+        // Phones: sit above the bottom tab bar instead of covering it.
+        mobileOffset={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
         theme={theme}
         toastOptions={{
           duration: 4000,

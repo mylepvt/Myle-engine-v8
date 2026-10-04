@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, UserPlus, ArrowRightLeft, Wallet, CheckCircle2, XCircle } from 'lucide-react'
-import { Link } from 'react-router-dom'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAdminFeedStore, type AdminActivityEntry } from '@/stores/admin-feed-store'
@@ -94,7 +93,7 @@ export function LiveTeamActivity() {
           <Activity className="size-4" />
           Live Team Activity
           {activeNow.length > 0 && (
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold text-white">
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-success px-1.5 text-ds-micro font-bold text-white">
               {activeNow.length}
             </span>
           )}
@@ -102,39 +101,39 @@ export function LiveTeamActivity() {
       </CardHeader>
       <CardContent className="space-y-2">
         {activeNow.length === 0 && recentActivity.length === 0 ? (
-          <p className="py-4 text-center text-xs text-muted-foreground/50">Waiting for team activity...</p>
+          <p className="py-4 text-center text-xs text-muted-foreground">Waiting for team activity...</p>
         ) : (
           <>
             {activeNow.length > 0 && (
               <div>
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400/70">Active Now</p>
+                <p className="mb-1.5 text-ds-micro font-semibold uppercase tracking-wider text-success-ink/70">Active Now</p>
                 <div className="space-y-1">
                   {activeNow.map((item) => (
-                    <Link key={item.name} to="/dashboard/team/tracking" className="flex min-h-[44px] items-center gap-2 rounded px-2 py-1.5 no-underline transition-colors hover:bg-muted/30 active:bg-muted/50 cursor-pointer discord-hover">
+                    <div key={item.name} className="flex min-h-[44px] items-center gap-2 rounded px-2 py-1.5">
                       <span className="relative flex size-2 shrink-0">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                        <span className="relative inline-flex size-2 rounded-full bg-success" />
                       </span>
                       <span className="truncate text-xs font-medium text-foreground">{item.name}</span>
-                      <span className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1 truncate text-ds-micro text-muted-foreground">
                         {actionIcon(item.action)}
                         {actionLabel(item.action)}
                       </span>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
             {recentActivity.length > 0 && (
               <div>
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Recently Active</p>
+                <p className="mb-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground">Recently Active</p>
                 <div className="space-y-0.5">
                   {recentActivity.slice(0, 8).map((item) => (
-                    <Link key={item.name} to="/dashboard/team/tracking" className="flex min-h-[44px] items-center gap-2 rounded px-2 py-1 no-underline text-[11px] text-muted-foreground/70 transition-colors hover:bg-muted/30 active:bg-muted/50 cursor-pointer">
+                    <div key={item.name} className="flex min-h-[44px] items-center gap-2 rounded px-2 py-1 text-ds-micro text-muted-foreground/70">
                       <span className="size-2 shrink-0 rounded-full bg-muted-foreground/30" />
                       <span className="truncate font-medium text-muted-foreground/80">{item.name}</span>
                       <span className="truncate">{actionLabel(item.action)}</span>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               </div>

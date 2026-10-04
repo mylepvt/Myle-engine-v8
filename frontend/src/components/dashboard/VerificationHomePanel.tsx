@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertCircle, CheckCircle2, Clock, Eye, FileText, ListChecks, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,12 +29,12 @@ const BLOCKER_OPTIONS = [
 ]
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
-  submitted: { label: 'Submitted', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-  verified: { label: 'Verified', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
-  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  pending: { label: 'Pending', className: 'bg-warning/10 text-warning-ink ' },
+  submitted: { label: 'Submitted', className: 'bg-info/10 text-info-ink ' },
+  verified: { label: 'Verified', className: 'bg-success/10 text-success-ink ' },
+  rejected: { label: 'Rejected', className: 'bg-destructive/10 text-destructive-ink ' },
   blocked: { label: 'Blocked', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
-  result_produced: { label: 'Done', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  result_produced: { label: 'Done', className: 'bg-success/10 text-success-ink ' },
 }
 
 function TaskCard({ task }: { task: TaskAssignmentPublic }) {
@@ -57,7 +58,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
             <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{task.evidence_instructions}</p>
           )}
         </div>
-        <Badge className={cn('shrink-0 text-[10px]', badge.className)}>{badge.label}</Badge>
+        <Badge className={cn('shrink-0 text-ds-micro', badge.className)}>{badge.label}</Badge>
       </div>
 
       {task.blocker_reason && (
@@ -70,7 +71,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
         <div className="flex flex-wrap items-center gap-1.5">
           <Button
             size="sm"
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            className="bg-success text-white hover:bg-success/90"
             disabled={submitEvidence.isPending}
             onClick={() => submitEvidence.mutate({ assignmentId: task.id, evidenceText: '✓ Marked done' })}
           >
@@ -91,7 +92,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
       {task.status === 'rejected' && (
         <div className="flex flex-col gap-1">
           {task.rejection_reason && (
-            <p className="text-xs text-red-600 dark:text-red-400">Reason: {task.rejection_reason}</p>
+            <p className="text-xs text-destructive-ink">Reason: {task.rejection_reason}</p>
           )}
           <Button size="sm" variant="outline" onClick={() => setShowSubmit(!showSubmit)}>
             <FileText className="mr-1 size-4" />
@@ -101,14 +102,14 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
       )}
 
       {task.status === 'submitted' && (
-        <div className="flex items-center gap-1.5 text-ds-caption text-blue-600 dark:text-blue-400">
+        <div className="flex items-center gap-1.5 text-ds-caption text-info-ink">
           <Clock className="size-3.5" />
           Awaiting leader verification
         </div>
       )}
 
       {task.status === 'verified' && (
-        <div className="flex items-center gap-1.5 text-ds-caption text-green-600 dark:text-green-400">
+        <div className="flex items-center gap-1.5 text-ds-caption text-success-ink">
           <CheckCircle2 className="size-3.5" />
           Verified{task.verified_by_name ? ` by ${task.verified_by_name}` : ''}
         </div>
@@ -138,7 +139,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
 
       {showBlock && (
         <div className="flex flex-col gap-2">
-          <select
+          <NativeSelect
             className="rounded border p-2 text-xs"
             value={blockerReason}
             onChange={e => setBlockerReason(e.target.value)}
@@ -147,7 +148,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
             {BLOCKER_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
-          </select>
+          </NativeSelect>
           <textarea
             className="min-h-[50px] w-full resize-none rounded border p-2 text-xs"
             placeholder="Additional notes..."
@@ -241,7 +242,7 @@ export function VerificationHomePanel() {
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span>Score: </span>
           <span className={`font-bold tabular-nums ${
-            execScore >= 80 ? 'text-green-600' : execScore >= 50 ? 'text-amber-600' : 'text-red-600'
+            execScore >= 80 ? 'text-success-ink' : execScore >= 50 ? 'text-warning-ink' : 'text-destructive-ink'
           }`}>
             {loading ? '...' : execScore}
           </span>
@@ -250,7 +251,7 @@ export function VerificationHomePanel() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <SectionCard
-          icon={<FileText className="size-4 text-blue-500" />}
+          icon={<FileText className="size-4 text-info-ink" />}
           title="Today's Tasks"
           count={todayTasks.length}
           emptyMessage="All caught up!"

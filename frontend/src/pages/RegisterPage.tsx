@@ -9,6 +9,7 @@ import {
   Loader2,
   Lock,
   Mail,
+  PartyPopper,
   Phone,
   Send,
   Sparkles,
@@ -236,7 +237,8 @@ export function RegisterPage() {
                 className="rounded border border-primary/35 bg-primary/[0.08] px-3 py-2 text-center text-sm text-foreground"
                 role="status"
               >
-                🎉 Welcome! Finish signing up to start your 7-day onboarding training.
+                <PartyPopper className="mr-1.5 inline size-4 text-primary" aria-hidden />
+                Welcome! Finish signing up to start your 7-day onboarding training.
               </div>
             ) : null}
             {formError ? (
@@ -286,7 +288,7 @@ export function RegisterPage() {
                   placeholder="Your name as it should appear"
                   icon={User}
                 />
-                <p className="mt-1.5 text-[0.7rem] text-muted-foreground/80">
+                <p className="mt-1.5 text-ds-micro text-muted-foreground/80">
                   Spaces allowed — special characters will be auto-removed.
                 </p>
               </div>
@@ -371,8 +373,8 @@ export function RegisterPage() {
                   <p
                     className={`mt-2 flex items-start gap-2 text-ds-caption ${
                       uplineLookup.is_valid_upline
-                        ? 'text-emerald-600/95 dark:text-emerald-400/95'
-                        : 'text-amber-200/90'
+                        ? 'text-success-ink/95'
+                        : 'text-warning-ink/90'
                     }`}
                   >
                     <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />

@@ -88,6 +88,9 @@ class LeadPublic(BaseModel):
     payment_status: Optional[str] = None
     payment_amount_cents: Optional[int] = None
     payment_proof_url: Optional[str] = None
+    enrollment_amount_cents: Optional[int] = None
+    enrollment_proof_url: Optional[str] = None
+    enrollment_proof_uploaded_at: Optional[datetime] = None
     payment_proof_uploaded_at: Optional[datetime] = None
     mindset_started_at: Optional[datetime] = None
     mindset_completed_at: Optional[datetime] = None
@@ -160,23 +163,8 @@ class LeadPublic(BaseModel):
         return "NONE"
 
 
-class LeadBatchSubmissionPublic(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    day_number: int
-    slot: str
-    notes_url: Optional[str] = None
-    voice_note_url: Optional[str] = None
-    video_url: Optional[str] = None
-    notes_text: Optional[str] = None
-    submitted_at: datetime
-
-
 class LeadDetailPublic(LeadPublic):
     """Extended lead detail — same fields as LeadPublic (all included)."""
-
-    batch_submissions: list[LeadBatchSubmissionPublic] = Field(default_factory=list)
 
 
 class LeadFileImportResponse(BaseModel):
@@ -185,6 +173,8 @@ class LeadFileImportResponse(BaseModel):
     imported: int = Field(..., ge=0)
     skipped: int = Field(..., ge=0)
     warnings: list[str] = Field(default_factory=list)
+    duplicates: int = Field(default=0, ge=0)
+    invalid: int = Field(default=0, ge=0)
 
 
 class LeadCreate(BaseModel):
@@ -611,6 +601,20 @@ class LeadPoolBatchPreviewResponse(BaseModel):
     claim_count: int = Field(ge=0, le=50)
     available_count: int = Field(ge=0)
     total_price_cents: int = Field(ge=0)
+
+
+class ClaimGateLead(BaseModel):
+    id: int
+    name: str
+    phone: Optional[str] = None
+
+
+class ClaimGateResponse(BaseModel):
+    """Whether the member may claim pool leads right now (fresh-lead coverage rule)."""
+
+    blocked: bool
+    message: Optional[str] = None
+    uncovered_leads: list[ClaimGateLead] = Field(default_factory=list)
 
 
 class LeadPoolClaimBatchResponse(BaseModel):

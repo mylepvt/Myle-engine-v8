@@ -41,7 +41,7 @@ describe('batch watch greeting copy', () => {
 
     expect(copy.greetingLine).toBe('Good Afternoon Priya')
     expect(copy.heroSubtitle).toContain('upload your notes, voice note, video, or message here')
-    expect(copy.mentorLine).toContain('Final batch ke baad business evaluation link')
+    expect(copy.mentorLine).toContain('business evaluation link after the final batch')
     expect(copy.completionMessage).toContain('Priya')
   })
 })

@@ -100,7 +100,7 @@ async def upload_to_r2(*, data: bytes, key: str, content_type: str) -> str:
     return f"{settings.r2_public_url.rstrip('/')}/{key}"
 
 
-def _presign_get_sync(key: str, expires_seconds: int) -> str:
+def _presign_get_sync(key: str, expires_seconds: int, download_name: str | None = None) -> str:
     """Blocking presigned GET URL — run inside asyncio.to_thread."""
     import boto3  # lazy import — only needed when R2 is enabled
     from botocore.config import Config
@@ -113,23 +113,30 @@ def _presign_get_sync(key: str, expires_seconds: int) -> str:
         config=Config(signature_version="s3v4"),
         region_name="auto",
     )
+    params: dict[str, str] = {"Bucket": settings.r2_bucket_name, "Key": key}
+    if download_name:
+        # Force a save-as with the original filename (quotes stripped for the header).
+        safe = download_name.replace('"', "")
+        params["ResponseContentDisposition"] = f'attachment; filename="{safe}"'
     return client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": settings.r2_bucket_name, "Key": key},
+        Params=params,
         ExpiresIn=expires_seconds,
     )
 
 
-async def presign_get_url(*, key: str, expires_seconds: int = 120) -> str:
+async def presign_get_url(
+    *, key: str, expires_seconds: int = 120, download_name: str | None = None
+) -> str:
     """Return a short-lived presigned GET URL for *key*.
 
-    The URL is consumed server-side only (the streaming proxy fetches it) and is
-    never handed to the browser, so the bucket can stay fully private.
-    Raises RuntimeError if R2 is not configured.
+    Video streaming consumes it server-side only. Downloads redirect the
+    authenticated browser to it (short expiry, ``download_name`` forces
+    attachment). Raises RuntimeError if R2 is not configured.
     """
     if not r2_enabled():
         raise RuntimeError("R2 not configured — check R2_* env vars")
-    return await asyncio.to_thread(_presign_get_sync, key, expires_seconds)
+    return await asyncio.to_thread(_presign_get_sync, key, expires_seconds, download_name)
 
 
 async def delete_from_r2(key: str) -> None:

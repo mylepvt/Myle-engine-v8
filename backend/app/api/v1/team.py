@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import case, delete as sa_delete, func, select, update
+from sqlalchemy import delete as sa_delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 from starlette import status as http_status
 
+from app.core.postcondition import ensure
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.auth_cookies import display_name_from_user
 from app.core.realtime_hub import notify_topics
-from app.services.whatsapp_removal import send_removal_whatsapp
 from app.core.fbo_id import normalize_fbo_id
 from app.core.passwords import hash_password
 from app.models.daily_report import DailyReport
@@ -34,7 +35,6 @@ from app.schemas.team import (
     TeamMemberCreate,
     TeamMemberListResponse,
     TeamMemberPublic,
-    TeamMyTeamResponse,
     TeamReportItem,
     TeamReportMissingMember,
     TeamReportsLiveSummary,
@@ -52,6 +52,7 @@ from app.services.grace_intelligence import (
     MONTHLY_GRACE_LIMIT,
 )
 from app.services.payment_service import PaymentService
+from app.services.member_purge import PURGED_FBO_PREFIX, is_purged, purge_member
 from app.services.push_service import send_push_to_user
 from app.services.team_reports_metrics import IST, compute_live_summary, compute_work_trend
 from app.services.user_hierarchy import (
@@ -61,33 +62,32 @@ from app.services.user_hierarchy import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 _MAX_LIMIT = 100
 _DEFAULT_LIMIT = 50
 
 
-async def _send_removal_whatsapp_bg(user_id: int, removal_reason: str) -> None:
-    from app.services.whatsapp_leader_alerts import alert_leader_member_removed
+async def _push_to_leader(member: User, session: AsyncSession, *, title: str, body: str) -> None:
+    """In-app push to the member's nearest upline leader (never raises)."""
+    from app.services.push_service import send_push_to_user
+    from app.services.user_hierarchy import nearest_leader_for_user
+
+    try:
+        leader = await nearest_leader_for_user(session, member.id)
+        if leader is not None:
+            await send_push_to_user(session, leader.id, title=title, body=body, url="/dashboard")
+    except Exception:
+        logger.exception("leader push failed member_id=%s", member.id)
+
+
+async def _notify_leader_member_removed_bg(user_id: int, removal_reason: str) -> None:
     async with AsyncSessionLocal() as session:
         user = await session.get(User, user_id)
         if user is None:
             return
-        user.removal_reason = removal_reason
-        await send_removal_whatsapp(user=user, session=session)
-        await alert_leader_member_removed(user, removal_reason, session)
-        try:
-            from app.services.whatsapp_management_updates import send_management_member_removed_alert
-            await send_management_member_removed_alert(
-                session,
-                member_name=user.name or f"User #{user.id}",
-                member_fbo=user.fbo_id or "",
-                removed_by="Admin",
-                reason=removal_reason,
-                leader_name="",
-            )
-        except Exception:
-            logger.exception("management removal alert failed")
-        await session.commit()
+        name = user.name or user.fbo_id or f"User #{user.id}"
+        await _push_to_leader(user, session, title="Member removed", body=f"{name} was removed. Reason: {removal_reason}")
 
 
 def _require_admin(user: AuthUser) -> None:
@@ -256,13 +256,15 @@ async def list_team_members(
     """All users (no passwords) — admin only."""
     _require_admin(user)
 
-    count_q = select(func.count()).select_from(User)
+    not_purged = ~User.fbo_id.startswith(PURGED_FBO_PREFIX)
+    count_q = select(func.count()).select_from(User).where(not_purged)
     total = int((await session.execute(count_q)).scalar_one())
 
     Upline = aliased(User, name="upline")
     list_q = (
         select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
         .outerjoin(Upline, User.upline_user_id == Upline.id)
+        .where(not_purged)
         .order_by(User.created_at.asc())
         .limit(limit)
         .offset(offset)
@@ -328,90 +330,6 @@ async def create_team_member(
     return item
 
 
-@router.get("/my-team", response_model=TeamMyTeamResponse)
-async def my_team(
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> TeamMyTeamResponse:
-    """Leader: self + entire downline (flat). Team: self only. Admin: global directory slice (UI preview / QA)."""
-    if user.role not in ("admin", "leader", "team"):
-        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
-
-    Upline = aliased(User, name="upline")
-
-    if user.role == "admin":
-        count_q = select(func.count()).select_from(User)
-        total = int((await session.execute(count_q)).scalar_one())
-        list_q = (
-            select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
-            .outerjoin(Upline, User.upline_user_id == Upline.id)
-            .order_by(User.created_at.asc())
-            .limit(_MAX_LIMIT)
-            .offset(0)
-        )
-        rows = (await session.execute(list_q)).all()
-        items: list[TeamMemberPublic] = []
-        for row in rows:
-            u, up_fbo, up_name = row
-            item = TeamMemberPublic.model_validate(u)
-            item.upline_fbo_id = up_fbo
-            item.upline_name = up_name
-            items.append(item)
-        items = await _finalize_team_member_items(session, items)
-        return TeamMyTeamResponse(
-            items=items,
-            total=total,
-            direct_members=0,
-            total_downline=0,
-        )
-
-    if user.role == "team":
-        row = await session.get(User, user.user_id)
-        if row is None:
-            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
-        item = TeamMemberPublic.model_validate(row)
-        if row.upline_user_id is not None:
-            up = await session.get(User, row.upline_user_id)
-            if up is not None:
-                item.upline_fbo_id = up.fbo_id
-                item.upline_name = (up.username or up.name or up.fbo_id or "").strip() or None
-        [item] = await _finalize_team_member_items(session, [item])
-        return TeamMyTeamResponse(items=[item], total=1, direct_members=0, total_downline=0)
-
-    leader_id = user.user_id
-    downline_ids = await recursive_downline_user_ids(session, leader_id)
-    id_list = [leader_id, *downline_ids]
-    list_q = (
-        select(User, Upline.fbo_id.label("upline_fbo_id"), Upline.username.label("upline_username"))
-        .outerjoin(Upline, User.upline_user_id == Upline.id)
-        .where(User.id.in_(id_list))
-        .order_by(case((User.id == leader_id, 0), else_=1), User.created_at.asc())
-    )
-    rows = (await session.execute(list_q)).all()
-    items: list[TeamMemberPublic] = []
-    for row in rows:
-        u, up_fbo, up_name = row
-        item = TeamMemberPublic.model_validate(u)
-        item.upline_fbo_id = up_fbo
-        item.upline_name = up_name
-        items.append(item)
-    items = await _finalize_team_member_items(session, items)
-
-    direct_ct = int(
-        (
-            await session.execute(
-                select(func.count()).select_from(User).where(User.upline_user_id == leader_id)
-            )
-        ).scalar_one()
-    )
-    return TeamMyTeamResponse(
-        items=items,
-        total=len(items),
-        direct_members=direct_ct,
-        total_downline=len(downline_ids),
-    )
-
-
 @router.put("/me/grace-request", response_model=TeamMemberPublic)
 async def request_my_grace(
     body: TeamSelfGraceRequestBody,
@@ -447,26 +365,9 @@ async def request_my_grace(
     await session.refresh(target)
     [item] = await _finalize_team_member_items(session, [TeamMemberPublic.model_validate(target)])
     await notify_topics("team", "team_tracking")
-    # Notify leader via WhatsApp (fire-and-forget)
-    try:
-        from app.services.whatsapp_leader_alerts import alert_leader_grace_requested
-        await alert_leader_grace_requested(
-            target, target.grace_request_reason, target.grace_request_end_date, session
-        )
-    except Exception:
-        pass
-    # Notify management about grace request
-    try:
-        from app.services.whatsapp_management_updates import send_management_grace_requested_alert
-        await send_management_grace_requested_alert(
-            session,
-            member_name=target.name or f"User #{target.id}",
-            member_fbo=target.fbo_id or "",
-            reason=target.grace_request_reason or "",
-            end_date=str(target.grace_request_end_date) if target.grace_request_end_date else "",
-        )
-    except Exception:
-        pass
+    name = target.name or target.fbo_id or f"User #{target.id}"
+    until = f" until {target.grace_request_end_date}" if target.grace_request_end_date else ""
+    await _push_to_leader(target, session, title="Grace requested", body=f"{name} requested grace{until}.")
     return item
 
 
@@ -773,26 +674,8 @@ async def decide_pending_registration(
         row.registration_status = "rejected"
     await session.commit()
     if body.action == "approve":
-        try:
-            from app.services.whatsapp_leader_alerts import alert_leader_new_member_approved
-            await alert_leader_new_member_approved(row, session)
-        except Exception:
-            pass
-        try:
-            from app.services.whatsapp_management_updates import send_management_member_approved_alert
-            leader_name = ""
-            if row.upline_user_id:
-                leader = await session.get(User, row.upline_user_id)
-                leader_name = leader.name if leader else ""
-            await send_management_member_approved_alert(
-                session,
-                member_name=row.name or f"User #{row.id}",
-                member_fbo=row.fbo_id or "",
-                approved_by=user.name or f"Admin #{user.user_id}",
-                leader_name=leader_name,
-            )
-        except Exception:
-            pass
+        name = row.name or row.fbo_id or f"User #{row.id}"
+        await _push_to_leader(row, session, title="New member approved", body=f"{name} joined your team.")
         try:
             await send_push_to_user(
                 session, target_user_id,
@@ -1189,31 +1072,12 @@ async def update_member_compliance(
         target.grace_updated_at = None
         target.grace_set_by_user_id = None
         _clear_pending_grace_request(target)
-        background_tasks.add_task(_send_removal_whatsapp_bg, target_user_id, target.removal_reason)
+        background_tasks.add_task(_notify_leader_member_removed_bg, target_user_id, target.removal_reason)
     else:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Unsupported compliance action",
         )
-
-    # Notify management about grace decisions
-    if body.action in ("grant_grace", "approve_grace_request", "reject_grace_request"):
-        try:
-            from app.services.whatsapp_management_updates import send_management_grace_decision_alert
-            action_label = {
-                "grant_grace": "granted",
-                "approve_grace_request": "approved",
-                "reject_grace_request": "rejected",
-            }[body.action]
-            await send_management_grace_decision_alert(
-                session,
-                member_name=target.name or f"User #{target.id}",
-                member_fbo=target.fbo_id or "",
-                action=action_label,
-                decided_by=user.name or f"Admin #{user.user_id}",
-            )
-        except Exception:
-            pass
 
     await session.commit()
     await session.refresh(target)
@@ -1366,7 +1230,46 @@ async def delete_member(
         code="member_removal_not_persisted",
     )
 
-    background_tasks.add_task(_send_removal_whatsapp_bg, target_user_id, target.removal_reason)
+    background_tasks.add_task(_notify_leader_member_removed_bg, target_user_id, target.removal_reason)
+
+
+class MemberPurgeResponse(BaseModel):
+    leads_moved: int
+    leads_moved_to_user_id: int
+    downline_moved: int
+
+
+@router.post("/members/{target_user_id}/purge", response_model=MemberPurgeResponse)
+async def purge_member_permanently(
+    target_user_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> MemberPurgeResponse:
+    """Admin: permanently erase a member's identity (irreversible).
+
+    Frees their FBO ID / email / phone, moves the leads they work to their
+    nearest leader, moves their direct team up one level, and keeps money /
+    sales / report history under an anonymous "Deleted member #id" row.
+    """
+    _require_admin(user)
+    target = await session.get(User, target_user_id)
+    if target is None or is_purged(target):
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if target.id == user.user_id:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+    if target.role == "admin":
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Admins cannot be permanently deleted. Change their role first.",
+        )
+    result = await purge_member(session, target=target, actor_user_id=user.user_id)
+    await session.commit()
+    await notify_topics("team", "leads")
+    return MemberPurgeResponse(
+        leads_moved=result.leads_moved,
+        leads_moved_to_user_id=result.leads_moved_to_user_id,
+        downline_moved=result.downline_moved,
+    )
 
 
 @router.get("/approvals", response_model=SystemStubResponse)

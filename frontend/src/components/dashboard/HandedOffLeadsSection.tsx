@@ -44,7 +44,7 @@ function LeadProgressCard({ lead }: { lead: LeadPublic }) {
           <span
             className={
               isConverted
-                ? 'shrink-0 rounded-full bg-emerald-500/12 px-2.5 py-1 text-ds-label font-semibold text-emerald-600 dark:text-emerald-400'
+                ? 'shrink-0 rounded-full bg-success/12 px-2.5 py-1 text-ds-label font-semibold text-success-ink'
                 : 'shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-ds-label font-semibold text-primary'
             }
           >
@@ -59,9 +59,9 @@ function LeadProgressCard({ lead }: { lead: LeadPublic }) {
               return (
                 <li key={task.key} className="flex items-center gap-2 text-ds-caption">
                   {done ? (
-                    <CheckCircle2 className="size-4 shrink-0 text-emerald-500" aria-hidden />
+                    <CheckCircle2 className="size-4 shrink-0 text-success-ink" aria-hidden />
                   ) : (
-                    <Circle className="size-4 shrink-0 text-muted-foreground/50" aria-hidden />
+                    <Circle className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   )}
                   <span className={done ? 'text-foreground' : 'text-muted-foreground'}>
                     {task.label}
@@ -72,7 +72,7 @@ function LeadProgressCard({ lead }: { lead: LeadPublic }) {
           </ul>
         ) : (
           <p className="text-ds-caption text-muted-foreground">
-            {isConverted ? 'Lead converted 🎉' : 'No tasks for this stage yet.'}
+            {isConverted ? 'Lead converted' : 'No tasks for this stage yet.'}
           </p>
         )}
       </CardContent>

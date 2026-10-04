@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Trash2 } from 'lucide-react'
 
+import { EmptyState } from '@/components/ui/states'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Button } from '@/components/ui/button'
-import { EmptyStatePremium } from '@/components/ui/empty-state-premium'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useLeadsQuery,
@@ -86,7 +86,7 @@ export function RecycleBinWorkPage({ title }: Props) {
         <div className="surface-elevated p-4 text-sm text-muted-foreground">
           <p className="mb-3 font-medium text-foreground">Deleted: {data.total}</p>
           {data.items.length === 0 ? (
-            <EmptyStatePremium
+            <EmptyState
               variant="files"
               title="Recycle bin is empty"
               description="Deleted leads will appear here. You can restore them or permanently delete."

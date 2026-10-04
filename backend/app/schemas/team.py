@@ -91,20 +91,6 @@ class TeamSelfGraceRequestBody(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=2000)
 
 
-class TeamMyTeamResponse(BaseModel):
-    """Directory rows: leader self + downline; team self only; admin global slice (first ``limit`` rows)."""
-
-    items: list[TeamMemberPublic]
-    total: int
-    direct_members: int = Field(
-        default=0,
-        description="Users whose direct upline is the current leader (0 for team role).",
-    )
-    total_downline: int = Field(
-        default=0,
-        description="Strict descendants under the leader (excludes the leader row); 0 for team role.",
-    )
-
 
 class TeamFlpMinBillingRequestItem(BaseModel):
     lead_id: int

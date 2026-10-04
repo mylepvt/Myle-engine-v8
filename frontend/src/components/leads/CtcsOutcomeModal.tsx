@@ -4,13 +4,14 @@ import { MessageCircle, Phone } from 'lucide-react'
 import type { CtcsAction } from '@/hooks/use-leads-query'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
+import { useBackClose } from '@/hooks/use-back-close'
 
-// Left column — lead INTEREST decision (drives the pipeline).
+// Left column — lead INTEREST decision (drives the pipeline). Payment is not here:
+// it always goes through "Send to Day 1" with the enrollment screenshot.
 const INTEREST_OPTIONS: { action: CtcsAction; label: string }[] = [
   { action: 'interested', label: 'Interested' },
   { action: 'call_later', label: 'Call Later' },
   { action: 'not_interested', label: 'Not Interested' },
-  { action: 'paid', label: 'Paid' },
 ]
 
 // Right column — what physically happened on the LINE (sets call_status only).
@@ -44,6 +45,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
   const [step, setStep] = useState<'outcomes' | 'call_later_time'>('outcomes')
   const [localFollowup, setLocalFollowup] = useState(defaultCallLaterLocalInput)
   const innerRef = useRef<HTMLDivElement>(null)
+  useBackClose({ open, onClose })
 
   useEffect(() => {
     if (!open) return
@@ -102,8 +104,8 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
                   href={tel}
                   className={cn(
                     'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
-                    'border-2 border-emerald-600/45 bg-emerald-500/15 text-emerald-900 shadow-[0_0_12px_rgba(52,211,153,0.28)] hover:bg-emerald-500/25',
-                    'dark:border-emerald-400/70 dark:bg-emerald-500/20 dark:text-emerald-100 dark:shadow-[0_0_12px_rgba(52,211,153,0.35)] dark:hover:bg-emerald-500/30',
+                    'border-2 border-success/45 bg-success/15 text-success-ink shadow-[0_0_12px_rgba(52,211,153,0.28)] hover:bg-success/25',
+                    'dark:border-success/70 dark:bg-success/20 dark:text-success-ink dark:shadow-[0_0_12px_rgba(52,211,153,0.35)] dark:hover:bg-success/30',
                   )}
                 >
                   <Phone className="size-4 shrink-0" aria-hidden />
@@ -117,8 +119,8 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
                   rel="noopener noreferrer"
                   className={cn(
                     'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
-                    'border-2 border-[#128C7E]/55 bg-[#25D366]/14 text-[#065f46] shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-[#25D366]/22',
-                    'dark:border-[#25D366]/75 dark:bg-[#25D366]/20 dark:text-[#e8ffe8] dark:shadow-[0_0_12px_rgba(37,211,102,0.35)] dark:hover:bg-[#25D366]/30',
+                    'border-2 border-whatsapp-teal/55 bg-whatsapp/15 text-whatsapp-ink shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-whatsapp/20',
+                    'dark:border-whatsapp/75 dark:bg-whatsapp/20 dark:text-whatsapp-ink-dark dark:shadow-[0_0_12px_rgba(37,211,102,0.35)] dark:hover:bg-whatsapp/30',
                   )}
                 >
                   <MessageCircle className="size-4 shrink-0" aria-hidden />

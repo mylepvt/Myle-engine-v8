@@ -14,9 +14,9 @@ import {
   X,
 } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { IconInput } from '@/components/auth/IconInput'
-import { LocationConsentModal } from '@/components/auth/LocationConsentModal'
 import { TerminalBootOverlay } from '@/components/auth/TerminalBootOverlay'
 import { Button } from '@/components/ui/button'
 import { authDevLogin, authPasswordLogin } from '@/lib/auth-api'
@@ -82,7 +82,6 @@ export function LoginPage() {
   } | null>(null)
   const [bootFinished, setBootFinished] = useState(false)
   // null = still checking permission, true = show consent modal, false = skip modal
-  const [showConsent, setShowConsent] = useState<boolean | null>(null)
 
   useEffect(() => {
     try {
@@ -100,40 +99,13 @@ export function LoginPage() {
     }
   }, [meta?.auth_dev_login_enabled])
 
-  // After boot overlay finishes, decide whether to show location consent
+  // Boot overlay finished → straight to the dashboard.
   useEffect(() => {
-    if (!bootFinished || !bootUser) return
-    const role = bootUser.role
-    // Admins don't need field location tracking
-    if (role !== 'team' && role !== 'leader') {
-      setShowConsent(false)
-      return
-    }
-    if (navigator.webdriver) {
-      setShowConsent(false)
-      return
-    }
-    if (!('permissions' in navigator)) {
-      setShowConsent(true)
-      return
-    }
-    navigator.permissions
-      .query({ name: 'geolocation' as PermissionName })
-      .then((result) => {
-        // Only show consent when browser hasn't been asked yet
-        setShowConsent(result.state === 'prompt')
-      })
-      .catch(() => setShowConsent(true))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootFinished])
-
-  // Navigate to dashboard when no consent screen is needed
-  useEffect(() => {
-    if (bootUser && bootFinished && showConsent === false) {
+    if (bootUser && bootFinished) {
       navigate(from, { replace: true })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootUser, bootFinished, showConsent])
+  }, [bootUser, bootFinished])
 
   async function handlePasswordLogin() {
     setError(null)
@@ -249,16 +221,7 @@ export function LoginPage() {
     )
   }
 
-  if (bootUser && bootFinished && showConsent === true) {
-    return (
-      <LocationConsentModal
-        onComplete={() => navigate(from, { replace: true })}
-      />
-    )
-  }
-
-  // showConsent === false → navigation handled by useEffect above
-  // showConsent === null → briefly checking permission state, render nothing
+  // Navigation handled by the effect above.
   if (bootUser && bootFinished) return null
 
   return (
@@ -305,7 +268,7 @@ export function LoginPage() {
         >
           {showGateBanner ? (
             <div
-              className="flex items-start gap-2 rounded border border-amber-500/35 bg-amber-500/[0.12] px-3 py-2.5 text-left text-sm text-amber-100/95"
+              className="flex items-start gap-2 rounded border border-warning/35 bg-warning/[0.12] px-3 py-2.5 text-left text-sm text-warning-ink/95"
               role="status"
             >
               <span className="min-w-0 flex-1">
@@ -313,7 +276,7 @@ export function LoginPage() {
               </span>
               <button
                 type="button"
-                className="shrink-0 rounded-md p-1 text-amber-200/90 transition-colors hover:bg-amber-500/20 hover:text-amber-50"
+                className="shrink-0 rounded-md p-1 text-warning-ink/90 transition-colors hover:bg-warning/20 hover:text-warning-ink"
                 onClick={() => setShowGateBanner(false)}
                 aria-label="Dismiss notice"
               >
@@ -323,14 +286,14 @@ export function LoginPage() {
           ) : null}
 
           {devLoginAllowed ? (
-            <div className="space-y-3 rounded border border-amber-500/30 bg-amber-500/[0.07] p-4">
-              <p className="text-ds-label uppercase text-amber-200/90">
+            <div className="space-y-3 rounded border border-warning/30 bg-warning/[0.07] p-4">
+              <p className="text-ds-label uppercase text-warning-ink/90">
                 Quick Access
               </p>
               <label className="field-label" htmlFor="login-role">
                 Select role
               </label>
-              <select
+              <NativeSelect
                 id="login-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
@@ -342,7 +305,7 @@ export function LoginPage() {
                     {roleShortLabel(r)}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               <Button
                 type="button"
                 variant="secondary"
@@ -412,7 +375,7 @@ export function LoginPage() {
                     placeholder="Your FBO ID"
                     icon={IdCard}
                   />
-                  <p className="mt-1.5 text-[0.7rem] leading-relaxed text-muted-foreground/90">
+                  <p className="mt-1.5 text-ds-micro leading-relaxed text-muted-foreground/90">
                     Password is required. If you used a username before, enter it in this field instead of FBO.
                   </p>
                 </div>
@@ -511,11 +474,11 @@ export function LoginPage() {
           </form>
         </AuthCard>
 
-        <p className="mt-5 flex items-center justify-center gap-2 text-center text-[0.7rem] leading-relaxed text-muted-foreground/85">
+        <p className="mt-5 flex items-center justify-center gap-2 text-center text-ds-micro leading-relaxed text-muted-foreground/85">
           <Shield className="size-3.5 shrink-0 opacity-80" aria-hidden />
           Secure internal access · Credentials sent over HTTPS only.
         </p>
-        <p className="mt-1 text-center text-[0.65rem] text-muted-foreground/60">
+        <p className="mt-1 text-center text-ds-micro text-muted-foreground">
           {t('appTitle')} — {t('appTagline')}
         </p>
       </div>

@@ -48,8 +48,8 @@ function formatShortDate(value: string | null) {
 }
 
 const GRACE_OUTCOME_LABEL: Record<string, { text: string; cls: string }> = {
-  auto_restored:  { text: 'Kept working — auto-restored ✓', cls: 'text-emerald-600 dark:text-emerald-400' },
-  approved:       { text: 'Approved by admin',              cls: 'text-emerald-600 dark:text-emerald-400' },
+  auto_restored:  { text: 'Kept working — auto-restored ✓', cls: 'text-success-ink' },
+  approved:       { text: 'Approved by admin',              cls: 'text-success-ink' },
   auto_removed:   { text: 'Removed (no compliance)',        cls: 'text-destructive' },
   rejected:       { text: 'Rejected by admin',              cls: 'text-destructive' },
   cleared:        { text: 'Cleared by admin',               cls: 'text-muted-foreground' },
@@ -304,11 +304,11 @@ export function GateAssistantCard({ sessionReady }: Props) {
         ) : null}
 
         {showEarlyEndPrompt ? (
-          <div className="rounded-lg border border-amber-400/40 bg-amber-50/60 px-3 py-3 text-sm dark:bg-amber-900/20">
-            <p className="font-semibold text-amber-800 dark:text-amber-300">
+          <div className="rounded-lg border border-warning/40 bg-warning/60 px-3 py-3 text-sm">
+            <p className="font-semibold text-warning-ink">
               You're working during grace
             </p>
-            <p className="mt-1 text-ds-caption text-amber-700 dark:text-amber-400">
+            <p className="mt-1 text-ds-caption text-warning-ink">
               {buildActivitySummary()} while your grace is active
               {disciplineDate ? ` (runs till ${disciplineDate})` : ''}.
               Want to end grace early and get back on normal track?
@@ -324,7 +324,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
                 size="sm"
                 disabled={endGraceMut.isPending}
                 onClick={handleEndGraceEarly}
-                className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600"
+                className="bg-warning text-white hover:bg-warning/90 dark:bg-warning dark:hover:bg-warning/90"
               >
                 {endGraceMut.isPending ? 'Ending grace…' : 'Yes, end grace now'}
               </Button>

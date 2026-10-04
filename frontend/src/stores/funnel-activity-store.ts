@@ -1,3 +1,4 @@
+import { BookOpen, Eye, Flag, Inbox, type LucideIcon, Mail, Phone, PlayCircle, Target, Trophy } from 'lucide-react'
 import { create } from 'zustand'
 
 export type ActorDot = {
@@ -13,26 +14,26 @@ export type ActorDot = {
 export type FunnelStage = {
   key: string
   label: string
-  icon: string
+  icon: LucideIcon
   dots: ActorDot[]
   count: number
 }
 
-const FUNNEL_STAGES: { key: string; label: string; icon: string }[] = [
-  { key: 'claimed', label: 'Just Claimed', icon: '⚑' },
-  { key: 'new_lead', label: 'New Lead', icon: '📥' },
-  { key: 'contacted', label: 'Contacted', icon: '📞' },
-  { key: 'invited', label: 'Invited', icon: '✉️' },
-  { key: 'video_sent', label: 'Enrollment Live', icon: '▶️' },
-  { key: 'video_watched', label: 'Video Watched', icon: '👀' },
-  { key: 'day1', label: 'Day 1', icon: '🎯' },
-  { key: 'day2', label: 'Day 2', icon: '📚' },
-  { key: 'day3', label: 'Day 3', icon: '📚' },
-  { key: 'converted', label: 'Converted', icon: '🏆' },
+const FUNNEL_STAGES: { key: string; label: string; icon: LucideIcon }[] = [
+  { key: 'claimed', label: 'Just Claimed', icon: Flag },
+  { key: 'new_lead', label: 'New Lead', icon: Inbox },
+  { key: 'contacted', label: 'Contacted', icon: Phone },
+  { key: 'invited', label: 'Invited', icon: Mail },
+  { key: 'video_sent', label: 'Enrollment Video', icon: PlayCircle },
+  { key: 'video_watched', label: 'Video Watched', icon: Eye },
+  { key: 'day1', label: 'Day 1', icon: Target },
+  { key: 'day2', label: 'Day 2', icon: BookOpen },
+  { key: 'day3', label: 'Day 3', icon: BookOpen },
+  { key: 'converted', label: 'Converted', icon: Trophy },
 ]
 
 const DOT_COLORS = [
-  '#5865f2', '#eb459e', '#3ba55c', '#f0b232',
+  '#3b6ef6', '#eb459e', '#3ba55c', '#f0b232',
   '#9b59b6', '#1abc9c', '#e67e22', '#3498db',
   '#2ecc71', '#e74c3c', '#95a5a6', '#f39c12',
 ]

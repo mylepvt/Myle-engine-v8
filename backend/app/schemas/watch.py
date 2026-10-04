@@ -6,14 +6,6 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
-class BatchWatchSubmissionPublic(BaseModel):
-    notes_url: Optional[str] = None
-    voice_note_url: Optional[str] = None
-    video_url: Optional[str] = None
-    notes_text: Optional[str] = None
-    submitted_at: Optional[datetime] = None
-
-
 class BatchWatchPageData(BaseModel):
     token: str
     slot: str
@@ -30,8 +22,6 @@ class BatchWatchPageData(BaseModel):
     video_id: Optional[str] = None
     watch_complete: bool = False
     day2_evaluation_ready: bool = False
-    submission_enabled: bool = False
-    submission: Optional[BatchWatchSubmissionPublic] = None
 
 
 class Day6LivePageData(BaseModel):

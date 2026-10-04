@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { ArrowRightLeft, Clock3, ShieldCheck, UserCheck } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states'
@@ -356,7 +357,7 @@ export function LeadControlPage({ title }: Props) {
                               <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
-                                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                <span className="rounded-full border border-border px-2 py-0.5 text-ds-micro uppercase tracking-wide text-muted-foreground">
                                   {statusLabel(lead.status)}
                                 </span>
                               </div>
@@ -457,7 +458,7 @@ export function LeadControlPage({ title }: Props) {
                       <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {bulkMode ? 'Move selected leads to' : 'Move lead to'}
                       </span>
-                      <select
+                      <NativeSelect
                         value={selectedUserId}
                         onChange={(event) => setSelectedUserId(event.target.value)}
                         className="h-12 w-full rounded border border-border/60 bg-background px-3 text-sm text-foreground outline-none ring-0 transition focus:border-primary/40"
@@ -467,7 +468,7 @@ export function LeadControlPage({ title }: Props) {
                             {user.display_name} · {user.role} · {user.active_leads_count} active
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </label>
 
                     <label className="block space-y-2">

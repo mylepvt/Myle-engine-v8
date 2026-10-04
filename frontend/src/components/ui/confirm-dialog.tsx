@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useBackClose } from '@/hooks/use-back-close'
 
 /**
  * Styled confirmation dialog for destructive / irreversible actions.
@@ -32,6 +33,7 @@ export function ConfirmDialog({
   onCancel: () => void
 }) {
   const [typed, setTyped] = useState('')
+  useBackClose({ open, onClose: onCancel })
 
   useEffect(() => {
     if (!open) setTyped('')

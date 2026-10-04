@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Annotated, Dict
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.time_ist import now_ist
+from app.db.session import AsyncSessionLocal
 from app.models.user import User
 from app.services.avatar_storage import save_user_avatar_file
 from app.schemas.settings import (
@@ -21,16 +23,14 @@ from app.schemas.settings import (
     SystemConfigurationUpdateRequest,
     AppSettingsResponse,
     AppSettingUpdateRequest,
-    FlpMinBillingVideoUploadResponse,
     SystemUsersSummaryResponse,
     AuditLogResponse,
 )
 from app.services.flp_min_billing_video_uploads import (
     cleanup_replaced_managed_flp_min_billing_video,
-    remove_managed_flp_min_billing_video_file,
-    save_flp_min_billing_video_file,
 )
 from app.services.flp_min_billing_video import normalize_video_source_url
+from app.services.push_service import send_push_to_roles_bg
 from app.services.settings_service import SettingsService
 
 router = APIRouter()
@@ -234,6 +234,7 @@ async def create_or_update_app_setting(
     request: AppSettingUpdateRequest,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> Dict[str, str]:
     """Create or update an application setting (admin only)."""
     _require_admin(user)
@@ -241,10 +242,14 @@ async def create_or_update_app_setting(
     service = SettingsService(session)
     try:
         previous_source = None
+        previous_live_url = None
         value = request.value
         if request.key == "flp_min_billing_video_source_url":
             previous_source = await service.get_app_setting("flp_min_billing_video_source_url")
             value = normalize_video_source_url(request.value)
+        if request.key == "live_session_url":
+            previous_live_url = (await service.get_app_setting("live_session_url") or "").strip()
+            value = (request.value or "").strip()
         success, message = await service.update_app_setting(
             request.key, value, user.user_id
         )
@@ -255,6 +260,8 @@ async def create_or_update_app_setting(
             )
         if request.key == "flp_min_billing_video_source_url":
             cleanup_replaced_managed_flp_min_billing_video(previous_source, value)
+        if request.key == "live_session_url" and value and value != previous_live_url:
+            await _announce_live_session_link(service, background_tasks, user.user_id)
         return {"message": message}
     except HTTPException:
         raise
@@ -265,37 +272,23 @@ async def create_or_update_app_setting(
         )
 
 
-@router.post("/system/app-settings/enrollment-video/upload", response_model=FlpMinBillingVideoUploadResponse)
-async def upload_flp_min_billing_video(
-    file: Annotated[UploadFile, File()],
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> FlpMinBillingVideoUploadResponse:
-    """Upload enrollment video into backend/uploads and update the app setting automatically."""
-    _require_admin(user)
-
-    service = SettingsService(session)
-    previous_source = await service.get_app_setting("flp_min_billing_video_source_url")
-
-    ok, message, source_url = await save_flp_min_billing_video_file(file)
-    if not ok or not source_url:
-        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=message)
-
-    success, update_message = await service.update_app_setting(
-        "flp_min_billing_video_source_url",
-        source_url,
-        user.user_id,
+async def _announce_live_session_link(
+    service: SettingsService,
+    background_tasks: BackgroundTasks,
+    updated_by_user_id: int,
+) -> None:
+    """New live-session link: stamp the update time and push leader + team."""
+    stamp = now_ist()
+    await service.update_app_setting(
+        "live_session_updated_at", stamp.isoformat(timespec="seconds"), updated_by_user_id
     )
-    if not success:
-        remove_managed_flp_min_billing_video_file(source_url)
-        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=update_message)
-
-    cleanup_replaced_managed_flp_min_billing_video(previous_source, source_url)
-
-    return FlpMinBillingVideoUploadResponse(
-        source_url=source_url,
-        file_name=source_url.rsplit("/", 1)[-1],
-        message=message,
+    background_tasks.add_task(
+        send_push_to_roles_bg,
+        AsyncSessionLocal,
+        ("leader", "team"),
+        title="New Live Session Link",
+        body=f"Updated link for {stamp.strftime('%d %b %Y')} is available — tap to join or copy.",
+        url="/dashboard/other/live-session",
     )
 
 

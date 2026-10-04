@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -217,7 +218,7 @@ export function LeadGenPage({ title }: { title?: string }) {
             <Skeleton className="h-10 w-full" />
           ) : (
             <div className="flex flex-col gap-3 sm:flex-row">
-              <select
+              <NativeSelect
                 aria-label="Category"
                 className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm"
                 value={category}
@@ -229,7 +230,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                     {c.label}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
               <Button
                 disabled={!category || createMutation.isPending}
                 onClick={() => createMutation.mutate(category)}
@@ -239,7 +240,7 @@ export function LeadGenPage({ title }: { title?: string }) {
             </div>
           )}
           {createMutation.isError ? (
-            <p className="text-sm text-red-600">{(createMutation.error as Error).message}</p>
+            <p className="text-sm text-destructive-ink">{(createMutation.error as Error).message}</p>
           ) : null}
         </CardContent>
       </Card>
@@ -272,7 +273,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                   {link.active ? (
                     <Button
                       variant="ghost"
-                      className="text-red-600"
+                      className="text-destructive-ink"
                       onClick={() => deactivateMutation.mutate(link.id)}
                     >
                       Deactivate
@@ -298,7 +299,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                         onChange={(e) => setMsgDraft(e.target.value)}
                         placeholder={link.share_message}
                       />
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-ds-micro text-muted-foreground">
                         Tip: use {'{link}'} where your link should appear.
                       </p>
                       <div className="flex gap-2">
@@ -426,7 +427,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                               onClick={() => shareTemplate(link, tpl)}
                             >
                               {tpl.name}
-                              <span className="mt-1 block text-[10px] opacity-80">
+                              <span className="mt-1 block text-ds-micro opacity-80">
                                 Tap to share
                               </span>
                             </button>
@@ -438,7 +439,7 @@ export function LeadGenPage({ title }: { title?: string }) {
                 ) : null}
 
                 {uploadMutation.isError && uploadingId === link.id ? (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-destructive-ink">
                     {(uploadMutation.error as Error).message}
                   </p>
                 ) : null}
@@ -483,7 +484,7 @@ function LinkResponses({ linkId }: { linkId: number }) {
                 .join(' · ')}
             </p>
           </div>
-          <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+          <span className="whitespace-nowrap text-ds-micro text-muted-foreground">
             {formatWhen(r.created_at)}
           </span>
         </div>

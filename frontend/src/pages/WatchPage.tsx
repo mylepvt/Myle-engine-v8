@@ -5,6 +5,8 @@ import { LockKeyhole, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiUrl } from '@/lib/api'
+import { VideoWatermarkOverlay } from '@/components/watch/VideoProtection'
+import { useAntiCapture } from '@/hooks/use-anti-capture'
 
 type WatchPageData = {
   token: string
@@ -107,6 +109,7 @@ export function WatchPage() {
   const completionRequestedRef = useRef(false)
 
   const [data, setData] = useState<WatchPageData | null>(null)
+  const obscured = useAntiCapture(videoRef)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [phone, setPhone] = useState('')
@@ -182,6 +185,14 @@ export function WatchPage() {
   const heroGreeting = greetingName ? `${wish}, ${greetingName}` : wish
   const heroHeading = useMemo(() => resolveProspectHeading(data?.title), [data?.title])
   const videoSrc = data?.stream_url ? apiUrl(data.stream_url) : null
+  // Same identity watermark as the old secure link: name · masked number · link id.
+  const watermarkLabel = [
+    (data?.viewer_name || data?.lead_name || '').trim(),
+    data?.masked_phone ?? '',
+    data?.token ? `#${data.token.slice(0, 6)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
   const playerStatusTitle = watchCompleted ? 'Thanks for watching' : playMarked ? 'Now playing' : 'Press play to begin'
   const playerStatusBody = watchCompleted
     ? 'You can replay this introduction anytime while this private access window is active.'
@@ -304,19 +315,19 @@ export function WatchPage() {
   }, [data?.access_granted, playing, token])
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#233f74_0%,#101b39_28%,#060a17_66%,#02040a_100%)] text-[#f3f7ff]">
+    <div className="relative min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#233f74_0%,#101b39_28%,#060a17_66%,#02040a_100%)] text-room-text">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(160,195,255,0.18),transparent_58%)]" />
-      <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-[#3158a4]/16 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-room-strong/15 blur-3xl" />
       <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8">
-        <header className="rounded-[2rem] border border-white/10 bg-muted/40 px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+        <header className="rounded-4xl border border-white/10 bg-muted/40 px-5 py-4 shadow-[0_32px_120px_-72px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#9db0d6]">Myle</p>
+              <p className="text-ds-micro font-semibold uppercase tracking-[0.34em] text-room-muted">Myle</p>
               <h1 className="mt-1 text-ds-h2">Your private introduction</h1>
             </div>
             <div className="flex items-center gap-3">
               {data?.access_granted ? (
-                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
                   <span className="relative flex size-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span className="relative inline-flex size-2 rounded-full bg-red-400" />
@@ -332,38 +343,38 @@ export function WatchPage() {
         <main className="flex flex-1 flex-col gap-5 py-5">
           {loading ? (
             <>
-              <Skeleton className="h-28 w-full rounded-[2rem] bg-muted/60" />
-              <Skeleton className="h-[24rem] w-full rounded-[2rem] bg-muted/60" />
+              <Skeleton className="h-28 w-full rounded-4xl bg-muted/60" />
+              <Skeleton className="h-[24rem] w-full rounded-4xl bg-muted/60" />
             </>
           ) : error ? (
             <section
-              className="rounded-[2rem] border border-[#5b2327] bg-[linear-gradient(180deg,rgba(34,12,14,0.98),rgba(16,7,8,0.98))] px-6 py-8 text-center shadow-[0_32px_110px_-70px_rgba(0,0,0,0.9)]"
+              className="rounded-4xl border border-room-danger-border bg-[linear-gradient(180deg,rgba(34,12,14,0.98),rgba(16,7,8,0.98))] px-6 py-8 text-center shadow-[0_32px_110px_-70px_rgba(0,0,0,0.9)]"
               role="alert"
             >
-              <p className="text-base font-semibold text-[#ffb8bd]">{error}</p>
-              <p className="mt-2 text-sm text-[#d6c3c7]">
+              <p className="text-base font-semibold text-room-danger">{error}</p>
+              <p className="mt-2 text-sm text-room-danger-soft">
                 Please ask your team contact to send a fresh access link.
               </p>
             </section>
           ) : data ? (
             <>
-              <section className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] px-5 py-6 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-8 sm:py-7">
+              <section className="rounded-4xl border border-white/10 bg-[linear-gradient(160deg,rgba(255,255,255,0.09),rgba(255,255,255,0.035))] px-5 py-6 shadow-[0_40px_140px_-86px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-8 sm:py-7">
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-2xl">
-                    <p className="text-base font-medium text-[#b2c1de]">{heroGreeting}</p>
-                    <h2 className="mt-3 max-w-xl text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-[#f7f9ff]">
+                    <p className="text-base font-medium text-room-muted">{heroGreeting}</p>
+                    <h2 className="mt-3 max-w-xl text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-room-text">
                       {heroHeading}
                     </h2>
-                    <p className="mt-4 max-w-xl text-base leading-relaxed text-[#aab8d3]">
+                    <p className="mt-4 max-w-xl text-base leading-relaxed text-room-muted">
                       {GENERIC_PROSPECT_SUBLINE}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="border-0 bg-[#19335e] px-4 py-1.5 text-white shadow-[0_18px_38px_-30px_rgba(25,51,94,0.95)]">
+                    <Badge className="border-0 bg-room-raised px-4 py-1.5 text-white shadow-[0_18px_38px_-30px_rgba(25,51,94,0.95)]">
                       <ShieldCheck className="mr-1 size-3.5" />
                       Private access
                     </Badge>
-                    <Badge variant="outline" className="border-[#3f537d] bg-[#0b1120] px-4 py-1.5 text-[#c9d9ff]">
+                    <Badge variant="outline" className="border-room-border-strong bg-room-surface px-4 py-1.5 text-room-soft">
                       {data.masked_phone}
                     </Badge>
                   </div>
@@ -371,21 +382,21 @@ export function WatchPage() {
               </section>
 
               {!data.access_granted ? (
-                <section className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
+                <section className="mx-auto w-full max-w-xl rounded-4xl border border-white/10 bg-[linear-gradient(170deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-5 py-6 shadow-[0_34px_120px_-80px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:px-6">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-md bg-[#112549] p-3 text-[#d2e3ff]">
+                    <div className="rounded-md bg-room-raised p-3 text-room-text">
                       <LockKeyhole className="size-5" />
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-[#f7f9ff]">Continue with your number</p>
-                      <p className="mt-1 text-ds-body text-[#aab8d3]">
+                      <p className="text-lg font-semibold text-room-text">Continue with your number</p>
+                      <p className="mt-1 text-ds-body text-room-muted">
                         Enter your name and use the same mobile number you shared with your team.
                       </p>
                     </div>
                   </div>
 
                   <form className="mt-5 space-y-3" onSubmit={(e) => void handleUnlock(e)}>
-                    <label className="block text-sm font-medium text-[#dfe8ff]" htmlFor="watch-name">
+                    <label className="block text-sm font-medium text-room-text" htmlFor="watch-name">
                       Your name
                     </label>
                     <input
@@ -395,9 +406,9 @@ export function WatchPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter your full name"
-                      className="h-12 w-full rounded-md border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
+                      className="h-12 w-full rounded-md border border-room-border bg-room-surface px-4 text-base text-room-text outline-none transition placeholder:text-room-subtle focus:border-room-accent focus:ring-2 focus:ring-room-accent/20"
                     />
-                    <label className="block text-sm font-medium text-[#dfe8ff]" htmlFor="watch-phone">
+                    <label className="block text-sm font-medium text-room-text" htmlFor="watch-phone">
                       Registered mobile number
                     </label>
                     <input
@@ -408,31 +419,31 @@ export function WatchPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Enter the same number"
-                      className="h-12 w-full rounded-md border border-[#26385d] bg-[#0a1120] px-4 text-base text-[#f7f9ff] outline-none transition placeholder:text-[#7887a3] focus:border-[#8eb0ff] focus:ring-2 focus:ring-[#8eb0ff]/20"
+                      className="h-12 w-full rounded-md border border-room-border bg-room-surface px-4 text-base text-room-text outline-none transition placeholder:text-room-subtle focus:border-room-accent focus:ring-2 focus:ring-room-accent/20"
                     />
                     {unlockError ? (
-                      <p className="text-sm text-[#ffb8bd]" role="alert">
+                      <p className="text-sm text-room-danger" role="alert">
                         {normalizeRoomError(unlockError, 'Could not verify number.')}
                       </p>
                     ) : null}
                     <button
                       type="submit"
                       disabled={unlocking || !name.trim() || !phone.trim()}
-                      className="inline-flex h-12 w-full items-center justify-center rounded-md bg-[#dce7ff] px-5 text-sm font-semibold text-[#0a1530] transition hover:bg-[#c6d8ff] disabled:opacity-60"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-md bg-room-cta px-5 text-sm font-semibold text-room-cta-ink transition hover:bg-room-cta-hover disabled:opacity-60"
                     >
                       {unlocking ? 'Verifying…' : 'Continue'}
                     </button>
                   </form>
                 </section>
               ) : (
-                <section className="overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
-                  <div className="bg-[#070d1d] p-3 sm:p-4">
+                <section className="overflow-hidden rounded-4xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] shadow-[0_38px_140px_-88px_rgba(0,0,0,0.96)] backdrop-blur-2xl">
+                  <div className="bg-room-surface p-3 sm:p-4">
                     {videoSrc ? (
                       <>
                         <div className="relative">
                           <video
                             ref={videoRef}
-                            className="pointer-events-none aspect-video h-full w-full rounded-[1.4rem] bg-black object-contain select-none"
+                            className="pointer-events-none aspect-video h-full w-full rounded-3xl bg-black object-contain select-none"
                             src={videoSrc}
                             crossOrigin="use-credentials"
                             playsInline
@@ -458,7 +469,8 @@ export function WatchPage() {
                             }}
                             onPause={() => {
                               setPlaying(false)
-                              videoRef.current?.play()
+                              // Pausing is not allowed — except while blacked out (tab hidden / focus lost).
+                              if (!obscured) videoRef.current?.play()
                             }}
                             onTimeUpdate={(e) => {
                               const nextTime = e.currentTarget.currentTime || 0
@@ -486,14 +498,15 @@ export function WatchPage() {
                               void handleCompleteWatch()
                             }}
                           />
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-[1.4rem] bg-gradient-to-t from-[#030806] to-transparent" />
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 rounded-b-3xl bg-gradient-to-t from-room-base to-transparent" />
+                          <VideoWatermarkOverlay label={watermarkLabel} obscured={obscured} />
                         </div>
 
-                        <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-4 text-white/90">
+                        <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.045] p-4 text-white/90">
                           <p className="text-base font-semibold text-white">{playerStatusTitle}</p>
-                          <p className="mt-1 text-ds-body text-[#b6c6e7]">{playerStatusBody}</p>
+                          <p className="mt-1 text-ds-body text-room-muted">{playerStatusBody}</p>
 
-                          {completing ? <p className="mt-3 text-xs text-[#8fb4ff]">Finishing up…</p> : null}
+                          {completing ? <p className="mt-3 text-xs text-room-accent">Finishing up…</p> : null}
                           {playerError ? (
                             <p className="mt-3 text-xs text-red-300" role="alert">
                               {normalizeRoomError(playerError, 'Could not control secure playback.')}
@@ -502,7 +515,7 @@ export function WatchPage() {
                         </div>
                       </>
                     ) : (
-                      <div className="flex aspect-video items-center justify-center rounded-[1.4rem] bg-black text-sm text-white/70">
+                      <div className="flex aspect-video items-center justify-center rounded-3xl bg-black text-sm text-white/70">
                         Preparing your video…
                       </div>
                     )}

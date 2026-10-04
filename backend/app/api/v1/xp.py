@@ -4,13 +4,14 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.user import User
 from app.services.xp_service import (
+    get_period_leaderboard,
     DAILY_CAP,
     admin_force_reset_all,
     admin_recalc_cutoff,
@@ -51,6 +52,11 @@ async def get_my_xp(
         "daily_xp": summary["daily_xp"],
         "daily_cap": DAILY_CAP,
         "streak": summary["streak"],
+        "streak_done_today": summary["streak_done_today"],
+        "best_streak": summary["best_streak"],
+        "calls_today": summary["calls_today"],
+        "call_target": summary["call_target"],
+        "login_streak": summary["login_streak"],
         "next_level_xp": summary["next_level_xp"],
         "progress_pct": summary["progress_pct"],
         "season_year": summary.get("season_year"),
@@ -73,6 +79,16 @@ async def leaderboard(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> List[dict]:
     return await get_leaderboard(session, limit=10)
+
+
+@router.get("/leaderboard/period")
+async def period_leaderboard(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    period: str = Query(default="today", pattern="^(today|week)$"),
+) -> dict:
+    """XP earned today or this week (IST) — top 10 + the viewer's own rank."""
+    return await get_period_leaderboard(session, period=period, viewer_user_id=user.user_id)
 
 
 @router.post("/ping-login")

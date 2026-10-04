@@ -3,22 +3,22 @@
 Jobs (all IST-aware):
 - flp_min_billing_proof_alert          : every 30min — pending proof > 2h → push admin/leaders
 - weekly_compliance_digest        : Monday 09:00 IST — compliance summary to leaders
-- daily_report_reminder           : 21:00 IST daily — push eligible users who haven't submitted report
-- tracking_report_reminder        : 21:30 IST daily — WhatsApp leaders who haven't submitted tracking report
+- morning_plan                    : 09:00 IST daily — "Your plan for today" push (leads to call, follow-ups, streak)
+- evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
+- inactivity_nudge                : every 30 min 11:00–16:30 IST — attention push to idle members (max 2/day)
+- tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
 - closing_pipeline_maintenance    : every 30min — archive day2-6 leads idle >24h (reassign is manual only)
 - general_pipeline_maintenance    : every 30min — archive pre-enrollment leads idle >24h (reassign is manual only)
 - leader_basics_enforcement       : 23:30 IST daily — warn/lock leaders whose team missed basics 7/14 days
 - eos_mission_pregeneration       : 06:00 IST daily — create today's mission for every active member
-- eos_automation_rules            : 10:00 & 17:00 IST — evaluate EOS automation rules (alerts/escalations via WhatsApp)
+- eos_automation_rules            : 10:00 & 17:00 IST — evaluate EOS automation rules (push alerts / tasks)
 - eos_verification_escalations    : 11:00 & 18:00 IST — escalate pending tasks 24h→leader, 48h→senior, 72h→admin
-- eos_action_queue_digest         : 09:00 IST daily — WhatsApp queue digest: org-wide to management, scoped to leaders
-- integrity_audit                 : 02:30 IST daily — self-audit for data contradictions; auto-fix safe ones + alert management
+- integrity_audit                 : 02:30 IST daily — self-audit for data contradictions; auto-fix safe ones + log
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -28,11 +28,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.time_ist import today_ist
 from app.db.session import AsyncSessionLocal
 from app.models.current_cc import CurrentCcSheet
-from app.models.daily_report import DailyReport
+from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
-from app.models.whatsapp_log import WhatsAppLog
-from app.models.report_reminder_outreach import ReportReminderOutreach
 from app.models.user import User
+from app.services.push_job_runs import record_push_run
+from app.services.engagement_nudge import (
+    NUDGE_ACTION,
+    build_nudge_contexts,
+    in_nudge_window,
+    pick_nudge,
+)
+from app.services.engagement_digest import (
+    build_evening_recaps,
+    build_morning_plans,
+    evening_recap_message,
+    morning_plan_message,
+)
 from app.services.live_metrics import fresh_call_counts_by_user, get_daily_call_target
 from app.services.member_compliance import build_compliance_snapshots
 from app.services.observation_logger import observe_event
@@ -166,14 +177,14 @@ async def _send_digest_for_leader(session: AsyncSession, leader_id: int) -> None
             leader_id,
             title="Weekly team compliance digest",
             body=body,
-            url="/dashboard/team",
+            url="/dashboard/team/reports",
         )
     except Exception as exc:
         logger.warning("Weekly digest push failed for leader_id=%s: %s", leader_id, exc)
 
 
 # ---------------------------------------------------------------------------
-# Job 3: daily report reminder — 20:00 IST
+# Job 3: morning plan (09:00) + evening recap (20:30) IST
 # ---------------------------------------------------------------------------
 
 _ELIGIBLE_ROLES = {"team", "leader"}
@@ -190,71 +201,96 @@ async def _get_eligible_users(session: AsyncSession) -> list[User]:
     ).scalars().all()
 
 
-async def job_daily_report_reminder() -> None:
-    """Push eligible users who haven't submitted today's daily report (runs 20:00 IST)."""
+async def _push_digest(session: AsyncSession, user: User, title: str, body: str, url: str) -> bool:
+    if not user.daily_report_reminders_enabled:
+        return False
+    try:
+        return bool(await send_push_to_user(session, user.id, title=title, body=body, url=url))
+    except Exception as exc:  # noqa: BLE001 — one bad subscription must not stop the batch
+        logger.warning("Digest push failed for user_id=%s: %s", user.id, exc)
+        return False
+
+
+async def job_morning_plan() -> None:
+    """09:00 IST — "Your plan for today": new leads to call, follow-ups due, streak."""
     try:
         async with AsyncSessionLocal() as session:
-            today = today_ist()
             users = await _get_eligible_users(session)
-            if not users:
-                return
+            plans = await build_morning_plans(session, list(users), today_ist())
+            sent = targeted = 0
+            for user in users:
+                msg = morning_plan_message(plans[user.id])
+                if msg is None:
+                    continue
+                targeted += 1
+                sent += await _push_digest(session, user, *msg, url="/dashboard/work/leads?tab=today")
+            logger.info("morning_plan: users=%d targeted=%d sent=%d", len(users), targeted, sent)
+        await record_push_run("morning_plan", targeted=targeted, sent=sent)
+    except Exception as exc:
+        logger.error("job_morning_plan failed: %s", exc)
+        await record_push_run("morning_plan", targeted=0, sent=0, error=str(exc))
 
-            user_ids = [u.id for u in users]
-            submitted = {
-                int(uid)
-                for (uid,) in (
-                    await session.execute(
-                        select(DailyReport.user_id).where(
-                            DailyReport.user_id.in_(user_ids),
-                            DailyReport.report_date == today,
+
+async def job_evening_recap() -> None:
+    """20:30 IST — calls vs yesterday, today's XP rank, and the daily-report nudge.
+
+    Replaces the old 21:00 daily-report reminder so members get one evening push.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            users = await _get_eligible_users(session)
+            recaps = await build_evening_recaps(session, list(users), today_ist())
+            sent = 0
+            for user in users:
+                recap = recaps[user.id]
+                title, body = evening_recap_message(recap)
+                url = "/dashboard/other/daily-report" if not recap.report_submitted else "/dashboard/other/leaderboard"
+                sent += await _push_digest(session, user, title, body, url=url)
+            logger.info("evening_recap: users=%d sent=%d", len(users), sent)
+        await record_push_run("evening_recap", targeted=len(users), sent=sent)
+    except Exception as exc:
+        logger.error("job_evening_recap failed: %s", exc)
+        await record_push_run("evening_recap", targeted=0, sent=0, error=str(exc))
+
+
+async def job_inactivity_nudge() -> None:
+    """Every 30 min, 11:00–16:30 IST — one attention-grabbing push to idle members.
+
+    Selection and caps live in engagement_nudge (max 2/day, 3h apart, never the
+    same kind twice, only when they have leads/follow-ups to work).
+    """
+    now = datetime.now(timezone.utc)
+    if not in_nudge_window(now):
+        return
+    try:
+        async with AsyncSessionLocal() as session:
+            users = list(await _get_eligible_users(session))
+            contexts = await build_nudge_contexts(session, users, now)
+            sent = targeted = 0
+            for user in users:
+                pick = pick_nudge(contexts[user.id], now)
+                if pick is None:
+                    continue
+                targeted += 1
+                kind, title, body = pick
+                url = "/dashboard/other/leaderboard" if kind == "overtaken" else "/dashboard/work/leads?tab=today"
+                if await _push_digest(session, user, title, body, url=url):
+                    session.add(
+                        ActivityLog(
+                            user_id=user.id,
+                            action=NUDGE_ACTION,
+                            entity_type="user",
+                            entity_id=user.id,
+                            meta={"type": kind},
                         )
                     )
-                ).all()
-            }
-
-            missing = [u for u in users if u.id not in submitted]
-
-            # Push notification (existing)
-            for member in missing:
-                try:
-                    await send_push_to_user(
-                        session,
-                        member.id,
-                        title="Daily report pending ⚠️",
-                        body="You haven't submitted today's daily report yet. Submit before midnight to avoid a compliance warning.",
-                        url="/dashboard/work/report",
-                    )
-                except Exception as exc:
-                    logger.warning("Report reminder push failed for user_id=%s: %s", member.id, exc)
-
-            # WhatsApp reminder — skip members already reminded today
-            from app.services.whatsapp_report_reminder import send_report_reminder
-            already_reminded: set[int] = set(
-                (await session.execute(
-                    select(ReportReminderOutreach.user_id).where(
-                        ReportReminderOutreach.reminder_date == today,
-                        ReportReminderOutreach.send_status.in_(["sent", "stub"]),
-                    )
-                )).scalars().all()
-            )
-            wa_sent = 0
-            for member in missing:
-                if member.id in already_reminded:
-                    continue
-                if not getattr(member, "phone", None):
-                    continue
-                try:
-                    await send_report_reminder(user=member, reminder_date=today, session=session)
-                    wa_sent += 1
-                except Exception as wa_exc:
-                    logger.warning("scheduled wa reminder failed user_id=%s: %s", member.id, wa_exc)
-            if wa_sent:
-                await session.commit()
-
-            logger.info("daily_report_reminder: push=%d wa=%d users", len(missing), wa_sent)
-
+                    sent += 1
+            await session.commit()
+            logger.info("inactivity_nudge: users=%d sent=%d", len(users), sent)
+        await record_push_run("inactivity_nudge", targeted=targeted, sent=sent)
     except Exception as exc:
-        logger.error("job_daily_report_reminder failed: %s", exc)
+        logger.error("job_inactivity_nudge failed: %s", exc)
+        await record_push_run("inactivity_nudge", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -262,23 +298,19 @@ async def job_daily_report_reminder() -> None:
 # ---------------------------------------------------------------------------
 
 async def job_tracking_report_reminder() -> None:
-    """WhatsApp leaders who haven't submitted today's tracking report (runs 21:30 IST).
+    """Push leaders who haven't submitted today's tracking report (runs 21:30 IST).
 
     The tracking report = the leader's own CURRENT CCs v/s TARGET CCs sheet
     (``current_cc_sheets`` row where ``subject_user_id`` is the leader). Only
-    leaders missing today's sheet are messaged; anyone already nudged today is
-    skipped (dedup via the WhatsApp log).
+    leaders missing today's sheet are notified (the job runs once a day).
     """
     try:
-        from app.services.whatsapp_tracking_reminder import send_tracking_report_reminder
-
         async with AsyncSessionLocal() as session:
             today = today_ist()
             leaders = (
                 await session.execute(
                     select(User).where(
                         *report_eligibility_conditions(today, roles=("leader",)),
-                        User.phone.isnot(None),
                     )
                 )
             ).scalars().all()
@@ -302,44 +334,29 @@ async def job_tracking_report_reminder() -> None:
             missing = [u for u in leaders if u.id not in submitted]
             if not missing:
                 logger.info("tracking_report_reminder: all leaders submitted")
+                await record_push_run("tracking_report_reminder", targeted=0, sent=0)
                 return
-
-            # Dedup — skip leaders already messaged in the last 6h (guards re-fire).
-            cutoff = datetime.now(timezone.utc) - timedelta(hours=6)
-            already_reminded: set[int] = {
-                int(uid)
-                for (uid,) in (
-                    await session.execute(
-                        select(WhatsAppLog.related_user_id).where(
-                            WhatsAppLog.message_type == "tracking_reminder",
-                            WhatsAppLog.status == "sent",
-                            WhatsAppLog.created_at >= cutoff,
-                            WhatsAppLog.related_user_id.in_([u.id for u in missing]),
-                        )
-                    )
-                ).all()
-                if uid is not None
-            }
 
             sent = 0
             for leader in missing:
-                if leader.id in already_reminded:
-                    continue
                 try:
-                    result = await send_tracking_report_reminder(
-                        user=leader, reminder_date=today, session=session
+                    delivered = await send_push_to_user(
+                        session,
+                        leader.id,
+                        title="Tracking report pending",
+                        body="Submit today's Current CCs v/s Target CCs sheet before you close the day.",
+                        url="/dashboard/team/current-cc",
                     )
-                    if result.get("ok"):
+                    if delivered:
                         sent += 1
                 except Exception as exc:
-                    logger.warning("tracking reminder failed leader_id=%s: %s", leader.id, exc)
-            if sent:
-                await session.commit()
+                    logger.warning("tracking reminder push failed leader_id=%s: %s", leader.id, exc)
 
             logger.info(
                 "tracking_report_reminder: leaders=%d missing=%d sent=%d",
                 len(leaders), len(missing), sent,
             )
+            await record_push_run("tracking_report_reminder", targeted=len(missing), sent=sent)
             observe_event(
                 event_type="scheduler.tracking_report_reminder",
                 source="scheduler",
@@ -347,6 +364,7 @@ async def job_tracking_report_reminder() -> None:
             )
     except Exception as exc:
         logger.error("job_tracking_report_reminder failed: %s", exc)
+        await record_push_run("tracking_report_reminder", targeted=0, sent=0, error=str(exc))
         observe_event(
             event_type="scheduler.failure",
             source="scheduler",
@@ -375,24 +393,27 @@ async def job_call_target_reminder() -> None:
                 u for u in users
                 if int(calls_today.get(u.id, 0)) < call_target
             ]
+            sent = 0
             for user in short:
                 done = int(calls_today.get(user.id, 0))
                 remaining = call_target - done
                 try:
-                    await send_push_to_user(
+                    sent += bool(await send_push_to_user(
                         session,
                         user.id,
                         title="Call target reminder 📞",
                         body=f"You've made {done}/{call_target} calls today. {remaining} more needed to stay on track.",
                         url="/dashboard/work/leads",
-                    )
+                    ))
                 except Exception as exc:
                     logger.warning("Call target reminder push failed for user_id=%s: %s", user.id, exc)
 
-            logger.info("call_target_reminder: pushed %d users short on calls", len(short))
+            logger.info("call_target_reminder: short=%d sent=%d", len(short), sent)
+        await record_push_run("call_target_reminder", targeted=len(short), sent=sent)
 
     except Exception as exc:
         logger.error("job_call_target_reminder failed: %s", exc)
+        await record_push_run("call_target_reminder", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -545,11 +566,6 @@ async def job_leader_basics_enforcement() -> None:
                     )
                     locked_count += 1
                     try:
-                        from app.services.whatsapp_removal import send_removal_whatsapp
-                        await send_removal_whatsapp(user=leader, session=session)
-                    except Exception as wa_exc:
-                        logger.warning("removal whatsapp failed leader_id=%s during basics enforcement: %s", leader.id, wa_exc)
-                    try:
                         await send_push_to_user(
                             session,
                             leader.id,
@@ -558,7 +574,7 @@ async def job_leader_basics_enforcement() -> None:
                                 f"Your team has missed daily call targets for {streak} days. "
                                 "Your account has been locked. Contact admin to restore access."
                             ),
-                            url="/dashboard/team/los",
+                            url="/dashboard",
                         )
                     except Exception as exc:
                         logger.warning("Leader lock push failed leader_id=%s: %s", leader.id, exc)
@@ -575,7 +591,7 @@ async def job_leader_basics_enforcement() -> None:
                                 f"Account will be locked in {_LEADER_LOCK_STREAK - streak} day(s) "
                                 "if basics are not restored."
                             ),
-                            url="/dashboard/team/los",
+                            url="/dashboard",
                         )
                     except Exception as exc:
                         logger.warning("Leader warning push failed leader_id=%s: %s", leader.id, exc)
@@ -596,108 +612,6 @@ async def job_leader_basics_enforcement() -> None:
         logger.error("job_leader_basics_enforcement failed: %s", exc)
         observe_event(event_type="scheduler.failure", source="scheduler",
                       job="leader_basics_enforcement", error=str(exc)[:200])
-
-
-# ---------------------------------------------------------------------------
-# Job 9: daily team summary → leaders at 22:00 IST
-# ---------------------------------------------------------------------------
-
-async def job_daily_leader_team_summary() -> None:
-    """Send each leader a WhatsApp summary of their team's daily report status (22:00 IST)."""
-    try:
-        from app.services.whatsapp_leader_alerts import send_daily_team_summary
-        async with AsyncSessionLocal() as session:
-            today = today_ist()
-            leaders = (
-                await session.execute(
-                    select(User).where(
-                        *report_eligibility_conditions(today, roles=("leader",)),
-                        User.phone.isnot(None),
-                    )
-                )
-            ).scalars().all()
-
-            for leader in leaders:
-                try:
-                    await send_daily_team_summary(leader, today, session)
-                except Exception as exc:
-                    logger.warning("daily summary failed leader_id=%s: %s", leader.id, exc)
-
-            logger.info("job_daily_leader_team_summary: sent to %d leaders", len(leaders))
-    except Exception as exc:
-        logger.error("job_daily_leader_team_summary failed: %s", exc)
-
-
-# ---------------------------------------------------------------------------
-# Job 10: management updates → Shikha at 21:30 IST (daily bundle)
-# ---------------------------------------------------------------------------
-
-async def job_management_updates() -> None:
-    """Send daily management WhatsApp bundle (top 5, integrity alerts, inactive list)."""
-    MAX_RETRIES = 2
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            from app.services.whatsapp_management_updates import send_daily_management_bundle
-            async with AsyncSessionLocal() as session:
-                results = await send_daily_management_bundle(session)
-                await session.commit()
-                sent = sum(1 for r in results if r.get("sent"))
-                failures = [r for r in results if not r.get("ok")]
-                logger.info(
-                    "job_management_updates: %d/%d updates sent (attempt %d/%d)",
-                    sent, len(results), attempt, MAX_RETRIES,
-                )
-                observe_event(
-                    event_type="scheduler.management_updates",
-                    source="scheduler",
-                    detail={"sent": sent, "total": len(results), "attempt": attempt},
-                )
-                if sent == len(results):
-                    return
-                if attempt < MAX_RETRIES:
-                    logger.warning(
-                        "job_management_updates: %d failures, retrying in 60s: %s",
-                        len(failures), [r.get("error", "?") for r in failures],
-                    )
-                    await asyncio.sleep(60)
-        except Exception as exc:
-            logger.error("job_management_updates failed (attempt %d/%d): %s", attempt, MAX_RETRIES, exc)
-            observe_event(
-                event_type="scheduler.failure",
-                source="scheduler",
-                detail={"job": "management_updates", "attempt": attempt, "error": str(exc)},
-            )
-            if attempt < MAX_RETRIES:
-                await asyncio.sleep(60)
-    logger.error("job_management_updates: all %d attempts exhausted", MAX_RETRIES)
-
-
-# ---------------------------------------------------------------------------
-# Job 11: weekly management report → Shikha at Mon 09:00 IST
-# ---------------------------------------------------------------------------
-
-async def job_management_weekly_report() -> None:
-    """Send weekly performance report to management every Monday 09:00 IST."""
-    try:
-        from app.services.whatsapp_management_updates import send_management_update
-        async with AsyncSessionLocal() as session:
-            result = await send_management_update(session, "weekly")
-            if result.get("sent"):
-                logger.info("job_management_weekly_report: sent successfully")
-            else:
-                logger.warning("job_management_weekly_report: %s", result.get("error", "unknown"))
-            observe_event(
-                event_type="scheduler.management_weekly_report",
-                source="scheduler",
-                detail=result,
-            )
-    except Exception as exc:
-        logger.error("job_management_weekly_report failed: %s", exc)
-        observe_event(
-            event_type="scheduler.failure",
-            source="scheduler",
-            detail={"job": "management_weekly_report", "error": str(exc)},
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -758,7 +672,7 @@ async def job_eos_automation_rules() -> None:
 # ---------------------------------------------------------------------------
 
 async def job_eos_verification_escalations() -> None:
-    """Escalate pending verification tasks: 24h→leader, 48h→senior, 72h→admin (WhatsApp)."""
+    """Escalate pending verification tasks: 24h→leader, 48h→senior, 72h→admin (push)."""
     try:
         from app.services import verification_service
         async with AsyncSessionLocal() as session:
@@ -779,49 +693,18 @@ async def job_eos_verification_escalations() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Job 15: EOS action queue digest → 09:00 IST daily
-# ---------------------------------------------------------------------------
-
-async def job_eos_action_queue_digest() -> None:
-    """WhatsApp the ranked action queue: org-wide to management, scoped to each leader."""
-    try:
-        from app.services import action_queue_service
-        async with AsyncSessionLocal() as session:
-            result = await action_queue_service.send_action_queue_digests(session)
-            logger.info("job_eos_action_queue_digest: %s", result)
-            observe_event(
-                event_type="scheduler.eos_action_queue_digest",
-                source="scheduler",
-                detail=result,
-            )
-    except Exception as exc:
-        logger.error("job_eos_action_queue_digest failed: %s", exc)
-        observe_event(
-            event_type="scheduler.failure",
-            source="scheduler",
-            detail={"job": "eos_action_queue_digest", "error": str(exc)},
-        )
-
-
-# ---------------------------------------------------------------------------
 # Job 16: integrity self-audit → 02:30 IST daily
 # ---------------------------------------------------------------------------
 
 async def job_integrity_audit() -> None:
-    """Find data contradictions, auto-fix the safe ones, alert management on issues."""
+    """Find data contradictions, auto-fix the safe ones, log the rest."""
     try:
         from app.services.integrity_audit_service import run_integrity_audit
-        from app.services.whatsapp_leader_alerts import send_system_alert
-        from app.services.whatsapp_management_updates import get_management_phone
         async with AsyncSessionLocal() as session:
             report = await run_integrity_audit(session, auto_fix=True)
             message = report.to_message()
             if message:
-                phone = await get_management_phone(session)
-                if phone:
-                    await send_system_alert(
-                        phone, message, session, message_type="integrity_audit"
-                    )
+                logger.warning("integrity_audit report:\n%s", message)
             logger.info(
                 "job_integrity_audit: issues=%d fixed=%d",
                 report.total_issues, report.total_fixed,
@@ -838,3 +721,21 @@ async def job_integrity_audit() -> None:
             source="scheduler",
             detail={"job": "integrity_audit", "error": str(exc)},
         )
+
+
+# ---------------------------------------------------------------------------
+# Lead bookings — fill today's bookings from the paid pool (backup to the
+# immediate fill that runs after a pool import). Every 10 min.
+# ---------------------------------------------------------------------------
+
+async def job_lead_booking_fulfillment() -> None:
+    """Auto-assign pool leads to members who booked them for today."""
+    from app.services.lead_booking_service import fulfill_open_bookings
+
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await fulfill_open_bookings(session)
+            if result["leads_assigned"] or result["skipped"]:
+                logger.info("lead_booking_fulfillment: %s", result)
+    except Exception as exc:
+        logger.error("job_lead_booking_fulfillment failed: %s", exc)

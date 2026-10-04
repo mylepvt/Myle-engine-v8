@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+import { useGoBack } from '@/hooks/use-go-back'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,7 +13,8 @@ import {
 import { playAppSound } from '@/lib/app-sounds'
 
 type Props = {
-  title: string
+  /** Omitted = embedded in Wallet admin (no back link or heading). */
+  title?: string
 }
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
@@ -35,8 +37,8 @@ function formatReviewerLabel(item: WalletRecharge): string {
 
 function RechargeStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
-    pending: 'bg-amber-400/15 text-amber-400',
-    approved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    pending: 'bg-warning/15 text-warning-ink',
+    approved: 'bg-success/15 text-success-ink',
     rejected: 'bg-destructive/15 text-destructive',
   }
   const c = cls[status] ?? 'bg-muted/30 text-muted-foreground'
@@ -211,7 +213,7 @@ function RechargeRow({
 }
 
 export function WalletRechargeAdminPage({ title }: Props) {
-  const navigate = useNavigate()
+  const goBack = useGoBack()
   const requestsQuery = useWalletRechargeRequestsQuery()
   const reviewMut = useReviewRechargeRequestMutation()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
@@ -222,11 +224,13 @@ export function WalletRechargeAdminPage({ title }: Props) {
 
   return (
     <div className="max-w-3xl space-y-4 md:space-y-6">
-      <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        ← Back
-      </button>
+      {title ? (
+        <button type="button" onClick={goBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          ← Back
+        </button>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-ds-h2">{title}</h1>
+        {title ? <h1 className="text-ds-h2">{title}</h1> : <span />}
         <Button
           type="button"
           variant="secondary"

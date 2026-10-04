@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 
+import { NativeSelect } from '@/components/ui/native-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -12,9 +14,9 @@ import {
   useUpdateMemberRoleMutation,
   useUpdateMemberUplineMutation,
   useDeleteMemberMutation,
+  usePurgeMemberMutation,
   useMemberLeadsQuery,
   useToggleTrainingLockMutation,
-  useToggleEnrollmentAccessMutation,
   type TeamMemberPublic,
 } from '@/hooks/use-team-query'
 import { useInvoicesQuery } from '@/hooks/use-invoices-query'
@@ -40,8 +42,8 @@ export function MemberProfileModal({
   const updateUplineMut = useUpdateMemberUplineMutation()
   const updateComplianceMut = useUpdateMemberComplianceMutation()
   const deleteMut = useDeleteMemberMutation()
+  const purgeMut = usePurgeMemberMutation()
   const trainingToggle = useToggleTrainingLockMutation()
-  const enrollAccessToggle = useToggleEnrollmentAccessMutation()
   const { data: allMembers } = useTeamMembersQuery()
   const [selectedRole, setSelectedRole] = useState<Role>(member.role as Role)
   const [roleError, setRoleError] = useState<string | null>(null)
@@ -49,11 +51,9 @@ export function MemberProfileModal({
   const [uplineError, setUplineError] = useState<string | null>(null)
   const [complianceError, setComplianceError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [danger, setDanger] = useState<null | 'delete' | 'remove_now'>(null)
+  const [danger, setDanger] = useState<null | 'delete' | 'remove_now' | 'purge'>(null)
   const [trainingError, setTrainingError] = useState<string | null>(null)
   const [trainingRequired, setTrainingRequired] = useState<boolean>(member.training_required ?? false)
-  const [enrollError, setEnrollError] = useState<string | null>(null)
-  const [enrollAccess, setEnrollAccess] = useState<boolean>(member.enrollment_link_access ?? false)
   const [graceEndDate, setGraceEndDate] = useState(
     member.grace_request_end_date?.slice(0, 10) ?? member.grace_end_date?.slice(0, 10) ?? '',
   )
@@ -66,7 +66,6 @@ export function MemberProfileModal({
     setSelectedRole(member.role as Role)
     setSelectedUpline(member.upline_user_id != null ? String(member.upline_user_id) : '')
     setTrainingRequired(member.training_required ?? false)
-    setEnrollAccess(member.enrollment_link_access ?? false)
     setGraceEndDate(member.grace_request_end_date?.slice(0, 10) ?? member.grace_end_date?.slice(0, 10) ?? '')
     setGraceReason(member.grace_request_reason ?? member.grace_reason ?? '')
   }, [member])
@@ -136,6 +135,14 @@ export function MemberProfileModal({
     )
   }
 
+  function handlePurge() {
+    setDeleteError(null)
+    purgeMut.mutate(currentMember.id, {
+      onError: (e: Error) => setDeleteError(e.message),
+      onSuccess: onClose,
+    })
+  }
+
   function handleDelete() {
     setDeleteError(null)
     deleteMut.mutate(currentMember.id, {
@@ -172,7 +179,7 @@ export function MemberProfileModal({
             className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Close"
           >
-            ✕
+            <X className="size-5" aria-hidden />
           </button>
         </div>
 
@@ -211,7 +218,7 @@ export function MemberProfileModal({
                     ) : null}
                   </div>
                 </div>
-                <div className="text-right text-[0.7rem] text-muted-foreground">
+                <div className="text-right text-ds-micro text-muted-foreground">
                   <p>Calls streak: {currentMember.calls_short_streak ?? 0}d</p>
                   <p>Report streak: {currentMember.missing_report_streak ?? 0}d</p>
                 </div>
@@ -220,14 +227,14 @@ export function MemberProfileModal({
                 {currentMember.compliance_summary ?? 'No active discipline note.'}
               </p>
               {currentMember.grace_request_end_date ? (
-                <p className="text-[0.72rem] text-primary">
+                <p className="text-ds-micro text-primary">
                   Pending grace request till {formatMemberDate(currentMember.grace_request_end_date)}
                   {currentMember.grace_request_reason ? ` · ${currentMember.grace_request_reason}` : ''}
                 </p>
               ) : null}
 
               {currentMember.role === 'admin' ? (
-                <p className="text-[0.72rem] text-muted-foreground">
+                <p className="text-ds-micro text-muted-foreground">
                   Admin accounts are excluded from call/report discipline rules.
                 </p>
               ) : (
@@ -332,7 +339,7 @@ export function MemberProfileModal({
           <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
             <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Change Role</p>
             <div className="flex items-center gap-2">
-              <select
+              <NativeSelect
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value as Role)}
                 disabled={updateRoleMut.isPending}
@@ -341,7 +348,7 @@ export function MemberProfileModal({
                 {ROLES.map((r) => (
                   <option key={r} value={r}>{roleShortLabel(r)}</option>
                 ))}
-              </select>
+              </NativeSelect>
               <Button
                 type="button"
                 size="sm"
@@ -363,7 +370,7 @@ export function MemberProfileModal({
               Handoffs go to this member's nearest upline leader. Move them under the right leader here.
             </p>
             <div className="flex items-center gap-2">
-              <select
+              <NativeSelect
                 value={selectedUpline}
                 onChange={(e) => setSelectedUpline(e.target.value)}
                 disabled={updateUplineMut.isPending}
@@ -377,7 +384,7 @@ export function MemberProfileModal({
                       {(m.username ?? m.email)} · {roleShortLabel(m.role as Role)}
                     </option>
                   ))}
-              </select>
+              </NativeSelect>
               <Button
                 type="button"
                 size="sm"
@@ -483,12 +490,12 @@ export function MemberProfileModal({
               <div>
                 <p className="text-xs text-foreground">
                   Status:{' '}
-                  <span className={trainingRequired ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                  <span className={trainingRequired ? 'text-warning-ink font-medium' : 'text-success-ink font-medium'}>
                     {trainingRequired ? 'Locked (training required)' : 'Unlocked'}
                   </span>
                 </p>
                 {currentMember.training_status ? (
-                  <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
+                  <p className="mt-0.5 text-ds-micro text-muted-foreground">
                     Progress: {currentMember.training_status}
                   </p>
                 ) : null}
@@ -526,52 +533,6 @@ export function MemberProfileModal({
             ) : null}
           </div>
 
-          {/* Enrollment link access */}
-          <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
-            <p className="mb-2 text-ds-label uppercase text-muted-foreground">Enrollment Link Access</p>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs text-foreground">
-                  Status:{' '}
-                  <span className={enrollAccess ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-muted-foreground font-medium'}>
-                    {enrollAccess ? 'Allowed (sees Enrollment Link page)' : 'Not allowed'}
-                  </span>
-                </p>
-                <p className="mt-0.5 text-[0.68rem] text-muted-foreground">
-                  Lets this member open the secure enrollment-video link generator.
-                </p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={enrollAccessToggle.isPending}
-                onClick={() => {
-                  setEnrollError(null)
-                  const next = !enrollAccess
-                  enrollAccessToggle.mutate(
-                    { userId: currentMember.id, enabled: next },
-                    {
-                      onSuccess: (updated) => {
-                        setEnrollAccess(updated.enrollment_link_access)
-                        setCurrentMember((prev) => ({
-                          ...prev,
-                          enrollment_link_access: updated.enrollment_link_access,
-                        }))
-                      },
-                      onError: (e: Error) => setEnrollError(e.message),
-                    },
-                  )
-                }}
-                className="shrink-0"
-              >
-                {enrollAccessToggle.isPending ? '…' : enrollAccess ? 'Disable' : 'Enable'}
-              </Button>
-            </div>
-            {enrollError ? (
-              <p className="mt-1 text-ds-caption text-destructive" role="alert">{enrollError}</p>
-            ) : null}
-          </div>
             </TabsContent>
 
             <TabsContent value="danger">
@@ -588,9 +549,30 @@ export function MemberProfileModal({
               onClick={() => setDanger('delete')}
               className="border-destructive/50 text-destructive hover:bg-destructive/10"
             >
-              {deleteMut.isPending ? 'Deleting…' : 'Delete Account'}
+              {deleteMut.isPending ? 'Removing…' : 'Remove member'}
             </Button>
+            <p className="mt-1 text-ds-caption text-muted-foreground">
+              Blocks login. Account and history stay, so it can be restored.
+            </p>
           </div>
+          {currentMember.role !== 'admin' ? (
+            <div className="mt-4 border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                disabled={purgeMut.isPending}
+                onClick={() => setDanger('purge')}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                {purgeMut.isPending ? 'Deleting…' : 'Delete permanently'}
+              </Button>
+              <p className="mt-1 text-ds-caption text-muted-foreground">
+                Erases name, phone, email and FBO ID for good (can&apos;t be undone). Their leads go to their
+                leader and their team moves up one level. Money, sales and reports stay as &quot;Deleted member&quot;.
+              </p>
+            </div>
+          ) : null}
             </TabsContent>
           </Tabs>
         </div>
@@ -599,19 +581,24 @@ export function MemberProfileModal({
 
       <ConfirmDialog
         open={danger !== null}
-        title={danger === 'delete' ? 'Delete account' : 'Remove member now'}
-        description={
-          danger === 'delete'
-            ? `This removes ${currentMember.fbo_id} from the system and revokes access immediately. Their history is kept and access can be restored later.`
-            : `Remove ${currentMember.fbo_id} from the system right now? They lose access immediately.`
+        title={
+          danger === 'purge' ? 'Delete permanently' : danger === 'delete' ? 'Remove member' : 'Remove member now'
         }
-        confirmLabel={danger === 'delete' ? 'Delete account' : 'Remove now'}
+        description={
+          danger === 'purge'
+            ? `Permanently erase ${currentMember.fbo_id}? Name, phone, email and FBO ID are deleted forever and cannot be recovered. Their leads move to their leader. Type DELETE to confirm.`
+            : danger === 'delete'
+              ? `This removes ${currentMember.fbo_id} and revokes access immediately. Their history is kept and access can be restored later.`
+              : `Remove ${currentMember.fbo_id} from the system right now? They lose access immediately.`
+        }
+        confirmLabel={danger === 'purge' ? 'Delete permanently' : danger === 'delete' ? 'Remove member' : 'Remove now'}
         destructive
-        requireTyped={danger === 'delete' ? currentMember.fbo_id : undefined}
+        requireTyped={danger === 'purge' ? 'DELETE' : danger === 'delete' ? currentMember.fbo_id : undefined}
         onConfirm={() => {
           const action = danger
           setDanger(null)
-          if (action === 'delete') handleDelete()
+          if (action === 'purge') handlePurge()
+          else if (action === 'delete') handleDelete()
           else if (action === 'remove_now') handleComplianceAction('remove_now')
         }}
         onCancel={() => setDanger(null)}
