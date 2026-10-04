@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 export type UserProfileResponse = {
   id: number
@@ -126,7 +127,7 @@ async function updateUserProfile(request: UserProfileUpdateRequest): Promise<{ m
     body: JSON.stringify(request),
   })
   if (!res.ok) {
-    throw new Error(`Update profile HTTP ${res.status}`)
+    throw new Error(await getApiErrorMessage(res))
   }
   return res.json()
 }
@@ -146,6 +147,9 @@ async function resizeToDataUrl(file: File): Promise<string> {
       canvas.width = w
       canvas.height = h
       const ctx = canvas.getContext('2d')!
+      // JPEG has no alpha — paint white first so transparent PNGs don't turn black.
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, w, h)
       ctx.drawImage(img, 0, 0, w, h)
       resolve(canvas.toDataURL('image/jpeg', 0.82))
     }
@@ -155,6 +159,9 @@ async function resizeToDataUrl(file: File): Promise<string> {
 }
 
 async function uploadUserAvatar(file: File): Promise<{ avatar_url: string; message: string }> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Please choose an image file (JPEG, PNG, or WebP).')
+  }
   const dataUrl = await resizeToDataUrl(file)
   const res = await apiFetch('/api/v1/settings-enhanced/profile/avatar', {
     method: 'POST',
@@ -162,8 +169,7 @@ async function uploadUserAvatar(file: File): Promise<{ avatar_url: string; messa
     body: JSON.stringify({ data_url: dataUrl }),
   })
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { detail?: string }
-    throw new Error(err.detail ?? `Upload HTTP ${res.status}`)
+    throw new Error(await getApiErrorMessage(res))
   }
   return res.json() as Promise<{ avatar_url: string; message: string }>
 }

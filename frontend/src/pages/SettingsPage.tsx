@@ -205,7 +205,7 @@ export default function SettingsPage() {
                       />
                     ) : (
                       <div className="flex size-full items-center justify-center text-2xl text-muted-foreground">
-                        {(userProfile.data?.username?.[0] ?? userProfile.data?.email?.[0] ?? '?').toUpperCase()}
+                        {(userProfile.data?.name?.[0] ?? userProfile.data?.username?.[0] ?? userProfile.data?.email?.[0] ?? '?').toUpperCase()}
                       </div>
                     )}
                   </div>
@@ -225,8 +225,14 @@ export default function SettingsPage() {
                       }}
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
-                      JPEG, PNG, or WebP. Max 2 MB.
+                      JPEG, PNG, or WebP. Saves automatically once selected.
                     </p>
+                    {avatarUpload.isPending ? (
+                      <p className="mt-1 text-xs text-muted-foreground" role="status">Uploading photo...</p>
+                    ) : null}
+                    {avatarUpload.isSuccess ? (
+                      <p className="mt-1 text-xs text-success-ink" role="status">Profile photo updated.</p>
+                    ) : null}
                     {avatarUpload.isError ? (
                       <p className="mt-1 text-xs text-destructive" role="alert">
                         {avatarUpload.error instanceof Error ? avatarUpload.error.message : 'Upload failed'}
@@ -248,7 +254,10 @@ export default function SettingsPage() {
                   <Input
                     id="username"
                     value={profileForm.username}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, username: e.target.value }))}
+                    onChange={(e) => {
+                      setProfileSuccess(null)
+                      setProfileForm((prev) => ({ ...prev, username: e.target.value }))
+                    }}
                   />
                 </div>
                 <div>
@@ -256,7 +265,10 @@ export default function SettingsPage() {
                   <Input
                     id="name"
                     value={profileForm.name}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => {
+                      setProfileSuccess(null)
+                      setProfileForm((prev) => ({ ...prev, name: e.target.value }))
+                    }}
                   />
                 </div>
                 <div>
@@ -264,7 +276,10 @@ export default function SettingsPage() {
                   <Input
                     id="phone"
                     value={profileForm.phone}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) => {
+                      setProfileSuccess(null)
+                      setProfileForm((prev) => ({ ...prev, phone: e.target.value }))
+                    }}
                   />
                 </div>
                 <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
