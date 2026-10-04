@@ -514,8 +514,9 @@ async def run_escalation_checks(session: AsyncSession) -> list[dict[str, Any]]:
             select(TaskAssignment).where(
                 TaskAssignment.status == "pending",
                 TaskAssignment.escalation_level < 3,
-                TaskAssignment.created_at
-                < now - timedelta(hours=24 * (TaskAssignment.escalation_level + 1)),
+                # Coarse SQL cut (24h); the per-level 24/48/72h thresholds are checked below.
+                # (timedelta can't take a SQL column — that made this job fail twice a day.)
+                TaskAssignment.created_at < now - timedelta(hours=24),
             )
         )
     ).scalars().all()
