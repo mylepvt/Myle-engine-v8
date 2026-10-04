@@ -28,6 +28,7 @@ vi.mock('@tanstack/react-query', async () => {
 
 vi.mock('@/components/wins/WinsFeedCard', () => ({ WinsFeedCard: () => null }))
 vi.mock('@/components/dashboard/overview/AppSetupCard', () => ({ AppSetupCard: () => <div data-testid="app-setup" /> }))
+vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))
 vi.mock('@/components/control-room/ControlRoomCard', () => ({ ControlRoomCard: () => <div data-testid="control-room" /> }))
 
 vi.mock('@/hooks/use-settings-query', () => ({

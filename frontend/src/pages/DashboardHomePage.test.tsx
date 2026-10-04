@@ -19,6 +19,7 @@ const mockUseXpLeaderboardQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
+vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))
 vi.mock('@/components/control-room/ControlRoomCard', () => ({
   ControlRoomCard: () => <div data-testid="control-room" />,
 }))
