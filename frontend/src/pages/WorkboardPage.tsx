@@ -554,7 +554,6 @@ function ProcessChecklistSection({
   nextLabel?: string
   taskKeys?: string[]
 }) {
-  const qc = useQueryClient()
   const [busyTask, setBusyTask] = useState<string | null>(null)
   const [taskError, setTaskError] = useState<string | null>(null)
   const { data: contentLinks = {} } = useContentLinksQuery()
@@ -581,7 +580,7 @@ function ProcessChecklistSection({
           process_task_done: done,
         },
       })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      // The tick is painted optimistically; the mutation re-syncs the board in the background.
     } catch (err) {
       setTaskError(err instanceof Error ? err.message : 'Could not update process task')
     } finally {

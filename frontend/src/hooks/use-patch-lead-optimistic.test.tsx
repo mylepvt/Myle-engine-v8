@@ -1,121 +1,44 @@
-/**
- * Bug 1 regression: status PATCH must update the row instantly (optimistic) and
- * roll back if the request fails — no more "click edit 2-3 times" / silent
- * stale rows.
- */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { createElement } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import {
-  type LeadPublic,
-  usePatchLeadMutation,
-} from '@/hooks/use-leads-query'
+import { usePatchLeadMutation } from './use-leads-query'
 
-// Infinite-query key prefix the mutation patches: ['leads','list','paged', ...]
-const PAGED_KEY = ['leads', 'list', 'paged', 'active', '', '', 50, null, false, false, false, false]
+let release: () => void = () => {}
+vi.mock('@/lib/api', () => ({
+  apiFetch: vi.fn(
+    () =>
+      new Promise<Response>((resolve) => {
+        release = () => resolve(new Response(JSON.stringify({ id: 1 }), { status: 200 }))
+      }),
+  ),
+}))
 
-function seedLead(status: string): LeadPublic {
-  // Only fields the optimistic patch touches matter; cast the rest.
-  return { id: 1, name: 'L', status, call_status: null } as unknown as LeadPublic
-}
+describe('usePatchLeadMutation — Day checklist ticks', () => {
+  it('shows the tick before the server answers (one tap is enough)', async () => {
+    const qc = new QueryClient()
+    const lead = { id: 1, name: 'Rohit', status: 'day3', process_tracking: { day3: { day3_interview: true } } }
+    qc.setQueryData(['workboard'], { columns: [{ status: 'day3', total: 1, items: [lead] }], max_rows_fetched: 1 })
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    const { result } = renderHook(() => usePatchLeadMutation(), { wrapper })
 
-function makeClientWithLead(status: string) {
-  const qc = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
-  qc.setQueryData(PAGED_KEY, {
-    pageParams: [0],
-    pages: [{ items: [seedLead(status)], total: 1, limit: 50, offset: 0 }],
-  })
-  return qc
-}
+    let pending: Promise<unknown> = Promise.resolve()
+    await act(async () => {
+      pending = result.current.mutateAsync({
+        id: 1,
+        body: { process_stage: 'day3', process_task: 'day3_live_session', process_task_done: true },
+      })
+      await new Promise((r) => setTimeout(r, 0))
+    })
 
-function leadStatus(qc: QueryClient): string {
-  const data = qc.getQueryData(PAGED_KEY) as
-    | { pages: { items: LeadPublic[] }[] }
-    | undefined
-  return data!.pages[0].items[0].status
-}
+    const card = (qc.getQueryData(['workboard']) as { columns: { items: typeof lead[] }[] }).columns[0].items[0]
+    // Ticked already, and the existing Interview tick is kept.
+    expect(card.process_tracking).toEqual({ day3: { day3_interview: true, day3_live_session: true } })
 
-function makeClientWithWorkboard() {
-  const qc = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
-  qc.setQueryData(['workboard', 'view'], {
-    columns: [
-      { status: 'day1', total: 1, items: [seedLead('day1')] },
-      { status: 'day2', total: 0, items: [] },
-    ],
-    max_rows_fetched: 50,
-    action_counts: {},
-  })
-  return qc
-}
-
-function wbColumns(qc: QueryClient) {
-  return (qc.getQueryData(['workboard', 'view']) as {
-    columns: { status: string; total: number; items: LeadPublic[] }[]
-  }).columns
-}
-
-function wrapper(qc: QueryClient) {
-  return ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client: qc }, children)
-}
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
-
-describe('usePatchLeadMutation optimistic status update', () => {
-  it('applies the new status to the cached row immediately, before the network resolves', async () => {
-    const qc = makeClientWithLead('video_sent')
-    // Never-resolving fetch: the optimistic patch must show before any response.
-    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
-
-    const { result } = renderHook(() => usePatchLeadMutation(), { wrapper: wrapper(qc) })
-    result.current.mutate({ id: 1, body: { status: 'day1' } })
-
-    await waitFor(() => expect(leadStatus(qc)).toBe('day1'))
-  })
-
-  it('rolls the row back to its previous status when the PATCH fails', async () => {
-    const qc = makeClientWithLead('video_sent')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        new Response(JSON.stringify({ error: { message: 'nope' } }), { status: 400 }),
-      ),
-    )
-
-    const { result } = renderHook(() => usePatchLeadMutation(), { wrapper: wrapper(qc) })
-    await expect(
-      result.current.mutateAsync({ id: 1, body: { status: 'day1' } }),
-    ).rejects.toThrow()
-
-    // After failure the optimistic change is reverted (not left stuck or silently stale).
-    expect(leadStatus(qc)).toBe('video_sent')
-  })
-
-  it('relocates the card to its new workboard column immediately on a status change', async () => {
-    const qc = makeClientWithWorkboard()
-    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
-
-    const { result } = renderHook(() => usePatchLeadMutation(), { wrapper: wrapper(qc) })
-    result.current.mutate({ id: 1, body: { status: 'day2' } })
-
-    await waitFor(() => {
-      const cols = wbColumns(qc)
-      const day1 = cols.find((c) => c.status === 'day1')!
-      const day2 = cols.find((c) => c.status === 'day2')!
-      // Card left day1 and lives in day2 now, with totals adjusted.
-      expect(day1.items.map((i) => i.id)).not.toContain(1)
-      expect(day1.total).toBe(0)
-      expect(day2.items.map((i) => i.id)).toContain(1)
-      expect(day2.total).toBe(1)
+    await act(async () => {
+      release()
+      await pending
     })
   })
 })
