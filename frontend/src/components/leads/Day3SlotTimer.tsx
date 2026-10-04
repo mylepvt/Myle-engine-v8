@@ -137,11 +137,18 @@ export function Day3SlotTimer({
   const [custom, setCustom] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
 
+  const hasDeadline = deadline != null
   useEffect(() => {
-    if (!deadline) return
-    const t = window.setInterval(() => setNow(new Date()), 1000)
-    return () => window.clearInterval(t)
-  }, [deadline])
+    if (!hasDeadline) return
+    // Tick exactly on each wall-clock second so the digits change smoothly, never skip.
+    let t = 0
+    const tick = () => {
+      setNow(new Date())
+      t = window.setTimeout(tick, 1000 - (Date.now() % 1000) + 5)
+    }
+    t = window.setTimeout(tick, 1000 - (Date.now() % 1000) + 5)
+    return () => window.clearTimeout(t)
+  }, [hasDeadline])
 
   const save = (at: Date) => {
     setMsg(null)

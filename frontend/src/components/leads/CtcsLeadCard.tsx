@@ -7,9 +7,10 @@ import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
 import { SendToDay1Button } from '@/components/leads/SendToDay1Button'
 import { callStatusSelectOptions, type CallStatusApi } from '@/lib/call-status-options'
 import { currentSectionForLead, nextSectionForLead } from '@/lib/lead-section'
-import { formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
+import { leadSlaTone } from '@/lib/lead-sla'
 import { leadStatusSelectOptionsForLead, teamMayChangeLeadStatus } from '@/lib/team-lead-status'
-import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { timerRemainingMs } from '@/lib/ctcs-timer'
+import { LiveSlaClock } from '@/components/leads/LiveSlaClock'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import {
@@ -88,7 +89,6 @@ export function CtcsLeadCard({
   const remainingSec = Math.max(0, Math.floor(ms / 1000))
   const colorKey = overdue ? 0 : remainingSec
   const timeColors = leadSlaTone(colorKey)
-  const { hourAngle, minuteAngle, secondAngle } = leadSlaClockAngles(overdue ? 0 : ms)
 
   const wa = whatsAppChatHref(lead.phone ?? '')
   const tel = telHref(lead.phone)
@@ -224,60 +224,11 @@ export function CtcsLeadCard({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-          <div className="flex shrink-0 items-center gap-1.5">
-            <div className={cn('relative size-8 shrink-0 rounded-full', timeColors.glow)}>
-            <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
-              <circle
-                cx="20"
-                cy="20"
-                r="18"
-                fill="transparent"
-                stroke={timeColors.stroke}
-                strokeWidth="2"
-                strokeOpacity="0.5"
-              />
-              <line
-                x1="20"
-                y1="20"
-                x2="20"
-                y2="10"
-                stroke={timeColors.stroke}
-                strokeWidth="2"
-                strokeLinecap="round"
-                transform={`rotate(${hourAngle}, 20, 20)`}
-              />
-              <line
-                x1="20"
-                y1="20"
-                x2="20"
-                y2="7"
-                stroke={timeColors.stroke}
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                transform={`rotate(${minuteAngle}, 20, 20)`}
-              />
-              <line
-                x1="20"
-                y1="20"
-                x2="20"
-                y2="5"
-                stroke={timeColors.stroke}
-                strokeWidth="1"
-                strokeLinecap="round"
-                transform={`rotate(${secondAngle}, 20, 20)`}
-              />
-              <circle cx="20" cy="20" r="2" fill={timeColors.stroke} />
-            </svg>
-            </div>
-            <div className="whitespace-nowrap">
-              <p className={cn('text-ds-caption font-semibold tabular-nums leading-tight', timeColors.text)}>
-                {overdue ? formatCountdown(ms) : formatLeadSlaTime(remainingSec)}
-              </p>
-              <p className="text-ds-micro leading-tight text-muted-foreground">
-                {overdue ? (archivesOnTimeout ? 'SLA over' : 'call now') : 'left'}
-              </p>
-            </div>
-          </div>
+          <LiveSlaClock
+            deadlineMs={nowMs + ms}
+            leftLabel="left"
+            overdueLabel={archivesOnTimeout ? 'SLA over' : 'call now'}
+          />
 
           <div className="ml-auto flex items-center gap-1 min-[380px]:gap-1.5">
             {!dialBlocked ? (

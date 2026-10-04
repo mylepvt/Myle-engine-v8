@@ -42,7 +42,8 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
-import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { timerRemainingMs } from '@/lib/ctcs-timer'
+import { LiveSlaClock } from '@/components/leads/LiveSlaClock'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
   closeExternalShareWindow,
@@ -52,7 +53,7 @@ import {
 } from '@/lib/external-share-window'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
-import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
+import { LEAD_SLA_BOARD_REFRESH_MS, leadSlaTone } from '@/lib/lead-sla'
 import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { isDay2AdvanceUnlocked } from '@/lib/workboard-stage'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
@@ -295,8 +296,6 @@ const LeadCard = memo(function LeadCard({
   const slaOverdue = slaMs < 0
   const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
   const slaTone = leadSlaTone(slaOverdue ? 0 : slaRemainingSec)
-  const { hourAngle: slaHourAngle, minuteAngle: slaMinuteAngle, secondAngle: slaSecondAngle } =
-    leadSlaClockAngles(slaOverdue ? 0 : slaMs)
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -362,58 +361,12 @@ const LeadCard = memo(function LeadCard({
           </NativeSelect>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <div className={cn('relative size-8 shrink-0 rounded-full', slaTone.glow)}>
-              <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="18"
-                  fill="transparent"
-                  stroke={slaTone.stroke}
-                  strokeWidth="2"
-                  strokeOpacity="0.5"
-                />
-                <line
-                  x1="20"
-                  y1="20"
-                  x2="20"
-                  y2="10"
-                  stroke={slaTone.stroke}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  transform={`rotate(${slaHourAngle}, 20, 20)`}
-                />
-                <line
-                  x1="20"
-                  y1="20"
-                  x2="20"
-                  y2="7"
-                  stroke={slaTone.stroke}
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  transform={`rotate(${slaMinuteAngle}, 20, 20)`}
-                />
-                <line
-                  x1="20"
-                  y1="20"
-                  x2="20"
-                  y2="5"
-                  stroke={slaTone.stroke}
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  transform={`rotate(${slaSecondAngle}, 20, 20)`}
-                />
-                <circle cx="20" cy="20" r="2" fill={slaTone.stroke} />
-              </svg>
-            </div>
-            <div>
-              <p className={cn('text-ds-caption font-semibold leading-tight', slaTone.text)}>
-                {slaOverdue ? formatCountdown(slaMs) : formatLeadSlaTime(slaRemainingSec)}
-              </p>
-              <p className="text-ds-caption text-muted-foreground">{slaOverdue ? 'SLA' : 'remaining'}</p>
-            </div>
-          </div>
+          <LiveSlaClock
+            deadlineMs={nowMs + slaMs}
+            leftLabel="remaining"
+            overdueLabel="SLA"
+            className="min-w-0"
+          />
           <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
             {showLeadContactActions ? (
               <>
@@ -1723,7 +1676,7 @@ export function WorkboardPage({ title }: Props) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const adminTab = parseAdminTab(searchParams.get('tab'))
   useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
+    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_BOARD_REFRESH_MS)
     return () => window.clearInterval(id)
   }, [])
   useEffect(() => {
