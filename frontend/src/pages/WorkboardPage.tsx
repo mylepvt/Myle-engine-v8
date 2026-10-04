@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Day3SlotTimer } from '@/components/leads/Day3SlotTimer'
 import { buildLiveSessionMessage, extractPasscode } from '@/lib/live-session-message'
 import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -1271,6 +1272,15 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           taskKeys={['day3_interview', 'day3_live_session', 'day3_blueprint_video']}
         />
         <Day3StagePicker lead={lead} pm={pm} leadPatchBusy={leadPatchBusy} />
+        <Day3SlotTimer
+          lead={lead}
+          pm={pm}
+          leadPatchBusy={leadPatchBusy}
+          stage={(() => {
+            const opt = STAGE_OPTIONS.find((o) => o.key === lead.stage_selected)
+            return opt ? { label: opt.label, price: rupees(lead.stage_price_cents ?? opt.priceCents) } : null
+          })()}
+        />
         <Day3StagePayment lead={lead} leadPatchBusy={leadPatchBusy} />
         {onMoveNext ? (
           <button

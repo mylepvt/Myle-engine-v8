@@ -1254,6 +1254,24 @@ class LeadsService:
             else:
                 lead.seat_hold_expiry = None
                 _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=False)
+        if body.slot_deadline_at is not None or body.clear_slot_deadline:
+            if user.role not in ("leader", "admin"):
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            if body.clear_slot_deadline:
+                lead.slot_deadline_at = None
+            else:
+                deadline = body.slot_deadline_at
+                if deadline.tzinfo is None:
+                    deadline = deadline.replace(tzinfo=timezone.utc)
+                if deadline <= now:
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST, detail="Pick a time in the future."
+                    )
+                if deadline > now + timedelta(days=7):
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST, detail="Pick a time within the next 7 days."
+                    )
+                lead.slot_deadline_at = deadline
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
         if any(x is not None for x in explicit_d1):
             if body.d1_morning is not None:

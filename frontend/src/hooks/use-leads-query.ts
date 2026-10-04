@@ -132,6 +132,8 @@ export type LeadPublic = {
   stage_price_cents?: number | null
   seat_hold_amount_cents?: number | null
   seat_hold_expiry?: string | null
+  /** Day 3: slot reserved till — the time the leader gave the prospect to arrange payment. */
+  slot_deadline_at?: string | null
   d1_morning: boolean
   d1_afternoon: boolean
   d1_evening: boolean
@@ -336,6 +338,8 @@ export type PatchLeadBody = {
   process_task_done?: boolean
   no_response_attempt_count?: number
   next_followup_at?: string | null
+  slot_deadline_at?: string
+  clear_slot_deadline?: boolean
 }
 
 export async function patchLead(
@@ -626,6 +630,7 @@ const OPTIMISTIC_PATCH_FIELDS = [
   'd2_evening',
   'd6_6pm',
   'd6_8pm',
+  'slot_deadline_at',
 ] as const
 
 function isWorkboardData(data: unknown): data is WorkboardResponse {
@@ -655,6 +660,7 @@ export function usePatchLeadMutation() {
       for (const key of OPTIMISTIC_PATCH_FIELDS) {
         if (src[key] !== undefined) (patch as Record<string, unknown>)[key] = src[key]
       }
+      if (src.clear_slot_deadline === true) patch.slot_deadline_at = null
       // Day checklist ticks (Interview, 2 PM session, Blueprint…) — merge into the
       // card's process_tracking so the tick shows on the first tap. Without this the
       // tick only appeared after the PATCH + a full board refetch, so people tapped
