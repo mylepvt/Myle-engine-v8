@@ -69,6 +69,12 @@ const CONTENT_LINK_FIELDS: readonly SettingsTextField[] = [
     placeholder: 'https://youtube.com/watch?v=...',
     help: 'Day 2 — Expose Video Share button sends this link on WhatsApp.',
   },
+  {
+    key: 'content.blueprint_video',
+    label: 'Blueprint Video',
+    placeholder: 'https://youtube.com/watch?v=...',
+    help: 'Day 3 — Blueprint Video Share button sends this link on WhatsApp.',
+  },
 ]
 
 
