@@ -32,6 +32,7 @@ _CONTENT_LINK_KEYS = [
     "content.esbi_model",
     "content.power_of_network",
     "content.manik_expose",
+    "content.blueprint_video",
 ]
 
 
