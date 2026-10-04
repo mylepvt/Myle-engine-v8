@@ -5,7 +5,7 @@ Kinds (each can be switched off in admin Settings):
 - lead_added  — a member added a lead
 - status      — a lead moved stage (Day 1, Day 2, Converted, …)
 - enrollment  — an enrollment proof was uploaded
-- online      — a member came online for the first time today
+- online      — a member came online (after 15+ min away; brief reconnects don't count)
 
 Lead events are captured once, centrally, by SQLAlchemy hooks: ``before_flush``
 records what changed, ``after_commit`` hands it to a background task — so every
@@ -314,7 +314,7 @@ async def dispatch(session: AsyncSession, events: list[AlertEvent]) -> int:
 
 
 def member_came_online(user: User) -> None:
-    """Called once per member per day, on their first connection."""
+    """Called each time a member comes online after being away (see team_tracking._was_away)."""
     if user.role == "admin":
         return
     schedule(

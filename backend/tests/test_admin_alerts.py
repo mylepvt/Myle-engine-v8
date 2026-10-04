@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.models  # noqa: F401 — register all mappers
@@ -115,18 +116,33 @@ def test_alert_copy():
     assert alert_text(AlertEvent(kind="online", actor_id=1, actor_name="Priya"))[:2] == ("Online now", "Priya is online")
 
 
-async def test_online_alert_only_on_first_connection_of_the_day(ctx, monkeypatch):
+async def test_online_alert_every_time_they_come_back_after_a_break(ctx, monkeypatch):
+    from app.models.user_presence_session import UserPresenceSession
+
     S, _, _ = ctx
     seen: list[int] = []
     monkeypatch.setattr(admin_alerts, "member_came_online", lambda u: seen.append(u.id))
-    now = datetime.now(timezone.utc)
-    async with S() as s:
-        m = await s.get(User, MEMBER)
-        m.last_seen_at = now - timedelta(days=1)
+    t0 = datetime.now(timezone.utc)
+
+    async def connect(s, key, at):
+        await team_tracking.connect_presence_session(s, user_id=MEMBER, session_key=key, last_path="/", user_agent="x", now=at)
+
+    async def go_offline(s, at):
+        for row in (await s.execute(select(UserPresenceSession))).scalars():
+            row.disconnected_at = at
+            row.status = "offline"
+            row.last_heartbeat_at = at
         await s.commit()
-        await team_tracking.connect_presence_session(s, user_id=MEMBER, session_key="k1", last_path="/", user_agent="x", now=now)
-        await team_tracking.connect_presence_session(s, user_id=MEMBER, session_key="k2", last_path="/", user_agent="x", now=now + timedelta(minutes=5))
-    assert seen == [MEMBER]
+
+    async with S() as s:
+        await connect(s, "phone", t0)                                # first time → alert
+        await connect(s, "laptop", t0 + timedelta(minutes=2))        # already online on phone → no
+        await go_offline(s, t0 + timedelta(minutes=10))
+        await connect(s, "phone", t0 + timedelta(minutes=14))        # back after 4 min (blip) → no
+        await go_offline(s, t0 + timedelta(minutes=20))
+        await connect(s, "phone", t0 + timedelta(minutes=40))        # back after 20 min → alert
+    assert seen == [MEMBER, MEMBER]
+
 
 
 async def test_calling_board_buttons_alert_even_without_stage_change(ctx):

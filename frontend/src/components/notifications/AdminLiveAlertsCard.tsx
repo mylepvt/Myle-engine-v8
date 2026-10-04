@@ -17,7 +17,7 @@ const HINT: Record<string, string> = {
   lead_added: 'A member adds a new lead.',
   status: 'A lead moves stage (Day 1, Day 2, Converted…) or a calling-board button is pressed (Interested, Not picked, Call later…).',
   enrollment: 'An enrollment proof is uploaded.',
-  online: "A member comes online for the first time today.",
+  online: "A member comes online after being away for 15+ minutes.",
 }
 
 /** Admin + leaders: which live work alerts reach my phone (leaders: their own team only). */
