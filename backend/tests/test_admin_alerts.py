@@ -72,6 +72,7 @@ async def test_member_actions_become_events(ctx):
         ("enrollment", "", "day1"),  # the Day 1 move is folded into the enrollment alert
     ]
     assert captured[2].amount_cents == 19600
+    assert all(e.owner_id == MEMBER for e in captured)  # routes to Priya's team leaders
 
 
 async def test_background_jobs_and_pool_imports_are_ignored(ctx):
@@ -148,3 +149,33 @@ async def test_calling_board_buttons_alert_even_without_stage_change(ctx):
         ("status", "interested", "video_sent"),
     ]
     assert alert_text(captured[0])[:2] == ("Rohit → Not picked", "Priya marked Rohit Not picked on the calling board")
+
+
+async def test_team_leaders_get_their_teams_alerts_only(ctx):
+    from app.services.admin_alerts import set_user_disabled_kinds
+
+    S, _, pushes = ctx
+    LEAD, SUBLEAD, MEMBER2, OTHER_LEAD = 9421, 9422, 9423, 9424
+    async with S() as s:
+        s.add_all([
+            User(id=LEAD, fbo_id="l1", email="l1@t", role="leader", name="Neha"),
+            User(id=SUBLEAD, fbo_id="l2", email="l2@t", role="leader", name="Ravi", upline_user_id=LEAD),
+            User(id=MEMBER2, fbo_id="m2", email="m2@t", role="team", name="Amit", upline_user_id=SUBLEAD),
+            User(id=OTHER_LEAD, fbo_id="l3", email="l3@t", role="leader", name="Other"),
+        ])
+        await s.commit()
+        ev = AlertEvent(kind="lead_added", actor_id=MEMBER2, actor_name="Amit", lead_id=1, lead_name="Rohit", owner_id=MEMBER2)
+        await dispatch(s, [ev])
+        # Both leaders above Amit + both admins; never the other team's leader.
+        assert sorted(uid for uid, *_ in pushes) == sorted([ADMIN1, ADMIN2, LEAD, SUBLEAD])
+
+        pushes.clear()
+        await set_user_disabled_kinds(s, SUBLEAD, {"lead_added"})
+        await dispatch(s, [ev])
+        assert SUBLEAD not in [uid for uid, *_ in pushes] and LEAD in [uid for uid, *_ in pushes]
+
+        pushes.clear()
+        # A leader's own action never alerts themselves.
+        await dispatch(s, [AlertEvent(kind="status", actor_id=SUBLEAD, actor_name="Ravi", lead_id=1,
+                                      lead_name="Rohit", old_status="day1", new_status="day2", owner_id=MEMBER2)])
+        assert SUBLEAD not in [uid for uid, *_ in pushes] and LEAD in [uid for uid, *_ in pushes]

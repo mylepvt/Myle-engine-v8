@@ -321,7 +321,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="preferences" className="space-y-6">
-          {isAdmin ? <AdminLiveAlertsCard /> : null}
+          {isAdmin || authData?.role === 'leader' ? <AdminLiveAlertsCard /> : null}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-lg">
