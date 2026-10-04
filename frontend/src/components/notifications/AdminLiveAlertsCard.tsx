@@ -9,31 +9,31 @@ import { Switch } from '@/components/ui/switch'
 import { apiFetch } from '@/lib/api'
 
 type AlertKind = { kind: string; label: string; on: boolean }
-type AlertSettings = { kinds: AlertKind[] }
+type AlertSettings = { scope?: 'everyone' | 'team'; kinds: AlertKind[] }
 
-const KEY = ['admin', 'alert-settings'] as const
+const KEY = ['live-alerts'] as const
 
 const HINT: Record<string, string> = {
   lead_added: 'A member adds a new lead.',
   status: 'A lead moves stage (Day 1, Day 2, Converted…) or a calling-board button is pressed (Interested, Not picked, Call later…).',
   enrollment: 'An enrollment proof is uploaded.',
-  online: "A member comes online for the first time today.",
+  online: "A member comes online after being away for 15+ minutes.",
 }
 
-/** Admin-only: which live work alerts reach the admin's phone. */
+/** Admin + leaders: which live work alerts reach my phone (leaders: their own team only). */
 export function AdminLiveAlertsCard() {
   const qc = useQueryClient()
   const { data, isPending } = useQuery<AlertSettings>({
     queryKey: KEY,
     queryFn: async () => {
-      const res = await apiFetch('/api/v1/admin/alert-settings')
+      const res = await apiFetch('/api/v1/notifications/live-alerts')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       return res.json()
     },
   })
   const save = useMutation({
     mutationFn: async (off: string[]) => {
-      const res = await apiFetch('/api/v1/admin/alert-settings', {
+      const res = await apiFetch('/api/v1/notifications/live-alerts', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ off }),
@@ -58,7 +58,11 @@ export function AdminLiveAlertsCard() {
           <Radio className="mr-2 h-5 w-5" />
           Live work alerts
         </CardTitle>
-        <CardDescription>A phone notification every time this happens anywhere in the team.</CardDescription>
+        <CardDescription>
+          {data?.scope === 'team'
+            ? 'A phone notification every time this happens in your team.'
+            : 'A phone notification every time this happens anywhere in the team.'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {isPending || !data

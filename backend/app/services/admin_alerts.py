@@ -1,10 +1,11 @@
-"""Live admin alerts: a phone push to every admin whenever real work happens.
+"""Live work alerts: a phone push to admins — and to each leader for their own
+team — whenever real work happens.
 
 Kinds (each can be switched off in admin Settings):
 - lead_added  — a member added a lead
 - status      — a lead moved stage (Day 1, Day 2, Converted, …)
 - enrollment  — an enrollment proof was uploaded
-- online      — a member came online for the first time today
+- online      — a member came online (after 15+ min away; brief reconnects don't count)
 
 Lead events are captured once, centrally, by SQLAlchemy hooks: ``before_flush``
 records what changed, ``after_commit`` hands it to a background task — so every
@@ -64,6 +65,7 @@ class AlertEvent:
     new_status: str = ""
     amount_cents: int = 0
     call_outcome: str = ""
+    owner_id: int | None = None  # member whose lead / presence it is (picks the team's leaders)
 
 
 def _label(status: str) -> str:
@@ -155,6 +157,7 @@ def _send_after_commit(session: SASession) -> None:
                     old_status=old,
                     new_status=lead.status or "",
                     amount_cents=amount,
+                    owner_id=lead.assigned_to_user_id,
                 )
             )
         except Exception:  # noqa: BLE001 — a detached lead must never break the commit
@@ -172,6 +175,7 @@ def _send_after_commit(session: SASession) -> None:
                     lead_name=lead.name or "",
                     new_status=lead.status or "",
                     call_outcome=action,
+                    owner_id=lead.assigned_to_user_id,
                 )
             )
         except Exception:  # noqa: BLE001
@@ -222,30 +226,104 @@ async def set_disabled_kinds(session: AsyncSession, off: set[str]) -> None:
     await session.commit()
 
 
+USER_SETTING_PREFIX = "live_alerts.off:"  # + user id → JSON list of kinds that user switched off
+
+
+def _parse(value: str | None) -> set[str] | None:
+    if not value:
+        return None
+    try:
+        return set(json.loads(value))
+    except (ValueError, TypeError):
+        return None
+
+
+async def user_disabled_kinds(session: AsyncSession, user_ids: list[int], admin_ids: set[int]) -> dict[int, set[str]]:
+    """Each recipient's switched-off kinds. Admins without their own choice keep the
+    older workspace-wide admin setting."""
+    keys = [f"{USER_SETTING_PREFIX}{uid}" for uid in user_ids]
+    rows = {
+        k: v
+        for k, v in (
+            await session.execute(select(AppSetting.key, AppSetting.value).where(AppSetting.key.in_(keys or [""])))
+        ).all()
+    }
+    legacy = await disabled_kinds(session) if admin_ids else set()
+    out: dict[int, set[str]] = {}
+    for uid in user_ids:
+        own = _parse(rows.get(f"{USER_SETTING_PREFIX}{uid}"))
+        out[uid] = own if own is not None else (legacy if uid in admin_ids else set())
+    return out
+
+
+async def set_user_disabled_kinds(session: AsyncSession, user_id: int, off: set[str]) -> None:
+    key = f"{USER_SETTING_PREFIX}{user_id}"
+    value = json.dumps(sorted(k for k in off if k in KINDS))
+    row = await session.get(AppSetting, key)
+    if row is None:
+        session.add(AppSetting(key=key, value=value))
+    else:
+        row.value = value
+    await session.commit()
+
+
+def _leaders_above(tree: dict[int, tuple[str, int | None, bool]], user_id: int | None) -> set[int]:
+    """Every active leader up the org tree from ``user_id`` (their team's leaders)."""
+    found: set[int] = set()
+    cur = tree.get(user_id, (None, None, False))[1] if user_id is not None else None
+    hops = 0
+    while cur is not None and hops < 30:
+        role, upline, active = tree.get(cur, ("", None, False))
+        if role == "leader" and active:
+            found.add(cur)
+        cur, hops = upline, hops + 1
+    return found
+
+
 async def dispatch(session: AsyncSession, events: list[AlertEvent]) -> int:
-    """Push each event to every admin except the one who did it. Returns pushes sent."""
+    """Push each event to every admin and to the leaders of the member's team —
+    never to the person who did it. Returns pushes sent."""
     from app.services.push_service import send_push_to_user
 
-    off = await disabled_kinds(session)
-    events = [e for e in events if e.kind not in off]
     if not events:
         return 0
-    admins = (
-        await session.execute(select(User.id).where(User.role == "admin", User.removed_at.is_(None)))
-    ).scalars().all()
-    sent = 0
+    tree = {
+        int(uid): (role, upline, removed is None)
+        for uid, role, upline, removed in (
+            await session.execute(select(User.id, User.role, User.upline_user_id, User.removed_at))
+        ).all()
+    }
+    admins = {uid for uid, (role, _u, active) in tree.items() if role == "admin" and active}
+    plan: list[tuple[AlertEvent, set[int]]] = []
     for ev in events:
+        recipients = admins | _leaders_above(tree, ev.owner_id) | _leaders_above(tree, ev.actor_id)
+        recipients.discard(ev.actor_id)
+        plan.append((ev, recipients))
+    everyone = sorted({uid for _e, rs in plan for uid in rs})
+    off = await user_disabled_kinds(session, everyone, admins)
+
+    sent = 0
+    for ev, recipients in plan:
         title, body, url = alert_text(ev)
-        for admin_id in admins:
-            if admin_id == ev.actor_id:
+        for uid in sorted(recipients):
+            if ev.kind in off.get(uid, set()):
                 continue
-            sent += await send_push_to_user(session, admin_id, title=title, body=body, url=url)
-    logger.info("admin alerts: %s event(s) -> %s push(es)", len(events), sent)
+            sent += await send_push_to_user(session, uid, title=title, body=body, url=url)
+    logger.info("live alerts: %s event(s) -> %s push(es)", len(events), sent)
     return sent
 
 
 def member_came_online(user: User) -> None:
-    """Called once per member per day, on their first connection."""
+    """Called each time a member comes online after being away (see team_tracking._was_away)."""
     if user.role == "admin":
         return
-    schedule([AlertEvent(kind="online", actor_id=user.id, actor_name=user.name or user.username or user.fbo_id)])
+    schedule(
+        [
+            AlertEvent(
+                kind="online",
+                actor_id=user.id,
+                actor_name=user.name or user.username or user.fbo_id,
+                owner_id=user.id,
+            )
+        ]
+    )

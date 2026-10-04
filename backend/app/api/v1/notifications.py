@@ -76,6 +76,46 @@ class DeviceStatusBody(BaseModel):
     push_permission: Literal["granted", "denied", "default", "unsupported"]
 
 
+class LiveAlertsBody(BaseModel):
+    off: list[str]
+
+
+async def _live_alert_settings(session: AsyncSession, user: AuthUser) -> dict:
+    from app.services.admin_alerts import KINDS, user_disabled_kinds
+
+    admin_ids = {user.user_id} if user.role == "admin" else set()
+    off = (await user_disabled_kinds(session, [user.user_id], admin_ids))[user.user_id]
+    return {
+        "scope": "everyone" if user.role == "admin" else "team",
+        "kinds": [{"kind": k, "label": label, "on": k not in off} for k, label in KINDS.items()],
+    }
+
+
+@router.get("/live-alerts")
+async def get_live_alerts(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin / leader: which live work alerts reach my phone (leaders: my team only)."""
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admins and leaders only")
+    return await _live_alert_settings(session, user)
+
+
+@router.put("/live-alerts")
+async def put_live_alerts(
+    body: LiveAlertsBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    if user.role not in ("admin", "leader"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admins and leaders only")
+    from app.services.admin_alerts import set_user_disabled_kinds
+
+    await set_user_disabled_kinds(session, user.user_id, set(body.off))
+    return await _live_alert_settings(session, user)
+
+
 @router.post("/device-status")
 async def report_device_status(
     body: DeviceStatusBody,

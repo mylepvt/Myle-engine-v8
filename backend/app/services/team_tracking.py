@@ -332,6 +332,27 @@ async def sweep_stale_presence(session: AsyncSession, *, now: datetime | None = 
     return touched
 
 
+ONLINE_ALERT_GAP = timedelta(minutes=15)
+
+
+async def _was_away(session: AsyncSession, *, user_id: int, now: datetime) -> bool:
+    """True when the member has no live session and no heartbeat for ONLINE_ALERT_GAP."""
+    rows = (
+        await session.execute(
+            select(UserPresenceSession).where(UserPresenceSession.user_id == user_id)
+        )
+    ).scalars().all()
+    last_activity: datetime | None = None
+    for r in rows:
+        if r.disconnected_at is None and _presence_effective_status(r, now=now) != "offline":
+            return False  # already online on another tab / device
+        for t in (r.last_heartbeat_at, r.last_seen_at):
+            t = _aware_utc(t)
+            if t is not None and (last_activity is None or t > last_activity):
+                last_activity = t
+    return last_activity is None or now - last_activity >= ONLINE_ALERT_GAP
+
+
 async def connect_presence_session(
     session: AsyncSession,
     *,
@@ -348,6 +369,9 @@ async def connect_presence_session(
         )
     ).scalar_one_or_none()
     prev = "offline" if row is None else _presence_effective_status(row, now=ts)
+    # "Came online" = no live session anywhere and no activity for ONLINE_ALERT_GAP —
+    # so a phone that briefly drops and reconnects doesn't fire a fresh alert.
+    came_online = await _was_away(session, user_id=user_id, now=ts)
     if row is None:
         row = UserPresenceSession(
             user_id=user_id,
@@ -372,15 +396,10 @@ async def connect_presence_session(
         row.user_agent = user_agent or row.user_agent
         row.updated_at = ts
     user = await session.get(User, user_id)
-    first_today = False
     if user is not None:
-        last = user.last_seen_at
-        if last is not None and last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
-        first_today = last is None or last.astimezone(IST).date() < ts.astimezone(IST).date()
         user.last_seen_at = ts
     await session.commit()
-    if first_today and user is not None:
+    if came_online and user is not None:
         from app.services.admin_alerts import member_came_online
 
         member_came_online(user)
