@@ -166,7 +166,10 @@ async function readResponseError(res: Response): Promise<string> {
 }
 
 function processTaskDone(lead: LeadPublic, stage: string, task: string): boolean {
-  return Boolean(lead.process_tracking?.[stage]?.[task])
+  const tracking = lead.process_tracking?.[stage]
+  // Leads ticked under the old "2CC Paper Plan" step count as having watched the 2 PM session.
+  if (stage === 'day3' && task === 'day3_live_session' && tracking?.day3_2cc_plan) return true
+  return Boolean(tracking?.[task])
 }
 
 function stageChecklistComplete(lead: LeadPublic, stage: string): boolean {
@@ -563,6 +566,13 @@ function ProcessChecklistSection({
     setTaskError(null)
     setBusyTask(taskKey)
     try {
+      // Unticking the 2 PM session must also clear an old "2CC Paper Plan" tick, which counts as it.
+      if (!done && stage === 'day3' && taskKey === 'day3_live_session' && lead.process_tracking?.day3?.day3_2cc_plan) {
+        await pm.mutateAsync({
+          id: lead.id,
+          body: { process_stage: 'day3', process_task: 'day3_2cc_plan', process_task_done: false },
+        })
+      }
       await pm.mutateAsync({
         id: lead.id,
         body: {
@@ -1259,7 +1269,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           stage={stageKey}
           pm={pm}
           leadPatchBusy={leadPatchBusy}
-          taskKeys={['day3_interview', 'day3_live_session', 'day3_2cc_plan', 'day3_blueprint_video']}
+          taskKeys={['day3_interview', 'day3_live_session', 'day3_blueprint_video']}
         />
         <Day3StagePicker lead={lead} pm={pm} leadPatchBusy={leadPatchBusy} />
         <Day3StagePayment lead={lead} leadPatchBusy={leadPatchBusy} />
