@@ -29,8 +29,9 @@ class UserProfileResponse(BaseModel):
 
 class UserProfileUpdateRequest(BaseModel):
     """Request for updating user profile."""
-    username: Optional[str] = Field(None, min_length=3, max_length=128)
-    phone: Optional[str] = Field(None, min_length=10, max_length=32)
+    # Blank username/phone clears the value; length rules are checked in SettingsService.
+    username: Optional[str] = Field(None, max_length=128)
+    phone: Optional[str] = Field(None, max_length=32)
     name: Optional[str] = Field(None, max_length=255)
     joining_date: Optional[str] = Field(None, description="Date in YYYY-MM-DD format")
     upline_user_id: Optional[int] = Field(None, ge=1)

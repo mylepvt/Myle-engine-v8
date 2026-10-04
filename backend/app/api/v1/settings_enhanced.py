@@ -75,7 +75,10 @@ async def update_user_profile(
     service = SettingsService(session)
     try:
         success, message = await service.update_user_profile(
-            user.user_id, request.model_dump(exclude_unset=True), user.user_id
+            user.user_id,
+            request.model_dump(exclude_unset=True),
+            user.user_id,
+            self_service=True,
         )
         if not success:
             raise HTTPException(
