@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle } from 'luc
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
+import { ClosingReadyCard } from '@/components/closing/ClosingReadyCard'
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
@@ -225,6 +226,7 @@ export function DashboardHomePage() {
         </h1>
       </div>
 
+      {role === 'leader' ? <ClosingReadyCard /> : null}
       {role === 'leader' ? <ControlRoomCard /> : null}
 
       {role === 'team' || role === 'leader' ? <GateAssistantCard sessionReady={sessionReady} /> : null}

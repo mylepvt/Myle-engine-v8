@@ -1219,6 +1219,15 @@ class LeadsService:
                 task=body.process_task.strip(),
                 done=body.process_task_done,
             )
+            if body.process_task_done:
+                # process_tracking holds yes/no only; *when* it was ticked lives in the
+                # activity log (today's closing list reads it).
+                await self._repository.add_lead_activity(
+                    user_id=user.user_id,
+                    action="process.task_done",
+                    lead_id=lead.id,
+                    meta={"stage": body.process_stage.strip(), "task": body.process_task.strip()},
+                )
         # Day 3 closing — Stage picker (price auto-set) + seat-hold reserve window.
         if body.stage_selected is not None:
             if user.role not in ("leader", "admin"):

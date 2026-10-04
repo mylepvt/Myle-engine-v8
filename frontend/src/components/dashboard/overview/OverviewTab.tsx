@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { ClosingReadyCard } from '@/components/closing/ClosingReadyCard'
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { AppSetupCard } from '@/components/dashboard/overview/AppSetupCard'
 
@@ -14,6 +15,7 @@ export function OverviewTab({ firstName, actionNeeded }: Props) {
   return (
     <div className="space-y-5">
       <h1 className="px-0.5 text-ds-h2 font-semibold capitalize tracking-tight text-foreground">Welcome back, {firstName}</h1>
+      <ClosingReadyCard />
       <ControlRoomCard groupByLeader />
       <AppSetupCard />
       {actionNeeded}

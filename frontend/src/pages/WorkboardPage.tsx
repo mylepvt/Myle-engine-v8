@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { buildLiveSessionMessage, extractPasscode } from '@/lib/live-session-message'
 import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useBackClose } from '@/hooks/use-back-close'
@@ -171,7 +172,7 @@ function processTaskDone(lead: LeadPublic, stage: string, task: string): boolean
 function stageChecklistComplete(lead: LeadPublic, stage: string): boolean {
   const def = checklistForStage(stage)
   if (!def) return true
-  return def.tasks.every((task) => processTaskDone(lead, stage, task.key))
+  return def.tasks.every((task) => task.optional || processTaskDone(lead, stage, task.key))
 }
 
 function cleanPersonName(value: string | null | undefined): string | null {
@@ -593,9 +594,29 @@ function ProcessChecklistSection({
     }
   }
 
+  // Day 3: send today's 2 PM Zoom link (the admin's Live Session setting) to the prospect.
+  async function sendLiveSessionLink(taskKey: string) {
+    setTaskError(null)
+    setBusyTask(taskKey)
+    try {
+      const res = await apiFetch('/api/v1/other/live-session')
+      if (!res.ok) throw new Error(await readResponseError(res))
+      const card = ((await res.json()) as { items?: { external_href?: string | null; detail?: string | null }[] }).items?.[0]
+      const href = card?.external_href?.trim()
+      if (!href) throw new Error("Today's live session link isn't set yet.")
+      const waUrl = whatsAppChatWithTextHref(lead.phone, buildLiveSessionMessage(href, extractPasscode(card?.detail)))
+      if (waUrl === '#') throw new Error('Phone number missing or invalid.')
+      if (!openExternalShareUrl(waUrl)) throw new Error('Could not open WhatsApp.')
+    } catch (err) {
+      setTaskError(err instanceof Error ? err.message : 'Could not send the session link')
+    } finally {
+      setBusyTask(null)
+    }
+  }
+
   const displayTasks = taskKeys ? def.tasks.filter((t) => taskKeys.includes(t.key)) : def.tasks
   const allDone = taskKeys
-    ? displayTasks.every((t) => processTaskDone(lead, stage, t.key))
+    ? displayTasks.every((t) => t.optional || processTaskDone(lead, stage, t.key))
     : stageChecklistComplete(lead, stage)
 
   return (
@@ -662,6 +683,20 @@ function ProcessChecklistSection({
                 >
                   {busy ? 'Sending…' : done ? 'Sent ✓' : 'Send to WhatsApp'}
                 </button>
+              ) : task.kind === 'live_session' ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={leadPatchBusy || busy}
+                    onClick={() => void sendLiveSessionLink(task.key)}
+                    className="shrink-0 rounded-md border border-success/30 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
+                  >
+                    {busy ? 'Opening…' : 'Send link'}
+                  </button>
+                  <Checkbox done={done} busy={busy} disabled={leadPatchBusy || busy}
+                    aria-label={done ? `Mark "${task.label}" incomplete` : `Mark "${task.label}" complete`}
+                    onClick={() => void toggleTask(task.key, !done)} />
+                </div>
               ) : task.kind === 'open_video' ? (
                 <div className="flex shrink-0 items-center gap-2">
                   {task.settingKey && contentLinks?.[task.settingKey] ? (
@@ -1224,7 +1259,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           stage={stageKey}
           pm={pm}
           leadPatchBusy={leadPatchBusy}
-          taskKeys={['day3_interview', 'day3_2cc_plan', 'day3_blueprint_video']}
+          taskKeys={['day3_interview', 'day3_live_session', 'day3_2cc_plan', 'day3_blueprint_video']}
         />
         <Day3StagePicker lead={lead} pm={pm} leadPatchBusy={leadPatchBusy} />
         <Day3StagePayment lead={lead} leadPatchBusy={leadPatchBusy} />
