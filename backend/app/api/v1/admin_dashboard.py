@@ -412,6 +412,18 @@ async def put_alert_settings(
     return await get_alert_settings(user, session)
 
 
+@router.get("/push-runs")
+async def admin_push_runs(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Today's automatic notifications: did each job run, how many it meant to reach, how many it reached."""
+    _require_admin(user)
+    from app.services.push_job_runs import todays_push_runs
+
+    return {"jobs": await todays_push_runs(session)}
+
+
 @router.get("/app-setup")
 async def admin_app_setup(
     user: Annotated[AuthUser, Depends(require_auth_user)],

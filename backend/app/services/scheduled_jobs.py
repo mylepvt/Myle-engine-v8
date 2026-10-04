@@ -31,6 +31,7 @@ from app.models.current_cc import CurrentCcSheet
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.push_job_runs import record_push_run
 from app.services.engagement_nudge import (
     NUDGE_ACTION,
     build_nudge_contexts,
@@ -216,15 +217,18 @@ async def job_morning_plan() -> None:
         async with AsyncSessionLocal() as session:
             users = await _get_eligible_users(session)
             plans = await build_morning_plans(session, list(users), today_ist())
-            sent = 0
+            sent = targeted = 0
             for user in users:
                 msg = morning_plan_message(plans[user.id])
                 if msg is None:
                     continue
+                targeted += 1
                 sent += await _push_digest(session, user, *msg, url="/dashboard/work/leads?tab=today")
-            logger.info("morning_plan: users=%d sent=%d", len(users), sent)
+            logger.info("morning_plan: users=%d targeted=%d sent=%d", len(users), targeted, sent)
+        await record_push_run("morning_plan", targeted=targeted, sent=sent)
     except Exception as exc:
         logger.error("job_morning_plan failed: %s", exc)
+        await record_push_run("morning_plan", targeted=0, sent=0, error=str(exc))
 
 
 async def job_evening_recap() -> None:
@@ -243,8 +247,10 @@ async def job_evening_recap() -> None:
                 url = "/dashboard/other/daily-report" if not recap.report_submitted else "/dashboard/other/leaderboard"
                 sent += await _push_digest(session, user, title, body, url=url)
             logger.info("evening_recap: users=%d sent=%d", len(users), sent)
+        await record_push_run("evening_recap", targeted=len(users), sent=sent)
     except Exception as exc:
         logger.error("job_evening_recap failed: %s", exc)
+        await record_push_run("evening_recap", targeted=0, sent=0, error=str(exc))
 
 
 async def job_inactivity_nudge() -> None:
@@ -260,11 +266,12 @@ async def job_inactivity_nudge() -> None:
         async with AsyncSessionLocal() as session:
             users = list(await _get_eligible_users(session))
             contexts = await build_nudge_contexts(session, users, now)
-            sent = 0
+            sent = targeted = 0
             for user in users:
                 pick = pick_nudge(contexts[user.id], now)
                 if pick is None:
                     continue
+                targeted += 1
                 kind, title, body = pick
                 url = "/dashboard/other/leaderboard" if kind == "overtaken" else "/dashboard/work/leads?tab=today"
                 if await _push_digest(session, user, title, body, url=url):
@@ -280,8 +287,10 @@ async def job_inactivity_nudge() -> None:
                     sent += 1
             await session.commit()
             logger.info("inactivity_nudge: users=%d sent=%d", len(users), sent)
+        await record_push_run("inactivity_nudge", targeted=targeted, sent=sent)
     except Exception as exc:
         logger.error("job_inactivity_nudge failed: %s", exc)
+        await record_push_run("inactivity_nudge", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +334,7 @@ async def job_tracking_report_reminder() -> None:
             missing = [u for u in leaders if u.id not in submitted]
             if not missing:
                 logger.info("tracking_report_reminder: all leaders submitted")
+                await record_push_run("tracking_report_reminder", targeted=0, sent=0)
                 return
 
             sent = 0
@@ -346,6 +356,7 @@ async def job_tracking_report_reminder() -> None:
                 "tracking_report_reminder: leaders=%d missing=%d sent=%d",
                 len(leaders), len(missing), sent,
             )
+            await record_push_run("tracking_report_reminder", targeted=len(missing), sent=sent)
             observe_event(
                 event_type="scheduler.tracking_report_reminder",
                 source="scheduler",
@@ -353,6 +364,7 @@ async def job_tracking_report_reminder() -> None:
             )
     except Exception as exc:
         logger.error("job_tracking_report_reminder failed: %s", exc)
+        await record_push_run("tracking_report_reminder", targeted=0, sent=0, error=str(exc))
         observe_event(
             event_type="scheduler.failure",
             source="scheduler",
@@ -381,24 +393,27 @@ async def job_call_target_reminder() -> None:
                 u for u in users
                 if int(calls_today.get(u.id, 0)) < call_target
             ]
+            sent = 0
             for user in short:
                 done = int(calls_today.get(user.id, 0))
                 remaining = call_target - done
                 try:
-                    await send_push_to_user(
+                    sent += bool(await send_push_to_user(
                         session,
                         user.id,
                         title="Call target reminder 📞",
                         body=f"You've made {done}/{call_target} calls today. {remaining} more needed to stay on track.",
                         url="/dashboard/work/leads",
-                    )
+                    ))
                 except Exception as exc:
                     logger.warning("Call target reminder push failed for user_id=%s: %s", user.id, exc)
 
-            logger.info("call_target_reminder: pushed %d users short on calls", len(short))
+            logger.info("call_target_reminder: short=%d sent=%d", len(short), sent)
+        await record_push_run("call_target_reminder", targeted=len(short), sent=sent)
 
     except Exception as exc:
         logger.error("job_call_target_reminder failed: %s", exc)
+        await record_push_run("call_target_reminder", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------

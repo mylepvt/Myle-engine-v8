@@ -30,6 +30,18 @@ from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 import app.services.admin_alerts  # noqa: F401 — registers the live admin alert hooks
+
+import logging as _logging
+
+# Scheduled jobs log one INFO line per run ("morning_plan: targeted=… sent=…"). With no
+# handler on the root logger those were dropped, so they never reached Render's logs.
+_jobs_logger = _logging.getLogger("app.services.scheduled_jobs")
+if not _jobs_logger.handlers:
+    _h = _logging.StreamHandler()
+    _h.setFormatter(_logging.Formatter("%(levelname)s: %(name)s: %(message)s"))
+    _jobs_logger.addHandler(_h)
+    _jobs_logger.setLevel(_logging.INFO)
+    _jobs_logger.propagate = False
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
     job_closing_pipeline_maintenance,

@@ -17,6 +17,61 @@ type SetupMember = {
   ready: boolean
 }
 
+type PushRun = {
+  job: string
+  label: string
+  scheduled: string
+  ran: boolean
+  runs: number
+  targeted: number
+  sent: number
+  error: string | null
+}
+
+/** One line per scheduled notification: did it run today, and how many did it reach? */
+function PushRunsToday() {
+  const { data } = useQuery<{ jobs: PushRun[] }>({
+    queryKey: ['admin', 'push-runs'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/v1/admin/push-runs')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.json()
+    },
+    staleTime: 60_000,
+  })
+  if (!data) return null
+  return (
+    <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/20 p-3">
+      <p className="text-ds-caption font-semibold text-foreground">Automatic notifications today</p>
+      <ul className="space-y-1">
+        {data.jobs.map((j) => {
+          const status = j.error
+            ? { text: 'Failed', cls: 'text-destructive-ink' }
+            : !j.ran
+              ? { text: 'Not run yet', cls: 'text-muted-foreground' }
+              : j.targeted === 0
+                ? { text: 'Nobody needed it', cls: 'text-muted-foreground' }
+                : {
+                    text: `${j.sent} of ${j.targeted} reached`,
+                    cls: j.sent >= j.targeted ? 'text-success-ink' : 'text-warning-ink',
+                  }
+          return (
+            <li key={j.job} className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate text-foreground">
+                {j.label} <span className="text-ds-caption text-muted-foreground">· {j.scheduled}</span>
+              </span>
+              <span className={cn('shrink-0 text-ds-caption font-semibold tabular-nums', status.cls)}>{status.text}</span>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="text-ds-micro text-muted-foreground">
+        "Reached" = delivered to at least one phone. People with notifications off are not reached.
+      </p>
+    </div>
+  )
+}
+
 type AppSetup = { total: number; ready: number; installed: number; notifications_on: number; members: SetupMember[] }
 
 const APP_LABEL: Record<SetupMember['app'], string> = {
@@ -79,6 +134,7 @@ export function AppSetupCard() {
               <span className="font-semibold">{data.ready}</span> of {data.total} ready ·{' '}
               {data.installed} installed · {data.notifications_on} notifications on
             </p>
+            <PushRunsToday />
             {!notReady.length && !expanded ? (
               <p className="text-ds-caption text-success-ink">Everyone has the app installed with notifications on.</p>
             ) : (
