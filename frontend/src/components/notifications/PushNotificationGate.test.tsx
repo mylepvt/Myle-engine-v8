@@ -13,12 +13,17 @@ const push = {
   subscribe: vi.fn(),
 }
 vi.mock('@/hooks/use-push-notifications', () => ({ usePushNotifications: () => push }))
-vi.mock('@/hooks/use-report-device-status', () => ({ useReportDeviceStatus: vi.fn() }))
+let platform: 'ios' | 'android' | 'desktop' = 'android'
+vi.mock('@/hooks/use-report-device-status', () => ({
+  useReportDeviceStatus: vi.fn(),
+  devicePlatform: () => platform,
+}))
 
 afterEach(() => {
   cleanup()
   push.errorMessage = null
   push.permission = 'default'
+  platform = 'android'
 })
 
 describe('PushNotificationGate', () => {
@@ -41,6 +46,13 @@ describe('PushNotificationGate', () => {
     render(<PushNotificationGate allowSkip={false}><div>app</div></PushNotificationGate>)
     await waitFor(() => expect(screen.getByText('Notifications blocked')).toBeInTheDocument(), { timeout: 2000 })
     expect(screen.queryByText(/Continue for now|Skip for now/)).toBeNull()
+  })
+
+  it('team on a desktop browser can skip, even when notifications are blocked', async () => {
+    platform = 'desktop'
+    push.permission = 'denied'
+    render(<PushNotificationGate allowSkip={false}><div>app</div></PushNotificationGate>)
+    await waitFor(() => expect(screen.getByText('Skip for now')).toBeInTheDocument(), { timeout: 2000 })
   })
 
   it('admins can skip', async () => {

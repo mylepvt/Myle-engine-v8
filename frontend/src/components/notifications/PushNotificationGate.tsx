@@ -8,7 +8,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
-import { useReportDeviceStatus } from '@/hooks/use-report-device-status'
+import { devicePlatform, useReportDeviceStatus } from '@/hooks/use-report-device-status'
 
 function BellIcon() {
   return (
@@ -29,11 +29,15 @@ function LoadingPulse() {
 }
 
 /**
- * `allowSkip` false (team / leader): notifications are required — no "Skip for now".
- * Only a technical failure (not a refusal) offers a way through, so a server-side
- * push problem can never lock the whole team out.
+ * `allowSkip` false (team / leader): notifications are required on phones — no
+ * "Skip for now". Desktop can always skip, same as the install screen: desktop
+ * Safari often blocks site notifications outright (a Safari setting, not a choice
+ * on the prompt), which would otherwise lock the member out of the web app.
+ * Only a technical failure (not a refusal) offers a way through on a phone, so a
+ * server-side push problem can never lock the whole team out.
  */
-export function PushNotificationGate({ children, allowSkip = true }: { children: ReactNode; allowSkip?: boolean }) {
+export function PushNotificationGate({ children, allowSkip: allowSkipProp = true }: { children: ReactNode; allowSkip?: boolean }) {
+  const allowSkip = allowSkipProp || devicePlatform() === 'desktop'
   const push = usePushNotifications()
   useReportDeviceStatus(true, push.isSubscribed)
   const [ready, setReady] = useState(false)
