@@ -170,13 +170,19 @@ async def get_lead_timeline(
 
     # 10 — Day 2 test
     if lead.day2_test_completed_at:
+        from app.services.day2_test_service import latest_result as _day2_latest
+
+        day2 = await _day2_latest(session, lead.id)
+        day2_total = (day2 or {}).get("total") or 30
+        day2_flags = (day2 or {}).get("flags") or []
         test_label = "Day 2 Test Passed" if lead.day2_test_status == "passed" else "Day 2 Test Failed"
         events.append(TimelineEvent(
             type="day2_test" if lead.day2_test_status == "passed" else "day2_test_failed",
             label=test_label,
             timestamp=lead.day2_test_completed_at.isoformat(),
             actor=assigned_name,
-            detail=f"Score: {lead.day2_test_score}/{100} · Attempts: {lead.day2_test_attempts}",
+            detail=f"Score: {lead.day2_test_score}/{day2_total} · Attempts: {lead.day2_test_attempts}"
+            + (f" · ⚠ {'; '.join(day2_flags)}" if day2_flags else ""),
         ))
 
     # 11 — Payment / Sale

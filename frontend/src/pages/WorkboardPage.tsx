@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Day2TestSignals } from '@/components/leads/Day2TestSignals'
 import { Day3SlotTimer } from '@/components/leads/Day3SlotTimer'
 import { buildLiveSessionMessage, extractPasscode } from '@/lib/live-session-message'
 import { createPortal } from 'react-dom'
@@ -986,6 +987,7 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
           {label[status]}
         </span>
       </div>
+      <Day2TestSignals leadId={lead.id} status={status} />
       {!done ? (
         <button type="button"
           disabled={busy}

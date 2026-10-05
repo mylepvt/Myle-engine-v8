@@ -244,3 +244,51 @@ async def test_timer_auto_submits(admin_client: AsyncClient, engine):
     # nothing answered → score 0, failed
     assert state["score"] == 0
     assert state["passed"] is False
+
+
+# ── Leader/admin result view + certificate ───────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_result_shows_cheat_signals(admin_client: AsyncClient, engine):
+    lead_id = await _create_lead(admin_client)
+    token = await _issue_link(admin_client, lead_id)
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    for ev in ("blur", "hidden", "blur", "paste"):
+        await admin_client.post(f"/api/test/d2/{token}/event", json={"type": ev})
+    await _drive(admin_client, engine, token, correct=True)
+
+    resp = await admin_client.get(f"/api/v1/leads/{lead_id}/day2-test-result")
+    assert resp.status_code == 200, resp.text
+    r = resp.json()["result"]
+    assert r["status"] == "submitted" and r["passed"] is True
+    assert r["total"] == QUESTIONS_PER_ATTEMPT
+    assert (r["tab_switches"], r["app_hidden"], r["paste_count"]) == (2, 1, 1)
+    assert r["suspicious"] is True
+    assert any("Left the test screen 3 times" in f for f in r["flags"])
+    assert any("Copy/paste" in f for f in r["flags"])
+
+    timeline = await admin_client.get(f"/api/v1/leads/{lead_id}/timeline")
+    assert timeline.status_code == 200, timeline.text
+    details = [e.get("detail") or "" for e in timeline.json()["events"] if e["type"].startswith("day2_test")]
+    assert len(details) == 1
+    assert details[0].startswith(f"Score: {QUESTIONS_PER_ATTEMPT}/{QUESTIONS_PER_ATTEMPT}")
+    assert "Left the test screen" in details[0]
+
+
+@pytest.mark.asyncio
+async def test_team_cannot_read_result(admin_client: AsyncClient, team_client: AsyncClient):
+    lead_id = await _create_lead(admin_client)
+    resp = await team_client.get(f"/api/v1/leads/{lead_id}/day2-test-result")
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_certificate_after_pass(admin_client: AsyncClient, engine):
+    lead_id = await _create_lead(admin_client)
+    token = await _issue_link(admin_client, lead_id)
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await _drive(admin_client, engine, token, correct=True)
+    resp = await admin_client.get(f"/api/test/d2/{token}/certificate")
+    assert resp.status_code == 200, resp.text
+    assert resp.content.startswith(b"%PDF")
+    assert "Ravi_Kumar" in resp.headers["content-disposition"]
