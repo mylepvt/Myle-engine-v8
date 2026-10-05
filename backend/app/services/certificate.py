@@ -519,7 +519,7 @@ def draw_certificate(
     base = 98
     qr_size = 56
     qx = 68
-    issued = completion_date.strftime("%d %B %Y")
+    issued = completion_date.strftime("%d %B %Y, %I:%M %p IST")
     _qr(c, qx, base - 30, qr_size,
         f"MYLE COMMUNITY | Certificate of Completion | No. {cert_no} | {name} | "
         f"FBO ID {fbo_id or 'N/A'} | {PROGRAMME} | Score {percent}% | Issued {issued}")
@@ -527,7 +527,7 @@ def draw_certificate(
     c.setFillColor(MUTED)
     c.setFont("Helvetica", 7)
     c.drawString(tx, base + 18, "CERTIFICATE NO.")
-    c.drawString(tx, base - 10, "DATE OF ISSUE")
+    c.drawString(tx, base - 10, "DATE & TIME OF ISSUE")
     c.setFillColor(INK)
     c.setFont("Helvetica-Bold", 10)
     c.drawString(tx, base + 6, cert_no)
