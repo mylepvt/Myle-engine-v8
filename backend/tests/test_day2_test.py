@@ -320,3 +320,33 @@ async def test_day2_certificate_verifies_publicly(admin_client: AsyncClient, ano
     assert body["valid"] is True, body
     assert body["certificate"]["name"] == "Ravi Kumar"
     assert body["certificate"]["score"] == f"{QUESTIONS_PER_ATTEMPT}/{QUESTIONS_PER_ATTEMPT}"
+
+
+@pytest.mark.asyncio
+async def test_leader_admin_redownload_certificate(admin_client: AsyncClient, engine):
+    """After the prospect passes, admin can re-download the same certificate from the Workboard."""
+    lead_id = await _create_lead(admin_client)
+    assert (await admin_client.get(f"/api/v1/leads/{lead_id}/day2-test-certificate")).status_code == 404
+    token = await _issue_link(admin_client, lead_id)
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await _drive(admin_client, engine, token, correct=True)
+
+    resp = await admin_client.get(f"/api/v1/leads/{lead_id}/day2-test-certificate")
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content.startswith(b"%PDF")
+    assert "Ravi_Kumar" in resp.headers["content-disposition"]
+
+
+@pytest.mark.asyncio
+async def test_team_cannot_redownload_certificate(team_client: AsyncClient):
+    assert (await team_client.get("/api/v1/leads/1/day2-test-certificate")).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_no_redownload_for_failed_test(admin_client: AsyncClient, engine):
+    lead_id = await _create_lead(admin_client)
+    token = await _issue_link(admin_client, lead_id)
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await _drive(admin_client, engine, token, correct=False)
+    assert (await admin_client.get(f"/api/v1/leads/{lead_id}/day2-test-certificate")).status_code == 404

@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useState } from 'react'
-import { GraduationCap, Lock, LockOpen, RotateCcw, Users } from 'lucide-react'
+import { Download, GraduationCap, Lock, LockOpen, RotateCcw, Users } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import {
   type TrainingProgressGroup,
   type TrainingProgressMember,
 } from '@/hooks/use-training-overview-query'
+import { downloadApiPdf, pdfFileSlug } from '@/lib/download-pdf'
 import { filterCollectionByQuery, type SearchableValue } from '@/lib/search-filter'
 import { cn } from '@/lib/utils'
 
@@ -41,6 +42,7 @@ function MemberRow({ member }: { member: TrainingProgressMember }) {
   const reset = useResetTrainingMutation()
   const status = memberStatus(member)
   const percent = member.total_days > 0 ? Math.round((member.days_done / member.total_days) * 100) : 0
+  const [downloading, setDownloading] = useState(false)
   const busy = toggle.isPending || reset.isPending
 
   return (
@@ -86,6 +88,29 @@ function MemberRow({ member }: { member: TrainingProgressMember }) {
       </td>
       <td className="py-3 pl-2 pr-3 text-right">
         <div className="flex justify-end gap-1.5">
+          {member.certificate_ready ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={downloading}
+              title="Download training certificate"
+              aria-label={`Download training certificate for ${member.name}`}
+              onClick={() => {
+                setDownloading(true)
+                void downloadApiPdf(
+                  `/api/v1/admin/training/${member.user_id}/certificate`,
+                  `Myle_Training_Certificate_${pdfFileSlug(member.name)}.pdf`,
+                )
+                  .catch((e: unknown) =>
+                    window.alert(e instanceof Error ? e.message : 'Certificate download failed'),
+                  )
+                  .finally(() => setDownloading(false))
+              }}
+            >
+              <Download className="size-3.5" />
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="sm"

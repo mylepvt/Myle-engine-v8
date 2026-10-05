@@ -987,7 +987,7 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
           {label[status]}
         </span>
       </div>
-      <Day2TestSignals leadId={lead.id} status={status} />
+      <Day2TestSignals leadId={lead.id} status={status} leadName={lead.name} />
       {!done ? (
         <button type="button"
           disabled={busy}

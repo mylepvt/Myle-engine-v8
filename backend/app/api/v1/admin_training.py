@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.api.v1.certificate import build_training_certificate, pdf_response
 from app.models.training_progress import TrainingProgress
 from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
@@ -211,6 +212,19 @@ async def _load_target(session: AsyncSession, user_id: int) -> User:
     if target is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
     return target
+
+
+@router.get("/training/{user_id}/certificate")
+async def admin_download_member_certificate(
+    user_id: int,
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Admin: re-download a member's training certificate (identical to the member's copy)."""
+    _require_admin(user)
+    pdf_bytes, filename = await build_training_certificate(session, user_id, str(request.base_url))
+    return pdf_response(pdf_bytes, filename)
 
 
 @router.post("/training/{user_id}/toggle")
