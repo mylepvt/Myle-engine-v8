@@ -4,6 +4,7 @@ One snapshot for the whole community (same for every viewer):
 - how many members are on the app right now (live presence heartbeats),
 - totals for today and for the last 7 days (calls, follow-ups, members who worked,
   leads added) — the card shows the week when today is still quiet,
+- the "15+ calls today" club (first names + call counts) to spur everyone else on,
 - a feed of real recent actions over the last 24 hours: first name + what they did.
 
 Everything is real data; nothing is padded. Privacy: never a lead's name, phone or
@@ -42,6 +43,8 @@ GROUP_WINDOW = timedelta(hours=3)  # calls / new leads are grouped per member ov
 FEED_LIMIT = 15
 PER_KIND_LIMIT = 10
 WEEK_DAYS = 7
+STAR_CALLS = 15  # "15+ calls today" club, shown to encourage everyone else
+STAR_LIMIT = 10
 CACHE_SECONDS = 20
 
 _cache: tuple[float, dict[str, Any]] | None = None
@@ -135,7 +138,35 @@ async def period_totals(session: AsyncSession, start: datetime, end: datetime) -
     }
 
 
-async def _feed(session: AsyncSession, now: datetime) -> list[dict[str, Any]]:
+async def call_stars(session: AsyncSession, start: datetime, end: datetime) -> list[dict[str, Any]]:
+    """Members with STAR_CALLS+ calls today, most calls first, with the time they crossed the mark."""
+    rows = (
+        await session.execute(
+            select(User, func.count(CallEvent.id))
+            .join(CallEvent, CallEvent.user_id == User.id)
+            .where(CallEvent.called_at >= start, CallEvent.called_at < end, *_member_filter())
+            .group_by(User.id)
+            .having(func.count(CallEvent.id) >= STAR_CALLS)
+            .order_by(func.count(CallEvent.id).desc(), User.id)
+            .limit(STAR_LIMIT)
+        )
+    ).all()
+    stars: list[dict[str, Any]] = []
+    for user, n in rows:
+        times = (
+            await session.execute(
+                select(CallEvent.called_at)
+                .where(CallEvent.user_id == user.id, CallEvent.called_at >= start, CallEvent.called_at < end)
+                .order_by(CallEvent.called_at)
+                .offset(STAR_CALLS - 1)
+                .limit(1)
+            )
+        ).scalar_one()
+        stars.append({"user_id": user.id, "name": first_name(user), "calls": int(n), "crossed_at": _aware(times)})
+    return stars
+
+
+async def _feed(session: AsyncSession, now: datetime, stars: list[dict[str, Any]]) -> list[dict[str, Any]]:
     member = _member_filter()
     since = now - FEED_WINDOW
     group_since = now - GROUP_WINDOW
@@ -247,6 +278,14 @@ async def _feed(session: AsyncSession, now: datetime) -> list[dict[str, Any]]:
     ).all():
         add("win", user, win_text(win.kind, first_name(user), win.detail), win.created_at)
 
+    for star in stars:
+        feed.append({
+            "kind": "star",
+            "user_id": star["user_id"],
+            "text": f"{star['name']} crossed {STAR_CALLS} calls today",
+            "at": star["crossed_at"],
+        })
+
     feed.sort(key=lambda e: e["at"], reverse=True)
     return [{**e, "at": e["at"].isoformat()} for e in feed[:FEED_LIMIT]]
 
@@ -258,12 +297,17 @@ async def build_live_snapshot(session: AsyncSession, now: datetime | None = None
     week_start, _ = ist_day_bounds(today - timedelta(days=WEEK_DAYS - 1))
 
     online = await online_members(session, now)
+    stars = await call_stars(session, start, end)
     return {
         "online_now": len(online),
         "online_names": [first_name(u) for u in online[:5]],
         "today": await period_totals(session, start, end),
         "week": await period_totals(session, week_start, end),
-        "feed": await _feed(session, now),
+        "call_stars": [
+            {"user_id": st["user_id"], "name": st["name"], "calls": st["calls"]} for st in stars
+        ],
+        "star_calls": STAR_CALLS,
+        "feed": await _feed(session, now, stars),
         "generated_at": now.isoformat(),
     }
 

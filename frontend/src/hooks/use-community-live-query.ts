@@ -11,6 +11,7 @@ export type CommunityFeedKind =
   | 'certificate'
   | 'report'
   | 'win'
+  | 'star'
 
 export type CommunityFeedItem = {
   kind: CommunityFeedKind
@@ -31,6 +32,9 @@ export type CommunityLive = {
   online_names: string[]
   today: CommunityTotals
   week: CommunityTotals
+  /** Members with `star_calls`+ calls today, most calls first. */
+  call_stars: { user_id: number; name: string; calls: number }[]
+  star_calls: number
   feed: CommunityFeedItem[]
   generated_at: string
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Award,
   ClipboardCheck,
+  Flame,
   GraduationCap,
   PartyPopper,
   PhoneCall,
@@ -31,6 +32,7 @@ const KIND_ICON: Record<CommunityFeedKind, { icon: LucideIcon; tone: string }> =
   certificate: { icon: Award, tone: 'bg-warning/15 text-warning-ink' },
   report: { icon: ClipboardCheck, tone: 'bg-muted text-muted-foreground' },
   win: { icon: PartyPopper, tone: 'bg-warning/15 text-warning-ink' },
+  star: { icon: Flame, tone: 'bg-destructive/15 text-destructive-ink' },
 }
 
 function Stat({ value, label }: { value: number; label: string }) {
@@ -94,6 +96,24 @@ export function CommunityLiveCard() {
                 <div className={cn('grid gap-2', stats.length === 1 ? 'grid-cols-1' : stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3')}>
                   {stats.map((s) => <Stat key={s.label} value={s.value} label={s.label} />)}
                 </div>
+              </div>
+            ) : null}
+            {data.call_stars.length ? (
+              <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
+                <p className="flex items-center gap-1.5 text-ds-caption font-semibold text-warning-ink">
+                  <Flame className="size-3.5" aria-hidden />
+                  {data.star_calls}+ calls today
+                </p>
+                <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                  {data.call_stars.map((s) => (
+                    <li
+                      key={s.user_id}
+                      className="rounded-full bg-background/80 px-2.5 py-0.5 text-ds-caption font-semibold text-foreground"
+                    >
+                      {s.name} <span className="tabular-nums text-muted-foreground">{s.calls}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
             {data.feed.length ? (

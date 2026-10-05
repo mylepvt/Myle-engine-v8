@@ -9,6 +9,8 @@ function live(over: Partial<CommunityLive>): CommunityLive {
     online_names: [],
     today: { calls: 0, followups: 0, members_worked: 0, leads_added: 0 },
     week: { calls: 0, followups: 0, members_worked: 0, leads_added: 0 },
+    call_stars: [],
+    star_calls: 15,
     feed: [],
     generated_at: '',
     ...over,

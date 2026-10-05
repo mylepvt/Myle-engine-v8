@@ -117,3 +117,36 @@ async def test_endpoint_open_to_members(team_client: AsyncClient):
     assert r.status_code == 200, r.text
     body = r.json()
     assert {"online_now", "online_names", "today", "feed"} <= body.keys()
+
+
+async def test_call_stars(Session):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    async with Session() as s:
+        s.add_all([
+            User(id=PRIYA, fbo_id="f1", email="p@t", role="team", name="Priya Sharma"),
+            User(id=RAHUL, fbo_id="f2", email="r@t", role="leader", name="Rahul Verma"),
+            User(id=IDLE, fbo_id="f5", email="i@t", role="team", name="Ira"),
+        ])
+        await s.flush()
+        s.add(Lead(id=1, name="L", status="new_lead", created_by_user_id=PRIYA, owner_user_id=PRIYA,
+                   assigned_to_user_id=PRIYA, in_pool=False, call_count=0, created_at=now - timedelta(days=2)))
+        await s.flush()
+        # Priya: 18 calls one minute apart (15th call 3 min ago); Rahul exactly 15; Ira 14.
+        for i in range(18):
+            s.add(CallEvent(lead_id=1, user_id=PRIYA, outcome="answered", called_at=now - timedelta(minutes=17 - i)))
+        for i in range(15):
+            s.add(CallEvent(lead_id=1, user_id=RAHUL, outcome="answered", called_at=now - timedelta(minutes=30 - i)))
+        for i in range(14):
+            s.add(CallEvent(lead_id=1, user_id=IDLE, outcome="answered", called_at=now - timedelta(minutes=40 - i)))
+        await s.commit()
+        snap = await build_live_snapshot(s, now)
+
+    if snap["today"]["calls"] < 47:
+        pytest.skip("test ran across IST midnight")
+    assert snap["call_stars"] == [
+        {"user_id": PRIYA, "name": "Priya", "calls": 18},
+        {"user_id": RAHUL, "name": "Rahul", "calls": 15},
+    ]
+    stars = [e for e in snap["feed"] if e["kind"] == "star"]
+    assert [e["text"] for e in stars] == ["Priya crossed 15 calls today", "Rahul crossed 15 calls today"]
+    assert stars[0]["at"] == (now - timedelta(minutes=3)).isoformat()
