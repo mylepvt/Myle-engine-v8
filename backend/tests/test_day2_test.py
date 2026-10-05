@@ -292,3 +292,13 @@ async def test_certificate_after_pass(admin_client: AsyncClient, engine):
     assert resp.status_code == 200, resp.text
     assert resp.content.startswith(b"%PDF")
     assert "Ravi_Kumar" in resp.headers["content-disposition"]
+
+
+@pytest.mark.asyncio
+async def test_resend_link_while_test_in_progress(admin_client: AsyncClient):
+    """The Workboard offers 'Resend test link' for a started test — it must return the same link."""
+    lead_id = await _create_lead(admin_client)
+    token = await _issue_link(admin_client, lead_id)
+    start = await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    assert start.status_code == 200, start.text
+    assert await _issue_link(admin_client, lead_id) == token

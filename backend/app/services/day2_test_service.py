@@ -62,13 +62,8 @@ async def create_link(
     link is issued. An unused 'created'/'active' session is reused so re-sharing the
     link is idempotent.
     """
-    if (lead.day2_test_status or "pending") in {"passed", "failed"}:
-        raise Day2TestError("Test already completed for this lead", status_code=409)
-    if (lead.day2_test_attempts or 0) >= MAX_ATTEMPTS and (
-        lead.day2_test_status or "pending"
-    ) != "pending":
-        raise Day2TestError("No attempts remaining", status_code=409)
-
+    # Re-sharing the link of an unused or running attempt must always work — check this
+    # before the attempt limit (a started test already counts as the one attempt).
     existing = (
         await session.execute(
             select(Day2TestSession)
@@ -80,7 +75,17 @@ async def create_link(
         )
     ).scalars().first()
     if existing is not None:
-        return existing
+        if _is_expired(existing):
+            await _finalize(session, existing)
+        else:
+            return existing
+
+    if (lead.day2_test_status or "pending") in {"passed", "failed"}:
+        raise Day2TestError("Test already completed for this lead", status_code=409)
+    if (lead.day2_test_attempts or 0) >= MAX_ATTEMPTS and (
+        lead.day2_test_status or "pending"
+    ) != "pending":
+        raise Day2TestError("No attempts remaining", status_code=409)
 
     link = Day2TestSession(
         token=secrets.token_urlsafe(24),

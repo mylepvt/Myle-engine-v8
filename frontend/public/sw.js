@@ -1,5 +1,5 @@
 /* Myle SW — PWA install + Web Push + Offline caching */
-const CACHE_PREFIX = 'myle-v20261001-2'
+const CACHE_PREFIX = 'myle-v20261005-1'
 const STATIC_CACHE = `${CACHE_PREFIX}-static`
 const API_CACHE = `${CACHE_PREFIX}-api`
 
@@ -74,31 +74,23 @@ function isStaticAsset(url) {
 }
 
 /**
- * Stale-while-revalidate — serve cached instantly, update cache in background.
- * Falls back to a 503 JSON when truly offline and no cache exists.
+ * Network-first — always show fresh data when online; the cached copy is only an
+ * offline fallback. (Stale-while-revalidate served the previous response on every
+ * request, so the Workboard / leads lists were always one change behind.)
  */
-async function staleWhileRevalidate(request, cacheName) {
+async function networkFirst(request, cacheName) {
   const cache = await caches.open(cacheName)
-  const cached = await cache.match(request)
-
-  const networkPromise = fetch(request)
-    .then((response) => {
-      if (response && response.ok) {
-        cache.put(request, response.clone())
-      }
-      return response
-    })
-    .catch(() => null)
-
-  if (cached) {
-    // Serve cached immediately; let network update run in background.
-    networkPromise.catch(() => {})
-    return cached
+  try {
+    const response = await fetch(request)
+    if (response && response.ok) cache.put(request, response.clone())
+    return response
+  } catch {
+    const cached = await cache.match(request)
+    return cached ?? new Response(
+      JSON.stringify({ offline: true, cached: false }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } },
+    )
   }
-  return (await networkPromise) ?? new Response(
-    JSON.stringify({ offline: true, cached: false }),
-    { status: 503, headers: { 'Content-Type': 'application/json' } },
-  )
 }
 
 /**
@@ -124,7 +116,7 @@ self.addEventListener('fetch', (event) => {
   if (url.protocol === 'ws:' || url.protocol === 'wss:') return
 
   if (matchesApiCache(url)) {
-    event.respondWith(staleWhileRevalidate(request, API_CACHE))
+    event.respondWith(networkFirst(request, API_CACHE))
     return
   }
 
