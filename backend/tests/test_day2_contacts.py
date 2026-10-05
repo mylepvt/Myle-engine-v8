@@ -14,6 +14,7 @@ from app.models.user import User
 from app.services.day2_contacts import phone_for_contact, vcard_for_lead
 
 ADMIN = 203
+LEADER, MEMBER = 9201, 9202
 L_DAY2, L_DAY3, L_NEW, L_NOPHONE, L_DELETED = 9101, 9102, 9103, 9104, 9105
 
 
@@ -24,17 +25,22 @@ async def seeded(engine):
         await s.execute(delete(AppSetting).where(AppSetting.key.like("carddav_admin:%")))
         if await s.get(User, ADMIN) is None:
             s.add(User(id=ADMIN, fbo_id="A00203", email="admin203@test.myle", role="admin", name="Karanveer Singh"))
+        if await s.get(User, LEADER) is None:
+            s.add(User(id=LEADER, fbo_id="L09201", email="l9201@test.myle", role="leader", name="Priya  Verma",
+                       upline_user_id=ADMIN))
+            s.add(User(id=MEMBER, fbo_id="T09202", email="t9202@test.myle", role="team", name="Aman",
+                       upline_user_id=LEADER))
         await s.flush()
 
-        def lead(i, name, status, phone="9876543210", **kw):
-            return Lead(id=i, name=name, status=status, phone=phone, city="Jaipur", created_by_user_id=ADMIN,
-                        owner_user_id=ADMIN, assigned_to_user_id=ADMIN, in_pool=False, call_count=0, **kw)
+        def lead(i, name, status, phone="9876543210", owner=MEMBER, **kw):
+            return Lead(id=i, name=name, status=status, phone=phone, city="Jaipur", created_by_user_id=owner,
+                        owner_user_id=owner, assigned_to_user_id=owner, in_pool=False, call_count=0, **kw)
 
         from datetime import datetime, timezone
 
         s.add_all([
             lead(L_DAY2, "Rahul Sharma", "day2"),
-            lead(L_DAY3, "Neha; Gupta", "day3", phone="+91 98765 11111"),  # moved on, still a contact
+            lead(L_DAY3, "Neha; Gupta", "day3", phone="+91 98765 11111", owner=ADMIN),  # no leader above
             lead(L_NEW, "New Person", "new_lead"),                         # not Day 2 yet
             lead(L_NOPHONE, "No Phone", "day2", phone=None),
             lead(L_DELETED, "Gone", "day2", deleted_at=datetime.now(timezone.utc)),
@@ -46,9 +52,11 @@ async def seeded(engine):
 def test_vcard_and_phone_format():
     assert phone_for_contact("98765 43210") == "+919876543210"
     assert phone_for_contact("919876543210") == "+919876543210"
-    card = vcard_for_lead(Lead(id=7, name="Neha; Gupta", phone="9876543210", city=None))
+    card = vcard_for_lead(Lead(id=7, name="Neha; Gupta", phone="9876543210", city=None), "Priya Verma")
     assert card.startswith("BEGIN:VCARD\r\nVERSION:3.0\r\n")
-    assert "FN:Neha\\; Gupta – MYLE Day 2\r\n" in card
+    assert "FN:Neha\\; Gupta – Priya Verma – MYLE\r\n" in card
+    assert "Leader: Priya Verma" in card
+    assert "FN:Neha\\; Gupta – MYLE\r\n" in vcard_for_lead(Lead(id=8, name="Neha; Gupta", phone="1", city=None))
     assert "TEL;TYPE=CELL:+919876543210\r\n" in card
     assert card.endswith("END:VCARD\r\n")
 
@@ -58,14 +66,15 @@ async def test_bulk_vcf_has_only_day2_prospects(seeded, admin_client: AsyncClien
     assert r.status_code == 200, r.text
     assert r.headers["content-type"].startswith("text/vcard")
     body = r.text
-    assert "Rahul Sharma – MYLE Day 2" in body and "Neha\\; Gupta – MYLE Day 2" in body
+    # prospect – leader – MYLE (leader = owner's nearest leader; none above an admin owner)
+    assert "Rahul Sharma – Priya Verma – MYLE" in body and "Neha\\; Gupta – MYLE" in body
     assert "New Person" not in body and "No Phone" not in body and "Gone" not in body
 
 
 async def test_single_lead_vcf(seeded, admin_client: AsyncClient):
     r = await admin_client.get(f"/api/v1/admin/contacts/lead/{L_DAY2}.vcf")
     assert r.status_code == 200, r.text
-    assert "Rahul_Sharma_MYLE_Day_2.vcf" in r.headers["content-disposition"]
+    assert "Rahul_Sharma_Priya_Verma_MYLE.vcf" in r.headers["content-disposition"]
     assert (await admin_client.get(f"/api/v1/admin/contacts/lead/{L_NOPHONE}.vcf")).status_code == 422
 
 
@@ -112,7 +121,7 @@ async def test_carddav_sync(seeded, admin_client: AsyncClient):
     )
     rep = await admin_client.request("REPORT", "/carddav/books/day2/", headers={**auth, "Depth": "1"}, content=multiget)
     assert rep.status_code == 207
-    assert "Rahul Sharma – MYLE Day 2" in rep.text and "Neha" not in rep.text
+    assert "Rahul Sharma – Priya Verma – MYLE" in rep.text and "Neha" not in rep.text
     assert "404 Not Found" in rep.text
     card = await admin_client.get(f"/carddav/books/day2/{L_DAY2}.vcf", headers=auth)
     assert card.status_code == 200 and card.headers["etag"] and "BEGIN:VCARD" in card.text

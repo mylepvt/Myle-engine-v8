@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.services.carddav_auth import authenticate_carddav
-from app.services.day2_contacts import CONTACT_SUFFIX, day2_contact_leads, etag_for, vcard_for_lead
+from app.services.day2_contacts import BOOK_NAME, contact_cards, day2_contact_leads, etag_for
 
 router = APIRouter(include_in_schema=False)
 
@@ -90,7 +90,7 @@ def _principal_props(user_name: str) -> str:
 def _book_props(ctag: str) -> str:
     return (
         "<d:resourcetype><d:collection/><card:addressbook/></d:resourcetype>"
-        f"<d:displayname>{escape(CONTACT_SUFFIX)}</d:displayname>"
+        f"<d:displayname>{escape(BOOK_NAME)}</d:displayname>"
         f"<cs:getctag>{escape(ctag)}</cs:getctag>"
         f"<d:getetag>{escape(ctag)}</d:getetag>"
         "<d:supported-report-set>"
@@ -107,7 +107,7 @@ def _card_href(lead_id: int) -> str:
 
 
 async def _cards(session: AsyncSession) -> dict[int, str]:
-    return {lead.id: vcard_for_lead(lead) for lead in await day2_contact_leads(session)}
+    return await contact_cards(session, await day2_contact_leads(session))
 
 
 def _ctag(cards: dict[int, str]) -> str:

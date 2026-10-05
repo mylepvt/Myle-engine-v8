@@ -17,11 +17,11 @@ from app.services.carddav_auth import (
     carddav_enabled,
 )
 from app.services.day2_contacts import (
+    contact_cards,
     contact_name,
     day2_contact_leads,
+    leader_names,
     safe_filename,
-    vcard_for_lead,
-    vcards,
 )
 
 router = APIRouter()
@@ -52,7 +52,8 @@ async def download_day2_contacts(
     leads = await day2_contact_leads(session)
     if not leads:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="No Day 2 contacts yet")
-    return _vcf(vcards(leads), "MYLE_Day2_contacts.vcf")
+    cards = await contact_cards(session, leads)
+    return _vcf("".join(cards.values()), "MYLE_Day2_contacts.vcf")
 
 
 @router.get("/contacts/lead/{lead_id}.vcf")
@@ -68,7 +69,9 @@ async def download_lead_contact(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if not (lead.phone or "").strip():
         raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Lead has no phone number")
-    return _vcf(vcard_for_lead(lead), f"{safe_filename(contact_name(lead))}.vcf")
+    card = (await contact_cards(session, [lead]))[lead.id]
+    leader = (await leader_names(session, [lead]))[lead.id]
+    return _vcf(card, f"{safe_filename(contact_name(lead, leader))}.vcf")
 
 
 def _server(request: Request) -> str:

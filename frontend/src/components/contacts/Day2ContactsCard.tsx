@@ -77,7 +77,7 @@ export function Day2ContactsCard() {
           Day 2 contacts → iPhone
         </CardTitle>
         <CardDescription>
-          Every prospect who reached Day 2, saved as “Name – MYLE Day 2”. Admin only.
+          Every prospect who reached Day 2, saved as “Prospect – Leader – MYLE”. Admin only.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

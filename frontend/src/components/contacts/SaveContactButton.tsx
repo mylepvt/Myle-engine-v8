@@ -4,7 +4,7 @@ import { ContactRound } from 'lucide-react'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { openContactCard } from '@/lib/contact-card'
 
-/** Admin only: save this prospect to the phone's contacts as "<name> – MYLE Day 2". */
+/** Admin only: save this prospect to the phone's contacts as "<prospect> – <leader> – MYLE". */
 export function SaveContactButton({ leadId, hasPhone }: { leadId: number; hasPhone: boolean }) {
   const { serverRole } = useDashboardShellRole()
   const [busy, setBusy] = useState(false)

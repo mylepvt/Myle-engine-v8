@@ -1,6 +1,7 @@
 """Day 2 prospects as phone contacts (admin only).
 
-Three ways to get them into the admin's iPhone:
+Contacts are named "<prospect> – <leader> – MYLE". Three ways to get them into
+the admin's iPhone:
 - one lead  → ``.vcf`` file ("Save contact" on the Workboard),
 - all leads → one ``.vcf`` with every contact ("Add All Contacts"),
 - CardDAV   → iPhone keeps a "MYLE Day 2" address book in sync (see app/api/carddav.py).
@@ -19,8 +20,11 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.lead import Lead
+from app.services.lead_payloads import _response_owner_user_id
+from app.services.user_hierarchy import load_user_hierarchy_entries, nearest_leader_entry
 
-CONTACT_SUFFIX = "MYLE Day 2"
+BOOK_NAME = "MYLE Day 2"  # the iPhone list / address book
+BRAND = "MYLE"
 REACHED_DAY2_STATUSES = ("day2", "day3", "converted", "training")
 
 
@@ -61,9 +65,21 @@ def phone_for_contact(raw: str | None) -> str:
     return (raw or "").strip()
 
 
-def contact_name(lead: Lead) -> str:
+async def leader_names(session: AsyncSession, leads: list[Lead]) -> dict[int, str | None]:
+    """Lead id → its leader's name (same rule as the Workboard: owner's nearest leader)."""
+    owners = {lead.id: _response_owner_user_id(lead) for lead in leads}
+    entries = await load_user_hierarchy_entries(session, owners.values())
+    out: dict[int, str | None] = {}
+    for lead_id, owner_id in owners.items():
+        leader = nearest_leader_entry(owner_id, entries)
+        out[lead_id] = " ".join(leader.display_name.split()) if leader is not None else None
+    return out
+
+
+def contact_name(lead: Lead, leader: str | None = None) -> str:
+    """"Prospect – Leader – MYLE" (leader left out when the lead has none)."""
     name = " ".join((lead.name or "").split()) or "Prospect"
-    return f"{name} – {CONTACT_SUFFIX}"
+    return " – ".join(part for part in (name, leader, BRAND) if part)
 
 
 def _rev(lead: Lead) -> str:
@@ -73,9 +89,9 @@ def _rev(lead: Lead) -> str:
     return stamp.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def vcard_for_lead(lead: Lead) -> str:
+def vcard_for_lead(lead: Lead, leader: str | None = None) -> str:
     """vCard 3.0 (what iOS Contacts reads best). CRLF line endings per RFC 2426."""
-    full = contact_name(lead)
+    full = contact_name(lead, leader)
     lines = [
         "BEGIN:VCARD",
         "VERSION:3.0",
@@ -88,7 +104,7 @@ def vcard_for_lead(lead: Lead) -> str:
     if lead.city:
         lines.append(f"ADR;TYPE=HOME:;;;{_esc(lead.city)};;;")
     lines += [
-        f"NOTE:{_esc(f'MYLE lead #{lead.id} (Day 2 prospect)')}",
+        f"NOTE:{_esc(f'MYLE lead #{lead.id} (Day 2 prospect)' + (f' · Leader: {leader}' if leader else ''))}",
         "CATEGORIES:MYLE",
         f"REV:{_rev(lead)}",
         "END:VCARD",
@@ -96,8 +112,10 @@ def vcard_for_lead(lead: Lead) -> str:
     return "\r\n".join(lines) + "\r\n"
 
 
-def vcards(leads: list[Lead]) -> str:
-    return "".join(vcard_for_lead(lead) for lead in leads)
+async def contact_cards(session: AsyncSession, leads: list[Lead]) -> dict[int, str]:
+    """Lead id → vCard, with each lead's leader in the contact name."""
+    leaders = await leader_names(session, leads)
+    return {lead.id: vcard_for_lead(lead, leaders.get(lead.id)) for lead in leads}
 
 
 def etag_for(card: str) -> str:
