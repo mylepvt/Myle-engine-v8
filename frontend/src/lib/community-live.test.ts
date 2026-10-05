@@ -33,6 +33,10 @@ describe('community live helpers', () => {
     expect(r.stats[0]).toEqual({ value: 40, label: 'Calls' })
   })
 
+  it('shows no totals when the server withholds them (team / leaders)', () => {
+    expect(pickStats(live({ today: null, week: null })).stats).toEqual([])
+  })
+
   it('hides a small online count', () => {
     expect(onlineLine(live({ online_now: 2, online_names: ['A', 'B'] }))).toBeNull()
     expect(onlineLine(live({ online_now: 3, online_names: ['A', 'B', 'C'] }))).toBe('A, B and 1 more are working right now')

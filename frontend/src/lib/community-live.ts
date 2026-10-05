@@ -16,6 +16,7 @@ export function onlineLine(live: CommunityLive): string | null {
 
 /** Today's totals once the day has picked up, otherwise the last 7 days. Zero tiles are dropped. */
 export function pickStats(live: CommunityLive): { period: string; stats: { value: number; label: string }[] } {
+  if (!live.today || !live.week) return { period: '', stats: [] } // admin-only totals
   const useToday = live.today.calls >= TODAY_MIN_CALLS
   const t = useToday ? live.today : live.week
   const stats = [

@@ -41,6 +41,7 @@ import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
+import { Day2ContactsCard } from '@/components/contacts/Day2ContactsCard'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { ExecutiveDashboard } from '@/components/dashboard/ExecutiveDashboard'
@@ -1211,6 +1212,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               {/* Same live card the team and leaders see on their home screen */}
               <CommunityLiveCard />
               <LiveTeamActivity />
+              <Day2ContactsCard />
             </div>
             <div className="space-y-4">
               <Card>

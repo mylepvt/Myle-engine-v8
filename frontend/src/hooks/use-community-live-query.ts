@@ -30,8 +30,9 @@ export type CommunityTotals = {
 export type CommunityLive = {
   online_now: number
   online_names: string[]
-  today: CommunityTotals
-  week: CommunityTotals
+  /** Admin only — null for team and leaders. */
+  today: CommunityTotals | null
+  week: CommunityTotals | null
   /** Members with `star_calls`+ calls today, most calls first. */
   call_stars: { user_id: number; name: string; calls: number }[]
   star_calls: number
