@@ -40,6 +40,7 @@ import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
+import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { ExecutiveDashboard } from '@/components/dashboard/ExecutiveDashboard'
@@ -1206,7 +1207,11 @@ export function AdminCommandCenter({ firstName }: Props) {
 
           {/* Member Desk */}
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
-            <LiveTeamActivity />
+            <div className="space-y-4">
+              {/* Same live card the team and leaders see on their home screen */}
+              <CommunityLiveCard />
+              <LiveTeamActivity />
+            </div>
             <div className="space-y-4">
               <Card>
                 <CardHeader>
