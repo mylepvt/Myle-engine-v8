@@ -218,7 +218,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID"],
+    expose_headers=["X-Request-ID", "X-Row-Count", "Content-Disposition"],
 )
 
 app.include_router(api_router, prefix="/api/v1")

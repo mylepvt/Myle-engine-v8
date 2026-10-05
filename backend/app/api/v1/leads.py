@@ -5,7 +5,7 @@ import re
 from urllib.parse import parse_qs, urlparse
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -263,6 +263,42 @@ async def list_all_leads(
         status=status,
         archived_only=archived_only,
         deleted_only=deleted_only,
+    )
+
+
+@router.get("/export/meta-audience")
+async def export_meta_audience(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    segment: str = Query(default="bad", description="bad = not interested / switch off / wrong number / lost; good = converted"),
+    reasons: Optional[str] = Query(
+        default=None,
+        max_length=200,
+        description="Comma list to narrow the bad segment: not_interested,switch_off_unreachable,wrong_number,lost_dead",
+    ),
+    with_details: bool = Query(default=False, description="Append reason/status columns (untick them in Meta upload)"),
+) -> Response:
+    """Admin: CSV customer list for Meta Ads Custom / Lookalike audiences."""
+    from app.services import meta_audience_export as mae
+
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+    segment = (segment or "").strip().lower()
+    if segment not in mae.SEGMENTS:
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="segment must be bad or good")
+    reason_set = {r.strip() for r in (reasons or "").split(",") if r.strip()} or None
+    leads = await mae.fetch_segment_leads(session, segment)
+    body, count = mae.build_csv(leads, segment=segment, reasons=reason_set, with_details=with_details)
+    stamp = now_ist().strftime("%Y%m%d")
+    filename = f"meta-audience-{segment}-leads-{stamp}.csv"
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Row-Count": str(count),
+            "Cache-Control": "no-store",
+        },
     )
 
 

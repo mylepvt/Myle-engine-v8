@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { ArrowRightLeft, Clock3, ShieldCheck, UserCheck } from 'lucide-react'
 
+import { MetaAudienceExportCard } from '@/components/leads/MetaAudienceExportCard'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -228,6 +229,8 @@ export function LeadControlPage({ title }: Props) {
           Admin-only control for archived completed-watch reassignment, manual redistribution, and soft audit history.
         </p>
       </div>
+
+      <MetaAudienceExportCard />
 
       {query.isPending ? (
         <Card className="surface-elevated">
