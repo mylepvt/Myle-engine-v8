@@ -14,12 +14,15 @@ does not vanish from the phone when the lead moves on to Day 3 or converts.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
+import secrets
 from datetime import datetime, timezone
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.app_setting import AppSetting
 from app.models.lead import Lead
 from app.services.lead_payloads import _response_owner_user_id
 from app.services.user_hierarchy import load_user_hierarchy_entries, nearest_leader_entry
@@ -125,3 +128,75 @@ def etag_for(card: str) -> str:
 
 def safe_filename(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", text).strip("_") or "contact"
+
+
+# ── "Save only new" — remember which prospects this admin already took to the phone ──
+#
+# app_settings["day2_vcf_export:<admin id>"] = {"exported": [lead ids], "batches": {token: [lead ids]}}
+# A "new" export is a two-step: POST creates a batch (and marks it exported), then the phone
+# opens GET …/export/<token>.vcf — repeatable, so the app's pre-check fetch doesn't eat it.
+
+EXPORT_KEY = "day2_vcf_export:{user_id}"
+MAX_BATCHES = 10
+
+
+async def _load_exports(session: AsyncSession, user_id: int) -> tuple[AppSetting | None, dict]:
+    row = await session.get(AppSetting, EXPORT_KEY.format(user_id=user_id))
+    try:
+        data = json.loads(row.value) if row and row.value else {}
+    except ValueError:
+        data = {}
+    data.setdefault("exported", [])
+    data.setdefault("batches", {})
+    return row, data
+
+
+async def _save_exports(session: AsyncSession, user_id: int, row: AppSetting | None, data: dict) -> None:
+    value = json.dumps(data)
+    if row is None:
+        session.add(AppSetting(key=EXPORT_KEY.format(user_id=user_id), value=value))
+    else:
+        row.value = value
+    await session.commit()
+
+
+async def mark_exported(session: AsyncSession, user_id: int, lead_ids: list[int]) -> None:
+    row, data = await _load_exports(session, user_id)
+    done = set(data["exported"])
+    if set(lead_ids) <= done:
+        return
+    data["exported"] = sorted(done | set(lead_ids))
+    await _save_exports(session, user_id, row, data)
+
+
+async def new_contact_leads(session: AsyncSession, user_id: int) -> list[Lead]:
+    """Day 2 prospects this admin has not saved to the phone yet."""
+    _, data = await _load_exports(session, user_id)
+    done = set(data["exported"])
+    return [lead for lead in await day2_contact_leads(session) if lead.id not in done]
+
+
+async def create_new_export(session: AsyncSession, user_id: int) -> tuple[str | None, int]:
+    """Batch the not-yet-saved prospects; returns (token, count). Marks them saved."""
+    leads = await new_contact_leads(session, user_id)
+    if not leads:
+        return None, 0
+    row, data = await _load_exports(session, user_id)
+    token = secrets.token_urlsafe(12)
+    ids = [lead.id for lead in leads]
+    batches = data["batches"]
+    batches[token] = ids
+    for old in list(batches)[:-MAX_BATCHES]:
+        del batches[old]
+    data["exported"] = sorted(set(data["exported"]) | set(ids))
+    await _save_exports(session, user_id, row, data)
+    return token, len(ids)
+
+
+async def export_batch_leads(session: AsyncSession, user_id: int, token: str) -> list[Lead] | None:
+    _, data = await _load_exports(session, user_id)
+    ids = data["batches"].get(token)
+    if ids is None:
+        return None
+    wanted = set(ids)
+    return [lead for lead in await day2_contact_leads(session) if lead.id in wanted]

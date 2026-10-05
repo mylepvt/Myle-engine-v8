@@ -23,6 +23,7 @@ async def seeded(engine):
     async with AsyncSession(engine, expire_on_commit=False) as s:
         await s.execute(delete(Lead).where(Lead.id.in_([L_DAY2, L_DAY3, L_NEW, L_NOPHONE, L_DELETED])))
         await s.execute(delete(AppSetting).where(AppSetting.key.like("google_contacts:%")))
+        await s.execute(delete(AppSetting).where(AppSetting.key.like("day2_vcf_export:%")))
         if await s.get(User, ADMIN) is None:
             s.add(User(id=ADMIN, fbo_id="A00203", email="admin203@test.myle", role="admin", name="Karanveer Singh"))
         if await s.get(User, LEADER) is None:
@@ -263,3 +264,49 @@ async def test_google_callback_rejects_bad_state(seeded, google_env, anon_client
     assert r.status_code == 303 and r.headers["location"] == "/dashboard?google_contacts=cancelled"
     r = await anon_client.get("/api/v1/admin/contacts/google/callback", params={"error": "access_denied", "state": ""})
     assert r.headers["location"] == "/dashboard?google_contacts=cancelled"
+
+
+# ── "Save only new" ──────────────────────────────────────────────────────────
+
+async def test_save_only_new_contacts(seeded, admin_client: AsyncClient, engine):
+    assert (await admin_client.get("/api/v1/admin/contacts/day2/new-count")).json() == {"new": 2}
+
+    # saving one lead from the Workboard counts as saved
+    await admin_client.get(f"/api/v1/admin/contacts/lead/{L_DAY2}.vcf")
+    assert (await admin_client.get("/api/v1/admin/contacts/day2/new-count")).json() == {"new": 1}
+
+    made = (await admin_client.post("/api/v1/admin/contacts/day2/new-export")).json()
+    assert made["count"] == 1 and made["path"].endswith(".vcf")
+    # the file can be opened more than once (the app pre-checks, then the phone opens it)
+    for _ in range(2):
+        r = await admin_client.get(made["path"])
+        assert r.status_code == 200
+        assert "Neha\\; Gupta – MYLE" in r.text and "Rahul" not in r.text
+    assert (await admin_client.get("/api/v1/admin/contacts/day2/new-count")).json() == {"new": 0}
+    assert (await admin_client.post("/api/v1/admin/contacts/day2/new-export")).json() == {"count": 0, "path": None}
+
+    # a new Day 2 prospect shows up as new
+    async with AsyncSession(engine, expire_on_commit=False) as s:
+        s.add(Lead(id=L_NEW + 50, name="Fresh One", status="day2", phone="9811111111", created_by_user_id=MEMBER,
+                   owner_user_id=MEMBER, assigned_to_user_id=MEMBER, in_pool=False, call_count=0))
+        await s.commit()
+    try:
+        made = (await admin_client.post("/api/v1/admin/contacts/day2/new-export")).json()
+        assert made["count"] == 1
+        assert "Fresh One – Priya Verma – MYLE" in (await admin_client.get(made["path"])).text
+    finally:
+        async with AsyncSession(engine) as s:
+            await s.execute(delete(Lead).where(Lead.id == L_NEW + 50))
+            await s.commit()
+
+    assert (await admin_client.get("/api/v1/admin/contacts/day2/export/not-a-token.vcf")).status_code == 404
+
+
+async def test_save_all_marks_everyone_saved(seeded, admin_client: AsyncClient):
+    assert (await admin_client.get("/api/v1/admin/contacts/day2.vcf")).status_code == 200
+    assert (await admin_client.get("/api/v1/admin/contacts/day2/new-count")).json() == {"new": 0}
+
+
+async def test_new_contacts_admin_only(seeded, leader_client: AsyncClient):
+    assert (await leader_client.get("/api/v1/admin/contacts/day2/new-count")).status_code == 403
+    assert (await leader_client.post("/api/v1/admin/contacts/day2/new-export")).status_code == 403

@@ -16,8 +16,12 @@ from app.services import google_contacts as gc
 from app.services.day2_contacts import (
     contact_cards,
     contact_name,
+    create_new_export,
     day2_contact_leads,
+    export_batch_leads,
     leader_names,
+    mark_exported,
+    new_contact_leads,
     safe_filename,
 )
 
@@ -50,7 +54,43 @@ async def download_day2_contacts(
     if not leads:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="No Day 2 contacts yet")
     cards = await contact_cards(session, leads)
+    await mark_exported(session, user.user_id, list(cards))
     return _vcf("".join(cards.values()), "MYLE_Day2_contacts.vcf")
+
+
+@router.get("/contacts/day2/new-count")
+async def count_new_day2_contacts(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """How many Day 2 prospects this admin hasn't saved to the phone yet."""
+    _require_admin(user)
+    return {"new": len(await new_contact_leads(session, user.user_id))}
+
+
+@router.post("/contacts/day2/new-export")
+async def export_new_day2_contacts(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Batch only the not-yet-saved prospects; the phone then opens the returned .vcf URL."""
+    _require_admin(user)
+    token, count = await create_new_export(session, user.user_id)
+    return {"count": count, "path": f"/api/v1/admin/contacts/day2/export/{token}.vcf" if token else None}
+
+
+@router.get("/contacts/day2/export/{token}.vcf")
+async def download_day2_export(
+    token: str,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    _require_admin(user)
+    leads = await export_batch_leads(session, user.user_id, token)
+    if not leads:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="This contact file has expired")
+    cards = await contact_cards(session, leads)
+    return _vcf("".join(cards.values()), "MYLE_Day2_new_contacts.vcf")
 
 
 @router.get("/contacts/lead/{lead_id}.vcf")
@@ -68,6 +108,7 @@ async def download_lead_contact(
         raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Lead has no phone number")
     card = (await contact_cards(session, [lead]))[lead.id]
     leader = (await leader_names(session, [lead]))[lead.id]
+    await mark_exported(session, user.user_id, [lead.id])
     return _vcf(card, f"{safe_filename(contact_name(lead, leader))}.vcf")
 
 
