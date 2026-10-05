@@ -78,6 +78,14 @@ def _server(request: Request) -> str:
     return request.url.hostname or ""
 
 
+def _server_url(request: Request) -> str:
+    """Full account URL for the iPhone "Server" field — skips discovery entirely."""
+    host = _server(request)
+    local = host in {"localhost", "127.0.0.1", "test", "testserver"}
+    port = f":{request.url.port}" if local and request.url.port else ""
+    return f"{'http' if local else 'https'}://{host}{port}/carddav/principal/"
+
+
 @router.get("/contacts/carddav")
 async def carddav_status(
     request: Request,
@@ -88,6 +96,7 @@ async def carddav_status(
     return {
         "enabled": await carddav_enabled(session, user.user_id),
         "server": _server(request),
+        "server_url": _server_url(request),
         "username": carddav_username(user.user_id),
     }
 
@@ -104,6 +113,7 @@ async def carddav_new_password(
     return {
         "enabled": True,
         "server": _server(request),
+        "server_url": _server_url(request),
         "username": carddav_username(user.user_id),
         "password": password,
     }

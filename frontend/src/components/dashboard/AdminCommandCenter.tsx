@@ -853,6 +853,11 @@ export function AdminCommandCenter({ firstName }: Props) {
               ) : null
             }
           />
+          {/* Live pulse + Day 2 contacts sit on the first screen so they're easy to find */}
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <CommunityLiveCard />
+            <Day2ContactsCard />
+          </section>
         </TabsContent>
 
         {/* ==================== WAR ROOM ==================== */}
@@ -1210,9 +1215,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
             <div className="space-y-4">
               {/* Same live card the team and leaders see on their home screen */}
-              <CommunityLiveCard />
               <LiveTeamActivity />
-              <Day2ContactsCard />
             </div>
             <div className="space-y-4">
               <Card>

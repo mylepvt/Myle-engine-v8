@@ -18,7 +18,8 @@ from app.models.app_setting import AppSetting
 from app.models.user import User
 
 _KEY = "carddav_admin:{user_id}"
-_USER_RE = re.compile(r"^myle-admin-(\d+)$")
+# Case-insensitive: the iPhone may capitalise the first letter of the user name.
+_USER_RE = re.compile(r"^myle-admin-(\d+)$", re.IGNORECASE)
 
 
 def carddav_username(user_id: int) -> str:
