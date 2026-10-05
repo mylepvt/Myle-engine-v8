@@ -6,6 +6,7 @@ Jobs (all IST-aware):
 - morning_plan                    : 09:00 IST daily — "Your plan for today" push (leads to call, follow-ups, streak)
 - evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
 - inactivity_nudge                : every 30 min 11:00–16:30 IST — attention push to idle members (max 2/day)
+- star_alert                      : every 15 min 10:00–20:00 IST — "X crossed 15 calls" push to members under 15 (max 1/day)
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
@@ -38,6 +39,7 @@ from app.services.engagement_nudge import (
     in_nudge_window,
     pick_nudge,
 )
+from app.services.star_alert import in_star_alert_window, run_star_alert
 from app.services.engagement_digest import (
     build_evening_recaps,
     build_morning_plans,
@@ -291,6 +293,30 @@ async def job_inactivity_nudge() -> None:
     except Exception as exc:
         logger.error("job_inactivity_nudge failed: %s", exc)
         await record_push_run("inactivity_nudge", targeted=0, sent=0, error=str(exc))
+
+
+async def job_star_alert() -> None:
+    """Every 15 min, 10:00–20:00 IST — once someone crosses 15 calls today, push
+    everyone still under 15 (max once per member per day; see star_alert)."""
+    now = datetime.now(timezone.utc)
+    if not in_star_alert_window(now):
+        return
+
+    async def _send(session: AsyncSession, user: User, title: str, body: str) -> bool:
+        return await _push_digest(session, user, title, body, url="/dashboard/work/leads?tab=today")
+
+    try:
+        async with AsyncSessionLocal() as session:
+            users = list(await _get_eligible_users(session))
+            targeted, sent = await run_star_alert(session, users, now, _send)
+            await session.commit()
+            if targeted:
+                logger.info("star_alert: users=%d sent=%d", len(users), sent)
+        if targeted:
+            await record_push_run("star_alert", targeted=targeted, sent=sent)
+    except Exception as exc:
+        logger.error("job_star_alert failed: %s", exc)
+        await record_push_run("star_alert", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------

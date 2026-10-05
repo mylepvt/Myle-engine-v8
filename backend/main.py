@@ -56,6 +56,7 @@ from app.services.scheduled_jobs import (
     job_general_pipeline_maintenance,
     job_lead_booking_fulfillment,
     job_morning_plan,
+    job_star_alert,
     job_leader_basics_enforcement,
     job_tracking_report_reminder,
     job_watch_archive_maintenance,
@@ -110,6 +111,13 @@ async def lifespan(_app: FastAPI):
             job_inactivity_nudge,
             CronTrigger(hour="11-16", minute="0,30", timezone="Asia/Kolkata"),
             id="inactivity_nudge",
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
+        _scheduler.add_job(
+            job_star_alert,
+            CronTrigger(hour="10-19", minute="*/15", timezone="Asia/Kolkata"),
+            id="star_alert",
             replace_existing=True,
             misfire_grace_time=600,
         )
