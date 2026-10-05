@@ -5,6 +5,7 @@ Guard-rails keep it from becoming noise that people mute:
 - only 11:00–16:30 IST (the 09:00 plan / 17:00 call-target / 20:30 recap cover the rest)
 - only after 2h with no work today (calls / XP-earning actions; opening the app doesn't count)
 - only when there is work to do (leads to call or follow-ups due)
+- never while the member has the app open (they can already see the live pulse)
 - at most 2 a day, 3h apart, never the same kind twice in a day
 
 Copy is English (app UI rule). Sent nudges are logged in activity_log as
@@ -25,6 +26,7 @@ from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.user import User
 from app.models.xp_event import XpEvent
+from app.services.community_live import first_name, online_members
 from app.services.engagement_digest import build_morning_plans
 from app.services.live_metrics import ist_day_bounds
 from app.services.work_streak import current_work_streak
@@ -39,6 +41,7 @@ MAX_PER_DAY = 2
 REACHABLE_RIVAL_XP = 40
 LEVEL_NEAR_XP = 30
 TEAM_BUZZ_CALLS = 10
+LIVE_MIN_ONLINE = 3  # "N teammates are working right now" needs a real crowd
 
 
 @dataclass
@@ -53,6 +56,9 @@ class NudgeContext:
     next_level: str | None = None
     xp_to_next_level: int | None = None
     team_calls_recent: int = 0
+    online: bool = False  # has the app open right now
+    live_online: int = 0  # other members on the app right now
+    live_names: list[str] = field(default_factory=list)
     sent_today: list[tuple[str, datetime]] = field(default_factory=list)
 
 
@@ -67,6 +73,8 @@ def in_nudge_window(now: datetime) -> bool:
 
 def pick_nudge(ctx: NudgeContext, now: datetime) -> tuple[str, str, str] | None:
     """(kind, title, body) for this member right now, or None to stay quiet."""
+    if ctx.online:
+        return None
     if ctx.last_work_at is not None and now - ctx.last_work_at < IDLE_AFTER:
         return None
     if ctx.new_leads + ctx.followups_due == 0:
@@ -91,6 +99,15 @@ def pick_nudge(ctx: NudgeContext, now: datetime) -> tuple[str, str, str] | None:
             "streak",
             "Don't lose your streak",
             f"Your {ctx.streak}-day streak ends tonight unless you log a call.",
+        ))
+    if ctx.live_online >= LIVE_MIN_ONLINE:
+        names = ctx.live_names[:2]
+        others = ctx.live_online - len(names)
+        who = " and ".join(names) if not others else f"{', '.join(names)} and {_plural(others, 'other')}"
+        candidates.append((
+            "live",
+            f"{ctx.live_online} teammates are working right now",
+            f"{who} are on MYLE right now. Jump in and make your calls.",
         ))
     if ctx.next_level and ctx.xp_to_next_level is not None and 0 < ctx.xp_to_next_level <= LEVEL_NEAR_XP:
         candidates.append((
@@ -191,6 +208,9 @@ async def build_nudge_contexts(
     ).all():
         sent.setdefault(int(uid), []).append((str((meta or {}).get("type", "")), _aware(at)))
 
+    online_now = await online_members(session, now)
+    online_ids = {u.id for u in online_now}
+
     plans = await build_morning_plans(session, users, today)
     names = {u.id: (u.name or u.username or u.fbo_id or "").split(" ")[0] for u in users}
     board = sorted((uid for uid, xp in xp_today.items() if xp > 0), key=lambda uid: -xp_today[uid])
@@ -219,6 +239,9 @@ async def build_nudge_contexts(
             xp_to_next_level=(next_xp - int(u.xp_total or 0)) if next_xp else None,
             # Idle members made no calls in this window, so this is everyone else's.
             team_calls_recent=team_calls_recent,
+            online=u.id in online_ids,
+            live_online=len(online_ids - {u.id}),
+            live_names=[first_name(o) for o in online_now if o.id != u.id][:2],
             sent_today=sent.get(u.id, []),
         )
     return contexts

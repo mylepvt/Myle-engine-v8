@@ -28,6 +28,7 @@ from app.api.v1 import (
     current_cc,
     media,
     certificate,
+    community,
     downloads,
     enrollment,
     flp_min_billing,
@@ -120,6 +121,7 @@ api_router.include_router(xp.router, prefix="/xp", tags=["xp"])
 api_router.include_router(control_room.router, prefix="/control-room", tags=["control-room"])
 api_router.include_router(closing.router, prefix="/closing", tags=["closing"])
 api_router.include_router(wins.router, prefix="/wins", tags=["wins"])
+api_router.include_router(community.router, prefix="/community", tags=["community"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])

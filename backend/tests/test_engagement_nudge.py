@@ -13,6 +13,7 @@ from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
 from app.models.user import User
+from app.models.user_presence_session import UserPresenceSession
 from app.models.xp_event import XpEvent
 from app.services.engagement_nudge import (
     NUDGE_ACTION,
@@ -48,6 +49,18 @@ def test_priority_and_copy():
         "You're 12 XP away from Pro level. A few calls gets you there."
     )
     assert pick_nudge(ctx(), NOON)[:2] == ("leads", "3 new leads waiting")
+
+
+def test_live_crowd_nudge():
+    assert pick_nudge(ctx(live_online=5, live_names=["Rahul", "Priya"]), NOON) == (
+        "live",
+        "5 teammates are working right now",
+        "Rahul, Priya and 3 others are on MYLE right now. Jump in and make your calls.",
+    )
+    assert pick_nudge(ctx(live_online=2, live_names=["Rahul", "Priya"]), NOON)[0] == "leads"  # too few
+    # streak at risk still wins; a member with the app open gets nothing
+    assert pick_nudge(ctx(streak=4, live_online=5, live_names=["Rahul"]), NOON)[0] == "streak"
+    assert pick_nudge(ctx(online=True, live_online=5), NOON) is None
 
 
 def test_quiet_when_working_or_nothing_to_do():
@@ -90,6 +103,8 @@ async def test_context_from_data(Session):
             XpEvent(user_id=2, action="call_logged", xp=24, created_at=now),
             CallEvent(lead_id=1, user_id=2, outcome="answered", called_at=now - timedelta(minutes=20)),
             ActivityLog(user_id=1, action=NUDGE_ACTION, meta={"type": "leads"}, created_at=now - timedelta(hours=4)),
+            UserPresenceSession(user_id=2, session_key="b-1", status="online",
+                                last_heartbeat_at=now, last_seen_at=now),
         ])
         await s.commit()
         users = [await s.get(User, 1), await s.get(User, 2)]
@@ -102,3 +117,5 @@ async def test_context_from_data(Session):
     assert (asha.next_level, asha.xp_to_next_level) == ("agent", 10)
     assert [k for k, _ in asha.sent_today] == ["leads"]
     assert contexts[2].last_work_at is not None
+    assert (asha.online, asha.live_online, asha.live_names) == (False, 1, ["Bina"])
+    assert (contexts[2].online, contexts[2].live_online) == (True, 0)
