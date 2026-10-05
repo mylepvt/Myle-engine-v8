@@ -112,11 +112,23 @@ async def test_snapshot(Session):
     assert "Secret" not in blob and "9999999999" not in blob and "Old" not in blob and "Boss" not in blob
 
 
-async def test_endpoint_open_to_members(team_client: AsyncClient):
+async def test_endpoint_hides_totals_from_team(team_client: AsyncClient):
     r = await team_client.get("/api/v1/community/live")
     assert r.status_code == 200, r.text
     body = r.json()
-    assert {"online_now", "online_names", "today", "feed"} <= body.keys()
+    assert {"online_now", "online_names", "call_stars", "feed"} <= body.keys()
+    assert body["today"] is None and body["week"] is None
+
+
+async def test_endpoint_hides_totals_from_leaders(leader_client: AsyncClient):
+    body = (await leader_client.get("/api/v1/community/live")).json()
+    assert body["today"] is None and body["week"] is None
+
+
+async def test_endpoint_shows_totals_to_admin(admin_client: AsyncClient):
+    body = (await admin_client.get("/api/v1/community/live")).json()
+    assert {"calls", "leads_added", "followups", "members_worked"} <= body["today"].keys()
+    assert body["week"] is not None
 
 
 async def test_call_stars(Session):

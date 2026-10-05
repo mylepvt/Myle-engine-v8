@@ -18,4 +18,9 @@ async def get_community_live(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    return await get_live_snapshot(session)
+    snapshot = await get_live_snapshot(session)
+    if user.role != "admin":
+        # Totals (calls / new leads / follow-ups / members working) are admin-only;
+        # team and leaders still see who is online, the 15+ club and the feed.
+        return {**snapshot, "today": None, "week": None}
+    return snapshot
