@@ -10,6 +10,7 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.lead import Lead
+from app.services.carddav_diagnostics import recent_attempts, self_check
 from app.services.carddav_auth import (
     carddav_username,
     disable_carddav,
@@ -82,8 +83,12 @@ def _server_url(request: Request) -> str:
     """Full account URL for the iPhone "Server" field — skips discovery entirely."""
     host = _server(request)
     local = host in {"localhost", "127.0.0.1", "test", "testserver"}
-    port = f":{request.url.port}" if local and request.url.port else ""
-    return f"{'http' if local else 'https'}://{host}{port}/carddav/principal/"
+    if local:
+        port = f":{request.url.port}" if request.url.port else ""
+        return f"http://{host}{port}/carddav/principal/"
+    # Explicit :443 — iOS otherwise may try CardDAV's port 8443, which the host doesn't serve,
+    # and then reports "Cannot connect using SSL".
+    return f"https://{host}:443/carddav/principal/"
 
 
 @router.get("/contacts/carddav")
@@ -127,3 +132,19 @@ async def carddav_turn_off(
     _require_admin(user)
     await disable_carddav(session, user.user_id)
     return {"enabled": False}
+
+
+@router.get("/contacts/carddav/diagnostics")
+async def carddav_diagnostics(
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    check: bool = False,
+) -> dict:
+    """Recent iPhone connection attempts; with ?check=true also self-test the public HTTPS address."""
+    _require_admin(user)
+    return {
+        "server_url": _server_url(request),
+        "self_check": await self_check(_server(request)) if check else None,
+        "attempts": await recent_attempts(session),
+    }

@@ -160,3 +160,59 @@ async def test_carddav_iphone_style_discovery(seeded, admin_client: AsyncClient)
 
     # GET / is still the web app, not claimed by CardDAV
     assert (await admin_client.get("/")).status_code != 405
+
+
+async def test_carddav_attempts_are_logged_for_admin(seeded, admin_client: AsyncClient):
+    creds = (await admin_client.post("/api/v1/admin/contacts/carddav/password")).json()
+    await admin_client.request("PROPFIND", "/.well-known/carddav", headers={"User-Agent": "iOS/18.0 dataaccessd"})
+    await admin_client.request("PROPFIND", "/carddav/", headers={"User-Agent": "iOS/18.0 dataaccessd"})
+    await admin_client.request("PROPFIND", "/carddav/", headers=_basic(creds["username"], "nope"))
+    await admin_client.request("PROPFIND", "/carddav/", headers=_basic(creds["username"], creds["password"]))
+
+    d = (await admin_client.get("/api/v1/admin/contacts/carddav/diagnostics")).json()
+    assert d["self_check"] is None
+    latest = d["attempts"][:4]  # newest first
+    assert [a["status"] for a in latest] == [207, 401, 401, 301]
+    assert [a["auth"] for a in latest] == ["ok", "wrong user name or password", "no login sent", "-"]
+    assert latest[3]["agent"].startswith("iOS/18.0")
+    assert "nope" not in str(d) and creds["password"] not in str(d)
+
+
+async def test_carddav_diagnostics_admin_only(leader_client: AsyncClient):
+    assert (await leader_client.get("/api/v1/admin/contacts/carddav/diagnostics")).status_code == 403
+
+
+async def test_self_check_reports_status_and_ssl_errors():
+    import httpx
+
+    from app.services.carddav_diagnostics import self_check
+
+    def ok(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/.well-known/carddav":
+            return httpx.Response(301, headers={"Location": "/carddav/"})
+        if request.method == "PROPFIND":
+            return httpx.Response(401, headers={"WWW-Authenticate": 'Basic realm="x"'})
+        return httpx.Response(200)
+
+    good = await self_check("myle.example", transport=httpx.MockTransport(ok))
+    assert [r["ok"] for r in good] == [True, True, True]
+    assert good[0]["url"] == "https://myle.example/.well-known/carddav"
+
+    blocked = await self_check("myle.example", transport=httpx.MockTransport(lambda r: httpx.Response(405, text="Method Not Allowed")))
+    assert [r["ok"] for r in blocked] == [False, False, False]
+
+    def boom(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED]")
+
+    failed = await self_check("myle.example", transport=httpx.MockTransport(boom))
+    assert failed[0]["ok"] is False and "SSL" in failed[0]["detail"]
+
+
+def test_server_url_pins_port_443():
+    from starlette.requests import Request as _Req
+
+    from app.api.v1.admin_contacts import _server_url
+
+    scope = {"type": "http", "method": "GET", "path": "/", "headers": [(b"host", b"myle.example.com")],
+             "scheme": "http", "server": ("myle.example.com", 80), "query_string": b""}
+    assert _server_url(_Req(scope)) == "https://myle.example.com:443/carddav/principal/"
