@@ -566,6 +566,25 @@ async def generate_day2_test_link(
     )
 
 
+@router.get("/{lead_id}/day2-test-result")
+async def get_day2_test_result(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Leader/admin: the prospect's Day 2 test result with cheat signals
+    (tab switches, app hidden, copy/paste, time taken)."""
+    if user.role not in ("leader", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    lead = await session.get(Lead, lead_id)
+    if lead is None or lead.deleted_at is not None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    result = await day2_test_service.latest_result(session, lead_id)
+    return {"lead_id": lead_id, "result": result}
+
+
 @router.patch("/{lead_id}", response_model=LeadPublic)
 async def update_lead(
     lead_id: int,
