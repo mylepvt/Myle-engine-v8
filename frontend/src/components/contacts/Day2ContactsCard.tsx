@@ -123,9 +123,16 @@ export function Day2ContactsCard() {
 
           {fresh?.password ? (
             <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-              <p className="text-ds-caption font-semibold text-foreground">
-                On your iPhone: Settings → Contacts → Accounts → Add Account → Other → Add CardDAV Account
-              </p>
+              <ol className="list-decimal space-y-0.5 pl-4 text-ds-caption text-foreground">
+                <li>
+                  On your iPhone open <b>Settings → Apps → Contacts → Contacts Accounts</b>
+                  <span className="text-muted-foreground"> (older iPhones: Settings → Contacts → Accounts)</span>
+                </li>
+                <li>
+                  <b>Add Account → Other → Add CardDAV Account</b>
+                </li>
+                <li>Copy-paste the three values below</li>
+              </ol>
               <CopyRow label="Server" value={fresh.server} />
               <CopyRow label="User Name" value={fresh.username} />
               <CopyRow label="Password" value={fresh.password} />

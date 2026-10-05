@@ -27,6 +27,12 @@ vi.mock('@tanstack/react-query', async () => {
 })
 
 vi.mock('@/components/wins/WinsFeedCard', () => ({ WinsFeedCard: () => null }))
+vi.mock('@/components/community/CommunityLiveCard', () => ({
+  CommunityLiveCard: () => <div data-testid="community-live" />,
+}))
+vi.mock('@/components/contacts/Day2ContactsCard', () => ({
+  Day2ContactsCard: () => <div data-testid="day2-contacts" />,
+}))
 vi.mock('@/components/dashboard/overview/AppSetupCard', () => ({ AppSetupCard: () => <div data-testid="app-setup" /> }))
 vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))
 vi.mock('@/components/control-room/ControlRoomCard', () => ({ ControlRoomCard: () => <div data-testid="control-room" /> }))
@@ -508,6 +514,9 @@ describe('AdminCommandCenter', () => {
     // Default landing is the simple Overview: who is working today.
     expect(screen.getByTestId('control-room')).toBeInTheDocument()
     expect(screen.getByTestId('app-setup')).toBeInTheDocument()
+    // Live card + Day 2 contacts sit on the first (Overview) screen
+    expect(screen.getByTestId('community-live')).toBeInTheDocument()
+    expect(screen.getByTestId('day2-contacts')).toBeInTheDocument()
     // Views are selected via a single Apple-style dropdown switcher; Overview is current.
     const switcher = screen.getByRole('button', { name: /Overview/ })
     expect(switcher).toHaveAttribute('aria-haspopup', 'menu')
