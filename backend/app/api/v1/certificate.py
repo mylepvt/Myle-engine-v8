@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -101,8 +102,9 @@ async def download_training_certificate(
         )
 
     issued_on = latest_test.attempted_at
-    if issued_on.tzinfo is not None:
-        issued_on = issued_on.astimezone(IST)
+    if issued_on.tzinfo is None:  # stored as UTC; some drivers hand it back naive
+        issued_on = issued_on.replace(tzinfo=timezone.utc)
+    issued_on = issued_on.astimezone(IST)
     name = certificate_display_name(user_row)
     pdf_bytes = await generate_certificate_pdf(
         name=name,
