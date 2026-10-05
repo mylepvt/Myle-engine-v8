@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,9 +90,11 @@ async def finalize(token: str, session: Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.get("/{token}/certificate", include_in_schema=False)
-async def certificate(token: str, session: Annotated[AsyncSession, Depends(get_db)]):
+async def certificate(
+    token: str, request: Request, session: Annotated[AsyncSession, Depends(get_db)]
+):
     try:
-        pdf, filename = await svc.certificate_pdf(session, token)
+        pdf, filename = await svc.certificate_pdf(session, token, base_url=str(request.base_url))
     except svc.Day2TestError as exc:
         raise _handle(exc)
     return Response(

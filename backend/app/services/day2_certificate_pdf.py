@@ -27,7 +27,7 @@ from app.services.certificate import (
     _microtext_line,
     _official_seal,
     _paper,
-    _qr,
+    _verify_block,
     _ribbon,
     _rule,
     _signature,
@@ -58,6 +58,8 @@ def build_day2_business_certificate_pdf(
     date_display: str,
     cert_no: str | None = None,
     year: int | None = None,
+    verify_link: str | None = None,
+    verify_code: str | None = None,
 ) -> bytes:
     recipient_name = " ".join((recipient_name or "").split()) or "Participant"
     date_display = (date_display or "").strip() or "—"
@@ -149,10 +151,13 @@ def build_day2_business_certificate_pdf(
     _official_seal(c, cx, base + 20, 40, year, f["display"])
 
     if cert_no:
-        _qr(
-            c, w - 64 - 46, h - 72 - 46, 46,
-            f"MYLE COMMUNITY | Certificate of Qualification | No. {cert_no} | {recipient_name} | "
-            f"Day 2 Business Evaluation | Score {score}/{total_questions} | {date_display}",
+        _verify_block(
+            c, w - 64 - 56, h - 70 - 56, 56,
+            verify_link or (
+                f"MYLE COMMUNITY | Certificate of Qualification | No. {cert_no} | {recipient_name} | "
+                f"Day 2 Business Evaluation | Score {score}/{total_questions} | {date_display}"
+            ),
+            verify_code,
         )
 
     _microtext_line(c, 60, w - 60, 51)

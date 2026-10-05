@@ -6,7 +6,7 @@ import re
 from datetime import timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -17,6 +17,7 @@ from app.models.training_progress import TrainingProgress
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.user import User
 from app.services.certificate import certificate_number, generate_certificate_pdf
+from app.services.certificate_verify import verification_code, verify_url
 
 router = APIRouter()
 
@@ -52,6 +53,7 @@ async def _latest_passed_attempt(session: AsyncSession, user_id: int) -> Trainin
 
 @router.get("/training/certificate")
 async def download_training_certificate(
+    request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
@@ -106,13 +108,16 @@ async def download_training_certificate(
         issued_on = issued_on.replace(tzinfo=timezone.utc)
     issued_on = issued_on.astimezone(IST)
     name = certificate_display_name(user_row)
+    cert_no = certificate_number(user_row.id, issued_on)
     pdf_bytes = await generate_certificate_pdf(
         name=name,
         fbo_id=user_row.fbo_id,
         completion_date=issued_on,
         test_score=latest_test.score,
         test_total=latest_test.total_questions,
-        cert_no=certificate_number(user_row.id, issued_on),
+        cert_no=cert_no,
+        verify_link=verify_url(str(request.base_url), cert_no),
+        verify_code=verification_code(cert_no),
     )
     slug = re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_") or str(user_row.id)
     filename = f"Myle_Training_Certificate_{slug}.pdf"

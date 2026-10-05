@@ -160,12 +160,15 @@ async def latest_result(session: AsyncSession, lead_id: int) -> dict[str, Any] |
 
 # ── Public: pass certificate ─────────────────────────────────────────────────
 
-async def certificate_pdf(session: AsyncSession, token: str) -> tuple[bytes, str]:
+async def certificate_pdf(
+    session: AsyncSession, token: str, base_url: str | None = None
+) -> tuple[bytes, str]:
     """Return (pdf_bytes, filename) for a PASSED test. Raises if not passed."""
     from app.services.day2_certificate_pdf import (
         build_day2_business_certificate_pdf,
         day2_certificate_number,
     )
+    from app.services.certificate_verify import verification_code, verify_url
 
     link = await _get_by_token(session, token)
     if link.status != "submitted" or not link.passed:
@@ -174,13 +177,16 @@ async def certificate_pdf(session: AsyncSession, token: str) -> tuple[bytes, str
     name = (link.prospect_name or "Participant").strip() or "Participant"
     when = _as_aware(link.submitted_at) or _now()
     when_ist = when.astimezone(timezone(timedelta(hours=5, minutes=30)))
+    cert_no = day2_certificate_number(link.id, when_ist)
     pdf = build_day2_business_certificate_pdf(
         recipient_name=name,
         score=int(link.score or 0),
         total_questions=total,
         date_display=when_ist.strftime("%d %B %Y"),
-        cert_no=day2_certificate_number(link.id, when_ist),
+        cert_no=cert_no,
         year=when_ist.year,
+        verify_link=verify_url(base_url, cert_no) if base_url else None,
+        verify_code=verification_code(cert_no),
     )
     safe = "".join(ch for ch in name if ch.isalnum() or ch in " -_").strip().replace(" ", "_") or "certificate"
     return pdf, f"day2_certificate_{safe}.pdf"

@@ -466,17 +466,32 @@ def _official_seal_body(c: canvas.Canvas, cx: float, cy: float, r: float, year: 
 
 
 def _qr(c: canvas.Canvas, x: float, y: float, size: float, payload: str) -> None:
+    """Scanner-friendly QR: black modules on pure white with the standard 4-module quiet zone."""
     widget = qr.QrCodeWidget(payload, barLevel="M")
-    widget.barFillColor = GREEN_DARK
+    widget.barFillColor = HexColor("#000000")
     x0, y0, x1, y1 = widget.getBounds()
     d = Drawing(size, size, transform=[size / (x1 - x0), 0, 0, size / (y1 - y0), 0, 0])
     d.add(widget)
-    c.setFillColor(PAPER)
-    c.rect(x - 3, y - 3, size + 6, size + 6, stroke=0, fill=1)
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.rect(x - 2, y - 2, size + 4, size + 4, stroke=0, fill=1)
     renderPDF.draw(d, c, x, y)
     c.setStrokeColor(GOLD)
     c.setLineWidth(0.6)
-    c.rect(x - 3, y - 3, size + 6, size + 6, stroke=1, fill=0)
+    c.rect(x - 2, y - 2, size + 4, size + 4, stroke=1, fill=0)
+
+
+def _verify_block(c: canvas.Canvas, x: float, y: float, size: float, payload: str, code: str | None) -> None:
+    """QR (verification link when available) with a caption and the verification code."""
+    _qr(c, x, y, size, payload)
+    if not code:
+        return
+    cx = x + size / 2
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica-Bold", 5.6)
+    c.drawCentredString(cx, y - 12, "SCAN TO VERIFY")
+    c.setFillColor(INK)
+    c.setFont("Courier-Bold", 6.8)
+    c.drawCentredString(cx, y - 20, code)
 
 
 def _microtext_line(c: canvas.Canvas, x0: float, x1: float, y: float) -> None:
@@ -502,6 +517,8 @@ def draw_certificate(
     test_score: int,
     test_total: int,
     cert_no: str,
+    verify_link: str | None = None,
+    verify_code: str | None = None,
 ) -> None:
     f = _fonts()
     w, h = landscape(A4)
@@ -555,9 +572,14 @@ def draw_certificate(
         y -= 19
 
     issued = completion_date.strftime("%d %B %Y")
-    _qr(c, w - 64 - 46, h - 72 - 46, 46,
-        f"MYLE COMMUNITY | Certificate of Completion | No. {cert_no} | {name} | "
-        f"FBO ID {fbo_id or 'N/A'} | {PROGRAMME} | Score {percent}% | Issued {issued}")
+    _verify_block(
+        c, w - 64 - 56, h - 70 - 56, 56,
+        verify_link or (
+            f"MYLE COMMUNITY | Certificate of Completion | No. {cert_no} | {name} | "
+            f"FBO ID {fbo_id or 'N/A'} | {PROGRAMME} | Score {percent}% | Issued {issued}"
+        ),
+        verify_code,
+    )
 
     # Details strip: certificate no · date of issue
     strip_y = y - 20
@@ -609,6 +631,8 @@ async def generate_certificate_pdf(
     test_score: int,
     test_total: int,
     cert_no: str,
+    verify_link: str | None = None,
+    verify_code: str | None = None,
 ) -> bytes:
     """Render the certificate and return the PDF bytes."""
     buffer = BytesIO()
@@ -624,6 +648,8 @@ async def generate_certificate_pdf(
         test_score=test_score,
         test_total=test_total,
         cert_no=cert_no,
+        verify_link=verify_link,
+        verify_code=verify_code,
     )
     c.showPage()
     c.save()
