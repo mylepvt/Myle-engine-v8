@@ -20,6 +20,7 @@ from app.api.capture_public import router as capture_public_router
 from app.api.invoice_public import router as invoice_public_router
 from app.api.legal_public import router as legal_public_router
 from app.api.day2_test_public import router as day2_test_public_router
+from app.api.certificate_verify_public import router as certificate_verify_public_router
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.health_migrations import alembic_head_revisions, db_alembic_revision
@@ -224,6 +225,7 @@ app.include_router(api_router, prefix="/api/v1")
 app.include_router(invoice_public_router)
 app.include_router(legal_public_router)
 app.include_router(day2_test_public_router)
+app.include_router(certificate_verify_public_router)
 app.include_router(capture_public_router)
 
 _uploads_dir = Path(__file__).resolve().parent / "uploads"

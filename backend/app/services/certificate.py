@@ -2,8 +2,8 @@
 
 Styled like an official / government-issued certificate: banknote-style guilloche
 border, central rosette watermark, gold-foil emblem, ribbon banner, red serial
-number, microtext security line, verification QR code, the founder's signature
-and the MYLE official seal. Everything is placed at fixed coordinates, so the layout
+number, microtext security line, verification QR code, the founder's and
+management's signatures and the MYLE official seal. Everything is placed at fixed coordinates, so the layout
 never shifts with the length of the name.
 """
 
@@ -27,8 +27,16 @@ from reportlab.pdfgen import canvas
 
 ORG_NAME = "MYLE COMMUNITY"
 PROGRAMME = "7-Day Onboarding Training Programme"
-SIGNATORY_NAME = "Karanveer Singh"
-SIGNATORY_TITLE = "Founder & CEO, MYLE Community"
+SIGNATORIES = (
+    ("Karanveer Singh", "Founder & CEO, MYLE Community"),
+    ("Shikha Singh", "Management, MYLE Community"),
+)
+# Each signatory keeps their own handwriting style (font key in ``_fonts()``).
+SIGNATURE_FONT_KEYS = {"Karanveer Singh": "sig_karanveer", "Shikha Singh": "sig_shikha"}
+
+
+def signature_font(fonts: dict[str, str], name: str) -> str:
+    return fonts[SIGNATURE_FONT_KEYS.get(name, "sig_karanveer")]
 
 GREEN = HexColor("#16432F")
 GREEN_DARK = HexColor("#0E2E20")
@@ -36,6 +44,7 @@ GOLD = HexColor("#B8923A")
 GOLD_DEEP = HexColor("#8A6A22")
 GOLD_BRIGHT = HexColor("#E9D28E")
 INK = HexColor("#1F231D")
+PEN_INK = HexColor("#1B2F66")  # fountain-pen blue for signatures
 MUTED = HexColor("#5C6157")
 RED = HexColor("#9E1B1B")
 PAPER = HexColor("#FBF7EA")
@@ -47,11 +56,19 @@ _FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 @lru_cache(maxsize=1)
 def _fonts() -> dict[str, str]:
     """Register the bundled OFL fonts once; fall back to PDF base fonts if missing."""
-    names = {"display": "Times-Bold", "serif": "Times-Roman", "script": "Times-Italic"}
+    names = {
+        "display": "Times-Bold",
+        "serif": "Times-Roman",
+        "script": "Times-Italic",
+        "sig_karanveer": "Times-Italic",
+        "sig_shikha": "Times-Italic",
+    }
     for key, (alias, filename) in {
         "display": ("MyleCinzel", "Cinzel.ttf"),
         "serif": ("MyleGaramond", "EBGaramond.ttf"),
         "script": ("MyleGreatVibes", "GreatVibes.ttf"),
+        "sig_karanveer": ("MyleSigKaranveer", "MrsSaintDelafield.ttf"),
+        "sig_shikha": ("MyleSigShikha", "AlexBrush.ttf"),
     }.items():
         try:
             pdfmetrics.registerFont(TTFont(alias, str(_FONT_DIR / filename)))
@@ -329,6 +346,28 @@ def _ribbon(c: canvas.Canvas, cx: float, cy: float, text: str, font: str, size: 
     _spaced(c, text, cx, cy - size / 2 + 1.4, font, size, spacing, color=GOLD_BRIGHT)
 
 
+def _signature(c: canvas.Canvas, cx: float, y: float, name: str, font: str, max_width: float = 150) -> None:
+    """Handwritten signature: pen-blue cursive, a slight upward slant and an ink swoosh."""
+    size = _fit_size(name, font, 34, 18, max_width)
+    width = stringWidth(name, font, size)
+    c.saveState()
+    c.translate(cx, y)
+    c.rotate(4)
+    c.setFillColor(PEN_INK)
+    c.setFont(font, size)
+    c.drawCentredString(0, 0, name)
+    # Swoosh under the name, like the pen trailing off after signing
+    c.setStrokeColor(PEN_INK)
+    c.setLineCap(1)
+    c.setLineWidth(0.9)
+    p = c.beginPath()
+    x0 = -width * 0.42
+    p.moveTo(x0, -size * 0.18)
+    p.curveTo(x0 + width * 0.25, -size * 0.34, x0 + width * 0.6, -size * 0.10, width * 0.5, -size * 0.06)
+    c.drawPath(p, stroke=1, fill=0)
+    c.restoreState()
+
+
 def _rule(c: canvas.Canvas, cx: float, y: float, half: float, gap: float = 8) -> None:
     c.setStrokeColor(GOLD)
     c.setLineWidth(0.8)
@@ -427,17 +466,32 @@ def _official_seal_body(c: canvas.Canvas, cx: float, cy: float, r: float, year: 
 
 
 def _qr(c: canvas.Canvas, x: float, y: float, size: float, payload: str) -> None:
+    """Scanner-friendly QR: black modules on pure white with the standard 4-module quiet zone."""
     widget = qr.QrCodeWidget(payload, barLevel="M")
-    widget.barFillColor = GREEN_DARK
+    widget.barFillColor = HexColor("#000000")
     x0, y0, x1, y1 = widget.getBounds()
     d = Drawing(size, size, transform=[size / (x1 - x0), 0, 0, size / (y1 - y0), 0, 0])
     d.add(widget)
-    c.setFillColor(PAPER)
-    c.rect(x - 3, y - 3, size + 6, size + 6, stroke=0, fill=1)
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.rect(x - 2, y - 2, size + 4, size + 4, stroke=0, fill=1)
     renderPDF.draw(d, c, x, y)
     c.setStrokeColor(GOLD)
     c.setLineWidth(0.6)
-    c.rect(x - 3, y - 3, size + 6, size + 6, stroke=1, fill=0)
+    c.rect(x - 2, y - 2, size + 4, size + 4, stroke=1, fill=0)
+
+
+def _verify_block(c: canvas.Canvas, x: float, y: float, size: float, payload: str, code: str | None) -> None:
+    """QR (verification link when available) with a caption and the verification code."""
+    _qr(c, x, y, size, payload)
+    if not code:
+        return
+    cx = x + size / 2
+    c.setFillColor(MUTED)
+    c.setFont("Helvetica-Bold", 5.6)
+    c.drawCentredString(cx, y - 12, "SCAN TO VERIFY")
+    c.setFillColor(INK)
+    c.setFont("Courier-Bold", 6.8)
+    c.drawCentredString(cx, y - 20, code)
 
 
 def _microtext_line(c: canvas.Canvas, x0: float, x1: float, y: float) -> None:
@@ -463,6 +517,8 @@ def draw_certificate(
     test_score: int,
     test_total: int,
     cert_no: str,
+    verify_link: str | None = None,
+    verify_code: str | None = None,
 ) -> None:
     f = _fonts()
     w, h = landscape(A4)
@@ -515,39 +571,48 @@ def draw_certificate(
         c.drawCentredString(cx, y, line)
         y -= 19
 
-    # Bottom-left: QR + certificate no + date of issue
-    base = 98
-    qr_size = 56
-    qx = 68
     issued = completion_date.strftime("%d %B %Y")
-    _qr(c, qx, base - 30, qr_size,
-        f"MYLE COMMUNITY | Certificate of Completion | No. {cert_no} | {name} | "
-        f"FBO ID {fbo_id or 'N/A'} | {PROGRAMME} | Score {percent}% | Issued {issued}")
-    tx = qx + qr_size + 14
-    c.setFillColor(MUTED)
-    c.setFont("Helvetica", 7)
-    c.drawString(tx, base + 18, "CERTIFICATE NO.")
-    c.drawString(tx, base - 10, "DATE OF ISSUE")
-    c.setFillColor(INK)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(tx, base + 6, cert_no)
-    c.drawString(tx, base - 22, issued)
+    _verify_block(
+        c, w - 64 - 56, h - 70 - 56, 56,
+        verify_link or (
+            f"MYLE COMMUNITY | Certificate of Completion | No. {cert_no} | {name} | "
+            f"FBO ID {fbo_id or 'N/A'} | {PROGRAMME} | Score {percent}% | Issued {issued}"
+        ),
+        verify_code,
+    )
 
-    # Bottom-right: founder's signature with the wax seal pressed beside it
-    sig_cx = w - 272
-    c.setFillColor(GREEN_DARK)
-    c.setFont(f["script"], _fit_size(SIGNATORY_NAME, f["script"], 30, 18, 200))
-    c.drawCentredString(sig_cx, base + 4, SIGNATORY_NAME)
-    c.setStrokeColor(INK)
-    c.setLineWidth(0.7)
-    c.line(sig_cx - 105, base - 4, sig_cx + 105, base - 4)
-    c.setFillColor(INK)
-    c.setFont(f["serif"], 12)
-    c.drawCentredString(sig_cx, base - 17, SIGNATORY_NAME)
-    c.setFillColor(MUTED)
-    c.setFont(f["serif"], 9.5)
-    c.drawCentredString(sig_cx, base - 29, SIGNATORY_TITLE)
-    _official_seal(c, sig_cx + 148, base + 4, 46, completion_date.year, f["display"])
+    # Details strip: certificate no · date of issue
+    strip_y = y - 20
+    col_w = 200
+    left = cx - col_w
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(0.6)
+    c.line(left, strip_y + 26, left + col_w * 2, strip_y + 26)
+    c.line(left, strip_y - 12, left + col_w * 2, strip_y - 12)
+    c.line(cx, strip_y - 8, cx, strip_y + 22)
+    for i, (label, value) in enumerate((("CERTIFICATE NO.", cert_no), ("DATE OF ISSUE", issued))):
+        x = left + col_w * i + col_w / 2
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 7)
+        c.drawCentredString(x, strip_y + 12, label)
+        c.setFillColor(INK)
+        c.setFont("Helvetica-Bold", 10.5)
+        c.drawCentredString(x, strip_y - 2, value)
+
+    # Signatures either side, official seal in the middle
+    base = 92
+    for (sig_name, sig_title), sx in zip(SIGNATORIES, (190, w - 190)):
+        _signature(c, sx, base + 10, sig_name, signature_font(f, sig_name))
+        c.setStrokeColor(INK)
+        c.setLineWidth(0.7)
+        c.line(sx - 100, base - 4, sx + 100, base - 4)
+        c.setFillColor(INK)
+        c.setFont(f["serif"], 12)
+        c.drawCentredString(sx, base - 17, sig_name)
+        c.setFillColor(MUTED)
+        c.setFont(f["serif"], 9.5)
+        c.drawCentredString(sx, base - 29, sig_title)
+    _official_seal(c, cx, base + 20, 42, completion_date.year, f["display"])
 
     # Microtext security line + footer
     _microtext_line(c, 60, w - 60, 51)
@@ -566,6 +631,8 @@ async def generate_certificate_pdf(
     test_score: int,
     test_total: int,
     cert_no: str,
+    verify_link: str | None = None,
+    verify_code: str | None = None,
 ) -> bytes:
     """Render the certificate and return the PDF bytes."""
     buffer = BytesIO()
@@ -581,6 +648,8 @@ async def generate_certificate_pdf(
         test_score=test_score,
         test_total=test_total,
         cert_no=cert_no,
+        verify_link=verify_link,
+        verify_code=verify_code,
     )
     c.showPage()
     c.save()

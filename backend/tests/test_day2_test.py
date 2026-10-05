@@ -302,3 +302,21 @@ async def test_resend_link_while_test_in_progress(admin_client: AsyncClient):
     start = await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
     assert start.status_code == 200, start.text
     assert await _issue_link(admin_client, lead_id) == token
+
+
+@pytest.mark.asyncio
+async def test_day2_certificate_verifies_publicly(admin_client: AsyncClient, anon_client: AsyncClient, engine):
+    from app.services.certificate_verify import verification_code
+
+    lead_id = await _create_lead(admin_client)
+    token = await _issue_link(admin_client, lead_id)
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await _drive(admin_client, engine, token, correct=True)
+    async with AsyncSession(engine, expire_on_commit=False) as s:
+        row = (await s.execute(select(Day2TestSession).where(Day2TestSession.token == token))).scalar_one()
+    no = f"MYLE/D2/{row.submitted_at.year}/{row.id:05d}"
+    r = await anon_client.get("/api/public/certificates/verify", params={"no": no, "c": verification_code(no)})
+    body = r.json()
+    assert body["valid"] is True, body
+    assert body["certificate"]["name"] == "Ravi Kumar"
+    assert body["certificate"]["score"] == f"{QUESTIONS_PER_ATTEMPT}/{QUESTIONS_PER_ATTEMPT}"

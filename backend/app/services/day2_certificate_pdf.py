@@ -27,11 +27,13 @@ from app.services.certificate import (
     _microtext_line,
     _official_seal,
     _paper,
-    _qr,
+    _verify_block,
     _ribbon,
     _rule,
+    _signature,
     _spaced,
     _wrap,
+    signature_font,
 )
 
 BODY = (
@@ -41,7 +43,7 @@ BODY = (
 )
 SIGNATORIES = (
     ("Karanveer Singh", "CEO & Founder · MYLE Community"),
-    ("Shikha Chaudhry", "Management · MYLE Community"),
+    ("Shikha Singh", "Management · MYLE Community"),
 )
 
 
@@ -56,6 +58,8 @@ def build_day2_business_certificate_pdf(
     date_display: str,
     cert_no: str | None = None,
     year: int | None = None,
+    verify_link: str | None = None,
+    verify_code: str | None = None,
 ) -> bytes:
     recipient_name = " ".join((recipient_name or "").split()) or "Participant"
     date_display = (date_display or "").strip() or "—"
@@ -134,9 +138,7 @@ def build_day2_business_certificate_pdf(
     # Signatures either side, official seal in the middle
     base = 92
     for (name, title), sx in zip(SIGNATORIES, (190, w - 190)):
-        c.setFillColor(GREEN_DARK)
-        c.setFont(f["script"], _fit_size(name, f["script"], 26, 16, 190))
-        c.drawCentredString(sx, base + 4, name)
+        _signature(c, sx, base + 10, name, signature_font(f, name))
         c.setStrokeColor(INK)
         c.setLineWidth(0.7)
         c.line(sx - 95, base - 4, sx + 95, base - 4)
@@ -149,10 +151,13 @@ def build_day2_business_certificate_pdf(
     _official_seal(c, cx, base + 20, 40, year, f["display"])
 
     if cert_no:
-        _qr(
-            c, w - 64 - 46, h - 72 - 46, 46,
-            f"MYLE COMMUNITY | Certificate of Qualification | No. {cert_no} | {recipient_name} | "
-            f"Day 2 Business Evaluation | Score {score}/{total_questions} | {date_display}",
+        _verify_block(
+            c, w - 64 - 56, h - 70 - 56, 56,
+            verify_link or (
+                f"MYLE COMMUNITY | Certificate of Qualification | No. {cert_no} | {recipient_name} | "
+                f"Day 2 Business Evaluation | Score {score}/{total_questions} | {date_display}"
+            ),
+            verify_code,
         )
 
     _microtext_line(c, 60, w - 60, 51)
