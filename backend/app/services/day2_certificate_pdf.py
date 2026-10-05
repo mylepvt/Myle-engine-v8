@@ -41,7 +41,7 @@ BODY = (
 )
 SIGNATORIES = (
     ("Karanveer Singh", "CEO & Founder · MYLE Community"),
-    ("Shikha Chaudhry", "Management · MYLE Community"),
+    ("Shikha Singh", "Management · MYLE Community"),
 )
 
 

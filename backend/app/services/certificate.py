@@ -2,8 +2,8 @@
 
 Styled like an official / government-issued certificate: banknote-style guilloche
 border, central rosette watermark, gold-foil emblem, ribbon banner, red serial
-number, microtext security line, verification QR code, the founder's signature
-and the MYLE official seal. Everything is placed at fixed coordinates, so the layout
+number, microtext security line, verification QR code, the founder's and
+management's signatures and the MYLE official seal. Everything is placed at fixed coordinates, so the layout
 never shifts with the length of the name.
 """
 
@@ -27,8 +27,10 @@ from reportlab.pdfgen import canvas
 
 ORG_NAME = "MYLE COMMUNITY"
 PROGRAMME = "7-Day Onboarding Training Programme"
-SIGNATORY_NAME = "Karanveer Singh"
-SIGNATORY_TITLE = "Founder & CEO, MYLE Community"
+SIGNATORIES = (
+    ("Karanveer Singh", "Founder & CEO, MYLE Community"),
+    ("Shikha Singh", "Management, MYLE Community"),
+)
 
 GREEN = HexColor("#16432F")
 GREEN_DARK = HexColor("#0E2E20")
@@ -515,39 +517,45 @@ def draw_certificate(
         c.drawCentredString(cx, y, line)
         y -= 19
 
-    # Bottom-left: QR + certificate no + date of issue
-    base = 98
-    qr_size = 56
-    qx = 68
     issued = completion_date.strftime("%d %B %Y")
-    _qr(c, qx, base - 30, qr_size,
+    _qr(c, w - 64 - 46, h - 72 - 46, 46,
         f"MYLE COMMUNITY | Certificate of Completion | No. {cert_no} | {name} | "
         f"FBO ID {fbo_id or 'N/A'} | {PROGRAMME} | Score {percent}% | Issued {issued}")
-    tx = qx + qr_size + 14
-    c.setFillColor(MUTED)
-    c.setFont("Helvetica", 7)
-    c.drawString(tx, base + 18, "CERTIFICATE NO.")
-    c.drawString(tx, base - 10, "DATE OF ISSUE")
-    c.setFillColor(INK)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(tx, base + 6, cert_no)
-    c.drawString(tx, base - 22, issued)
 
-    # Bottom-right: founder's signature with the wax seal pressed beside it
-    sig_cx = w - 272
-    c.setFillColor(GREEN_DARK)
-    c.setFont(f["script"], _fit_size(SIGNATORY_NAME, f["script"], 30, 18, 200))
-    c.drawCentredString(sig_cx, base + 4, SIGNATORY_NAME)
-    c.setStrokeColor(INK)
-    c.setLineWidth(0.7)
-    c.line(sig_cx - 105, base - 4, sig_cx + 105, base - 4)
-    c.setFillColor(INK)
-    c.setFont(f["serif"], 12)
-    c.drawCentredString(sig_cx, base - 17, SIGNATORY_NAME)
-    c.setFillColor(MUTED)
-    c.setFont(f["serif"], 9.5)
-    c.drawCentredString(sig_cx, base - 29, SIGNATORY_TITLE)
-    _official_seal(c, sig_cx + 148, base + 4, 46, completion_date.year, f["display"])
+    # Details strip: certificate no · date of issue
+    strip_y = y - 20
+    col_w = 200
+    left = cx - col_w
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(0.6)
+    c.line(left, strip_y + 26, left + col_w * 2, strip_y + 26)
+    c.line(left, strip_y - 12, left + col_w * 2, strip_y - 12)
+    c.line(cx, strip_y - 8, cx, strip_y + 22)
+    for i, (label, value) in enumerate((("CERTIFICATE NO.", cert_no), ("DATE OF ISSUE", issued))):
+        x = left + col_w * i + col_w / 2
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 7)
+        c.drawCentredString(x, strip_y + 12, label)
+        c.setFillColor(INK)
+        c.setFont("Helvetica-Bold", 10.5)
+        c.drawCentredString(x, strip_y - 2, value)
+
+    # Signatures either side, official seal in the middle
+    base = 92
+    for (sig_name, sig_title), sx in zip(SIGNATORIES, (190, w - 190)):
+        c.setFillColor(GREEN_DARK)
+        c.setFont(f["script"], _fit_size(sig_name, f["script"], 28, 16, 190))
+        c.drawCentredString(sx, base + 4, sig_name)
+        c.setStrokeColor(INK)
+        c.setLineWidth(0.7)
+        c.line(sx - 100, base - 4, sx + 100, base - 4)
+        c.setFillColor(INK)
+        c.setFont(f["serif"], 12)
+        c.drawCentredString(sx, base - 17, sig_name)
+        c.setFillColor(MUTED)
+        c.setFont(f["serif"], 9.5)
+        c.drawCentredString(sx, base - 29, sig_title)
+    _official_seal(c, cx, base + 20, 42, completion_date.year, f["display"])
 
     # Microtext security line + footer
     _microtext_line(c, 60, w - 60, 51)
