@@ -1,13 +1,16 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Day2ContactsCard } from './Day2ContactsCard'
 
-const api = vi.hoisted(() => ({ status: {} as Record<string, unknown> }))
+const api = vi.hoisted(() => ({ status: {} as Record<string, unknown>, newCount: 3 }))
 vi.mock('@/lib/api', () => ({
-  apiFetch: vi.fn(async () => ({ ok: true, json: async () => api.status })),
+  apiFetch: vi.fn(async (path: string) => ({
+    ok: true,
+    json: async () => (path.endsWith('/day2/new-count') ? { new: api.newCount } : api.status),
+  })),
   apiUrl: (p: string) => p,
 }))
 
@@ -23,8 +26,22 @@ function renderCard(path = '/dashboard') {
 }
 
 describe('Day2ContactsCard', () => {
+  afterEach(cleanup)
   beforeEach(() => {
     api.status = {}
+    api.newCount = 3
+  })
+
+  it('offers to save only the new Day 2 contacts', async () => {
+    renderCard()
+    expect(await screen.findByRole('button', { name: /save new day 2 contacts \(3\)/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /save all day 2 contacts/i })).toBeInTheDocument()
+  })
+
+  it('says when everyone is already saved', async () => {
+    api.newCount = 0
+    renderCard()
+    expect(await screen.findByRole('button', { name: /all day 2 contacts saved/i })).toBeDisabled()
   })
 
   it('shows the connected Google account and sync count', async () => {

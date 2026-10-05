@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CheckCircle2, ContactRound, RefreshCw, Unplug } from 'lucide-react'
+import { CheckCircle2, ContactRound, RefreshCw, Unplug, UserPlus } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,7 @@ async function call<T>(path: string, method = 'GET'): Promise<T> {
 }
 
 const GOOGLE_KEY = ['admin', 'contacts', 'google'] as const
+const NEW_KEY = ['admin', 'contacts', 'day2-new'] as const
 
 const RETURN_MESSAGES: Record<string, { text: string; ok: boolean }> = {
   connected: { text: 'Google connected — Day 2 contacts are syncing.', ok: true },
@@ -35,14 +36,12 @@ const RETURN_MESSAGES: Record<string, { text: string; ok: boolean }> = {
   error: { text: 'Google connected, but the first sync failed — see the error below and tap Sync now.', ok: false },
 }
 
-/** Admin: put every Day 2 prospect into the iPhone's contacts — once, or kept in sync via Google. */
-export function Day2ContactsCard() {
+/** Optional: keep Day 2 prospects in the admin's Google Contacts (synced to the iPhone). */
+function GoogleSyncSection() {
   const qc = useQueryClient()
   const [params, setParams] = useSearchParams()
   const [returned, setReturned] = useState<string | null>(null)
   const status = useQuery({ queryKey: GOOGLE_KEY, queryFn: () => call<GoogleStatus>('/api/v1/admin/contacts/google') })
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
 
   // Back from Google's consent screen: /dashboard?google_contacts=connected|cancelled|error
   useEffect(() => {
@@ -73,17 +72,11 @@ export function Day2ContactsCard() {
   const actionError = connect.error ?? syncNow.error ?? disconnect.error
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <ContactRound className="size-4 text-primary" aria-hidden />
-          Day 2 contacts → iPhone
-        </CardTitle>
-        <CardDescription>
-          Every prospect who reached Day 2, saved as “Prospect – Leader – MYLE”. Admin only.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <details className="group border-t border-border/60 pt-3" open={Boolean(g?.connected) || Boolean(notice)}>
+      <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
+        Auto-sync with Google (optional)
+      </summary>
+      <div className="mt-2">
         <div className="space-y-2">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             Auto-sync with Google Contacts
@@ -166,29 +159,79 @@ export function Day2ContactsCard() {
           ) : null}
           {actionError ? <p className="text-ds-caption text-destructive">{actionError.message}</p> : null}
         </div>
+      </div>
+    </details>
+  )
+}
 
-        <div className="space-y-1.5 border-t border-border/60 pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            disabled={saving}
-            onClick={() => {
-              setSaving(true)
-              setSaveError(null)
-              openContactCard('/api/v1/admin/contacts/day2.vcf')
-                .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : 'Could not open contacts'))
-                .finally(() => setSaving(false))
-            }}
-          >
-            <ContactRound className="size-4" aria-hidden />
-            {saving ? 'Opening…' : 'Save all Day 2 contacts (one time)'}
+/** Admin: put Day 2 prospects into the iPhone's contacts — only the new ones, or everyone. */
+export function Day2ContactsCard() {
+  const qc = useQueryClient()
+  const newCount = useQuery({
+    queryKey: NEW_KEY,
+    queryFn: () => call<{ new: number }>('/api/v1/admin/contacts/day2/new-count'),
+  })
+  const [message, setMessage] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState<'new' | 'all' | null>(null)
+
+  const run = (kind: 'new' | 'all') => {
+    setSaving(kind)
+    setSaveError(null)
+    setMessage(null)
+    const go = async () => {
+      if (kind === 'all') return openContactCard('/api/v1/admin/contacts/day2.vcf')
+      const made = await call<{ count: number; path: string | null }>('/api/v1/admin/contacts/day2/new-export', 'POST')
+      if (!made.path) {
+        setMessage('No new Day 2 contacts — everyone is already saved.')
+        return
+      }
+      setMessage(`${made.count} new contact${made.count === 1 ? '' : 's'} — on iPhone tap “Add All Contacts”.`)
+      await openContactCard(made.path)
+    }
+    go()
+      .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : 'Could not open contacts'))
+      .finally(() => {
+        setSaving(null)
+        void qc.invalidateQueries({ queryKey: NEW_KEY })
+      })
+  }
+
+  const pending = newCount.data?.new
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <ContactRound className="size-4 text-primary" aria-hidden />
+          Day 2 contacts → iPhone
+        </CardTitle>
+        <CardDescription>
+          Every prospect who reached Day 2, saved as “Prospect – Leader – MYLE”. Admin only.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Button type="button" className="w-full" disabled={saving !== null || pending === 0} onClick={() => run('new')}>
+            <UserPlus className="size-4" aria-hidden />
+            {saving === 'new'
+              ? 'Opening…'
+              : pending === 0
+                ? 'All Day 2 contacts saved'
+                : `Save new Day 2 contacts${pending != null ? ` (${pending})` : ''}`}
           </Button>
           <p className="text-ds-caption text-muted-foreground">
-            Without Google: on iPhone tap “Add All Contacts”. Already-saved people are offered again.
+            Only people you haven’t saved yet — no duplicates. On iPhone tap “Add All Contacts”.
           </p>
+          <Button type="button" variant="outline" className="w-full" disabled={saving !== null} onClick={() => run('all')}>
+            <ContactRound className="size-4" aria-hidden />
+            {saving === 'all' ? 'Opening…' : 'Save all Day 2 contacts'}
+          </Button>
+          {message ? <p className="text-ds-caption text-success-ink">{message}</p> : null}
           {saveError ? <p className="text-ds-caption text-destructive">{saveError}</p> : null}
         </div>
+
+        <GoogleSyncSection />
       </CardContent>
     </Card>
   )
