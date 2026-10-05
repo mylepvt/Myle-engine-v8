@@ -192,6 +192,28 @@ async def certificate_pdf(
     return pdf, f"day2_certificate_{safe}.pdf"
 
 
+async def certificate_pdf_for_lead(
+    session: AsyncSession, lead_id: int, base_url: str | None = None
+) -> tuple[bytes, str]:
+    """Leader/admin re-download: the certificate of the lead's latest PASSED test
+    (identical to the one the prospect downloaded from their link)."""
+    link = (
+        await session.execute(
+            select(Day2TestSession)
+            .where(
+                Day2TestSession.lead_id == lead_id,
+                Day2TestSession.status == "submitted",
+                Day2TestSession.passed.is_(True),
+            )
+            .order_by(Day2TestSession.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        raise Day2TestError("No passed Day 2 test for this lead", status_code=404)
+    return await certificate_pdf(session, link.token, base_url=base_url)
+
+
 # ── Public: load session by token ────────────────────────────────────────────
 
 async def _get_by_token(session: AsyncSession, token: str) -> Day2TestSession:

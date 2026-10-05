@@ -51,52 +51,45 @@ async def _latest_passed_attempt(session: AsyncSession, user_id: int) -> Trainin
     ).scalar_one_or_none()
 
 
-@router.get("/training/certificate")
-async def download_training_certificate(
-    request: Request,
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> Response:
+async def build_training_certificate(
+    session: AsyncSession, user_id: int, base_url: str
+) -> tuple[bytes, str]:
+    """(pdf_bytes, filename) of a member's training certificate.
+
+    Same certificate every time (number, pass date, QR) — used by the member's own
+    download and by admin re-downloads. Raises 403/404 when not earned yet.
     """
-    Generate and download training certificate PDF.
-    
-    Requirements:
-    - User must have completed all 7 training days
-    - User must have passed the training test (60% score)
-    - Returns PDF file with certificate details
-    """
-    # Get user details
-    user_row = await session.get(User, user.user_id)
+    user_row = await session.get(User, user_id)
     if not user_row:
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     # Check if training is completed
     if user_row.training_status != "completed":
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Training not completed. Complete all training days and pass the test first.",
         )
-    
+
     # Get training progress to verify completion
     progress_rows = await session.execute(
         select(TrainingProgress).where(
-            TrainingProgress.user_id == user.user_id,
+            TrainingProgress.user_id == user_id,
             TrainingProgress.completed.is_(True),
         )
     )
     completed_days = set(p.day_number for p in progress_rows.scalars().all())
-    
+
     # Verify all 7 days are completed
     if not all(day in completed_days for day in range(1, 8)):
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail="All 7 training days must be completed before downloading certificate.",
         )
-    
-    latest_test = await _latest_passed_attempt(session, user.user_id)
+
+    latest_test = await _latest_passed_attempt(session, user_id)
     if latest_test is None:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
@@ -116,11 +109,14 @@ async def download_training_certificate(
         test_score=latest_test.score,
         test_total=latest_test.total_questions,
         cert_no=cert_no,
-        verify_link=verify_url(str(request.base_url), cert_no),
+        verify_link=verify_url(base_url, cert_no),
         verify_code=verification_code(cert_no),
     )
     slug = re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_") or str(user_row.id)
-    filename = f"Myle_Training_Certificate_{slug}.pdf"
+    return pdf_bytes, f"Myle_Training_Certificate_{slug}.pdf"
+
+
+def pdf_response(pdf_bytes: bytes, filename: str) -> Response:
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -129,6 +125,26 @@ async def download_training_certificate(
             "Content-Length": str(len(pdf_bytes)),
         },
     )
+
+
+@router.get("/training/certificate")
+async def download_training_certificate(
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """
+    Generate and download training certificate PDF.
+    
+    Requirements:
+    - User must have completed all 7 training days
+    - User must have passed the training test (60% score)
+    - Returns PDF file with certificate details
+    """
+    pdf_bytes, filename = await build_training_certificate(
+        session, user.user_id, str(request.base_url)
+    )
+    return pdf_response(pdf_bytes, filename)
 
 
 @router.get("/training/certificate/status")

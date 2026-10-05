@@ -21,6 +21,8 @@ export type TrainingProgressMember = {
   days_done: number
   total_days: number
   has_certificate: boolean
+  /** All 7 days done + test passed — admin can download the certificate. */
+  certificate_ready?: boolean
   test: TrainingTestSummary | null
 }
 

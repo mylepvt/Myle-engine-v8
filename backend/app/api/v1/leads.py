@@ -621,6 +621,34 @@ async def get_day2_test_result(
     return {"lead_id": lead_id, "result": result}
 
 
+@router.get("/{lead_id}/day2-test-certificate")
+async def get_day2_test_certificate(
+    lead_id: int,
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Leader/admin: re-download the prospect's Day 2 certificate (passed tests only)."""
+    if user.role not in ("leader", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    lead = await session.get(Lead, lead_id)
+    if lead is None or lead.deleted_at is not None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        pdf, filename = await day2_test_service.certificate_pdf_for_lead(
+            session, lead_id, base_url=str(request.base_url)
+        )
+    except day2_test_service.Day2TestError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.patch("/{lead_id}", response_model=LeadPublic)
 async def update_lead(
     lead_id: int,

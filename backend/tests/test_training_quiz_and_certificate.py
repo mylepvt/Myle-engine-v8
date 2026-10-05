@@ -151,3 +151,34 @@ def test_certificate_name_prefers_real_name():
     assert certificate_display_name(User(id=1, name="AMIT KUMAR", fbo_id="F1")) == "Amit Kumar"
     assert certificate_display_name(User(id=1, name="राहुल", username="rahul_k", fbo_id="F1")) == "rahul_k"
     assert certificate_display_name(User(id=7, name=None, username=None, fbo_id=None)) == "Member 7"
+
+
+async def test_admin_redownloads_member_certificate(engine, clean, admin_client: AsyncClient):
+    """Admin gets the member's own certificate (same number/date) from Training progress."""
+    await _seed_quiz(engine, days_done=True)
+    # not earned yet → nothing to download
+    assert (await admin_client.get(f"/api/v1/admin/training/{TEAM_ID}/certificate")).status_code == 403
+
+    async with AsyncSession(engine, expire_on_commit=False) as s:
+        s.add(TrainingTestAttempt(user_id=TEAM_ID, score=4, total_questions=4, passed=True,
+                                  attempted_at=datetime.now(timezone.utc) - timedelta(days=3)))
+        u = await s.get(User, TEAM_ID)
+        u.training_status = "completed"
+        await s.commit()
+
+    progress = await admin_client.get("/api/v1/admin/training/progress")
+    assert progress.status_code == 200, progress.text
+    member = next(
+        m for g in progress.json()["groups"] for m in g["members"] if m["user_id"] == TEAM_ID
+    )
+    assert member["certificate_ready"] is True
+
+    r = await admin_client.get(f"/api/v1/admin/training/{TEAM_ID}/certificate")
+    assert r.status_code == 200, r.text
+    assert r.content.startswith(b"%PDF")
+    assert "Rahul_Sharma" in r.headers["content-disposition"]
+    assert (await admin_client.get("/api/v1/admin/training/999999/certificate")).status_code == 404
+
+
+async def test_member_certificate_redownload_is_admin_only(engine, clean, team_client: AsyncClient):
+    assert (await team_client.get(f"/api/v1/admin/training/{TEAM_ID}/certificate")).status_code == 403

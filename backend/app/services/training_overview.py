@@ -107,8 +107,11 @@ async def get_training_overview(session: AsyncSession, *, actor: AuthUser) -> di
         )
     ).scalars().all()
     latest_test_map: dict[int, TrainingTestAttempt] = {}
+    passed_ids: set[int] = set()
     for attempt in attempt_rows:
         latest_test_map.setdefault(int(attempt.user_id), attempt)
+        if attempt.passed:
+            passed_ids.add(int(attempt.user_id))
 
     hierarchy_entries = await load_user_hierarchy_entries(session, user_ids)
 
@@ -129,6 +132,10 @@ async def get_training_overview(session: AsyncSession, *, actor: AuthUser) -> di
             "days_done": days_done_map.get(int(member.id), 0),
             "total_days": TOTAL_TRAINING_DAYS,
             "has_certificate": bool(member.certificate_url),
+            # Same rules as the certificate download: all days done + test passed.
+            "certificate_ready": member.training_status == "completed"
+            and int(member.id) in passed_ids
+            and days_done_map.get(int(member.id), 0) >= TOTAL_TRAINING_DAYS,
             "test": _latest_test(latest_test_map.get(int(member.id))),
         }
 
