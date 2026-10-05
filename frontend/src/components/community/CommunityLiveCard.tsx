@@ -125,7 +125,7 @@ export function CommunityLiveCard() {
                       <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full', tone)}>
                         <Icon className="size-3.5" aria-hidden />
                       </span>
-                      <p className="min-w-0 flex-1 truncate text-sm text-foreground">{item.text}</p>
+                      <p className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug text-foreground">{item.text}</p>
                       <span className="shrink-0 text-ds-caption text-muted-foreground">
                         {formatRelativeTimeShort(item.at, now)}
                       </span>
