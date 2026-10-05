@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Activity, Check, CheckCircle2, Copy, ContactRound, RefreshCw, Smartphone, XCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { CheckCircle2, ContactRound, RefreshCw, Unplug } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
@@ -7,168 +8,69 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { apiFetch } from '@/lib/api'
 import { openContactCard } from '@/lib/contact-card'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { formatRelativeTimeShort } from '@/lib/utils'
 
-type SyncStatus = {
-  enabled: boolean
-  server: string
-  /** Full account URL — paste into the iPhone "Server" field (no discovery needed). */
-  server_url?: string
-  username: string
-  password?: string
+type GoogleStatus = {
+  configured: boolean
+  connected: boolean
+  email: string | null
+  last_sync: string | null
+  last_count: number
+  last_error: string | null
+  redirect_uri?: string
 }
 
-async function call(path: string, method = 'GET'): Promise<SyncStatus> {
+async function call<T>(path: string, method = 'GET'): Promise<T> {
   const res = await apiFetch(path, { method })
   const raw: unknown = await res.json().catch(() => null)
   if (!res.ok) throw new Error(messageFromApiErrorPayload(raw, res.statusText) || `HTTP ${res.status}`)
-  return raw as SyncStatus
+  return raw as T
 }
 
-const SYNC_KEY = ['admin', 'contacts', 'carddav'] as const
+const GOOGLE_KEY = ['admin', 'contacts', 'google'] as const
 
-type Probe = { method: string; url: string; status: number | null; ok: boolean; detail?: string }
-type Attempt = { at: string; method: string; path: string; status: number; auth: string; agent: string }
-type Diagnostics = { server_url: string; self_check: Probe[] | null; attempts: Attempt[] }
-
-async function fetchDiagnostics(check: boolean): Promise<Diagnostics> {
-  const res = await apiFetch(`/api/v1/admin/contacts/carddav/diagnostics${check ? '?check=true' : ''}`)
-  const raw: unknown = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(messageFromApiErrorPayload(raw, res.statusText) || `HTTP ${res.status}`)
-  return raw as Diagnostics
+const RETURN_MESSAGES: Record<string, { text: string; ok: boolean }> = {
+  connected: { text: 'Google connected — Day 2 contacts are syncing.', ok: true },
+  cancelled: { text: 'Google connection was cancelled.', ok: false },
+  error: { text: 'Google connected, but the first sync failed — see the error below and tap Sync now.', ok: false },
 }
 
-function timeIst(iso: string): string {
-  return new Date(iso).toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
-
-/** Shows whether the iPhone's requests reach the server, and self-tests the public HTTPS address. */
-function ConnectionCheck() {
-  const diag = useMutation({ mutationFn: (check: boolean) => fetchDiagnostics(check) })
-  const d = diag.data
-  return (
-    <div className="space-y-2 border-t border-border/60 pt-3">
-      <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-        <Activity className="size-4" aria-hidden /> Connection check
-      </p>
-      <p className="text-ds-caption text-muted-foreground">
-        iPhone says “Cannot connect”? Tap check, then try adding the account on the iPhone and tap “Show iPhone
-        attempts”.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" disabled={diag.isPending} onClick={() => diag.mutate(true)}>
-          {diag.isPending ? 'Checking…' : 'Check connection'}
-        </Button>
-        <Button type="button" variant="outline" disabled={diag.isPending} onClick={() => diag.mutate(false)}>
-          Show iPhone attempts
-        </Button>
-      </div>
-      {diag.error ? <p className="text-ds-caption text-destructive">{diag.error.message}</p> : null}
-      {d?.self_check ? (
-        <ul className="space-y-1">
-          {d.self_check.map((p) => (
-            <li key={p.url + p.method} className="flex items-start gap-1.5 text-ds-caption">
-              {p.ok ? (
-                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success-ink" aria-hidden />
-              ) : (
-                <XCircle className="mt-0.5 size-3.5 shrink-0 text-destructive" aria-hidden />
-              )}
-              <span className="min-w-0 break-all">
-                <b>{p.method}</b> {p.url} → {p.status ?? 'no response'}
-                {p.detail ? <span className="text-muted-foreground"> · {p.detail}</span> : null}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {d ? (
-        d.attempts.length ? (
-          <div className="max-h-56 overflow-y-auto rounded-md border border-border/60">
-            <table className="w-full text-left text-ds-micro">
-              <tbody>
-                {d.attempts.map((a, i) => (
-                  <tr key={i} className="border-b border-border/40 last:border-0">
-                    <td className="whitespace-nowrap px-2 py-1 text-muted-foreground">{timeIst(a.at)}</td>
-                    <td className="px-2 py-1 font-mono">
-                      {a.method} {a.path}
-                    </td>
-                    <td className={a.status < 400 ? 'px-2 py-1 text-success-ink' : 'px-2 py-1 text-destructive'}>
-                      {a.status}
-                    </td>
-                    <td className="px-2 py-1 text-muted-foreground">
-                      {a.auth}
-                      {a.agent ? ` · ${a.agent}` : ''}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-ds-caption text-warning-ink">
-            No requests from the iPhone have reached the server yet.
-          </p>
-        )
-      ) : null}
-    </div>
-  )
-}
-
-function CopyRow({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5">
-      <div className="min-w-0">
-        <p className="text-ds-micro uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className="truncate font-mono text-sm text-foreground">{value}</p>
-      </div>
-      <button
-        type="button"
-        aria-label={`Copy ${label}`}
-        onClick={() => {
-          void navigator.clipboard?.writeText(value).then(() => {
-            setCopied(true)
-            window.setTimeout(() => setCopied(false), 1500)
-          })
-        }}
-        className="shrink-0 rounded p-1.5 text-muted-foreground hover:text-foreground"
-      >
-        {copied ? <Check className="size-4 text-success-ink" /> : <Copy className="size-4" />}
-      </button>
-    </div>
-  )
-}
-
-/** Admin: put every Day 2 prospect into the iPhone's contacts — once, or kept in sync. */
+/** Admin: put every Day 2 prospect into the iPhone's contacts — once, or kept in sync via Google. */
 export function Day2ContactsCard() {
   const qc = useQueryClient()
-  const status = useQuery({ queryKey: SYNC_KEY, queryFn: () => call('/api/v1/admin/contacts/carddav') })
-  const [fresh, setFresh] = useState<SyncStatus | null>(null)
+  const [params, setParams] = useSearchParams()
+  const [returned, setReturned] = useState<string | null>(null)
+  const status = useQuery({ queryKey: GOOGLE_KEY, queryFn: () => call<GoogleStatus>('/api/v1/admin/contacts/google') })
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const issue = useMutation({
-    mutationFn: () => call('/api/v1/admin/contacts/carddav/password', 'POST'),
-    onSuccess: (r) => {
-      setFresh(r)
-      void qc.invalidateQueries({ queryKey: SYNC_KEY })
-    },
+  // Back from Google's consent screen: /dashboard?google_contacts=connected|cancelled|error
+  useEffect(() => {
+    const flag = params.get('google_contacts')
+    if (!flag) return
+    setReturned(flag)
+    const next = new URLSearchParams(params)
+    next.delete('google_contacts')
+    setParams(next, { replace: true })
+    void qc.invalidateQueries({ queryKey: GOOGLE_KEY })
+  }, [params, setParams, qc])
+
+  const connect = useMutation({
+    mutationFn: () => call<{ url: string }>('/api/v1/admin/contacts/google/connect'),
+    onSuccess: ({ url }) => window.location.assign(url),
   })
-  const turnOff = useMutation({
-    mutationFn: () => call('/api/v1/admin/contacts/carddav', 'DELETE'),
-    onSuccess: () => {
-      setFresh(null)
-      void qc.invalidateQueries({ queryKey: SYNC_KEY })
-    },
+  const syncNow = useMutation({
+    mutationFn: () => call<GoogleStatus & { created: number; updated: number }>('/api/v1/admin/contacts/google/sync', 'POST'),
+    onSettled: () => void qc.invalidateQueries({ queryKey: GOOGLE_KEY }),
+  })
+  const disconnect = useMutation({
+    mutationFn: () => call<GoogleStatus>('/api/v1/admin/contacts/google', 'DELETE'),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: GOOGLE_KEY }),
   })
 
-  const enabled = status.data?.enabled ?? false
+  const g = status.data
+  const notice = returned ? RETURN_MESSAGES[returned] : null
+  const actionError = connect.error ?? syncNow.error ?? disconnect.error
 
   return (
     <Card>
@@ -182,9 +84,93 @@ export function Day2ContactsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-1.5">
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+            Auto-sync with Google Contacts
+            <span
+              className={
+                g?.connected
+                  ? 'ml-auto rounded-full bg-success/15 px-2 py-0.5 text-ds-caption font-semibold text-success-ink'
+                  : 'ml-auto rounded-full bg-muted px-2 py-0.5 text-ds-caption text-muted-foreground'
+              }
+            >
+              {g?.connected ? 'On' : 'Off'}
+            </span>
+          </p>
+          {notice ? (
+            <p className={notice.ok ? 'text-ds-caption text-success-ink' : 'text-ds-caption text-warning-ink'}>{notice.text}</p>
+          ) : null}
+
+          {g && !g.configured ? (
+            <p className="text-ds-caption text-warning-ink">
+              Not set up on the server yet: add GOOGLE_CONTACTS_CLIENT_ID and GOOGLE_CONTACTS_CLIENT_SECRET in Render.
+              {g.redirect_uri ? (
+                <>
+                  {' '}Authorised redirect URI: <span className="break-all font-mono">{g.redirect_uri}</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+
+          {g?.connected ? (
+            <div className="space-y-1 rounded-lg border border-success/30 bg-success/5 p-3 text-ds-caption">
+              <p className="flex items-center gap-1.5 font-semibold text-foreground">
+                <CheckCircle2 className="size-3.5 text-success-ink" aria-hidden />
+                {g.email ?? 'Google account'}
+              </p>
+              <p className="text-muted-foreground">
+                {g.last_count} contacts in the “MYLE Day 2” label
+                {g.last_sync ? ` · synced ${formatRelativeTimeShort(g.last_sync)}` : ''} · updates every 15 min
+              </p>
+              {g.last_error ? <p className="text-destructive">{g.last_error}</p> : null}
+              <p className="text-muted-foreground">
+                On iPhone: Settings → Apps → Contacts → Contacts Accounts → Gmail → turn <b>Contacts</b> on.
+              </p>
+            </div>
+          ) : (
+            <p className="text-ds-caption text-muted-foreground">
+              Connect the Google account that is on your iPhone. New Day 2 prospects then appear in your iPhone
+              contacts by themselves.
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {g?.connected ? (
+              <>
+                <Button type="button" disabled={syncNow.isPending} onClick={() => syncNow.mutate()}>
+                  <RefreshCw className={syncNow.isPending ? 'size-4 animate-spin' : 'size-4'} aria-hidden />
+                  {syncNow.isPending ? 'Syncing…' : 'Sync now'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={disconnect.isPending}
+                  onClick={() => {
+                    if (window.confirm('Stop syncing to Google? Contacts already in Google stay there.')) disconnect.mutate()
+                  }}
+                >
+                  <Unplug className="size-4" aria-hidden />
+                  Disconnect
+                </Button>
+              </>
+            ) : (
+              <Button type="button" disabled={connect.isPending || (g ? !g.configured : true)} onClick={() => connect.mutate()}>
+                {connect.isPending ? 'Opening Google…' : 'Connect Google'}
+              </Button>
+            )}
+          </div>
+          {syncNow.data ? (
+            <p className="text-ds-caption text-success-ink">
+              Synced: {syncNow.data.created} added, {syncNow.data.updated} updated.
+            </p>
+          ) : null}
+          {actionError ? <p className="text-ds-caption text-destructive">{actionError.message}</p> : null}
+        </div>
+
+        <div className="space-y-1.5 border-t border-border/60 pt-3">
           <Button
             type="button"
+            variant="outline"
             className="w-full"
             disabled={saving}
             onClick={() => {
@@ -196,79 +182,13 @@ export function Day2ContactsCard() {
             }}
           >
             <ContactRound className="size-4" aria-hidden />
-            {saving ? 'Opening…' : 'Save all Day 2 contacts'}
+            {saving ? 'Opening…' : 'Save all Day 2 contacts (one time)'}
           </Button>
           <p className="text-ds-caption text-muted-foreground">
-            On iPhone tap “Add All Contacts”. Already-saved people are offered again, so prefer auto-sync below for
-            regular use.
+            Without Google: on iPhone tap “Add All Contacts”. Already-saved people are offered again.
           </p>
           {saveError ? <p className="text-ds-caption text-destructive">{saveError}</p> : null}
         </div>
-
-        <div className="space-y-2 border-t border-border/60 pt-3">
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-            <Smartphone className="size-4" aria-hidden /> Auto-sync to iPhone
-            <span
-              className={
-                enabled
-                  ? 'ml-auto rounded-full bg-success/15 px-2 py-0.5 text-ds-caption font-semibold text-success-ink'
-                  : 'ml-auto rounded-full bg-muted px-2 py-0.5 text-ds-caption text-muted-foreground'
-              }
-            >
-              {enabled ? 'On' : 'Off'}
-            </span>
-          </p>
-          <p className="text-ds-caption text-muted-foreground">
-            New Day 2 prospects appear in your iPhone contacts by themselves (as a separate “MYLE Day 2” list).
-          </p>
-
-          {fresh?.password ? (
-            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-              <ol className="list-decimal space-y-0.5 pl-4 text-ds-caption text-foreground">
-                <li>
-                  On your iPhone open <b>Settings → Apps → Contacts → Contacts Accounts</b>
-                  <span className="text-muted-foreground"> (older iPhones: Settings → Contacts → Accounts)</span>
-                </li>
-                <li>
-                  <b>Add Account → Other → Add CardDAV Account</b>
-                </li>
-                <li>Copy-paste the three values below</li>
-              </ol>
-              <CopyRow label="Server" value={fresh.server_url ?? fresh.server} />
-              <CopyRow label="User Name" value={fresh.username} />
-              <CopyRow label="Password" value={fresh.password} />
-              <p className="text-ds-caption text-muted-foreground">
-                Tap Next, then Save. This password is shown only once — it is not your MYLE login password.
-              </p>
-              <p className="text-ds-caption text-muted-foreground">
-                Still “Cannot connect”? Open the account → Advanced Settings → turn <b>Use SSL</b> on and set{' '}
-                <b>Port 443</b>.
-              </p>
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant={enabled ? 'outline' : 'default'} disabled={issue.isPending} onClick={() => {
-              if (enabled && !window.confirm('Create a new sync password? The old one stops working on your iPhone.')) return
-              issue.mutate()
-            }}>
-              <RefreshCw className="size-4" aria-hidden />
-              {enabled ? 'New sync password' : 'Set up auto-sync'}
-            </Button>
-            {enabled ? (
-              <Button type="button" variant="outline" disabled={turnOff.isPending} onClick={() => {
-                if (window.confirm('Turn off auto-sync? Your iPhone stops receiving new Day 2 contacts.')) turnOff.mutate()
-              }}>
-                Turn off
-              </Button>
-            ) : null}
-          </div>
-          {issue.error || turnOff.error ? (
-            <p className="text-ds-caption text-destructive">{(issue.error ?? turnOff.error)?.message}</p>
-          ) : null}
-        </div>
-
-        <ConnectionCheck />
       </CardContent>
     </Card>
   )
