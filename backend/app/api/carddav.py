@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.services.carddav_auth import authenticate_carddav
+from app.services.carddav_diagnostics import record_attempt
 from app.services.day2_contacts import BOOK_NAME, contact_cards, day2_contact_leads, etag_for
 
 router = APIRouter(include_in_schema=False)
@@ -119,11 +120,23 @@ def _norm(path: str) -> str:
     return path if path.endswith("/") or path.endswith(".vcf") else path + "/"
 
 
+async def _log(request: Request, session: AsyncSession, response: Response, auth: str) -> Response:
+    await record_attempt(
+        session,
+        method=request.method,
+        path=request.url.path,
+        status=response.status_code,
+        auth=auth,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return response
+
+
 @router.api_route("/.well-known/carddav", methods=_METHODS)
-async def well_known(request: Request) -> Response:
+async def well_known(request: Request, session: Annotated[AsyncSession, Depends(get_db)]) -> Response:
     if request.method == "OPTIONS":
-        return Response(status_code=200, headers=_DAV_HEADERS)
-    return Response(status_code=301, headers={"Location": ROOT})
+        return await _log(request, session, Response(status_code=200, headers=_DAV_HEADERS), "-")
+    return await _log(request, session, Response(status_code=301, headers={"Location": ROOT}), "-")
 
 
 # The iPhone may probe the site root before /.well-known/carddav. Only DAV methods are
@@ -132,13 +145,22 @@ async def well_known(request: Request) -> Response:
 @router.api_route("/carddav", methods=_METHODS)
 @router.api_route("/carddav/{rest:path}", methods=_METHODS)
 async def carddav(request: Request, session: Annotated[AsyncSession, Depends(get_db)]) -> Response:
+    state = {"auth": "-"}
+    response = await _carddav(request, session, state)
+    return await _log(request, session, response, state["auth"])
+
+
+async def _carddav(request: Request, session: AsyncSession, state: dict[str, str]) -> Response:
     method = request.method
     if method == "OPTIONS":
         return Response(status_code=200, headers=_DAV_HEADERS)
 
+    has_header = bool(request.headers.get("authorization"))
     user = await _auth(request, session)
     if user is None:
+        state["auth"] = "wrong user name or password" if has_header else "no login sent"
         return _unauthorized()
+    state["auth"] = "ok"
     if method not in ("GET", "HEAD", "PROPFIND", "REPORT"):
         return Response(status_code=403, content="Read-only address book", headers=_DAV_HEADERS)
 
