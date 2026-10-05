@@ -2,11 +2,13 @@
 
 One snapshot for the whole community (same for every viewer):
 - how many members are on the app right now (live presence heartbeats),
-- today's totals (calls, follow-ups done, members who worked),
-- a short feed of real recent actions: first name + what they did.
+- totals for today and for the last 7 days (calls, follow-ups, members who worked,
+  leads added) — the card shows the week when today is still quiet,
+- a feed of real recent actions over the last 24 hours: first name + what they did.
 
-Privacy: never a lead's name, phone or stage — only the member's first name.
-Copy is English (app UI rule). Admin accounts are not counted or shown.
+Everything is real data; nothing is padded. Privacy: never a lead's name, phone or
+stage — only the member's first name. Copy is English (app UI rule). Admin and
+removed accounts are not counted or shown.
 """
 
 from __future__ import annotations
@@ -19,8 +21,13 @@ from sqlalchemy import distinct, func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time_ist import IST
+from app.models.batch_share_link import BatchShareLink
 from app.models.call_event import CallEvent
+from app.models.day2_test_session import Day2TestSession
 from app.models.follow_up import FollowUp
+from app.models.lead import Lead
+from app.models.training_progress import TrainingProgress
+from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.user import User
 from app.models.user_presence_session import UserPresenceSession
 from app.models.win import Win
@@ -30,8 +37,11 @@ from app.services.team_tracking import PRESENCE_ONLINE_STALE_SECONDS
 from app.services.wins import win_text
 
 MEMBER_ROLES = ("leader", "team")
-CALL_WINDOW = timedelta(minutes=90)  # calls are grouped per member over this window
-FEED_LIMIT = 12
+FEED_WINDOW = timedelta(hours=24)
+GROUP_WINDOW = timedelta(hours=3)  # calls / new leads are grouped per member over this window
+FEED_LIMIT = 15
+PER_KIND_LIMIT = 10
+WEEK_DAYS = 7
 CACHE_SECONDS = 20
 
 _cache: tuple[float, dict[str, Any]] | None = None
@@ -53,6 +63,14 @@ def _member_filter():
 def _aware(dt: datetime) -> datetime:
     """Aware UTC (SQLite hands back naive values); serialised after sorting."""
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _plural(n: int, one: str, many: str) -> str:
+    return one if n == 1 else f"{n} {many}"
+
+
+def _batch_day(slot: str) -> str:
+    return "Day 2" if slot.startswith("d2") else "Day 1"
 
 
 async def online_members(session: AsyncSession, now: datetime) -> list[User]:
@@ -78,119 +96,174 @@ async def online_members(session: AsyncSession, now: datetime) -> list[User]:
     return list(rows)
 
 
-async def build_live_snapshot(session: AsyncSession, now: datetime | None = None) -> dict[str, Any]:
-    now = now or datetime.now(timezone.utc)
-    start, end = ist_day_bounds(now.astimezone(IST).date())
+async def _count(session: AsyncSession, stmt) -> int:
+    return int((await session.execute(stmt)).scalar_one() or 0)
+
+
+async def period_totals(session: AsyncSession, start: datetime, end: datetime) -> dict[str, int]:
     member = _member_filter()
-
-    online = await online_members(session, now)
-
-    calls_today = int(
-        (
-            await session.execute(
-                select(func.count(CallEvent.id))
-                .join(User, User.id == CallEvent.user_id)
-                .where(CallEvent.called_at >= start, CallEvent.called_at < end, *member)
-            )
-        ).scalar_one()
-        or 0
-    )
-    followups_today = int(
-        (
-            await session.execute(
-                select(func.count(FollowUp.id))
-                .join(User, User.id == FollowUp.completed_by_user_id)
-                .where(FollowUp.completed_at >= start, FollowUp.completed_at < end, *member)
-            )
-        ).scalar_one()
-        or 0
-    )
-    # Worked today = logged a call or earned XP for real work (opening the app doesn't count).
+    # Worked = logged a call or earned XP for real work (opening the app doesn't count).
     workers = union(
         select(CallEvent.user_id.label("uid")).where(CallEvent.called_at >= start, CallEvent.called_at < end),
         select(XpEvent.user_id.label("uid")).where(
             XpEvent.created_at >= start, XpEvent.created_at < end, XpEvent.action != "login_daily"
         ),
     ).subquery()
-    active_today = int(
-        (
-            await session.execute(
-                select(func.count(distinct(User.id))).join(workers, workers.c.uid == User.id).where(*member)
-            )
-        ).scalar_one()
-        or 0
-    )
+    return {
+        "calls": await _count(
+            session,
+            select(func.count(CallEvent.id))
+            .join(User, User.id == CallEvent.user_id)
+            .where(CallEvent.called_at >= start, CallEvent.called_at < end, *member),
+        ),
+        "followups": await _count(
+            session,
+            select(func.count(FollowUp.id))
+            .join(User, User.id == FollowUp.completed_by_user_id)
+            .where(FollowUp.completed_at >= start, FollowUp.completed_at < end, *member),
+        ),
+        "members_worked": await _count(
+            session,
+            select(func.count(distinct(User.id))).join(workers, workers.c.uid == User.id).where(*member),
+        ),
+        "leads_added": await _count(
+            session,
+            select(func.count(Lead.id))
+            .join(User, User.id == Lead.created_by_user_id)
+            .where(Lead.created_at >= start, Lead.created_at < end, Lead.deleted_at.is_(None), *member),
+        ),
+    }
 
+
+async def _feed(session: AsyncSession, now: datetime) -> list[dict[str, Any]]:
+    member = _member_filter()
+    since = now - FEED_WINDOW
+    group_since = now - GROUP_WINDOW
     feed: list[dict[str, Any]] = []
 
-    # Calls: one line per member for the last 90 minutes ("Rahul made 4 calls").
-    since = max(start, now - CALL_WINDOW)
+    def add(kind: str, user: User, text: str, at: datetime) -> None:
+        feed.append({"kind": kind, "user_id": user.id, "text": text, "at": _aware(at)})
+
+    # Calls and new leads: one line per member for the last few hours ("Rahul made 4 calls").
     for user, n, last in (
         await session.execute(
             select(User, func.count(CallEvent.id), func.max(CallEvent.called_at))
             .join(CallEvent, CallEvent.user_id == User.id)
-            .where(CallEvent.called_at >= since, CallEvent.called_at < end, *member)
+            .where(CallEvent.called_at >= group_since, *member)
             .group_by(User.id)
         )
     ).all():
-        name = first_name(user)
-        text = f"{name} made a call" if n == 1 else f"{name} made {n} calls"
-        feed.append({"kind": "call", "user_id": user.id, "text": text, "at": _aware(last)})
+        add("call", user, f"{first_name(user)} made {_plural(n, 'a call', 'calls')}", last)
+
+    for user, n, last in (
+        await session.execute(
+            select(User, func.count(Lead.id), func.max(Lead.created_at))
+            .join(Lead, Lead.created_by_user_id == User.id)
+            .where(Lead.created_at >= group_since, Lead.deleted_at.is_(None), *member)
+            .group_by(User.id)
+        )
+    ).all():
+        add("lead", user, f"{first_name(user)} added {_plural(n, 'a new lead', 'new leads')}", last)
 
     for user, at in (
         await session.execute(
             select(User, FollowUp.completed_at)
             .join(FollowUp, FollowUp.completed_by_user_id == User.id)
-            .where(FollowUp.completed_at >= start, FollowUp.completed_at < end, *member)
+            .where(FollowUp.completed_at >= since, *member)
             .order_by(FollowUp.completed_at.desc())
-            .limit(FEED_LIMIT)
+            .limit(PER_KIND_LIMIT)
         )
     ).all():
-        feed.append({"kind": "followup", "user_id": user.id, "text": f"{first_name(user)} completed a follow-up", "at": _aware(at)})
+        add("followup", user, f"{first_name(user)} completed a follow-up", at)
+
+    for user, slot, at in (
+        await session.execute(
+            select(User, BatchShareLink.slot, BatchShareLink.used_at)
+            .join(BatchShareLink, BatchShareLink.created_by_user_id == User.id)
+            .where(BatchShareLink.used_at >= since, *member)
+            .order_by(BatchShareLink.used_at.desc())
+            .limit(PER_KIND_LIMIT)
+        )
+    ).all():
+        add("batch", user, f"{first_name(user)}'s prospect watched a {_batch_day(slot)} batch", at)
+
+    for user, at in (
+        await session.execute(
+            select(User, Day2TestSession.submitted_at)
+            .join(Day2TestSession, Day2TestSession.created_by_user_id == User.id)
+            .where(
+                Day2TestSession.status == "submitted",
+                Day2TestSession.passed.is_(True),
+                Day2TestSession.submitted_at >= since,
+                *member,
+            )
+            .order_by(Day2TestSession.submitted_at.desc())
+            .limit(PER_KIND_LIMIT)
+        )
+    ).all():
+        add("day2", user, f"{first_name(user)}'s prospect passed the Day 2 test", at)
+
+    for user, day, at in (
+        await session.execute(
+            select(User, TrainingProgress.day_number, TrainingProgress.completed_at)
+            .join(TrainingProgress, TrainingProgress.user_id == User.id)
+            .where(TrainingProgress.completed.is_(True), TrainingProgress.completed_at >= since, *member)
+            .order_by(TrainingProgress.completed_at.desc())
+            .limit(PER_KIND_LIMIT)
+        )
+    ).all():
+        add("training", user, f"{first_name(user)} completed Day {day} of training", at)
+
+    for user, at in (
+        await session.execute(
+            select(User, TrainingTestAttempt.attempted_at)
+            .join(TrainingTestAttempt, TrainingTestAttempt.user_id == User.id)
+            .where(TrainingTestAttempt.passed.is_(True), TrainingTestAttempt.attempted_at >= since, *member)
+            .order_by(TrainingTestAttempt.attempted_at.desc())
+            .limit(PER_KIND_LIMIT)
+        )
+    ).all():
+        add("certificate", user, f"{first_name(user)} earned the training certificate", at)
 
     for user, at in (
         await session.execute(
             select(User, XpEvent.created_at)
             .join(XpEvent, XpEvent.user_id == User.id)
-            .where(
-                XpEvent.action == "report_submitted",
-                XpEvent.created_at >= start,
-                XpEvent.created_at < end,
-                *member,
-            )
+            .where(XpEvent.action == "report_submitted", XpEvent.created_at >= since, *member)
             .order_by(XpEvent.created_at.desc())
-            .limit(FEED_LIMIT)
+            .limit(PER_KIND_LIMIT)
         )
     ).all():
-        feed.append({"kind": "report", "user_id": user.id, "text": f"{first_name(user)} submitted the daily report", "at": _aware(at)})
+        add("report", user, f"{first_name(user)} submitted the daily report", at)
 
     for user, win in (
         await session.execute(
             select(User, Win)
             .join(Win, Win.user_id == User.id)
-            .where(Win.created_at >= start, Win.created_at < end, *member)
+            .where(Win.created_at >= since, *member)
             .order_by(Win.created_at.desc())
-            .limit(FEED_LIMIT)
+            .limit(PER_KIND_LIMIT)
         )
     ).all():
-        feed.append({
-            "kind": "win",
-            "user_id": user.id,
-            "text": win_text(win.kind, first_name(user), win.detail),
-            "at": _aware(win.created_at),
-        })
+        add("win", user, win_text(win.kind, first_name(user), win.detail), win.created_at)
 
     feed.sort(key=lambda e: e["at"], reverse=True)
-    feed = [{**e, "at": e["at"].isoformat()} for e in feed[:FEED_LIMIT]]
+    return [{**e, "at": e["at"].isoformat()} for e in feed[:FEED_LIMIT]]
+
+
+async def build_live_snapshot(session: AsyncSession, now: datetime | None = None) -> dict[str, Any]:
+    now = now or datetime.now(timezone.utc)
+    today = now.astimezone(IST).date()
+    start, end = ist_day_bounds(today)
+    week_start, _ = ist_day_bounds(today - timedelta(days=WEEK_DAYS - 1))
+
+    online = await online_members(session, now)
     return {
         "online_now": len(online),
         "online_names": [first_name(u) for u in online[:5]],
-        "today": {
-            "calls": calls_today,
-            "followups": followups_today,
-            "members_worked": active_today,
-        },
-        "feed": feed,
+        "today": await period_totals(session, start, end),
+        "week": await period_totals(session, week_start, end),
+        "feed": await _feed(session, now),
         "generated_at": now.isoformat(),
     }
 

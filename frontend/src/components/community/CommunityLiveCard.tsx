@@ -1,42 +1,48 @@
 import { useEffect, useState } from 'react'
-import { ClipboardCheck, PartyPopper, PhoneCall, RefreshCcw } from 'lucide-react'
+import {
+  Award,
+  ClipboardCheck,
+  GraduationCap,
+  PartyPopper,
+  PhoneCall,
+  PlayCircle,
+  RefreshCcw,
+  ShieldCheck,
+  UserPlus,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   type CommunityFeedKind,
-  type CommunityLive,
   useCommunityLiveQuery,
 } from '@/hooks/use-community-live-query'
+import { MIN_ONLINE_SHOWN, onlineLine, pickStats } from '@/lib/community-live'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
 
 const KIND_ICON: Record<CommunityFeedKind, { icon: LucideIcon; tone: string }> = {
   call: { icon: PhoneCall, tone: 'bg-success/15 text-success-ink' },
+  lead: { icon: UserPlus, tone: 'bg-primary/15 text-primary' },
   followup: { icon: RefreshCcw, tone: 'bg-primary/15 text-primary' },
+  batch: { icon: PlayCircle, tone: 'bg-success/15 text-success-ink' },
+  day2: { icon: ShieldCheck, tone: 'bg-success/15 text-success-ink' },
+  training: { icon: GraduationCap, tone: 'bg-warning/15 text-warning-ink' },
+  certificate: { icon: Award, tone: 'bg-warning/15 text-warning-ink' },
   report: { icon: ClipboardCheck, tone: 'bg-muted text-muted-foreground' },
   win: { icon: PartyPopper, tone: 'bg-warning/15 text-warning-ink' },
-}
-
-function onlineLine(live: CommunityLive): string {
-  const n = live.online_now
-  if (n === 0) return 'No one else is on MYLE right now — be the first today.'
-  const names = live.online_names.slice(0, 2)
-  const others = n - names.length
-  const who = others > 0 ? `${names.join(', ')} and ${others} more` : names.join(' and ')
-  return `${who} ${n === 1 ? 'is' : 'are'} working right now`
 }
 
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="rounded-lg border border-border/60 bg-muted/30 px-2 py-2 text-center">
-      <p className="text-lg font-bold tabular-nums text-foreground">{value}</p>
+      <p className="text-lg font-bold tabular-nums text-foreground">{value.toLocaleString('en-IN')}</p>
       <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
   )
 }
 
-/** Live pulse of the whole community: who is on the app, today's totals, recent actions. */
+/** Live pulse of the whole community: who is on the app, totals, recent actions. */
 export function CommunityLiveCard() {
   const { data, isPending, isError } = useCommunityLiveQuery()
   // Re-render every 30 s so "2m ago" stays honest between fetches.
@@ -47,6 +53,12 @@ export function CommunityLiveCard() {
   }, [])
 
   if (isError) return null
+  if (data && !data.feed.length && pickStats(data).stats.length === 0 && data.online_now < MIN_ONLINE_SHOWN) {
+    return null // nothing worth showing yet
+  }
+
+  const line = data ? onlineLine(data) : null
+  const { period, stats } = data ? pickStats(data) : { period: '', stats: [] }
 
   return (
     <Card className="border-success/25">
@@ -57,7 +69,7 @@ export function CommunityLiveCard() {
             <span className="relative inline-flex size-2.5 rounded-full bg-success" />
           </span>
           <span>Live on MYLE</span>
-          {data ? (
+          {data && data.online_now >= MIN_ONLINE_SHOWN ? (
             <span className="ml-auto rounded-full bg-success/15 px-2 py-0.5 text-ds-caption font-semibold text-success-ink">
               {data.online_now} online
             </span>
@@ -73,12 +85,17 @@ export function CommunityLiveCard() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">{onlineLine(data)}</p>
-            <div className="grid grid-cols-3 gap-2">
-              <Stat value={data.today.calls} label="Calls today" />
-              <Stat value={data.today.followups} label="Follow-ups" />
-              <Stat value={data.today.members_worked} label="Members working" />
-            </div>
+            {line ? <p className="text-sm text-muted-foreground">{line}</p> : null}
+            {stats.length ? (
+              <div>
+                <p className="mb-1.5 text-ds-micro font-semibold uppercase tracking-wider text-muted-foreground">
+                  {period}
+                </p>
+                <div className={cn('grid gap-2', stats.length === 1 ? 'grid-cols-1' : stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3')}>
+                  {stats.map((s) => <Stat key={s.label} value={s.value} label={s.label} />)}
+                </div>
+              </div>
+            ) : null}
             {data.feed.length ? (
               <ul className="space-y-0.5" aria-live="polite">
                 {data.feed.slice(0, 8).map((item) => {
@@ -96,11 +113,7 @@ export function CommunityLiveCard() {
                   )
                 })}
               </ul>
-            ) : (
-              <p className="text-ds-caption text-muted-foreground">
-                No activity yet today. Make the first call and lead the way.
-              </p>
-            )}
+            ) : null}
           </>
         )}
       </CardContent>

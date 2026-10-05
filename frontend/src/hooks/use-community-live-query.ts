@@ -1,7 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 
-export type CommunityFeedKind = 'call' | 'followup' | 'report' | 'win'
+export type CommunityFeedKind =
+  | 'call'
+  | 'lead'
+  | 'followup'
+  | 'batch'
+  | 'day2'
+  | 'training'
+  | 'certificate'
+  | 'report'
+  | 'win'
 
 export type CommunityFeedItem = {
   kind: CommunityFeedKind
@@ -10,10 +19,18 @@ export type CommunityFeedItem = {
   at: string
 }
 
+export type CommunityTotals = {
+  calls: number
+  followups: number
+  members_worked: number
+  leads_added: number
+}
+
 export type CommunityLive = {
   online_now: number
   online_names: string[]
-  today: { calls: number; followups: number; members_worked: number }
+  today: CommunityTotals
+  week: CommunityTotals
   feed: CommunityFeedItem[]
   generated_at: string
 }
