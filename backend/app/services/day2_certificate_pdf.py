@@ -30,6 +30,7 @@ from app.services.certificate import (
     _qr,
     _ribbon,
     _rule,
+    _signature,
     _spaced,
     _wrap,
 )
@@ -134,9 +135,7 @@ def build_day2_business_certificate_pdf(
     # Signatures either side, official seal in the middle
     base = 92
     for (name, title), sx in zip(SIGNATORIES, (190, w - 190)):
-        c.setFillColor(GREEN_DARK)
-        c.setFont(f["script"], _fit_size(name, f["script"], 26, 16, 190))
-        c.drawCentredString(sx, base + 4, name)
+        _signature(c, sx, base + 10, name, f["signature"])
         c.setStrokeColor(INK)
         c.setLineWidth(0.7)
         c.line(sx - 95, base - 4, sx + 95, base - 4)

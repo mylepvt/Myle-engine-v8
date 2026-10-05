@@ -38,6 +38,7 @@ GOLD = HexColor("#B8923A")
 GOLD_DEEP = HexColor("#8A6A22")
 GOLD_BRIGHT = HexColor("#E9D28E")
 INK = HexColor("#1F231D")
+PEN_INK = HexColor("#1B2F66")  # fountain-pen blue for signatures
 MUTED = HexColor("#5C6157")
 RED = HexColor("#9E1B1B")
 PAPER = HexColor("#FBF7EA")
@@ -49,11 +50,17 @@ _FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 @lru_cache(maxsize=1)
 def _fonts() -> dict[str, str]:
     """Register the bundled OFL fonts once; fall back to PDF base fonts if missing."""
-    names = {"display": "Times-Bold", "serif": "Times-Roman", "script": "Times-Italic"}
+    names = {
+        "display": "Times-Bold",
+        "serif": "Times-Roman",
+        "script": "Times-Italic",
+        "signature": "Times-Italic",
+    }
     for key, (alias, filename) in {
         "display": ("MyleCinzel", "Cinzel.ttf"),
         "serif": ("MyleGaramond", "EBGaramond.ttf"),
         "script": ("MyleGreatVibes", "GreatVibes.ttf"),
+        "signature": ("MyleSignature", "HerrVonMuellerhoff.ttf"),
     }.items():
         try:
             pdfmetrics.registerFont(TTFont(alias, str(_FONT_DIR / filename)))
@@ -331,6 +338,28 @@ def _ribbon(c: canvas.Canvas, cx: float, cy: float, text: str, font: str, size: 
     _spaced(c, text, cx, cy - size / 2 + 1.4, font, size, spacing, color=GOLD_BRIGHT)
 
 
+def _signature(c: canvas.Canvas, cx: float, y: float, name: str, font: str, max_width: float = 190) -> None:
+    """Handwritten signature: pen-blue cursive, a slight upward slant and an ink swoosh."""
+    size = _fit_size(name, font, 40, 22, max_width)
+    width = stringWidth(name, font, size)
+    c.saveState()
+    c.translate(cx, y)
+    c.rotate(4)
+    c.setFillColor(PEN_INK)
+    c.setFont(font, size)
+    c.drawCentredString(0, 0, name)
+    # Swoosh under the name, like the pen trailing off after signing
+    c.setStrokeColor(PEN_INK)
+    c.setLineCap(1)
+    c.setLineWidth(0.9)
+    p = c.beginPath()
+    x0 = -width * 0.42
+    p.moveTo(x0, -size * 0.18)
+    p.curveTo(x0 + width * 0.25, -size * 0.34, x0 + width * 0.6, -size * 0.10, width * 0.5, -size * 0.06)
+    c.drawPath(p, stroke=1, fill=0)
+    c.restoreState()
+
+
 def _rule(c: canvas.Canvas, cx: float, y: float, half: float, gap: float = 8) -> None:
     c.setStrokeColor(GOLD)
     c.setLineWidth(0.8)
@@ -543,9 +572,7 @@ def draw_certificate(
     # Signatures either side, official seal in the middle
     base = 92
     for (sig_name, sig_title), sx in zip(SIGNATORIES, (190, w - 190)):
-        c.setFillColor(GREEN_DARK)
-        c.setFont(f["script"], _fit_size(sig_name, f["script"], 28, 16, 190))
-        c.drawCentredString(sx, base + 4, sig_name)
+        _signature(c, sx, base + 10, sig_name, f["signature"])
         c.setStrokeColor(INK)
         c.setLineWidth(0.7)
         c.line(sx - 100, base - 4, sx + 100, base - 4)
