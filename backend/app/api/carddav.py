@@ -126,6 +126,9 @@ async def well_known(request: Request) -> Response:
     return Response(status_code=301, headers={"Location": ROOT})
 
 
+# The iPhone may probe the site root before /.well-known/carddav. Only DAV methods are
+# claimed here — GET / still falls through to the web app.
+@router.api_route("/", methods=["OPTIONS", "PROPFIND", "REPORT"])
 @router.api_route("/carddav", methods=_METHODS)
 @router.api_route("/carddav/{rest:path}", methods=_METHODS)
 async def carddav(request: Request, session: Annotated[AsyncSession, Depends(get_db)]) -> Response:
@@ -167,7 +170,7 @@ async def carddav(request: Request, session: Annotated[AsyncSession, Depends(get
     if method in ("GET", "HEAD"):
         return Response(status_code=200, content=b"" if method == "HEAD" else b"MYLE CardDAV", headers=_DAV_HEADERS)
 
-    if path in (ROOT, PRINCIPAL):
+    if path in ("/", ROOT, PRINCIPAL):
         props = _principal_props(name) + (
             "<d:resourcetype><d:collection/><d:principal/></d:resourcetype>"
             if path == PRINCIPAL

@@ -8,7 +8,14 @@ import { apiFetch } from '@/lib/api'
 import { openContactCard } from '@/lib/contact-card'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
-type SyncStatus = { enabled: boolean; server: string; username: string; password?: string }
+type SyncStatus = {
+  enabled: boolean
+  server: string
+  /** Full account URL — paste into the iPhone "Server" field (no discovery needed). */
+  server_url?: string
+  username: string
+  password?: string
+}
 
 async function call(path: string, method = 'GET'): Promise<SyncStatus> {
   const res = await apiFetch(path, { method })
@@ -133,7 +140,7 @@ export function Day2ContactsCard() {
                 </li>
                 <li>Copy-paste the three values below</li>
               </ol>
-              <CopyRow label="Server" value={fresh.server} />
+              <CopyRow label="Server" value={fresh.server_url ?? fresh.server} />
               <CopyRow label="User Name" value={fresh.username} />
               <CopyRow label="Password" value={fresh.password} />
               <p className="text-ds-caption text-muted-foreground">

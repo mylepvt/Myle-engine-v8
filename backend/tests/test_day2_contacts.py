@@ -130,3 +130,33 @@ async def test_carddav_sync(seeded, admin_client: AsyncClient):
     assert (await admin_client.request("PUT", f"/carddav/books/day2/{L_DAY2}.vcf", headers=auth)).status_code == 403
     assert (await admin_client.delete("/api/v1/admin/contacts/carddav")).json() == {"enabled": False}
     assert (await admin_client.request("PROPFIND", "/carddav/", headers=auth)).status_code == 401
+
+
+async def test_carddav_iphone_style_discovery(seeded, admin_client: AsyncClient):
+    """Mimic iOS: probe the site root, capitalised user name, full server URL; every reply is valid XML."""
+    import xml.etree.ElementTree as ET
+
+    creds = (await admin_client.post("/api/v1/admin/contacts/carddav/password")).json()
+    assert creds["server_url"] == "http://test/carddav/principal/"
+    auth = _basic(creds["username"].capitalize(), creds["password"])  # "Myle-admin-203"
+
+    root = await admin_client.request("PROPFIND", "/", headers={"Depth": "0"})
+    assert root.status_code == 401 and "Basic" in root.headers["www-authenticate"]
+    root = await admin_client.request("PROPFIND", "/", headers={**auth, "Depth": "0"})
+    assert root.status_code == 207 and "/carddav/principal/" in root.text
+    assert (await admin_client.options("/")).headers["dav"] == "1, 3, addressbook"
+
+    for path, depth in (("/", "0"), ("/carddav/principal/", "0"), ("/carddav/books/", "1"), ("/carddav/books/day2/", "1")):
+        r = await admin_client.request("PROPFIND", path, headers={**auth, "Depth": depth})
+        assert r.status_code == 207, (path, r.status_code)
+        ET.fromstring(r.content)  # well-formed multistatus
+    rep = await admin_client.request(
+        "REPORT", "/carddav/books/day2/", headers={**auth, "Depth": "1"},
+        content='<C:addressbook-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav"/>',
+    )
+    tree = ET.fromstring(rep.content)
+    data = [e.text for e in tree.iter("{urn:ietf:params:xml:ns:carddav}address-data")]
+    assert any("Rahul Sharma – Priya Verma – MYLE" in (d or "") for d in data)
+
+    # GET / is still the web app, not claimed by CardDAV
+    assert (await admin_client.get("/")).status_code != 405
