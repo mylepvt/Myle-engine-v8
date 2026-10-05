@@ -3,7 +3,7 @@
 Styled like an official / government-issued certificate: banknote-style guilloche
 border, central rosette watermark, gold-foil emblem, ribbon banner, red serial
 number, microtext security line, verification QR code, the founder's signature
-and a green wax seal. Everything is placed at fixed coordinates, so the layout
+and the MYLE official seal. Everything is placed at fixed coordinates, so the layout
 never shifts with the length of the name.
 """
 
@@ -297,32 +297,10 @@ def _gold_disc(c: canvas.Canvas, cx: float, cy: float, r: float) -> None:
     c.restoreState()
 
 
-def _emblem(c: canvas.Canvas, cx: float, cy: float, display_font: str) -> None:
-    """Gold-foil starburst medallion with a green core, laurel and monogram."""
-    _laurel(c, cx, cy, 40, GOLD)
-    c.setFillColor(GOLD_DEEP)
-    p = c.beginPath()
-    points = 32
-    for i in range(points * 2 + 1):
-        a = math.pi / 2 + math.pi * i / points
-        rr = 33 if i % 2 == 0 else 28.5
-        x, y = cx + rr * math.cos(a), cy + rr * math.sin(a)
-        if i == 0:
-            p.moveTo(x, y)
-        else:
-            p.lineTo(x, y)
-    p.close()
-    c.drawPath(p, stroke=0, fill=1)
-    _gold_disc(c, cx, cy, 28)
-    c.setFillColor(GREEN)
-    c.circle(cx, cy, 22, stroke=0, fill=1)
-    c.setStrokeColor(GOLD_BRIGHT)
-    c.setLineWidth(0.7)
-    c.circle(cx, cy, 20, stroke=1, fill=0)
-    _rosette(c, cx, cy, 18, 18 / 7.0, 7, 7, Color(0.91, 0.82, 0.56, alpha=0.35), 0.3)
-    c.setFillColor(GOLD_BRIGHT)
-    c.setFont(display_font, 20)
-    c.drawCentredString(cx, cy - 7, "M")
+def _emblem(c: canvas.Canvas, cx: float, cy: float, display_font: str, year: int) -> None:
+    """Brand mark: the MYLE official seal framed by a gold laurel."""
+    _laurel(c, cx, cy, 42, GOLD)
+    _official_seal(c, cx, cy, 32, year, display_font)
 
 
 def _ribbon(c: canvas.Canvas, cx: float, cy: float, text: str, font: str, size: float) -> None:
@@ -363,53 +341,89 @@ def _rule(c: canvas.Canvas, cx: float, y: float, half: float, gap: float = 8) ->
     _diamond(c, cx, y, 3.5)
 
 
-def _blob(c: canvas.Canvas, cx: float, cy: float, r: float, wobble: list[tuple[float, float, float]]) -> None:
-    p = c.beginPath()
-    steps = 96
-    for i in range(steps + 1):
-        a = 2 * math.pi * i / steps
-        rr = r + sum(amp * math.sin(a * freq + phase) for amp, freq, phase in wobble)
+NAVY = HexColor("#14284B")
+NAVY_DEEP = HexColor("#0C1A33")
+
+
+def _official_seal(c: canvas.Canvas, cx: float, cy: float, r: float, year: int, display_font: str) -> None:
+    """MYLE official seal: scalloped gold-foil rim, navy disc, ring lettering, M · CERTIFIED · year."""
+    c.saveState()
+    _official_seal_body(c, cx, cy, r, year, display_font)
+    c.restoreState()
+
+
+def _official_seal_body(c: canvas.Canvas, cx: float, cy: float, r: float, year: int, display_font: str) -> None:
+    # Shadow for weight
+    c.setFillColor(Color(0, 0, 0, alpha=0.18))
+    c.circle(cx + 1.6, cy - 2.0, r, stroke=0, fill=1)
+    # Scalloped rim (gold foil gradient)
+    rim = c.beginPath()
+    points = 56
+    for i in range(points * 2 + 1):
+        a = 2 * math.pi * i / (points * 2)
+        rr = r + 4.5 if i % 2 == 0 else r + 0.5
         x, y = cx + rr * math.cos(a), cy + rr * math.sin(a)
         if i == 0:
-            p.moveTo(x, y)
+            rim.moveTo(x, y)
         else:
-            p.lineTo(x, y)
-    p.close()
-    c.drawPath(p, stroke=0, fill=1)
+            rim.lineTo(x, y)
+    rim.close()
+    c.saveState()
+    c.clipPath(rim, stroke=0, fill=0)
+    c.linearGradient(cx - r, cy + r, cx + r, cy - r, (GOLD_DEEP, HexColor("#D9B65C"), GOLD, GOLD_DEEP, HexColor("#C9A24A")),
+                     (0, 0.25, 0.5, 0.75, 1), extend=True)
+    c.restoreState()
+    # Navy disc with gold rings
+    c.setFillColor(NAVY_DEEP)
+    c.circle(cx, cy, r - 3, stroke=0, fill=1)
+    c.setFillColor(NAVY)
+    c.circle(cx, cy, r - 5, stroke=0, fill=1)
+    c.setStrokeColor(GOLD_BRIGHT)
+    c.setLineWidth(1.2)
+    c.circle(cx, cy, r - 7.5, stroke=1, fill=0)
+    c.setLineWidth(0.5)
+    c.circle(cx, cy, r - 9.5, stroke=1, fill=0)
+    c.setLineWidth(1.0)
+    c.circle(cx, cy, r * 0.52, stroke=1, fill=0)
+    c.setLineWidth(0.4)
+    c.circle(cx, cy, r * 0.52 - 2.2, stroke=1, fill=0)
 
+    # Ring lettering
+    ring = "MYLE COMMUNITY  •  OFFICIAL SEAL  •  "
+    size = r * 0.155
+    radius = (r - 9.5 + r * 0.52) / 2 - size / 3
+    c.setFillColor(GOLD_BRIGHT)
+    n = len(ring)
+    for i, ch in enumerate(ring):
+        a = math.pi / 2 - 2 * math.pi * i / n
+        c.saveState()
+        c.translate(cx + radius * math.cos(a), cy + radius * math.sin(a))
+        c.rotate(math.degrees(a) - 90)
+        t = c.beginText(-stringWidth(ch, "Helvetica-Bold", size) / 2, 0)
+        t.setFont("Helvetica-Bold", size)
+        t.textOut(ch)
+        c.drawText(t)
+        c.restoreState()
 
-def _wax_seal(c: canvas.Canvas, cx: float, cy: float, display_font: str) -> None:
-    """Green wax seal: poured irregular edge, pressed inner disc, embossed MYLE crest."""
-    r = 40
-    wobble = [(3.2, 7, 0.4), (1.8, 13, 1.7), (1.1, 23, 2.9)]
-    c.setFillColor(Color(0, 0, 0, alpha=0.2))
-    _blob(c, cx + 2.5, cy - 3, r, wobble)
-    c.setFillColor(HexColor("#0F3B27"))
-    _blob(c, cx, cy, r, wobble)
-    c.setFillColor(HexColor("#17503A"))
-    _blob(c, cx, cy, r - 3.5, [(2.0, 7, 0.4), (1.0, 13, 1.7)])
-    c.setFillColor(HexColor("#0C3020"))
-    c.circle(cx + 0.8, cy - 0.8, r - 10, stroke=0, fill=1)
-    c.setFillColor(HexColor("#2C7351"))
-    c.circle(cx - 0.8, cy + 0.8, r - 10, stroke=0, fill=1)
-    c.setFillColor(HexColor("#1A5C3E"))
-    c.circle(cx, cy, r - 11.5, stroke=0, fill=1)
-    c.setFillColor(HexColor("#3F8A63"))
-    for i in range(36):
-        a = 2 * math.pi * i / 36
-        c.circle(cx + (r - 15.5) * math.cos(a), cy + (r - 15.5) * math.sin(a), 0.75, stroke=0, fill=1)
-    c.setStrokeColor(HexColor("#3F8A63"))
-    c.setLineWidth(0.6)
-    c.circle(cx, cy, r - 19, stroke=1, fill=0)
-    c.setFillColor(HexColor("#0C3020"))
-    c.setFont(display_font, 22)
-    c.drawCentredString(cx + 0.8, cy - 6.3, "M")
-    c.setFillColor(HexColor("#6DB38D"))
-    c.drawCentredString(cx, cy - 5.5, "M")
-    c.setFont("Helvetica-Bold", 3.6)
-    c.drawCentredString(cx, cy - 12.5, "M Y L E")
-    c.setFillColor(Color(1, 1, 1, alpha=0.13))
-    c.ellipse(cx - 24, cy + 12, cx - 8, cy + 24, stroke=0, fill=1)
+    # Centre: M · CERTIFIED · year
+    c.setFillColor(GOLD_BRIGHT)
+    c.setStrokeColor(GOLD_BRIGHT)
+    c.setLineWidth(0.5)
+    t = c.beginText()
+    t.setTextRenderMode(2)
+    m_size = r * 0.36
+    t.setTextOrigin(cx - stringWidth("M", display_font, m_size) / 2, cy + r * 0.02)
+    t.setFont(display_font, m_size)
+    t.textOut("M")
+    t.setTextRenderMode(0)
+    c.drawText(t)
+    c.setFont("Helvetica-Bold", r * 0.11)
+    c.drawCentredString(cx, cy - r * 0.15, "CERTIFIED")
+    c.setFont("Helvetica-Bold", r * 0.1)
+    c.drawCentredString(cx, cy - r * 0.29, str(year))
+    # Foil sheen
+    c.setFillColor(Color(1, 1, 1, alpha=0.07))
+    c.ellipse(cx - r * 0.7, cy + r * 0.1, cx + r * 0.1, cy + r * 0.75, stroke=0, fill=1)
 
 
 def _qr(c: canvas.Canvas, x: float, y: float, size: float, payload: str) -> None:
@@ -462,7 +476,7 @@ def draw_certificate(
     c.drawString(64, h - 68, f"Sl. No. {cert_no}")
 
     # Emblem + header
-    _emblem(c, cx, h - 96, f["display"])
+    _emblem(c, cx, h - 98, f["display"], completion_date.year)
     _spaced(c, ORG_NAME, cx, h - 166, f["display"], 30, 3.5, bold=0.7, color=GREEN)
     _ribbon(c, cx, h - 188, "TRAINING & CERTIFICATION BOARD", "Helvetica-Bold", 7.5)
     _spaced(c, "CERTIFICATE OF COMPLETION", cx, h - 228, f["display"], 21, 2.5, bold=0.45, color=GOLD_DEEP)
@@ -533,7 +547,7 @@ def draw_certificate(
     c.setFillColor(MUTED)
     c.setFont(f["serif"], 9.5)
     c.drawCentredString(sig_cx, base - 29, SIGNATORY_TITLE)
-    _wax_seal(c, sig_cx + 140, base + 2, f["display"])
+    _official_seal(c, sig_cx + 148, base + 4, 46, completion_date.year, f["display"])
 
     # Microtext security line + footer
     _microtext_line(c, 60, w - 60, 51)
