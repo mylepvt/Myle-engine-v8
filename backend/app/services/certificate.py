@@ -31,6 +31,12 @@ SIGNATORIES = (
     ("Karanveer Singh", "Founder & CEO, MYLE Community"),
     ("Shikha Singh", "Management, MYLE Community"),
 )
+# Each signatory keeps their own handwriting style (font key in ``_fonts()``).
+SIGNATURE_FONT_KEYS = {"Karanveer Singh": "sig_karanveer", "Shikha Singh": "sig_shikha"}
+
+
+def signature_font(fonts: dict[str, str], name: str) -> str:
+    return fonts[SIGNATURE_FONT_KEYS.get(name, "sig_karanveer")]
 
 GREEN = HexColor("#16432F")
 GREEN_DARK = HexColor("#0E2E20")
@@ -54,13 +60,15 @@ def _fonts() -> dict[str, str]:
         "display": "Times-Bold",
         "serif": "Times-Roman",
         "script": "Times-Italic",
-        "signature": "Times-Italic",
+        "sig_karanveer": "Times-Italic",
+        "sig_shikha": "Times-Italic",
     }
     for key, (alias, filename) in {
         "display": ("MyleCinzel", "Cinzel.ttf"),
         "serif": ("MyleGaramond", "EBGaramond.ttf"),
         "script": ("MyleGreatVibes", "GreatVibes.ttf"),
-        "signature": ("MyleSignature", "HerrVonMuellerhoff.ttf"),
+        "sig_karanveer": ("MyleSigKaranveer", "MrsSaintDelafield.ttf"),
+        "sig_shikha": ("MyleSigShikha", "AlexBrush.ttf"),
     }.items():
         try:
             pdfmetrics.registerFont(TTFont(alias, str(_FONT_DIR / filename)))
@@ -338,9 +346,9 @@ def _ribbon(c: canvas.Canvas, cx: float, cy: float, text: str, font: str, size: 
     _spaced(c, text, cx, cy - size / 2 + 1.4, font, size, spacing, color=GOLD_BRIGHT)
 
 
-def _signature(c: canvas.Canvas, cx: float, y: float, name: str, font: str, max_width: float = 190) -> None:
+def _signature(c: canvas.Canvas, cx: float, y: float, name: str, font: str, max_width: float = 150) -> None:
     """Handwritten signature: pen-blue cursive, a slight upward slant and an ink swoosh."""
-    size = _fit_size(name, font, 40, 22, max_width)
+    size = _fit_size(name, font, 34, 18, max_width)
     width = stringWidth(name, font, size)
     c.saveState()
     c.translate(cx, y)
@@ -572,7 +580,7 @@ def draw_certificate(
     # Signatures either side, official seal in the middle
     base = 92
     for (sig_name, sig_title), sx in zip(SIGNATORIES, (190, w - 190)):
-        _signature(c, sx, base + 10, sig_name, f["signature"])
+        _signature(c, sx, base + 10, sig_name, signature_font(f, sig_name))
         c.setStrokeColor(INK)
         c.setLineWidth(0.7)
         c.line(sx - 100, base - 4, sx + 100, base - 4)
