@@ -8,6 +8,7 @@ from typing import Dict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.time_ist import IST, today_ist
 from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_video import TrainingVideo
@@ -18,6 +19,19 @@ from app.schemas.system_surface import (
     TrainingVideoRow,
 )
 from app.services.training_uploads import normalize_training_audio_url
+
+
+def training_day_unlock_date(day1_completed_at: datetime, day_number: int) -> date:
+    """IST calendar date on which ``day_number`` opens: Day 1's completion day + (N - 1).
+
+    Single rule shared by the training surface (what the member sees) and
+    ``/training/mark-day`` (what the server accepts), so a day that shows as open
+    can always be completed.
+    """
+    when = day1_completed_at
+    if when.tzinfo is None:  # stored as UTC; some drivers hand it back naive
+        when = when.replace(tzinfo=UTC)
+    return when.astimezone(IST).date() + timedelta(days=day_number - 1)
 
 
 def _calculate_unlock_day_map(progress_rows: list[TrainingProgressRow]) -> Dict[int, date]:
@@ -36,11 +50,7 @@ def _calculate_unlock_day_map(progress_rows: list[TrainingProgressRow]) -> Dict[
     except (ValueError, AttributeError, TypeError):
         return {}
 
-    unlock_dates: Dict[int, date] = {}
-    for day in range(2, 8):
-        unlock_dates[day] = day1_date.date() + timedelta(days=day - 1)
-
-    return unlock_dates
+    return {day: training_day_unlock_date(day1_date, day) for day in range(2, 8)}
 
 
 def _calculate_unlock_dates(progress_rows: list[TrainingProgressRow]) -> Dict[int, str]:
@@ -63,7 +73,7 @@ def _is_unlocked(
     unlock_date = unlock_day_map.get(day_number)
     if unlock_date is None:
         return False
-    return datetime.now(UTC).date() >= unlock_date
+    return today_ist() >= unlock_date
 
 
 async def build_training_surface(session: AsyncSession, user_id: int) -> TrainingSurfaceResponse:
