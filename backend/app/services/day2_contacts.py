@@ -4,7 +4,8 @@ Contacts are named "<prospect> – <leader> – MYLE". Three ways to get them in
 the admin's iPhone:
 - one lead  → ``.vcf`` file ("Save contact" on the Workboard),
 - all leads → one ``.vcf`` with every contact ("Add All Contacts"),
-- CardDAV   → iPhone keeps a "MYLE Day 2" address book in sync (see app/api/carddav.py).
+- Google    → synced into the admin's Google Contacts, which the iPhone already syncs
+              (see app/services/google_contacts.py).
 
 "Day 2 prospect" = any lead that has reached Day 2 (also later stages), so a contact
 does not vanish from the phone when the lead moves on to Day 3 or converts.

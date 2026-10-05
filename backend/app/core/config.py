@@ -250,6 +250,17 @@ class Settings(BaseSettings):
         validation_alias="CRM_OUTBOX_PROCESSING_TIMEOUT_SECONDS",
     )
 
+    # --- Google Contacts sync (admin: Day 2 prospects → admin's Google / iPhone contacts) ---
+    google_contacts_client_id: str = Field(
+        default="",
+        validation_alias="GOOGLE_CONTACTS_CLIENT_ID",
+        description="OAuth client ID (Web application) with the People API enabled.",
+    )
+    google_contacts_client_secret: str = Field(
+        default="",
+        validation_alias="GOOGLE_CONTACTS_CLIENT_SECRET",
+    )
+
     @field_validator("database_url", mode="before")
     @classmethod
     def coerce_database_url(cls, v: object) -> object:

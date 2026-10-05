@@ -6,6 +6,7 @@ Jobs (all IST-aware):
 - morning_plan                    : 09:00 IST daily — "Your plan for today" push (leads to call, follow-ups, streak)
 - evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
 - inactivity_nudge                : every 30 min 11:00–16:30 IST — attention push to idle members (max 2/day)
+- google_contacts_sync            : every 15 min — push Day 2 prospects to connected admins' Google Contacts
 - star_alert                      : every 15 min 10:00–20:00 IST — "X crossed 15 calls" push to members under 15 (max 1/day)
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
@@ -293,6 +294,25 @@ async def job_inactivity_nudge() -> None:
     except Exception as exc:
         logger.error("job_inactivity_nudge failed: %s", exc)
         await record_push_run("inactivity_nudge", targeted=0, sent=0, error=str(exc))
+
+
+async def job_google_contacts_sync() -> None:
+    """Every 15 min — keep each connected admin's Google Contacts in step with Day 2 prospects."""
+    from app.services import google_contacts as gc
+
+    if not gc.configured():
+        return
+    try:
+        async with AsyncSessionLocal() as session:
+            for user_id in await gc.connected_admin_ids(session):
+                try:
+                    result = await gc.sync(session, user_id)
+                    if result["created"] or result["updated"]:
+                        logger.info("google_contacts_sync: user=%s %s", user_id, result)
+                except gc.GoogleContactsError as exc:  # recorded in the admin's status card
+                    logger.warning("google_contacts_sync: user=%s failed: %s", user_id, exc)
+    except Exception as exc:
+        logger.error("job_google_contacts_sync failed: %s", exc)
 
 
 async def job_star_alert() -> None:

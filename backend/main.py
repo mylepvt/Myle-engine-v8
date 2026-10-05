@@ -21,7 +21,6 @@ from app.api.invoice_public import router as invoice_public_router
 from app.api.legal_public import router as legal_public_router
 from app.api.day2_test_public import router as day2_test_public_router
 from app.api.certificate_verify_public import router as certificate_verify_public_router
-from app.api.carddav import router as carddav_router
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.health_migrations import alembic_head_revisions, db_alembic_revision
@@ -56,6 +55,7 @@ from app.services.scheduled_jobs import (
     job_integrity_audit,
     job_general_pipeline_maintenance,
     job_lead_booking_fulfillment,
+    job_google_contacts_sync,
     job_morning_plan,
     job_star_alert,
     job_leader_basics_enforcement,
@@ -112,6 +112,13 @@ async def lifespan(_app: FastAPI):
             job_inactivity_nudge,
             CronTrigger(hour="11-16", minute="0,30", timezone="Asia/Kolkata"),
             id="inactivity_nudge",
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
+        _scheduler.add_job(
+            job_google_contacts_sync,
+            IntervalTrigger(minutes=15),
+            id="google_contacts_sync",
             replace_existing=True,
             misfire_grace_time=600,
         )
@@ -235,7 +242,6 @@ app.include_router(invoice_public_router)
 app.include_router(legal_public_router)
 app.include_router(day2_test_public_router)
 app.include_router(certificate_verify_public_router)
-app.include_router(carddav_router)
 app.include_router(capture_public_router)
 
 _uploads_dir = Path(__file__).resolve().parent / "uploads"

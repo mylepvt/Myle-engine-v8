@@ -1,4 +1,4 @@
-"""Day 2 prospects as iPhone contacts: .vcf downloads and the read-only CardDAV address book."""
+"""Day 2 prospects as iPhone contacts: .vcf downloads and Google Contacts sync."""
 from __future__ import annotations
 
 import base64
@@ -22,7 +22,7 @@ L_DAY2, L_DAY3, L_NEW, L_NOPHONE, L_DELETED = 9101, 9102, 9103, 9104, 9105
 async def seeded(engine):
     async with AsyncSession(engine, expire_on_commit=False) as s:
         await s.execute(delete(Lead).where(Lead.id.in_([L_DAY2, L_DAY3, L_NEW, L_NOPHONE, L_DELETED])))
-        await s.execute(delete(AppSetting).where(AppSetting.key.like("carddav_admin:%")))
+        await s.execute(delete(AppSetting).where(AppSetting.key.like("google_contacts:%")))
         if await s.get(User, ADMIN) is None:
             s.add(User(id=ADMIN, fbo_id="A00203", email="admin203@test.myle", role="admin", name="Karanveer Singh"))
         if await s.get(User, LEADER) is None:
@@ -81,138 +81,185 @@ async def test_single_lead_vcf(seeded, admin_client: AsyncClient):
 async def test_contacts_are_admin_only(seeded, leader_client: AsyncClient):
     assert (await leader_client.get("/api/v1/admin/contacts/day2.vcf")).status_code == 403
     assert (await leader_client.get(f"/api/v1/admin/contacts/lead/{L_DAY2}.vcf")).status_code == 403
-    assert (await leader_client.post("/api/v1/admin/contacts/carddav/password")).status_code == 403
+    assert (await leader_client.get("/api/v1/admin/contacts/google")).status_code == 403
+    assert (await leader_client.get("/api/v1/admin/contacts/google/connect")).status_code == 403
+    assert (await leader_client.post("/api/v1/admin/contacts/google/sync")).status_code == 403
 
 
-def _basic(user: str, pw: str) -> dict[str, str]:
-    return {"Authorization": "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode()}
+# ── Google Contacts sync ──────────────────────────────────────────────────────
+
+class FakeGoogle:
+    """Just enough of Google's OAuth + People API for the sync."""
+
+    def __init__(self):
+        self.people: dict[str, dict] = {}
+        self.groups: dict[str, str] = {}
+        self.calls: list[str] = []
+        self.revoked: list[str] = []
+        self.refresh_ok = True
+        self._n = 0
+
+    def _id(self, prefix):
+        self._n += 1
+        return f"{prefix}/c{self._n}"
+
+    def handler(self, request):
+        import json as _json
+
+        import httpx
+
+        url, method = request.url, request.method
+        self.calls.append(f"{method} {url.path}")
+        if url.path == "/token":
+            form = dict(x.split("=", 1) for x in request.content.decode().split("&"))
+            if form["grant_type"] == "authorization_code":
+                payload = base64.urlsafe_b64encode(_json.dumps({"email": "karan@gmail.com"}).encode()).decode().rstrip("=")
+                return httpx.Response(200, json={"refresh_token": "r-1", "access_token": "a-1", "id_token": f"x.{payload}.y"})
+            if not self.refresh_ok:
+                return httpx.Response(400, json={"error": "invalid_grant"})
+            return httpx.Response(200, json={"access_token": "a-2"})
+        if url.path == "/revoke":
+            self.revoked.append(request.content.decode())
+            return httpx.Response(200)
+        assert request.headers["authorization"].startswith("Bearer ")
+        if url.path == "/v1/contactGroups" and method == "POST":
+            rn = self._id("contactGroups")
+            self.groups[rn] = _json.loads(request.content)["contactGroup"]["name"]
+            return httpx.Response(200, json={"resourceName": rn})
+        if url.path.startswith("/v1/contactGroups/") and method == "GET":
+            rn = url.path[len("/v1/"):]
+            return httpx.Response(200 if rn in self.groups else 404, json={"resourceName": rn})
+        if url.path == "/v1/people:batchCreateContacts":
+            made = []
+            for c in _json.loads(request.content)["contacts"]:
+                rn = self._id("people")
+                self.people[rn] = {**c["contactPerson"], "etag": "e1"}
+                made.append({"person": {"resourceName": rn}})
+            return httpx.Response(200, json={"createdPeople": made})
+        if url.path == "/v1/people:batchGet":
+            names = url.params.get_list("resourceNames")
+            return httpx.Response(200, json={"responses": [
+                {"requestedResourceName": n, "person": {"resourceName": n, "etag": self.people[n]["etag"]}}
+                if n in self.people else {"requestedResourceName": n, "httpStatusCode": 404}
+                for n in names
+            ]})
+        if url.path == "/v1/people:batchUpdateContacts":
+            for rn, person in _json.loads(request.content)["contacts"].items():
+                assert person["etag"] == self.people[rn]["etag"]
+                self.people[rn] = {**self.people[rn], **person, "etag": "e2"}
+            return httpx.Response(200, json={"updateResult": {}})
+        return httpx.Response(404)
+
+    def client(self):
+        import httpx
+
+        return httpx.AsyncClient(transport=httpx.MockTransport(self.handler))
 
 
-async def test_carddav_sync(seeded, admin_client: AsyncClient):
-    status = (await admin_client.get("/api/v1/admin/contacts/carddav")).json()
-    assert status["enabled"] is False and status["username"] == "myle-admin-203"
-    creds = (await admin_client.post("/api/v1/admin/contacts/carddav/password")).json()
-    user, pw = creds["username"], creds["password"]
-    assert len(pw) == 24 and (await admin_client.get("/api/v1/admin/contacts/carddav")).json()["enabled"] is True
-    auth = _basic(user, pw)
+@pytest.fixture
+def google_env(monkeypatch):
+    from app.core.config import settings
 
-    # Discovery
-    wk = await admin_client.request("PROPFIND", "/.well-known/carddav")
-    assert wk.status_code == 301 and wk.headers["location"] == "/carddav/"
-    assert (await admin_client.request("PROPFIND", "/carddav/")).status_code == 401
-    assert (await admin_client.request("PROPFIND", "/carddav/", headers=_basic(user, "wrong"))).status_code == 401
-    root = await admin_client.request("PROPFIND", "/carddav/", headers={**auth, "Depth": "0"})
-    assert root.status_code == 207 and "/carddav/principal/" in root.text
-    principal = await admin_client.request("PROPFIND", "/carddav/principal/", headers={**auth, "Depth": "0"})
-    assert "<card:addressbook-home-set><d:href>/carddav/books/</d:href>" in principal.text
-    home = await admin_client.request("PROPFIND", "/carddav/books/", headers={**auth, "Depth": "1"})
-    assert "/carddav/books/day2/" in home.text and "<card:addressbook/>" in home.text
-
-    # Listing with etags, then multiget
-    book = await admin_client.request("PROPFIND", "/carddav/books/day2/", headers={**auth, "Depth": "1"})
-    assert book.status_code == 207 and "cs:getctag" in book.text
-    assert f"/carddav/books/day2/{L_DAY2}.vcf" in book.text and f"/carddav/books/day2/{L_DAY3}.vcf" in book.text
-    assert f"{L_NEW}.vcf" not in book.text
-    multiget = (
-        '<?xml version="1.0"?><C:addressbook-multiget xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">'
-        "<D:prop><D:getetag/><C:address-data/></D:prop>"
-        f"<D:href>/carddav/books/day2/{L_DAY2}.vcf</D:href><D:href>/carddav/books/day2/999999.vcf</D:href>"
-        "</C:addressbook-multiget>"
-    )
-    rep = await admin_client.request("REPORT", "/carddav/books/day2/", headers={**auth, "Depth": "1"}, content=multiget)
-    assert rep.status_code == 207
-    assert "Rahul Sharma – Priya Verma – MYLE" in rep.text and "Neha" not in rep.text
-    assert "404 Not Found" in rep.text
-    card = await admin_client.get(f"/carddav/books/day2/{L_DAY2}.vcf", headers=auth)
-    assert card.status_code == 200 and card.headers["etag"] and "BEGIN:VCARD" in card.text
-
-    # Read-only, and turning sync off revokes the password
-    assert (await admin_client.request("PUT", f"/carddav/books/day2/{L_DAY2}.vcf", headers=auth)).status_code == 403
-    assert (await admin_client.delete("/api/v1/admin/contacts/carddav")).json() == {"enabled": False}
-    assert (await admin_client.request("PROPFIND", "/carddav/", headers=auth)).status_code == 401
+    monkeypatch.setattr(settings, "google_contacts_client_id", "cid.apps.googleusercontent.com")
+    monkeypatch.setattr(settings, "google_contacts_client_secret", "csecret")
+    monkeypatch.setattr("app.services.google_contacts.TOKEN_URL", "https://oauth2.example/token")
+    monkeypatch.setattr("app.services.google_contacts.REVOKE_URL", "https://oauth2.example/revoke")
+    monkeypatch.setattr("app.services.google_contacts.PEOPLE", "https://people.example/v1")
 
 
-async def test_carddav_iphone_style_discovery(seeded, admin_client: AsyncClient):
-    """Mimic iOS: probe the site root, capitalised user name, full server URL; every reply is valid XML."""
-    import xml.etree.ElementTree as ET
-
-    creds = (await admin_client.post("/api/v1/admin/contacts/carddav/password")).json()
-    assert creds["server_url"] == "http://test/carddav/principal/"
-    auth = _basic(creds["username"].capitalize(), creds["password"])  # "Myle-admin-203"
-
-    root = await admin_client.request("PROPFIND", "/", headers={"Depth": "0"})
-    assert root.status_code == 401 and "Basic" in root.headers["www-authenticate"]
-    root = await admin_client.request("PROPFIND", "/", headers={**auth, "Depth": "0"})
-    assert root.status_code == 207 and "/carddav/principal/" in root.text
-    assert (await admin_client.options("/")).headers["dav"] == "1, 3, addressbook"
-
-    for path, depth in (("/", "0"), ("/carddav/principal/", "0"), ("/carddav/books/", "1"), ("/carddav/books/day2/", "1")):
-        r = await admin_client.request("PROPFIND", path, headers={**auth, "Depth": depth})
-        assert r.status_code == 207, (path, r.status_code)
-        ET.fromstring(r.content)  # well-formed multistatus
-    rep = await admin_client.request(
-        "REPORT", "/carddav/books/day2/", headers={**auth, "Depth": "1"},
-        content='<C:addressbook-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav"/>',
-    )
-    tree = ET.fromstring(rep.content)
-    data = [e.text for e in tree.iter("{urn:ietf:params:xml:ns:carddav}address-data")]
-    assert any("Rahul Sharma – Priya Verma – MYLE" in (d or "") for d in data)
-
-    # GET / is still the web app, not claimed by CardDAV
-    assert (await admin_client.get("/")).status_code != 405
+def _names(fake: FakeGoogle) -> list[str]:
+    return sorted(p["names"][0]["givenName"] for p in fake.people.values())
 
 
-async def test_carddav_attempts_are_logged_for_admin(seeded, admin_client: AsyncClient):
-    creds = (await admin_client.post("/api/v1/admin/contacts/carddav/password")).json()
-    await admin_client.request("PROPFIND", "/.well-known/carddav", headers={"User-Agent": "iOS/18.0 dataaccessd"})
-    await admin_client.request("PROPFIND", "/carddav/", headers={"User-Agent": "iOS/18.0 dataaccessd"})
-    await admin_client.request("PROPFIND", "/carddav/", headers=_basic(creds["username"], "nope"))
-    await admin_client.request("PROPFIND", "/carddav/", headers=_basic(creds["username"], creds["password"]))
-
-    d = (await admin_client.get("/api/v1/admin/contacts/carddav/diagnostics")).json()
-    assert d["self_check"] is None
-    latest = d["attempts"][:4]  # newest first
-    assert [a["status"] for a in latest] == [207, 401, 401, 301]
-    assert [a["auth"] for a in latest] == ["ok", "wrong user name or password", "no login sent", "-"]
-    assert latest[3]["agent"].startswith("iOS/18.0")
-    assert "nope" not in str(d) and creds["password"] not in str(d)
+async def test_google_connect_needs_server_config(seeded, admin_client: AsyncClient):
+    status = (await admin_client.get("/api/v1/admin/contacts/google")).json()
+    assert status["configured"] is False and status["connected"] is False
+    assert status["redirect_uri"] == "http://test/api/v1/admin/contacts/google/callback"
+    assert (await admin_client.get("/api/v1/admin/contacts/google/connect")).status_code == 503
 
 
-async def test_carddav_diagnostics_admin_only(leader_client: AsyncClient):
-    assert (await leader_client.get("/api/v1/admin/contacts/carddav/diagnostics")).status_code == 403
+async def test_google_connect_url(seeded, google_env, admin_client: AsyncClient):
+    from urllib.parse import parse_qs, urlparse
+
+    url = (await admin_client.get("/api/v1/admin/contacts/google/connect")).json()["url"]
+    q = parse_qs(urlparse(url).query)
+    assert url.startswith("https://accounts.google.com/")
+    assert q["scope"] == ["openid email https://www.googleapis.com/auth/contacts"]
+    assert q["access_type"] == ["offline"] and q["prompt"] == ["consent"]
+    from app.services import google_contacts as gc
+
+    assert gc.read_state(q["state"][0]) == ADMIN
 
 
-async def test_self_check_reports_status_and_ssl_errors():
-    import httpx
+def test_state_is_signed_and_expires():
+    from app.services import google_contacts as gc
 
-    from app.services.carddav_diagnostics import self_check
-
-    def ok(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/.well-known/carddav":
-            return httpx.Response(301, headers={"Location": "/carddav/"})
-        if request.method == "PROPFIND":
-            return httpx.Response(401, headers={"WWW-Authenticate": 'Basic realm="x"'})
-        return httpx.Response(200)
-
-    good = await self_check("myle.example", transport=httpx.MockTransport(ok))
-    assert [r["ok"] for r in good] == [True, True, True]
-    assert good[0]["url"] == "https://myle.example/.well-known/carddav"
-
-    blocked = await self_check("myle.example", transport=httpx.MockTransport(lambda r: httpx.Response(405, text="Method Not Allowed")))
-    assert [r["ok"] for r in blocked] == [False, False, False]
-
-    def boom(request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED]")
-
-    failed = await self_check("myle.example", transport=httpx.MockTransport(boom))
-    assert failed[0]["ok"] is False and "SSL" in failed[0]["detail"]
+    st = gc.make_state(ADMIN, now=1000)
+    assert gc.read_state(st, now=1100) == ADMIN
+    assert gc.read_state(st, now=1000 + 16 * 60) is None          # expired
+    assert gc.read_state(st.replace(f"{ADMIN}.", "999."), now=1100) is None  # forged user
+    assert gc.read_state("garbage") is None
 
 
-def test_server_url_pins_port_443():
-    from starlette.requests import Request as _Req
+async def test_google_sync_creates_updates_and_recreates(seeded, google_env, engine):
+    from app.services import google_contacts as gc
 
-    from app.api.v1.admin_contacts import _server_url
+    fake = FakeGoogle()
+    async with AsyncSession(engine, expire_on_commit=False) as s, fake.client() as client:
+        state = await gc.exchange_code(s, ADMIN, "code-1", "https://x/cb", client)
+        assert state["email"] == "karan@gmail.com"
+        assert "r-1" not in str(state)  # refresh token stored encrypted
 
-    scope = {"type": "http", "method": "GET", "path": "/", "headers": [(b"host", b"myle.example.com")],
-             "scheme": "http", "server": ("myle.example.com", 80), "query_string": b""}
-    assert _server_url(_Req(scope)) == "https://myle.example.com:443/carddav/principal/"
+        first = await gc.sync(s, ADMIN, client)
+        assert (first["created"], first["updated"], first["total"]) == (2, 0, 2)
+        assert list(fake.groups.values()) == ["MYLE Day 2"]
+        assert _names(fake) == ["Neha; Gupta – MYLE", "Rahul Sharma – Priya Verma – MYLE"]
+        rahul = next(p for p in fake.people.values() if p["names"][0]["givenName"].startswith("Rahul"))
+        assert rahul["phoneNumbers"][0]["value"] == "+919876543210"
+        assert rahul["memberships"][0]["contactGroupMembership"]["contactGroupResourceName"] in fake.groups
+
+        # nothing changed → no writes
+        fake.calls.clear()
+        again = await gc.sync(s, ADMIN, client)
+        assert (again["created"], again["updated"]) == (0, 0)
+        assert not any("batchCreate" in c or "batchUpdate" in c for c in fake.calls)
+
+        # rename a lead → updated in place; a contact deleted in Google → created again
+        lead = await s.get(Lead, L_DAY2)
+        lead.name = "Rahul K Sharma"
+        await s.commit()
+        neha_rn = next(rn for rn, p in fake.people.items() if p["names"][0]["givenName"].startswith("Neha"))
+        del fake.people[neha_rn]
+        lead3 = await s.get(Lead, L_DAY3)
+        lead3.phone = "9000000000"
+        await s.commit()
+        third = await gc.sync(s, ADMIN, client)
+        assert (third["created"], third["updated"]) == (1, 1)
+        assert "Rahul K Sharma – Priya Verma – MYLE" in _names(fake)
+        assert len(fake.people) == 2
+
+        status = gc.public_status(await gc.load_state(s, ADMIN))
+        assert status["connected"] and status["last_count"] == 2 and status["last_error"] is None
+
+
+async def test_google_sync_reports_revoked_access(seeded, google_env, engine):
+    from app.services import google_contacts as gc
+
+    fake = FakeGoogle()
+    async with AsyncSession(engine, expire_on_commit=False) as s, fake.client() as client:
+        await gc.exchange_code(s, ADMIN, "code-1", "https://x/cb", client)
+        fake.refresh_ok = False
+        with pytest.raises(gc.GoogleContactsError, match="connect again"):
+            await gc.sync(s, ADMIN, client)
+        assert "connect again" in gc.public_status(await gc.load_state(s, ADMIN))["last_error"]
+
+        await gc.disconnect(s, ADMIN, client)
+        assert fake.revoked == ["token=r-1"]
+        assert await gc.load_state(s, ADMIN) is None
+
+
+async def test_google_callback_rejects_bad_state(seeded, google_env, anon_client: AsyncClient):
+    r = await anon_client.get("/api/v1/admin/contacts/google/callback", params={"code": "x", "state": "1.2.bad"})
+    assert r.status_code == 303 and r.headers["location"] == "/dashboard?google_contacts=cancelled"
+    r = await anon_client.get("/api/v1/admin/contacts/google/callback", params={"error": "access_denied", "state": ""})
+    assert r.headers["location"] == "/dashboard?google_contacts=cancelled"

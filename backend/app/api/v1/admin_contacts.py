@@ -1,22 +1,18 @@
-"""Admin-only: Day 2 prospects as iPhone contacts (.vcf files + CardDAV sync password)."""
+"""Admin-only: Day 2 prospects as iPhone contacts (.vcf files + Google Contacts sync)."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.lead import Lead
-from app.services.carddav_diagnostics import recent_attempts, self_check
-from app.services.carddav_auth import (
-    carddav_username,
-    disable_carddav,
-    issue_carddav_password,
-    carddav_enabled,
-)
+from app.services import google_contacts as gc
 from app.services.day2_contacts import (
     contact_cards,
     contact_name,
@@ -75,76 +71,82 @@ async def download_lead_contact(
     return _vcf(card, f"{safe_filename(contact_name(lead, leader))}.vcf")
 
 
-def _server(request: Request) -> str:
-    return request.url.hostname or ""
+def _redirect_uri(request: Request) -> str:
+    return gc.redirect_uri(request.url.hostname or "", request.url.port)
 
 
-def _server_url(request: Request) -> str:
-    """Full account URL for the iPhone "Server" field — skips discovery entirely."""
-    host = _server(request)
-    local = host in {"localhost", "127.0.0.1", "test", "testserver"}
-    if local:
-        port = f":{request.url.port}" if request.url.port else ""
-        return f"http://{host}{port}/carddav/principal/"
-    # Explicit :443 — iOS otherwise may try CardDAV's port 8443, which the host doesn't serve,
-    # and then reports "Cannot connect using SSL".
-    return f"https://{host}:443/carddav/principal/"
-
-
-@router.get("/contacts/carddav")
-async def carddav_status(
+@router.get("/contacts/google")
+async def google_status(
     request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     _require_admin(user)
-    return {
-        "enabled": await carddav_enabled(session, user.user_id),
-        "server": _server(request),
-        "server_url": _server_url(request),
-        "username": carddav_username(user.user_id),
-    }
+    return {**gc.public_status(await gc.load_state(session, user.user_id)), "redirect_uri": _redirect_uri(request)}
 
 
-@router.post("/contacts/carddav/password")
-async def carddav_new_password(
+@router.get("/contacts/google/connect")
+async def google_connect(
     request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    """Create (or replace) the iPhone sync password. Shown once; only a hash is stored."""
+    """URL of Google's consent screen; the browser goes there and comes back to /callback."""
     _require_admin(user)
-    password = await issue_carddav_password(session, user.user_id)
-    return {
-        "enabled": True,
-        "server": _server(request),
-        "server_url": _server_url(request),
-        "username": carddav_username(user.user_id),
-        "password": password,
-    }
+    if not gc.configured():
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google Contacts is not set up yet: add GOOGLE_CONTACTS_CLIENT_ID and GOOGLE_CONTACTS_CLIENT_SECRET on the server.",
+        )
+    return {"url": gc.auth_url(user.user_id, _redirect_uri(request))}
 
 
-@router.delete("/contacts/carddav")
-async def carddav_turn_off(
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> dict:
-    _require_admin(user)
-    await disable_carddav(session, user.user_id)
-    return {"enabled": False}
-
-
-@router.get("/contacts/carddav/diagnostics")
-async def carddav_diagnostics(
+@router.get("/contacts/google/callback", include_in_schema=False)
+async def google_callback(
     request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    code: str | None = Query(default=None),
+    state: str = Query(default=""),
+    error: str | None = Query(default=None),
+) -> RedirectResponse:
+    """Google sends the admin back here. Trust comes from the signed `state`, not cookies."""
+    back = "/dashboard?google_contacts="
+    user_id = gc.read_state(state)
+    if error or not code or user_id is None:
+        return RedirectResponse(back + "cancelled", status_code=303)
+    from app.models.user import User
+
+    admin = await session.get(User, user_id)
+    if admin is None or admin.role != "admin" or admin.removed_at is not None:
+        return RedirectResponse(back + "cancelled", status_code=303)
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            await gc.exchange_code(session, user_id, code, _redirect_uri(request), client)
+            await gc.sync(session, user_id, client)
+        except gc.GoogleContactsError:
+            return RedirectResponse(back + "error", status_code=303)
+    return RedirectResponse(back + "connected", status_code=303)
+
+
+@router.post("/contacts/google/sync")
+async def google_sync_now(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    check: bool = False,
 ) -> dict:
-    """Recent iPhone connection attempts; with ?check=true also self-test the public HTTPS address."""
     _require_admin(user)
-    return {
-        "server_url": _server_url(request),
-        "self_check": await self_check(_server(request)) if check else None,
-        "attempts": await recent_attempts(session),
-    }
+    try:
+        result = await gc.sync(session, user.user_id)
+    except gc.GoogleContactsError as exc:
+        raise HTTPException(status_code=http_status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    return {**result, **gc.public_status(await gc.load_state(session, user.user_id))}
+
+
+@router.delete("/contacts/google")
+async def google_disconnect(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Stop syncing and revoke MYLE's Google access. Contacts already in Google stay."""
+    _require_admin(user)
+    async with httpx.AsyncClient(timeout=15) as client:
+        await gc.disconnect(session, user.user_id, client)
+    return gc.public_status(None)
