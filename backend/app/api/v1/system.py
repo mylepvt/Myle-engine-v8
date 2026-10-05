@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
-from app.core.time_ist import IST
+from app.core.time_ist import IST, today_ist
 from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_question import TrainingQuestion
@@ -34,7 +34,7 @@ from app.schemas.training_test import (
 from app.core.realtime_hub import notify_topics
 from app.services.member_compliance import start_practice_window
 from app.services.training_certificate_storage import save_training_certificate_bytes
-from app.services.training_surface import build_training_surface
+from app.services.training_surface import build_training_surface, training_day_unlock_date
 from app.services.training_uploads import save_training_notes_image
 
 router = APIRouter()
@@ -217,16 +217,16 @@ async def mark_training_day(
                 detail=f"Complete Day {body.day_number - 1} first",
             )
     
-    # Check calendar enforcement for days 2-7
+    # Calendar rule (same one the training page shows): Day N opens on the IST date
+    # of Day 1's completion + (N - 1).
     if body.day_number > 1:
         day1_progress = next((p for p in progress_rows if p.day_number == 1), None)
         if day1_progress and day1_progress.completed_at:
-            days_since_day1 = (datetime.now(timezone.utc) - day1_progress.completed_at).days
-            min_days_required = body.day_number - 1
-            if days_since_day1 < min_days_required:
+            opens_on = training_day_unlock_date(day1_progress.completed_at, body.day_number)
+            if today_ist() < opens_on:
                 raise HTTPException(
                     status_code=http_status.HTTP_400_BAD_REQUEST,
-                    detail=f"Day {body.day_number} unlocks {min_days_required} days after completing Day 1",
+                    detail=f"Day {body.day_number} opens on {opens_on.strftime('%d %b %Y')}.",
                 )
 
     # Require notes upload before marking complete
@@ -251,8 +251,10 @@ async def mark_training_day(
     )
     row = existing.scalar_one_or_none()
     if row:
+        if not row.completed or row.completed_at is None:
+            # Never move an existing completion date: later days are scheduled from it.
+            row.completed_at = now
         row.completed = True
-        row.completed_at = now
     else:
         session.add(
             TrainingProgress(
