@@ -6,6 +6,7 @@ import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSection'
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
+import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
@@ -173,6 +174,7 @@ export function TeamDashboardHomeModern({
 
       <XpBadge />
 
+      <CommunityLiveCard />
       <WinsFeedCard />
       <TodayLeaderboardCard />
 

@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle } from 'luc
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
+import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { ClosingReadyCard } from '@/components/closing/ClosingReadyCard'
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -289,6 +290,7 @@ export function DashboardHomePage() {
 
       <XpBadge />
 
+      <CommunityLiveCard />
       <WinsFeedCard />
       <TodayLeaderboardCard />
 
