@@ -8,6 +8,7 @@ from app.api.v1 import (
     admin_activity,
     admin_dashboard,
     admin_training,
+    admin_contacts,
     action_queue,
     automation,
     blocker_intelligence,
@@ -69,6 +70,7 @@ api_router = APIRouter()
 api_router.include_router(meta.router, prefix="/meta", tags=["meta"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(admin_training.router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_contacts.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_dashboard.router, prefix="/admin", tags=["admin"])
 api_router.include_router(admin_activity.router, prefix="/admin", tags=["admin"])
 api_router.include_router(action_queue.router, tags=["action-queue"])

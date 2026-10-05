@@ -40,6 +40,7 @@ import { useLeadControlRevertMutation } from '@/hooks/use-lead-control-query'
 import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { SaveContactButton } from '@/components/contacts/SaveContactButton'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
@@ -1324,6 +1325,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           </div>
           {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
         </div>
+        {stageKey === 'day2' ? <SaveContactButton leadId={lead.id} hasPhone={Boolean(lead.phone)} /> : null}
         {stageKey === 'day2' ? (
           allSlotsDone ? (
             <Day2TestLinkRow lead={lead} busy={testLinkBusy} onSend={() => void handleSendTestLink()} />
