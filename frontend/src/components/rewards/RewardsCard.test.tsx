@@ -30,6 +30,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@/hooks/use-rewards-query', () => ({
   useMyRewardsQuery: () => ({ data: state.data, isPending: false, isError: false }),
+  useJackpotWheelQuery: () => ({ data: undefined }),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 

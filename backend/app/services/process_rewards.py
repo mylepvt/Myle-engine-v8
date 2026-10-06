@@ -603,6 +603,49 @@ def pick_winner(tickets: dict[int, int], rand_below=secrets.randbelow) -> int | 
     return None  # unreachable
 
 
+async def wheel_entries(session: AsyncSession, tickets: dict[int, int]) -> list[dict]:
+    """[{user_id, name, tickets}] most tickets first — what the live wheel draws."""
+    users = {
+        u.id: u
+        for u in (await session.execute(select(User).where(User.id.in_(list(tickets) or [-1])))).scalars().all()
+    }
+    rows = [{"user_id": uid, "name": _name(users.get(uid)), "tickets": t} for uid, t in tickets.items()]
+    rows.sort(key=lambda r: (-r["tickets"], r["user_id"]))
+    return rows
+
+
+WHEEL_REPLAY_FOR = timedelta(hours=3)  # after 9 PM the wheel shows the result until midnight
+
+
+async def jackpot_wheel(session: AsyncSession, now: datetime | None = None) -> dict:
+    """Tonight's wheel: live entries before the draw, the recorded result after it."""
+    now = _aware(now or datetime.now(timezone.utc))
+    upcoming = current_draw_date(now)
+    last_date = upcoming - timedelta(days=1)
+    _, last_end = draw_window(last_date)
+    last = (
+        await session.execute(select(JackpotDraw).where(JackpotDraw.draw_date == last_date))
+    ).scalar_one_or_none()
+    if last is not None and now - last_end < WHEEL_REPLAY_FOR:
+        return {
+            "status": "drawn",
+            "draw_date": last_date.isoformat(),
+            "draw_at": last_end.isoformat(),
+            "pot_rupees": last.pot_cents // 100,
+            "entries": last.entries or [],
+            "winner_user_id": last.winner_user_id,
+        }
+    _, end = draw_window(upcoming)
+    return {
+        "status": "open",
+        "draw_date": upcoming.isoformat(),
+        "draw_at": end.isoformat(),
+        "pot_rupees": (await pot_for(session, upcoming)) // 100,
+        "entries": await wheel_entries(session, await eligible_tickets(session, upcoming)),
+        "winner_user_id": None,
+    }
+
+
 async def run_draw(session: AsyncSession, draw_date: date, rand_below=secrets.randbelow) -> JackpotDraw:
     """Draw ``draw_date`` once (idempotent) and credit the winner's wallet. Commits."""
     done = (await session.execute(select(JackpotDraw).where(JackpotDraw.draw_date == draw_date))).scalar_one_or_none()
@@ -617,6 +660,7 @@ async def run_draw(session: AsyncSession, draw_date: date, rand_below=secrets.ra
         winner_user_id=winner,
         tickets_total=sum(tickets.values()),
         players=len(tickets),
+        entries=await wheel_entries(session, tickets),
     )
     session.add(draw)
     if winner is not None:

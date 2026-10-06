@@ -55,3 +55,46 @@ export function streakLine(s: NonNullable<MyRewards['streak']>): string {
 export function monthName(isoDate: string): string {
   return new Date(`${isoDate}T00:00:00`).toLocaleDateString('en-IN', { month: 'long' })
 }
+
+export type WheelSlice = { key: string; label: string; tickets: number; start: number; end: number; userId: number | null }
+
+const MAX_SLICES = 12
+
+/** Wheel slices (degrees, clockwise from the top), sized by tickets. Small entries beyond
+ * MAX_SLICES merge into "Others", but the winner always keeps a slice of their own. */
+export function wheelSlices(
+  entries: { user_id: number; name: string; tickets: number }[],
+  winnerId: number | null = null,
+): WheelSlice[] {
+  const sorted = [...entries].filter((e) => e.tickets > 0).sort((a, b) => b.tickets - a.tickets)
+  let keep = sorted.slice(0, MAX_SLICES)
+  const winner = sorted.find((e) => e.user_id === winnerId)
+  if (winner && !keep.includes(winner)) keep = [...keep.slice(0, MAX_SLICES - 1), winner]
+  const rest = sorted.filter((e) => !keep.includes(e))
+  const parts = keep.map((e) => ({ key: `u${e.user_id}`, label: e.name, tickets: e.tickets, userId: e.user_id as number | null }))
+  if (rest.length) {
+    parts.push({ key: 'others', label: `+${rest.length} more`, tickets: rest.reduce((s, e) => s + e.tickets, 0), userId: null })
+  }
+  const total = parts.reduce((s, p) => s + p.tickets, 0)
+  let at = 0
+  return parts.map((p) => {
+    const start = at
+    at += (p.tickets / total) * 360
+    return { ...p, start, end: at }
+  })
+}
+
+/** Rotation that brings the winner's slice centre under the top pointer after `turns` spins. */
+export function spinRotation(slices: WheelSlice[], winnerId: number, turns = 6): number {
+  const s = slices.find((x) => x.userId === winnerId)
+  if (!s) return turns * 360
+  const centre = (s.start + s.end) / 2
+  return turns * 360 + ((360 - centre) % 360)
+}
+
+/** "8%" chance for `mine` tickets out of the wheel's total. */
+export function chanceLabel(mine: number, total: number): string | null {
+  if (!mine || !total) return null
+  const pct = (mine / total) * 100
+  return pct >= 10 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`
+}

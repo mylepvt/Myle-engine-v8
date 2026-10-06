@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMyRewardsQuery } from '@/hooks/use-rewards-query'
+import { JackpotWheel } from './JackpotWheel'
 import { RewardsExtras, StreakPowerLines } from './RewardsExtras'
 import { rupees, takeNewPoints, ticketLine, untilDraw } from '@/lib/rewards'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
@@ -81,6 +82,8 @@ export function RewardsCard() {
             </div>
 
             <StreakPowerLines data={data} now={now} />
+
+            <JackpotWheel myTickets={data.tickets} />
 
             {data.last_draw ? (
               <p className="text-ds-caption text-muted-foreground">

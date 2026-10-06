@@ -259,3 +259,32 @@ async def test_admin_endpoints_need_admin(team_client):
     assert (await team_client.put("/api/v1/rewards/admin/power-hour",
                                   json={"enabled": False, "start": "18:00", "end": "19:00"})).status_code == 403
     assert (await team_client.post("/api/v1/rewards/scratch/999")).status_code == 400
+
+
+# ── Jackpot wheel ───────────────────────────────────────────────────────────────
+
+
+async def test_jackpot_wheel_open_then_drawn_then_next_day(Session):
+    d = pr.current_draw_date(NOW)
+    async with Session() as s:
+        await _seed(s)
+        s.add_all([_pt(PRIYA, 5, "enrolled", 150, NOW), _pt(RAHUL, 3, "day2_test_passed", 50, NOW)])
+        await s.commit()
+
+        wheel = await pr.jackpot_wheel(s, NOW)
+        assert wheel["status"] == "open" and wheel["winner_user_id"] is None
+        assert [(e["name"], e["tickets"]) for e in wheel["entries"]] == [("Priya", 3), ("Rahul", 1)]
+
+        draw = await pr.run_draw(s, d, lambda n: 0)
+        assert draw.entries == wheel["entries"]
+        after = datetime.combine(d, time(21, 5), tzinfo=IST)
+        shown = await pr.jackpot_wheel(s, after)
+        assert (shown["status"], shown["winner_user_id"], shown["draw_date"]) == ("drawn", PRIYA, d.isoformat())
+
+        next_morning = datetime.combine(d + timedelta(days=1), time(9), tzinfo=IST)
+        assert (await pr.jackpot_wheel(s, next_morning))["status"] == "open"
+
+
+async def test_wheel_endpoint(team_client):
+    body = (await team_client.get("/api/v1/rewards/jackpot/wheel")).json()
+    assert body["status"] in {"open", "drawn"} and "entries" in body

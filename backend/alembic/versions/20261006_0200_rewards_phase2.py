@@ -1,4 +1,4 @@
-"""Rewards phase 2: Power Hour multiplier, Team League, Season, scratch cards
+"""Rewards phase 2: Power Hour multiplier, Team League, Season, scratch cards, jackpot wheel
 
 Revision ID: 20261006_0200
 Revises: 20261006_0100
@@ -21,6 +21,7 @@ _JSON = sa.JSON().with_variant(postgresql.JSONB(), "postgresql")
 
 def upgrade() -> None:
     op.add_column("process_points", sa.Column("multiplier", sa.Integer(), nullable=False, server_default="1"))
+    op.add_column("jackpot_draws", sa.Column("entries", _JSON, nullable=True))
     op.create_table(
         "league_weeks",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -61,4 +62,5 @@ def downgrade() -> None:
     op.drop_table("scratch_cards")
     op.drop_table("season_results")
     op.drop_table("league_weeks")
+    op.drop_column("jackpot_draws", "entries")
     op.drop_column("process_points", "multiplier")

@@ -36,6 +36,15 @@ async def my_rewards(
     return {**base, **(await rx.my_extras(session, me, base))}
 
 
+@router.get("/jackpot/wheel")
+async def jackpot_wheel(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Who is on tonight's wheel (tickets = slice size); after 9 PM, the winner it lands on."""
+    return await pr.jackpot_wheel(session)
+
+
 @router.post("/scratch/{card_id}")
 async def scratch_card(
     card_id: int,

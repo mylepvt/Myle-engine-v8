@@ -57,6 +57,8 @@ class JackpotDraw(Base):
     )
     tickets_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     players: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Snapshot for the live wheel: [{user_id, name, tickets}] (empty for older draws).
+    entries: Mapped[Optional[list]] = mapped_column(_JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

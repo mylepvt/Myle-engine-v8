@@ -95,6 +95,17 @@ export type SeasonWinner = {
   paid_at: string | null
 }
 
+export type WheelEntry = { user_id: number; name: string; tickets: number }
+
+export type JackpotWheelData = {
+  status: 'open' | 'drawn'
+  draw_date: string
+  draw_at: string
+  pot_rupees: number
+  entries: WheelEntry[]
+  winner_user_id: number | null
+}
+
 export type PowerHourConfig = { enabled: boolean; start: string; end: string }
 
 export type RewardsAdminOverview = {
@@ -213,5 +224,20 @@ export function useSeasonPaidMutation() {
     mutationFn: ({ month, user_id, paid }: { month: string; user_id: number; paid: boolean }) =>
       sendJson(`/api/v1/rewards/admin/season/${month}/paid`, 'POST', { user_id, paid }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards', 'admin', 'overview'] }),
+  })
+}
+
+/** Tonight's jackpot wheel — polls faster around the 9 PM draw. */
+export function useJackpotWheelQuery(enabled = true) {
+  return useQuery<JackpotWheelData>({
+    queryKey: ['rewards', 'wheel'],
+    queryFn: () => getJson('/api/v1/rewards/jackpot/wheel'),
+    enabled,
+    staleTime: 15_000,
+    refetchInterval: (q) => {
+      const at = q.state.data ? new Date(q.state.data.draw_at).getTime() : 0
+      const near = q.state.data?.status === 'open' && Math.abs(at - Date.now()) < 10 * 60_000
+      return near ? 10_000 : 60_000
+    },
   })
 }

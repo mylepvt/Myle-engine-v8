@@ -14,6 +14,7 @@ import { rupees } from '@/lib/rewards'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
 
 import { AdminRewardsSettings } from './AdminRewardsSettings'
+import { JackpotWheel } from './JackpotWheel'
 
 /** Admin audit: who earned MYLE Points for what (last 7 days), revoke, and jackpot history. */
 export function AdminRewardsCard() {
@@ -38,6 +39,7 @@ export function AdminRewardsCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <JackpotWheel myTickets={0} />
         <AdminRewardsSettings />
         {draws.data?.draws.length ? (
           <ul className="flex flex-wrap gap-1.5">
