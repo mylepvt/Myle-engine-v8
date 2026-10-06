@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMyRewardsQuery } from '@/hooks/use-rewards-query'
+import { RewardsExtras, StreakPowerLines } from './RewardsExtras'
 import { rupees, takeNewPoints, ticketLine, untilDraw } from '@/lib/rewards'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
 
@@ -79,6 +80,8 @@ export function RewardsCard() {
               </p>
             </div>
 
+            <StreakPowerLines data={data} now={now} />
+
             {data.last_draw ? (
               <p className="text-ds-caption text-muted-foreground">
                 {data.last_draw.winner_name
@@ -109,12 +112,17 @@ export function RewardsCard() {
               </div>
             ) : null}
 
+            <RewardsExtras data={data} />
+
             {data.recent.length ? (
               <ul className="space-y-1">
                 {data.recent.slice(0, 5).map((p) => (
                   <li key={p.id} className={cn('flex items-center gap-2 text-ds-caption', p.revoked && 'opacity-50 line-through')}>
                     <Sparkles className="size-3.5 shrink-0 text-warning-ink" aria-hidden />
-                    <span className="font-bold tabular-nums text-foreground">+{p.points}</span>
+                    <span className="font-bold tabular-nums text-foreground">
+                      +{p.points}
+                      {p.double ? <span className="ml-0.5 text-ds-micro text-primary">2×</span> : null}
+                    </span>
                     <span className="min-w-0 flex-1 truncate text-muted-foreground">
                       {p.label}
                       {p.lead_name ? ` · ${p.lead_name}` : ''}

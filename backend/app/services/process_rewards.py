@@ -25,6 +25,7 @@ Cheat-proofing — a step only counts when someone other than the member proves 
 
 from __future__ import annotations
 
+import json
 import re
 import secrets
 from collections import defaultdict
@@ -89,7 +90,10 @@ LABELS: dict[str, str] = {
     "day3_blueprint": "Day 3 blueprint video",
     "stage_selected": "Stage selected",
     "converted": "Closing — converted",
+    "scratch": "Scratch card bonus",
 }
+# Bonus MP (scratch cards) — not tied to a proof, never revoked by the scanner.
+BONUS_STEPS = frozenset({"scratch"})
 # Self-logged steps: capped per day, only count on the day they happen, never revoked by proof checks.
 EARLY_STEPS = frozenset({"fast_first_call", "connected_call", "video_watched"})
 CALL_STEPS = frozenset({"fast_first_call", "connected_call"})
@@ -100,6 +104,13 @@ MAX_TICKETS_PER_DAY = 10
 DAILY_POT_CENTS = 15_000  # ₹150
 DRAW_TIME = time(21, 0)
 EARNING_ROLES = ("team", "leader")
+
+# 7 days in a row with at least one ticket → tickets count double.
+STREAK_DAYS = 7
+STREAK_MULTIPLIER = 2
+# Power Hour: steps that happen inside the window count double. Admin can move or switch it off.
+POWER_HOUR_KEY = "rewards.power_hour"
+POWER_HOUR_DEFAULT = {"enabled": True, "start": "18:00", "end": "19:00"}
 
 CONNECTED_OUTCOMES = ("answered", "callback_requested")
 FAST_CALL_WINDOW = timedelta(hours=2)
@@ -169,6 +180,56 @@ def current_draw_date(now: datetime) -> date:
 
 def tickets_for(points: int) -> int:
     return min(MAX_TICKETS_PER_DAY, max(0, points) // MP_PER_TICKET)
+
+
+# ── Power Hour ──────────────────────────────────────────────────────────────────
+
+
+def _hhmm(raw: str, fallback: str) -> time:
+    try:
+        h, m = (int(x) for x in str(raw).split(":", 1))
+        return time(h, m)
+    except (TypeError, ValueError):
+        h, m = (int(x) for x in fallback.split(":", 1))
+        return time(h, m)
+
+
+async def power_hour_config(session: AsyncSession) -> dict:
+    row = await session.get(AppSetting, POWER_HOUR_KEY)
+    cfg = dict(POWER_HOUR_DEFAULT)
+    if row is not None and row.value:
+        try:
+            cfg.update({k: v for k, v in json.loads(row.value).items() if k in cfg})
+        except (ValueError, AttributeError):
+            pass
+    return cfg
+
+
+async def save_power_hour_config(session: AsyncSession, enabled: bool, start: str, end: str) -> dict:
+    cfg = {"enabled": bool(enabled), "start": _hhmm(start, "18:00").strftime("%H:%M"),
+           "end": _hhmm(end, "19:00").strftime("%H:%M")}
+    row = await session.get(AppSetting, POWER_HOUR_KEY)
+    if row is None:
+        session.add(AppSetting(key=POWER_HOUR_KEY, value=json.dumps(cfg)))
+    else:
+        row.value = json.dumps(cfg)
+    await session.commit()
+    return cfg
+
+
+def in_power_hour(cfg: dict, at: datetime) -> bool:
+    if not cfg.get("enabled"):
+        return False
+    local = _aware(at).astimezone(IST).time()
+    start = _hhmm(cfg.get("start"), POWER_HOUR_DEFAULT["start"])
+    end = _hhmm(cfg.get("end"), POWER_HOUR_DEFAULT["end"])
+    return start <= local < end
+
+
+def power_hour_window(cfg: dict, day: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(day, _hhmm(cfg.get("start"), POWER_HOUR_DEFAULT["start"]), tzinfo=IST)
+    end = datetime.combine(day, _hhmm(cfg.get("end"), POWER_HOUR_DEFAULT["end"]), tzinfo=IST)
+    return start, end
 
 
 # ── Launch cutoff ───────────────────────────────────────────────────────────────
@@ -396,6 +457,7 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
         existing[pt.lead_id][pt.step] = pt
     early = await _early_points_today(session, list(users), now)
     today = _ist_date(now)
+    power = await power_hour_config(session)
 
     awarded = revoked = 0
     for lead in leads:
@@ -417,7 +479,11 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
 
         steps = proven_steps(lead, owner.id, proofs, launch, now)
         for step, pt in have.items():
-            if pt.revoked_at is None and base_step(step) not in CALL_STEPS and step not in steps:
+            if (
+                pt.revoked_at is None
+                and base_step(step) not in CALL_STEPS | BONUS_STEPS
+                and step not in steps
+            ):
                 pt.revoked_at, pt.revoked_reason = now, "proof_gone"
                 revoked += 1
         for step, at in sorted(steps.items(), key=lambda kv: kv[1]):
@@ -431,7 +497,10 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
                 if _ist_date(at) != today or early[owner.id] + pts > EARLY_DAILY_CAP:
                     continue
                 early[owner.id] += pts
-            point = ProcessPoint(user_id=owner.id, lead_id=lead.id, step=step, points=pts, created_at=now)
+            point = ProcessPoint(
+                user_id=owner.id, lead_id=lead.id, step=step, points=pts, created_at=now,
+                multiplier=2 if in_power_hour(power, at) else 1,
+            )
             try:
                 async with session.begin_nested():
                     session.add(point)
@@ -447,9 +516,10 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
 
 
 async def points_in_window(session: AsyncSession, start: datetime, end: datetime) -> dict[int, int]:
+    """Effective MP per user (Power Hour steps count double)."""
     rows = (
         await session.execute(
-            select(ProcessPoint.user_id, func.sum(ProcessPoint.points))
+            select(ProcessPoint.user_id, func.sum(ProcessPoint.points * ProcessPoint.multiplier))
             .where(ProcessPoint.created_at >= start, ProcessPoint.created_at < end, ProcessPoint.revoked_at.is_(None))
             .group_by(ProcessPoint.user_id)
         )
@@ -480,7 +550,45 @@ async def eligible_tickets(session: AsyncSession, draw_date: date) -> dict[int, 
             )
         ).scalars().all()
     )
-    return {uid: t for uid, p in pts.items() if uid in ok and (t := tickets_for(p)) > 0}
+    streaks = await streak_days(session, list(ok), draw_date)
+    out: dict[int, int] = {}
+    for uid, p in pts.items():
+        if uid in ok and (t := tickets_for(p)) > 0:
+            out[uid] = t * (STREAK_MULTIPLIER if streaks.get(uid, 0) >= STREAK_DAYS else 1)
+    return out
+
+
+async def streak_days(session: AsyncSession, user_ids: list[int], draw_date: date) -> dict[int, int]:
+    """Days in a row (ending at ``draw_date``) with at least one ticket. If today has no ticket
+    yet, the streak still shows the run up to yesterday (it isn't broken until the draw)."""
+    if not user_ids:
+        return {}
+    first = draw_date - timedelta(days=STREAK_DAYS * 5)
+    start, _ = draw_window(first)
+    _, end = draw_window(draw_date)
+    rows = (
+        await session.execute(
+            select(ProcessPoint.user_id, ProcessPoint.points, ProcessPoint.multiplier, ProcessPoint.created_at).where(
+                ProcessPoint.user_id.in_(user_ids),
+                ProcessPoint.created_at >= start,
+                ProcessPoint.created_at < end,
+                ProcessPoint.revoked_at.is_(None),
+            )
+        )
+    ).all()
+    per_day: dict[int, dict[date, int]] = defaultdict(lambda: defaultdict(int))
+    for uid, pts, mult, at in rows:
+        per_day[uid][current_draw_date(at)] += pts * mult
+    out: dict[int, int] = {}
+    for uid in user_ids:
+        days = per_day.get(uid, {})
+        d = draw_date if days.get(draw_date, 0) >= MP_PER_TICKET else draw_date - timedelta(days=1)
+        n = 0
+        while days.get(d, 0) >= MP_PER_TICKET:
+            n += 1
+            d -= timedelta(days=1)
+        out[uid] = n
+    return out
 
 
 def pick_winner(tickets: dict[int, int], rand_below=secrets.randbelow) -> int | None:
@@ -575,6 +683,12 @@ def _name(user: User | None) -> str:
     return raw.split(" ")[0] or "Member"
 
 
+def _name_from_entry(entry) -> str:
+    if entry is None:
+        return "—"
+    return (entry.display_name or "Leader").split(" ")[0] or "Leader"
+
+
 async def last_draw(session: AsyncSession) -> dict | None:
     draw = (
         await session.execute(select(JackpotDraw).order_by(JackpotDraw.draw_date.desc()).limit(1))
@@ -615,13 +729,24 @@ async def my_rewards(session: AsyncSession, user: User, now: datetime | None = N
         )
     ).all()
     eligible = user.role in EARNING_ROLES and user.removed_at is None
+    streak = (await streak_days(session, [user.id], draw_date)).get(user.id, 0) if eligible else 0
+    mult = STREAK_MULTIPLIER if streak >= STREAK_DAYS else 1
+    power = await power_hour_config(session)
+    ph_start, ph_end = power_hour_window(power, _ist_date(now))
     return {
         "eligible": eligible,
         "points_today": my_points,
         "points_total": int(total or 0),
-        "tickets": tickets_for(my_points) if eligible else 0,
-        "max_tickets": MAX_TICKETS_PER_DAY,
+        "tickets": tickets_for(my_points) * mult if eligible else 0,
+        "max_tickets": MAX_TICKETS_PER_DAY * mult,
         "mp_per_ticket": MP_PER_TICKET,
+        "streak": {"days": streak, "goal": STREAK_DAYS, "doubled": mult > 1},
+        "power_hour": {
+            "enabled": bool(power["enabled"]),
+            "start": ph_start.isoformat(),
+            "end": ph_end.isoformat(),
+            "active": in_power_hour(power, now),
+        },
         "next_ticket_in": (MP_PER_TICKET - my_points % MP_PER_TICKET)
         if tickets_for(my_points) < MAX_TICKETS_PER_DAY
         else 0,
@@ -633,7 +758,8 @@ async def my_rewards(session: AsyncSession, user: User, now: datetime | None = N
                 "id": pt.id,
                 "step": base_step(pt.step),
                 "label": label_for(pt.step),
-                "points": pt.points,
+                "points": pt.points * pt.multiplier,
+                "double": pt.multiplier > 1,
                 "lead_name": lead_name,
                 "at": _aware(pt.created_at).isoformat(),
                 "revoked": pt.revoked_at is not None,

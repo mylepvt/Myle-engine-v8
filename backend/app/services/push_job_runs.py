@@ -23,6 +23,9 @@ JOBS: dict[str, tuple[str, str]] = {
     "call_target_reminder": ("Call target", "5 PM"),
     "evening_recap": ("Evening recap", "8:30 PM"),
     "jackpot_draw": ("Daily jackpot", "9 PM"),
+    "power_hour_alert": ("Power Hour", "admin set"),
+    "league_settle": ("Team League", "Mon"),
+    "season_settle": ("Season winners", "1st"),
     "tracking_report_reminder": ("Leader report", "9:30 PM"),
 }
 

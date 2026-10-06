@@ -60,6 +60,9 @@ from app.services.scheduled_jobs import (
     job_star_alert,
     job_process_rewards_scan,
     job_jackpot_draw,
+    job_power_hour_alert,
+    job_league_settle,
+    job_season_settle,
     job_leader_basics_enforcement,
     job_tracking_report_reminder,
     job_watch_archive_maintenance,
@@ -144,6 +147,27 @@ async def lifespan(_app: FastAPI):
             id="jackpot_draw",
             replace_existing=True,
             misfire_grace_time=3 * 3600,
+        )
+        _scheduler.add_job(
+            job_power_hour_alert,
+            IntervalTrigger(minutes=5),
+            id="power_hour_alert",
+            replace_existing=True,
+            misfire_grace_time=240,
+        )
+        _scheduler.add_job(
+            job_league_settle,
+            CronTrigger(day_of_week="mon", hour=0, minute=10, timezone="Asia/Kolkata"),
+            id="league_settle",
+            replace_existing=True,
+            misfire_grace_time=6 * 3600,
+        )
+        _scheduler.add_job(
+            job_season_settle,
+            CronTrigger(day=1, hour=0, minute=20, timezone="Asia/Kolkata"),
+            id="season_settle",
+            replace_existing=True,
+            misfire_grace_time=6 * 3600,
         )
         _scheduler.add_job(
             job_evening_recap,

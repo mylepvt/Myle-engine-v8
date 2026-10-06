@@ -12,6 +12,7 @@ import {
   useNudgeAllMutation,
   useNudgeMemberMutation,
 } from '@/hooks/use-control-room-query'
+import { useNow } from '@/hooks/use-now'
 import { cn } from '@/lib/utils'
 
 const STATUS: Record<MemberStatus, { label: string; dot: string; chip: string }> = {
@@ -29,7 +30,8 @@ const isWorking = (m: ControlRoomMember) => m.status === 'working' || m.status =
 
 function MemberRow({ m, target }: { m: ControlRoomMember; target: number }) {
   const nudge = useNudgeMemberMutation()
-  const cooling = m.nudge_available_at != null && new Date(m.nudge_available_at).getTime() > Date.now()
+  const now = useNow()
+  const cooling = m.nudge_available_at != null && new Date(m.nudge_available_at).getTime() > now
   const first = m.name.split(' ')[0]
   const praise = isWorking(m)
 
@@ -124,6 +126,7 @@ function LeaderGroups({ members, target }: { members: ControlRoomMember[]; targe
 export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boolean }) {
   const { data, isPending, isError } = useControlRoomQuery()
   const nudgeAll = useNudgeAllMutation()
+  const now = useNow()
   const [filter, setFilter] = useState<Filter>(null)
   const [expanded, setExpanded] = useState(false)
 
@@ -135,7 +138,7 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
   const working = data ? data.counts.working + data.counts.done : 0
   const nudgeable = data
     ? data.members.filter(
-        (m) => !isWorking(m) && !(m.nudge_available_at && new Date(m.nudge_available_at).getTime() > Date.now()),
+        (m) => !isWorking(m) && !(m.nudge_available_at && new Date(m.nudge_available_at).getTime() > now),
       ).length
     : 0
   const toggle = (f: Filter) => setFilter((cur) => (cur === f ? null : f))

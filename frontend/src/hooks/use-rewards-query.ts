@@ -6,6 +6,7 @@ export type RewardPoint = {
   step: string
   label: string
   points: number
+  double?: boolean
   lead_name: string | null
   at: string
   revoked: boolean
@@ -49,6 +50,64 @@ export type MyRewards = {
     leads: PipelineLead[]
   }
   table: { step: string; label: string; points: number }[]
+  streak?: { days: number; goal: number; doubled: boolean }
+  power_hour?: { enabled: boolean; start: string; end: string; active: boolean }
+  league?: LeagueInfo
+  season?: SeasonInfo
+  scratch_cards?: ScratchCardInfo[]
+  badges?: { key: string; label: string; earned: boolean }[]
+}
+
+export type LeagueInfo = {
+  week_start: string
+  ends_at: string
+  pot_rupees: number
+  min_mp: number
+  my_team: { name: string; rank: number; score: number; my_points: number } | null
+  top: { name: string; score: number; members: number }[]
+}
+
+export type SeasonInfo = {
+  month: string
+  my_rank: number | null
+  my_points: number
+  top: { rank: number; name: string; points: number; prize_rupees: number }[]
+  most_improved: { name: string; gain: number; prize_rupees: number } | null
+}
+
+export type ScratchCardInfo = {
+  id: number
+  source: string
+  lead_name: string | null
+  scratched: boolean
+  amount_rupees: number
+  bonus_points: number
+}
+
+export type SeasonWinner = {
+  kind: 'rank' | 'improved'
+  rank: number | null
+  user_id: number
+  name: string
+  points: number
+  gain?: number
+  prize_rupees: number
+  paid_at: string | null
+}
+
+export type PowerHourConfig = { enabled: boolean; start: string; end: string }
+
+export type RewardsAdminOverview = {
+  power_hour: PowerHourConfig
+  scratch: { today_rupees: number; month_rupees: number; daily_cap_rupees: number; monthly_cap_rupees: number }
+  league: { week_start: string; pot_rupees: number; winner: string | null; paid_to: number }[]
+  league_live: { name: string; members: number; points: number; score: number }[]
+  seasons: { month: string; winners: SeasonWinner[] }[]
+  season_live: {
+    month: string
+    top: { rank: number; user_id: number; name: string; points: number; prize_rupees: number }[]
+    most_improved: { name: string; gain: number; prize_rupees: number } | null
+  }
 }
 
 export type AdminRewardPoint = {
@@ -108,5 +167,51 @@ export function useRevokePointMutation() {
       return res.json()
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards'] }),
+  })
+}
+
+async function sendJson(path: string, method: string, body?: unknown) {
+  const res = await apiFetch(path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((data as { detail?: string }).detail || `HTTP ${res.status}`)
+  return data
+}
+
+export function useScratchCardMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      sendJson(`/api/v1/rewards/scratch/${id}`, 'POST') as Promise<{ id: number; amount_rupees: number; bonus_points: number }>,
+    onSettled: () => qc.invalidateQueries({ queryKey: ['rewards', 'me'] }),
+  })
+}
+
+export function useRewardsAdminOverviewQuery(enabled = true) {
+  return useQuery<RewardsAdminOverview>({
+    queryKey: ['rewards', 'admin', 'overview'],
+    queryFn: () => getJson('/api/v1/rewards/admin/overview'),
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function usePowerHourMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (cfg: PowerHourConfig) => sendJson('/api/v1/rewards/admin/power-hour', 'PUT', cfg),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards'] }),
+  })
+}
+
+export function useSeasonPaidMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ month, user_id, paid }: { month: string; user_id: number; paid: boolean }) =>
+      sendJson(`/api/v1/rewards/admin/season/${month}/paid`, 'POST', { user_id, paid }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards', 'admin', 'overview'] }),
   })
 }
