@@ -9,10 +9,11 @@ How it works
 
 Cheat-proofing — a step only counts when someone other than the member proves it:
 - Enrollment (₹149–200): the payment screenshot, once the leader accepted it (worked the
-  lead, or 6h passed without a send-back). A send-back clears the proof → points revoked.
+  lead's Day 1 batch, or 6h passed without a send-back). A send-back clears the proof → points revoked.
 - Video / batches / Day 2 test: the *prospect* opened their personal link (number gate)
   or passed the locked test. Batch links can only be made by a leader/admin.
-- Mindset and Day 3 ticks: must be ticked by someone else (the leader), never self.
+- Mindset: the member's own mindset-lock call (server-timed, min 5 min) on a paid prospect.
+- Day 3 ticks: must be ticked by someone else (the leader), never self.
 - Day 3 steps, stage and closing also need the prospect's passed Day 2 test.
 - Calls are self-logged, so call + video points are capped at EARLY_DAILY_CAP a day
   and only count on the day they happen.
@@ -123,8 +124,8 @@ PIPELINE_STATUSES = (
 )
 AT_RISK_AFTER = timedelta(hours=24)
 
-# Enrollment pays once the leader has accepted the payment screenshot: the leader worked
-# the lead (mindset / a batch) or ENROLL_CONFIRM_AFTER passed without a send-back.
+# Enrollment pays once the leader has accepted the payment screenshot: a Day 1 batch was
+# watched (leader-shared link) or ENROLL_CONFIRM_AFTER passed without a send-back.
 ENROLL_CONFIRM_AFTER = timedelta(hours=6)
 ENROLLED_STATUSES = frozenset({"day1", "mindset_lock", "day2", "day3", "converted", "training"})
 
@@ -304,8 +305,10 @@ def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: d
         if outcome in CONNECTED_OUTCOMES:
             out.setdefault(f"connected_call:{_ist_date(at).isoformat()}", at)
 
+    # The member runs the mindset-lock call themselves; the server enforces the 5-min
+    # session, and it only counts on a paid (enrolled) prospect.
     mindset_at = _aware(lead.mindset_completed_at)
-    if mindset_at and mindset_at >= launch and lead.mindset_completed_by_user_id not in (None, owner_id):
+    if mindset_at and mindset_at >= launch and lead.enrollment_proof_uploaded_at is not None:
         out["mindset_complete"] = mindset_at
 
     used = p.batches.get(lid, {})
@@ -317,7 +320,7 @@ def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: d
         and (lead.enrollment_proof_url or "").strip()
         and lead.status in ENROLLED_STATUSES
     ):
-        leader_worked = [t for t in (out.get("mindset_complete"), *used.values()) if t]
+        leader_worked = list(used.values())  # a Day 1 batch only a leader can share
         if leader_worked or now - proof_at >= ENROLL_CONFIRM_AFTER:
             out["enrolled"] = min(leader_worked, default=proof_at + ENROLL_CONFIRM_AFTER)
     for slot in BATCH_SLOTS:

@@ -96,7 +96,8 @@ async def test_full_funnel_pays_each_verified_step_once(Session):
         await _seed(s)
         s.add(_lead(
             1, status="converted", stage_selected="stage2", day3_completed_at=t,
-            mindset_completed_at=t, mindset_completed_by_user_id=LEADER,
+            mindset_completed_at=t, mindset_completed_by_user_id=PRIYA,  # member runs the mindset call
+            enrollment_proof_url="/media/proof.png", enrollment_proof_uploaded_at=t, enrollment_amount_cents=19_600,
             d1_morning=True, d1_afternoon=True, d1_evening=True, d2_morning=True,
             process_tracking={"day3": {"day3_interview": True, "day3_live_session": True,
                                        "day3_blueprint_video": True, "day3_stage_selection": True}},
@@ -111,10 +112,10 @@ async def test_full_funnel_pays_each_verified_step_once(Session):
         ])
         await s.commit()
 
-        assert (await pr.scan(s, NOW))["awarded"] == 13
+        assert (await pr.scan(s, NOW))["awarded"] == 14
         pts = await _points(s)
         assert pts == {
-            "1:video_watched": 25, "1:mindset_complete": 20,
+            "1:video_watched": 25, "1:enrolled": 50, "1:mindset_complete": 20,
             "1:d1_morning": 10, "1:d1_afternoon": 10, "1:d1_evening": 10, "1:d1_all": 15, "1:d2_morning": 10,
             "1:day2_test_passed": 30, "1:day3_interview": 25, "1:day3_2cc": 25, "1:day3_blueprint": 25,
             "1:stage_selected": 50, "1:converted": 150,
@@ -129,7 +130,8 @@ async def test_self_marked_and_unproven_steps_pay_nothing(Session):
     async with Session() as s:
         await _seed(s)
         s.add_all([
-            # Priya ticks Day 3 + mindset herself, batch flags set by hand without the prospect watching.
+            # Priya ticks Day 3 herself, mindset on an unpaid prospect, batch flag set by hand without the
+            # prospect watching.
             _lead(1, status="day3", mindset_completed_at=t, mindset_completed_by_user_id=PRIYA, d1_morning=True,
                   process_tracking={"day3": {"day3_interview": True}}),
             # Leader ticks Day 3, but the prospect never passed the Day 2 test.
