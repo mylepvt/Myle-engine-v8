@@ -42,6 +42,7 @@ import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { Day2ContactsCard } from '@/components/contacts/Day2ContactsCard'
+import { AdminRewardsCard } from '@/components/rewards/AdminRewardsCard'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { ExecutiveDashboard } from '@/components/dashboard/ExecutiveDashboard'
@@ -857,6 +858,7 @@ export function AdminCommandCenter({ firstName }: Props) {
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <CommunityLiveCard />
             <Day2ContactsCard />
+            <AdminRewardsCard />
           </section>
         </TabsContent>
 

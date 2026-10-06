@@ -29,6 +29,7 @@ vi.mock('@/components/wins/WinsFeedCard', () => ({
 vi.mock('@/components/community/CommunityLiveCard', () => ({
   CommunityLiveCard: () => <div data-testid="community-live" />,
 }))
+vi.mock('@/components/rewards/RewardsCard', () => ({ RewardsCard: () => <div data-testid="rewards" /> }))
 vi.mock('@/components/dashboard/GateAssistantCard', () => ({
   GateAssistantCard: () => <div data-testid="gate-assistant">Gate Assistant</div>,
 }))

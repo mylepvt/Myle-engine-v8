@@ -7,6 +7,7 @@ import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSect
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
 import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
+import { RewardsCard } from '@/components/rewards/RewardsCard'
 import { XpBadge } from '@/components/xp/XpBadge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
@@ -174,6 +175,7 @@ export function TeamDashboardHomeModern({
 
       <XpBadge />
 
+      <RewardsCard />
       <CommunityLiveCard />
       <WinsFeedCard />
       <TodayLeaderboardCard />

@@ -22,6 +22,7 @@ JOBS: dict[str, tuple[str, str]] = {
     "star_alert": ("15+ club alert", "10–8"),
     "call_target_reminder": ("Call target", "5 PM"),
     "evening_recap": ("Evening recap", "8:30 PM"),
+    "jackpot_draw": ("Daily jackpot", "9 PM"),
     "tracking_report_reminder": ("Leader report", "9:30 PM"),
 }
 

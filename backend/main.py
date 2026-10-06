@@ -58,6 +58,8 @@ from app.services.scheduled_jobs import (
     job_google_contacts_sync,
     job_morning_plan,
     job_star_alert,
+    job_process_rewards_scan,
+    job_jackpot_draw,
     job_leader_basics_enforcement,
     job_tracking_report_reminder,
     job_watch_archive_maintenance,
@@ -128,6 +130,20 @@ async def lifespan(_app: FastAPI):
             id="star_alert",
             replace_existing=True,
             misfire_grace_time=600,
+        )
+        _scheduler.add_job(
+            job_process_rewards_scan,
+            IntervalTrigger(minutes=10),
+            id="process_rewards_scan",
+            replace_existing=True,
+            misfire_grace_time=300,
+        )
+        _scheduler.add_job(
+            job_jackpot_draw,
+            CronTrigger(hour=21, minute=0, timezone="Asia/Kolkata"),
+            id="jackpot_draw",
+            replace_existing=True,
+            misfire_grace_time=3 * 3600,
         )
         _scheduler.add_job(
             job_evening_recap,

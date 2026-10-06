@@ -7,6 +7,8 @@ Jobs (all IST-aware):
 - evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
 - inactivity_nudge                : every 30 min 11:00–16:30 IST — attention push to idle members (max 2/day)
 - google_contacts_sync            : every 15 min — push Day 2 prospects to connected admins' Google Contacts
+- process_rewards_scan            : every 10 min — award MYLE Points for verified process steps (revoke when proof is gone)
+- jackpot_draw                    : 21:00 IST daily — ₹150 jackpot draw (50 MP = 1 ticket), wallet credit, rollover
 - star_alert                      : every 15 min 10:00–20:00 IST — "X crossed 15 calls" push to members under 15 (max 1/day)
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
@@ -337,6 +339,52 @@ async def job_star_alert() -> None:
     except Exception as exc:
         logger.error("job_star_alert failed: %s", exc)
         await record_push_run("star_alert", targeted=0, sent=0, error=str(exc))
+
+
+async def job_process_rewards_scan() -> None:
+    """Every 10 min — MYLE Points for freshly verified process steps."""
+    from app.services.process_rewards import scan
+
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await scan(session)
+        if result["awarded"] or result["revoked"]:
+            logger.info("process_rewards_scan: %s", result)
+    except Exception as exc:
+        logger.error("job_process_rewards_scan failed: %s", exc)
+
+
+async def job_jackpot_draw() -> None:
+    """21:00 IST — last scan, then today's jackpot draw; push the winner and the players."""
+    from app.services import process_rewards as pr
+
+    now = datetime.now(timezone.utc)
+    draw_date = now.astimezone(pr.IST).date()
+    try:
+        async with AsyncSessionLocal() as session:
+            await pr.scan(session, now)
+            tickets = await pr.eligible_tickets(session, draw_date)
+            draw = await pr.run_draw(session, draw_date)
+            sent = 0
+            rupees = draw.pot_cents // 100
+            winner = await session.get(User, draw.winner_user_id) if draw.winner_user_id else None
+            for uid in tickets:
+                user = await session.get(User, uid)
+                if user is None:
+                    continue
+                if winner is not None and uid == winner.id:
+                    title, body = f"🎉 You won today's ₹{rupees} jackpot!", "It's already in your MYLE wallet. Keep the process going!"
+                elif winner is not None:
+                    title = f"🎰 {pr._name(winner)} won today's ₹{rupees} jackpot"
+                    body = "Your tickets reset now — earn MYLE Points on real steps for tomorrow's draw."
+                else:
+                    continue
+                sent += await _push_digest(session, user, title, body, url="/dashboard")
+            logger.info("jackpot_draw: date=%s winner=%s players=%d", draw_date, draw.winner_user_id, draw.players)
+        await record_push_run("jackpot_draw", targeted=len(tickets), sent=sent)
+    except Exception as exc:
+        logger.error("job_jackpot_draw failed: %s", exc)
+        await record_push_run("jackpot_draw", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------

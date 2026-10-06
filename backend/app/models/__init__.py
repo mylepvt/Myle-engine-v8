@@ -23,6 +23,7 @@ from app.models.wallet_recharge import WalletRecharge
 from app.models.push_job_run import PushJobRun
 from app.models.user_device_status import UserDeviceStatus
 from app.models.win import Win, WinCheer
+from app.models.process_reward import JackpotDraw, ProcessPoint
 from app.models.password_reset_token import PasswordResetToken
 from app.models.training_video import TrainingVideo
 from app.models.training_progress import TrainingProgress
@@ -68,6 +69,8 @@ __all__ = [
     "UserDeviceStatus",
     "Win",
     "WinCheer",
+    "ProcessPoint",
+    "JackpotDraw",
     "PasswordResetToken",
     "TrainingVideo",
     "TrainingProgress",
