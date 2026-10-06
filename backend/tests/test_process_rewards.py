@@ -344,3 +344,33 @@ async def test_admin_audit(admin_client):
     assert (await admin_client.get("/api/v1/rewards/admin/points")).json() == {"points": []}
     assert (await admin_client.get("/api/v1/rewards/admin/draws")).status_code == 200
     assert (await admin_client.post("/api/v1/rewards/admin/points/999/revoke")).status_code == 404
+
+
+async def test_enrollment_pays_once_the_leader_accepts_it(Session):
+    async with Session() as s:
+        await _seed(s)
+        proof = dict(enrollment_proof_url="/media/proof.png", enrollment_amount_cents=19_600)
+        s.add_all([
+            _lead(1, enrollment_proof_uploaded_at=NOW - timedelta(hours=1), **proof),  # just uploaded
+            _lead(2, enrollment_proof_uploaded_at=NOW - timedelta(hours=1), d1_morning=True, **proof),
+            _lead(3, enrollment_proof_uploaded_at=NOW - timedelta(hours=7), **proof),  # 6h, no send-back
+        ])
+        await s.flush()
+        s.add(_batch(2, "d1_morning", NOW - timedelta(minutes=30)))  # leader is working lead 2
+        await s.commit()
+
+        await pr.scan(s, NOW)
+        pts = await _points(s)
+        assert pts["2:enrolled"] == 50 and pts["3:enrolled"] == 50
+        assert "1:enrolled" not in pts
+
+        # Leader sends lead 3 back (screenshot rejected) → points go.
+        lead = await s.get(Lead, 3)
+        lead.status, lead.enrollment_proof_url, lead.enrollment_proof_uploaded_at = "video_watched", None, None
+        await s.commit()
+        await pr.scan(s, NOW + timedelta(minutes=10))
+        pts = await _points(s)
+        assert "3:enrolled" not in pts
+        # Lead 1 crosses 6h without a send-back → pays.
+        await pr.scan(s, NOW + timedelta(hours=6))
+        assert "1:enrolled" in await _points(s)

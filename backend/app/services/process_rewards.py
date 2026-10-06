@@ -8,6 +8,8 @@ How it works
   No tickets → no winner, the pot rolls over to tomorrow.
 
 Cheat-proofing — a step only counts when someone other than the member proves it:
+- Enrollment (₹149–200): the payment screenshot, once the leader accepted it (worked the
+  lead, or 6h passed without a send-back). A send-back clears the proof → points revoked.
 - Video / batches / Day 2 test: the *prospect* opened their personal link (number gate)
   or passed the locked test. Batch links can only be made by a leader/admin.
 - Mindset and Day 3 ticks: must be ticked by someone else (the leader), never self.
@@ -49,6 +51,7 @@ POINTS: dict[str, int] = {
     "fast_first_call": 5,
     "connected_call": 2,  # once per lead per day
     "video_watched": 25,  # invitation (10) + Day 1 video watched (15)
+    "enrolled": 50,  # ₹149–200 enrollment payment — the first closing
     "mindset_complete": 20,
     "d1_morning": 10,
     "d1_afternoon": 10,
@@ -69,6 +72,7 @@ LABELS: dict[str, str] = {
     "fast_first_call": "First call within 2h of claim",
     "connected_call": "Connected call",
     "video_watched": "Prospect watched the Day 1 video",
+    "enrolled": "Enrollment payment (first closing)",
     "mindset_complete": "Mindset complete",
     "d1_morning": "Day 1 morning batch",
     "d1_afternoon": "Day 1 afternoon batch",
@@ -118,6 +122,11 @@ PIPELINE_STATUSES = (
     "invited", "whatsapp_sent", "video_sent", "video_watched", "day1", "day2", "day3",
 )
 AT_RISK_AFTER = timedelta(hours=24)
+
+# Enrollment pays once the leader has accepted the payment screenshot: the leader worked
+# the lead (mindset / a batch) or ENROLL_CONFIRM_AFTER passed without a send-back.
+ENROLL_CONFIRM_AFTER = timedelta(hours=6)
+ENROLLED_STATUSES = frozenset({"day1", "mindset_lock", "day2", "day3", "converted", "training"})
 
 
 def _aware(dt: datetime | None) -> datetime | None:
@@ -202,6 +211,7 @@ async def _candidate_lead_ids(session: AsyncSession, since: datetime, now: datet
             ActivityLog.action == "process.task_done", ActivityLog.entity_type == "lead", ActivityLog.created_at >= since
         ),
         select(Lead.id).where(Lead.mindset_completed_at >= since),
+        select(Lead.id).where(Lead.enrollment_proof_uploaded_at >= since),
         select(Lead.id).where(Lead.day3_completed_at >= since),
         select(CallEvent.lead_id).where(CallEvent.called_at >= since),
         select(ProcessPoint.lead_id).where(
@@ -277,7 +287,7 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
     return _Proofs(flp, batches, test_passed, ticks, claims, calls)
 
 
-def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime) -> dict[str, datetime]:
+def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: datetime) -> dict[str, datetime]:
     """Every step this lead has proof for right now → when it happened."""
     out: dict[str, datetime] = {}
     lid = lead.id
@@ -299,6 +309,17 @@ def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime) -> dic
         out["mindset_complete"] = mindset_at
 
     used = p.batches.get(lid, {})
+
+    proof_at = _aware(lead.enrollment_proof_uploaded_at)
+    if (
+        proof_at
+        and proof_at >= launch
+        and (lead.enrollment_proof_url or "").strip()
+        and lead.status in ENROLLED_STATUSES
+    ):
+        leader_worked = [t for t in (out.get("mindset_complete"), *used.values()) if t]
+        if leader_worked or now - proof_at >= ENROLL_CONFIRM_AFTER:
+            out["enrolled"] = min(leader_worked, default=proof_at + ENROLL_CONFIRM_AFTER)
     for slot in BATCH_SLOTS:
         if slot in used and bool(getattr(lead, slot, False)):  # prospect watched AND still ticked
             out[slot] = used[slot]
@@ -391,7 +412,7 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
                     revoked += 1
             continue
 
-        steps = proven_steps(lead, owner.id, proofs, launch)
+        steps = proven_steps(lead, owner.id, proofs, launch, now)
         for step, pt in have.items():
             if pt.revoked_at is None and base_step(step) not in CALL_STEPS and step not in steps:
                 pt.revoked_at, pt.revoked_reason = now, "proof_gone"
