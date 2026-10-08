@@ -27,6 +27,7 @@ from app.models.call_event import CallEvent
 from app.models.day2_test_session import Day2TestSession
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
+from app.models.process_reward import JackpotDraw, LeagueWeek, ScratchCard
 from app.models.training_progress import TrainingProgress
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.user import User
@@ -277,6 +278,34 @@ async def _feed(session: AsyncSession, now: datetime, stars: list[dict[str, Any]
         )
     ).all():
         add("win", user, win_text(win.kind, first_name(user), win.detail), win.created_at)
+
+    for user, draw in (
+        await session.execute(
+            select(User, JackpotDraw)
+            .join(JackpotDraw, JackpotDraw.winner_user_id == User.id)
+            .where(JackpotDraw.created_at >= since)
+        )
+    ).all():
+        add("jackpot", user, f"{first_name(user)} won the ₹{draw.pot_cents // 100} daily jackpot", draw.created_at)
+
+    for user, card in (
+        await session.execute(
+            select(User, ScratchCard)
+            .join(ScratchCard, ScratchCard.user_id == User.id)
+            .where(ScratchCard.scratched_at >= since, ScratchCard.amount_cents >= 2_000)
+            .limit(PER_KIND_LIMIT)
+        )
+    ).all():
+        add("jackpot", user, f"{first_name(user)} scratched ₹{card.amount_cents // 100}", card.scratched_at)
+
+    for user, week in (
+        await session.execute(
+            select(User, LeagueWeek)
+            .join(LeagueWeek, LeagueWeek.winner_leader_id == User.id)
+            .where(LeagueWeek.created_at >= since)
+        )
+    ).all():
+        add("win", user, f"Team {first_name(user)} won the weekly Team League", week.created_at)
 
     for star in stars:
         feed.append({

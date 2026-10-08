@@ -7,6 +7,11 @@ Jobs (all IST-aware):
 - evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
 - inactivity_nudge                : every 30 min 11:00–16:30 IST — attention push to idle members (max 2/day)
 - google_contacts_sync            : every 15 min — push Day 2 prospects to connected admins' Google Contacts
+- process_rewards_scan            : every 10 min — award MYLE Points for verified process steps (revoke when proof is gone)
+- jackpot_draw                    : 21:00 IST daily — ₹150 jackpot draw (50 MP = 1 ticket), wallet credit, rollover
+- power_hour_alert                : every 5 min — push "Power Hour is on" once when it starts
+- league_settle                   : Monday 00:10 IST — close last week's Team League, pay the winning team
+- season_settle                   : 1st 00:20 IST — record last month's Season winners (admin pays)
 - star_alert                      : every 15 min 10:00–20:00 IST — "X crossed 15 calls" push to members under 15 (max 1/day)
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
@@ -337,6 +342,138 @@ async def job_star_alert() -> None:
     except Exception as exc:
         logger.error("job_star_alert failed: %s", exc)
         await record_push_run("star_alert", targeted=0, sent=0, error=str(exc))
+
+
+async def job_process_rewards_scan() -> None:
+    """Every 10 min — MYLE Points for freshly verified process steps."""
+    from app.services.process_rewards import scan
+
+    from app.services.rewards_extras import grant_scratch_cards
+
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await scan(session)
+            result["scratch_cards"] = await grant_scratch_cards(session, datetime.now(timezone.utc))
+        if any(result.values()):
+            logger.info("process_rewards_scan: %s", result)
+    except Exception as exc:
+        logger.error("job_process_rewards_scan failed: %s", exc)
+
+
+async def job_jackpot_draw() -> None:
+    """21:00 IST — last scan, then today's jackpot draw; push the winner and the players."""
+    from app.services import process_rewards as pr
+
+    now = datetime.now(timezone.utc)
+    draw_date = now.astimezone(pr.IST).date()
+    try:
+        async with AsyncSessionLocal() as session:
+            await pr.scan(session, now)
+            tickets = await pr.eligible_tickets(session, draw_date)
+            draw = await pr.run_draw(session, draw_date)
+            sent = 0
+            rupees = draw.pot_cents // 100
+            winner = await session.get(User, draw.winner_user_id) if draw.winner_user_id else None
+            for uid in tickets:
+                user = await session.get(User, uid)
+                if user is None:
+                    continue
+                if winner is not None and uid == winner.id:
+                    title, body = f"🎉 You won today's ₹{rupees} jackpot!", "It's already in your MYLE wallet. Keep the process going!"
+                elif winner is not None:
+                    title = f"🎰 {pr._name(winner)} won today's ₹{rupees} jackpot"
+                    body = "Your tickets reset now — earn MYLE Points on real steps for tomorrow's draw."
+                else:
+                    continue
+                sent += await _push_digest(session, user, title, body, url="/dashboard")
+            logger.info("jackpot_draw: date=%s winner=%s players=%d", draw_date, draw.winner_user_id, draw.players)
+        await record_push_run("jackpot_draw", targeted=len(tickets), sent=sent)
+    except Exception as exc:
+        logger.error("job_jackpot_draw failed: %s", exc)
+        await record_push_run("jackpot_draw", targeted=0, sent=0, error=str(exc))
+
+
+async def job_power_hour_alert() -> None:
+    """Every 5 min — when Power Hour starts, tell members once (points count double)."""
+    from app.models.app_setting import AppSetting
+    from app.services import process_rewards as pr
+
+    now = datetime.now(timezone.utc)
+    try:
+        async with AsyncSessionLocal() as session:
+            cfg = await pr.power_hour_config(session)
+            if not pr.in_power_hour(cfg, now):
+                return
+            today = now.astimezone(pr.IST).date().isoformat()
+            key = "rewards.power_hour_announced"
+            row = await session.get(AppSetting, key)
+            if row is not None and row.value == today:
+                return
+            if row is None:
+                session.add(AppSetting(key=key, value=today))
+            else:
+                row.value = today
+            await session.commit()
+            _, end = pr.power_hour_window(cfg, now.astimezone(pr.IST).date())
+            title = "⚡ Power Hour is on — points count double"
+            body = f"Every verified step until {end.strftime('%-I:%M %p')} counts 2× for tonight's jackpot."
+            users = await _get_eligible_users(session)
+            sent = 0
+            for user in users:
+                sent += await _push_digest(session, user, title, body, url="/dashboard")
+        await record_push_run("power_hour_alert", targeted=len(users), sent=sent)
+    except Exception as exc:
+        logger.error("job_power_hour_alert failed: %s", exc)
+        await record_push_run("power_hour_alert", targeted=0, sent=0, error=str(exc))
+
+
+async def job_league_settle() -> None:
+    """Monday 00:10 IST — close last week's Team League and pay the winners."""
+    from app.services import rewards_extras as rx
+
+    now = datetime.now(timezone.utc)
+    week = rx.week_start_for(now) - timedelta(days=7)
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await rx.settle_league(session, week)
+            sent = 0
+            for p in result.payouts or []:
+                user = await session.get(User, p["user_id"])
+                if user is not None:
+                    sent += await _push_digest(
+                        session, user, f"🏆 Your team won the Team League — ₹{p['cents'] // 100} for you",
+                        "It's in your MYLE wallet. New week, new league — go again!", url="/dashboard",
+                    )
+            logger.info("league_settle: week=%s winner=%s paid=%d", week, result.winner_leader_id, len(result.payouts or []))
+        await record_push_run("league_settle", targeted=len(result.payouts or []), sent=sent)
+    except Exception as exc:
+        logger.error("job_league_settle failed: %s", exc)
+        await record_push_run("league_settle", targeted=0, sent=0, error=str(exc))
+
+
+async def job_season_settle() -> None:
+    """1st of the month 00:20 IST — record last month's Season winners and tell them."""
+    from app.services import rewards_extras as rx
+
+    now = datetime.now(timezone.utc)
+    month = rx._prev_month(rx.month_start_for(now))
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await rx.settle_season(session, month)
+            sent = 0
+            for w in result.winners or []:
+                user = await session.get(User, w["user_id"])
+                if user is None:
+                    continue
+                what = "Most Improved" if w["kind"] == "improved" else f"#{w['rank']} in the Season"
+                sent += await _push_digest(
+                    session, user, f"🌟 You're {what} for {month.strftime('%B')}!",
+                    f"₹{w['prize_rupees']} prize — the admin will hand it over.", url="/dashboard",
+                )
+        await record_push_run("season_settle", targeted=len(result.winners or []), sent=sent)
+    except Exception as exc:
+        logger.error("job_season_settle failed: %s", exc)
+        await record_push_run("season_settle", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------

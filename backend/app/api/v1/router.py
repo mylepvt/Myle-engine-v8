@@ -30,6 +30,7 @@ from app.api.v1 import (
     media,
     certificate,
     community,
+    rewards,
     downloads,
     enrollment,
     flp_min_billing,
@@ -124,6 +125,7 @@ api_router.include_router(control_room.router, prefix="/control-room", tags=["co
 api_router.include_router(closing.router, prefix="/closing", tags=["closing"])
 api_router.include_router(wins.router, prefix="/wins", tags=["wins"])
 api_router.include_router(community.router, prefix="/community", tags=["community"])
+api_router.include_router(rewards.router, prefix="/rewards", tags=["rewards"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])

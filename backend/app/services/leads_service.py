@@ -1240,6 +1240,13 @@ class LeadsService:
             lead.stage_price_cents = stage_price_cents(body.stage_selected)
             lead.seat_hold_amount_cents = stage_seat_hold_cents(body.stage_selected)
             _toggle_process_task(lead, stage="day3", task="day3_stage_selection", done=True)
+            # Who picked the stage, and when (process rewards: someone other than the owner).
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="process.task_done",
+                lead_id=lead.id,
+                meta={"stage": "day3", "task": "day3_stage_selection", "stage_selected": body.stage_selected},
+            )
         if body.collect_seat_hold is not None:
             if user.role not in ("leader", "admin"):
                 raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")

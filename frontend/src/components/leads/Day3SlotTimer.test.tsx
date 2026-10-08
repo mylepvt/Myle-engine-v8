@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { LeadPublic } from '@/hooks/use-leads-query'
-import { Day3SlotTimer, deadlineLabel, quickPicks, remainingParts } from './Day3SlotTimer'
+import { deadlineLabel, quickPicks, remainingParts } from '@/lib/day3-slot-timer'
+import { Day3SlotTimer } from './Day3SlotTimer'
 
 afterEach(() => {
   cleanup()

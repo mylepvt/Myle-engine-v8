@@ -12,6 +12,7 @@ export type CommunityFeedKind =
   | 'report'
   | 'win'
   | 'star'
+  | 'jackpot'
 
 export type CommunityFeedItem = {
   kind: CommunityFeedKind

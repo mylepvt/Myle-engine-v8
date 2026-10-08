@@ -6,6 +6,7 @@ import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
 import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
+import { RewardsCard } from '@/components/rewards/RewardsCard'
 import { ClosingReadyCard } from '@/components/closing/ClosingReadyCard'
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { XpBadge } from '@/components/xp/XpBadge'
@@ -290,6 +291,7 @@ export function DashboardHomePage() {
 
       <XpBadge />
 
+      <RewardsCard />
       <CommunityLiveCard />
       <WinsFeedCard />
       <TodayLeaderboardCard />

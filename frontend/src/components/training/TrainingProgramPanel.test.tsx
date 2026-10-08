@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 
 import { TrainingProgramPanel } from '@/components/training/TrainingProgramPanel'
 
@@ -58,6 +58,8 @@ const baseData = {
   note: null,
 }
 
+const clients: QueryClient[] = []
+
 function renderPanel() {
   const client = new QueryClient({
     defaultOptions: {
@@ -65,6 +67,7 @@ function renderPanel() {
       mutations: { retry: false },
     },
   })
+  clients.push(client)
 
   render(
     <QueryClientProvider client={client}>
@@ -75,6 +78,9 @@ function renderPanel() {
 
 describe('TrainingProgramPanel', () => {
   afterEach(() => {
+    // Unmount and drop queries now, so no react-query timer fires after jsdom is torn down.
+    cleanup()
+    clients.splice(0).forEach((c) => c.clear())
     vi.clearAllMocks()
   })
 

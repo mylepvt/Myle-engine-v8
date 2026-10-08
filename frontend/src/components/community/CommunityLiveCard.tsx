@@ -9,6 +9,7 @@ import {
   PlayCircle,
   RefreshCcw,
   ShieldCheck,
+  Trophy,
   UserPlus,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -33,6 +34,7 @@ const KIND_ICON: Record<CommunityFeedKind, { icon: LucideIcon; tone: string }> =
   report: { icon: ClipboardCheck, tone: 'bg-muted text-muted-foreground' },
   win: { icon: PartyPopper, tone: 'bg-warning/15 text-warning-ink' },
   star: { icon: Flame, tone: 'bg-destructive/15 text-destructive-ink' },
+  jackpot: { icon: Trophy, tone: 'bg-warning/15 text-warning-ink' },
 }
 
 function Stat({ value, label }: { value: number; label: string }) {

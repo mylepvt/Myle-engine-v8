@@ -17,12 +17,13 @@ const room = {
   members: [member(1, 'Amit Kumar', 'not_started', 0), member(2, 'Priya', 'working', 3)],
 }
 
-const apiFetch = vi.fn(async (url: string, _init?: RequestInit) =>
-  new Response(
+const apiFetch = vi.fn(async (url: string, init?: RequestInit) => {
+  void init
+  return new Response(
     JSON.stringify(url.endsWith('/nudge') ? { delivered: true, nudge_available_at: new Date(Date.now() + 3600e3).toISOString() } : room),
     { status: 200 },
-  ),
-)
+  )
+})
 vi.mock('@/lib/api', () => ({ apiFetch: (url: string, init?: RequestInit) => apiFetch(url, init) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() } }))
 
