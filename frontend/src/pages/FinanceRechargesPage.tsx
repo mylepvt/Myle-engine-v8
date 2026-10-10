@@ -9,6 +9,7 @@ import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { useTeamMembersQuery, type TeamMemberPublic } from '@/hooks/use-team-query'
 import { directorySearchValues, filterCollectionByQuery } from '@/lib/search-filter'
 import { useWalletAdjustmentMutation } from '@/hooks/use-wallet-query'
+import { InlineEmpty } from '@/components/ui/states'
 
 /** `title` omitted = embedded in Wallet admin (the tab supplies the heading). */
 type Props = { title?: string }
@@ -134,7 +135,7 @@ export function FinanceRechargesPage({ title }: Props) {
                 ))}
               </NativeSelect>
               {searchActive && filteredMembers.length === 0 && !selectedMember ? (
-                <p className="mt-1 text-xs text-muted-foreground">No members match this search.</p>
+                <InlineEmpty>No members match this search.</InlineEmpty>
               ) : null}
             </div>
           </div>

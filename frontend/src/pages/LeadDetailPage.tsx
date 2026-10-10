@@ -21,6 +21,7 @@ import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import { stageBadgeClass } from '@/lib/stage-colors'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = {
   leadId: number
@@ -544,7 +545,7 @@ export function LeadDetailPage({ leadId }: Props) {
             ) : null}
 
             {callsQuery.data && callsQuery.data.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No calls logged yet.</p>
+              <InlineEmpty>No calls logged yet.</InlineEmpty>
             ) : null}
 
             {callsQuery.data && callsQuery.data.items.length > 0 ? (

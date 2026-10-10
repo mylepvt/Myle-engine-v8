@@ -67,6 +67,27 @@ export function EmptyState({
   )
 }
 
+type InlineEmptyProps = {
+  children: React.ReactNode
+  icon?: LucideIcon
+  /** Optional one action, e.g. a small button or link. */
+  action?: React.ReactNode
+  className?: string
+}
+
+/** "Nothing here" inside a card: small icon, one short line, optional action. */
+export function InlineEmpty({ children, icon = Inbox, action, className }: InlineEmptyProps) {
+  return (
+    <div className={cn('flex flex-col items-center gap-2 py-6 text-center', className)}>
+      <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        {React.createElement(icon, { className: 'size-4', strokeWidth: 1.75, 'aria-hidden': true })}
+      </span>
+      <p className="max-w-xs text-ds-caption text-muted-foreground">{children}</p>
+      {action ? <div>{action}</div> : null}
+    </div>
+  )
+}
+
 type LoadingStateProps = {
   label?: string
   className?: string

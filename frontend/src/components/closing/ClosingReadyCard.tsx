@@ -5,6 +5,7 @@ import { Handshake } from 'lucide-react'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { InlineEmpty } from '@/components/ui/states'
 import { apiFetch } from '@/lib/api'
 
 type ClosingItem = {
@@ -60,10 +61,7 @@ export function ClosingReadyCard() {
         ) : isError ? (
           <p className="text-ds-caption text-muted-foreground">Closing list is unavailable right now.</p>
         ) : !items.length ? (
-          <p className="text-ds-caption text-muted-foreground">
-            Nobody yet. Prospects appear here once their interview is done and they watched today&apos;s 2 PM
-            session (tick it on the Day 3 card).
-          </p>
+          <InlineEmpty icon={Handshake}>Nobody ready yet — they show up after the interview and the 2 PM session.</InlineEmpty>
         ) : (
           <ul className="divide-y divide-border/60">
             {items.map((p) => (

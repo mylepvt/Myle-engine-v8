@@ -14,6 +14,7 @@ import {
 } from '@/hooks/use-control-room-query'
 import { useNow } from '@/hooks/use-now'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 const STATUS: Record<MemberStatus, { label: string; dot: string }> = {
   not_started: { label: 'Not started', dot: 'bg-destructive' },
@@ -199,7 +200,7 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
         ) : isError ? (
           <p className="text-ds-caption text-muted-foreground">Team status is unavailable right now.</p>
         ) : !data.members.length ? (
-          <p className="text-ds-caption text-muted-foreground">No active members in your team yet.</p>
+          <InlineEmpty>No active members in your team yet.</InlineEmpty>
         ) : (
           <>
             <div className="space-y-2">
@@ -284,7 +285,7 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
             </div>
 
             {!list.length ? (
-              <p className="text-ds-caption text-muted-foreground">Nobody here right now.</p>
+              <InlineEmpty>Nobody here right now.</InlineEmpty>
             ) : groupByLeader ? (
               <LeaderGroups members={shown} target={data.call_target} />
             ) : (

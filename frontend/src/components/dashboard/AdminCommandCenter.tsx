@@ -26,6 +26,7 @@ import {
   Users,
   Video,
   Wallet,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -34,7 +35,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { EmptyState, ErrorState } from '@/components/ui/states'
+import { EmptyState, ErrorState, InlineEmpty } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useHideOnScroll } from '@/hooks/use-hide-on-scroll'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
@@ -573,6 +574,7 @@ const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon 
   { value: 'leads', label: 'Leads', Icon: Search },
   { value: 'people', label: 'People', Icon: Users },
   { value: 'execution', label: 'Execution', Icon: ClipboardCheck },
+  { value: 'tools', label: 'Tools', Icon: Wrench },
   { value: 'system', label: 'System', Icon: Cog },
 ]
 
@@ -862,13 +864,13 @@ export function AdminCommandCenter({ firstName }: Props) {
                 <CommunityLiveCard />
               </>
             }
-            tools={
-              <>
-                <Day2ContactsCard />
-                <AdminRewardsCard />
-              </>
-            }
           />
+        </TabsContent>
+
+        {/* ==================== TOOLS ==================== */}
+        <TabsContent value="tools" className="space-y-4">
+          <AdminRewardsCard />
+          <Day2ContactsCard />
         </TabsContent>
 
         {/* ==================== WAR ROOM ==================== */}
@@ -1442,7 +1444,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {(vSummary.data?.task_type_breakdown ?? []).length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No tasks created yet</p>
+                    <InlineEmpty>No tasks created yet</InlineEmpty>
                   ) : (
                     <div className="space-y-2">{vSummary.data?.task_type_breakdown.map((t) => (
                       <div key={t.task_type} className="flex items-center justify-between"><span className="text-sm capitalize">{t.task_type.toLowerCase().replace(/_/g, ' ')}</span><Badge variant="secondary">{t.count}</Badge></div>

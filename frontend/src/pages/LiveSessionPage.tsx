@@ -5,6 +5,7 @@ import { ArrowRight, Check, Copy } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { buildLiveSessionMessage, extractPasscode, formatLiveSessionUpdatedAt } from '@/lib/live-session-message'
+import { InlineEmpty } from '@/components/ui/states'
 
 type LiveSessionStub = {
   items: {
@@ -135,7 +136,7 @@ export function LiveSessionPage({ title }: Props) {
           ) : null}
         </div>
       ) : liveSession.data ? (
-        <p className="text-sm text-muted-foreground">No live session link has been published yet.</p>
+        <InlineEmpty>No live session link has been published yet.</InlineEmpty>
       ) : null}
     </div>
   )

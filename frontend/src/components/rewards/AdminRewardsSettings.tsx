@@ -13,6 +13,7 @@ import {
 } from '@/hooks/use-rewards-query'
 import { monthName, rupees } from '@/lib/rewards'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 function PowerHourForm({ initial }: { initial: { enabled: boolean; start: string; end: string } }) {
   const save = usePowerHourMutation()
@@ -103,7 +104,7 @@ export function AdminRewardsSettings() {
             ))}
           </ol>
         ) : (
-          <p className="text-ds-caption text-muted-foreground">No points yet this week.</p>
+          <InlineEmpty>No points yet this week.</InlineEmpty>
         )}
         {data.league.length ? (
           <p className="mt-1 text-ds-micro text-muted-foreground">

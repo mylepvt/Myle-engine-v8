@@ -14,6 +14,7 @@ import {
   sharePosterOrFallback,
   type PosterTemplate,
 } from '@/lib/lead-poster'
+import { InlineEmpty } from '@/components/ui/states'
 
 type CategoryOption = { slug: string; label: string; message: string }
 
@@ -255,7 +256,7 @@ export function LeadGenPage({ title }: { title?: string }) {
         {linksQuery.isLoading ? (
           <Skeleton className="h-24 w-full" />
         ) : links.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No links yet. Create one above.</p>
+          <InlineEmpty>No links yet. Create one above.</InlineEmpty>
         ) : (
           links.map((link) => (
             <Card key={link.id} className={link.active ? '' : 'opacity-60'}>
@@ -469,7 +470,7 @@ function LinkResponses({ linkId }: { linkId: number }) {
   const rows = q.data ?? []
   if (rows.length === 0) {
     return (
-      <p className="mt-2 text-xs text-muted-foreground">No responses yet.</p>
+      <InlineEmpty>No responses yet.</InlineEmpty>
     )
   }
   return (

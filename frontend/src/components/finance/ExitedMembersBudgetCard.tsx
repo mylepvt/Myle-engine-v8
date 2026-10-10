@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { InlineEmpty } from '@/components/ui/states'
 
 type ExitedMemberBudgetRow = {
   user_id: number
@@ -86,7 +87,7 @@ export function ExitedMembersBudgetCard() {
             </div>
 
             {q.data.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No removed or blocked member has money left in their wallet.</p>
+              <InlineEmpty>No removed or blocked member has money left in their wallet.</InlineEmpty>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[56rem] border-collapse text-left text-sm">

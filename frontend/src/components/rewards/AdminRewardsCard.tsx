@@ -14,6 +14,7 @@ import { rupees } from '@/lib/rewards'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
 
 import { AdminRewardsSettings } from './AdminRewardsSettings'
+import { InlineEmpty } from '@/components/ui/states'
 
 /** Admin audit: who earned MYLE Points for what (last 7 days), revoke, and jackpot history. */
 export function AdminRewardsCard() {
@@ -53,7 +54,7 @@ export function AdminRewardsCard() {
         {points.isPending ? (
           <Skeleton className="h-24 w-full" />
         ) : rows.length === 0 ? (
-          <p className="text-ds-caption text-muted-foreground">No points earned yet.</p>
+          <InlineEmpty>No points earned yet.</InlineEmpty>
         ) : (
           <ul className="divide-y divide-border/60">
             {shown.map((p) => (

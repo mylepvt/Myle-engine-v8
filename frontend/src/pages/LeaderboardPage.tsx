@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { parseLeaderboardStubItem } from '@/lib/leaderboard-row'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = { title: string }
 
@@ -132,7 +133,7 @@ export function LeaderboardPage({ title }: Props) {
           ) : null}
         </>
       ) : data && rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No leaderboard rows yet.</p>
+        <InlineEmpty>No leaderboard rows yet.</InlineEmpty>
       ) : null}
     </div>
   )

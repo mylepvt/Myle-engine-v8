@@ -12,6 +12,7 @@ import {
   type ActionQueueItem,
 } from '@/hooks/use-action-queue'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 const ACTION_META: Record<ActionKey, { label: string; Icon: typeof MessageCircle }> = {
   alert_leader: { label: 'WhatsApp Leader', Icon: MessageCircle },
@@ -139,7 +140,7 @@ export function ActionQueuePanel({ className, admin }: { className?: string; adm
         <CardContent className="py-8 text-center">
           <CheckCircle2 className="mx-auto size-8 text-success-ink" />
           <p className="mt-2 text-sm font-semibold text-foreground">Action queue clear</p>
-          <p className="mt-1 text-xs text-muted-foreground">No zombie leads, missed missions, or stuck verifications right now.</p>
+          <InlineEmpty>No zombie leads, missed missions, or stuck verifications right now.</InlineEmpty>
         </CardContent>
       </Card>
     )

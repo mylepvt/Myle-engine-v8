@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { InlineEmpty } from '@/components/ui/states'
 
 const EVENT_ICONS: Record<string, LucideIcon> = {
   created: CalendarDays,
@@ -143,7 +144,7 @@ export function LeadTimelineView({
             <TimelineEventRow key={i} event={event} />
           ))}
           {data.events.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">No events recorded for this lead.</p>
+            <InlineEmpty>No events recorded for this lead.</InlineEmpty>
           )}
         </div>
       </CardContent>
