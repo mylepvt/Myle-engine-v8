@@ -3,7 +3,7 @@ import { useDeferredValue, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { ListSearchInput } from '@/components/ui/list-search-input'
-import { ErrorState, LoadingState } from '@/components/ui/states'
+import { ErrorState, LoadingState, InlineEmpty } from '@/components/ui/states'
 import {
   Table,
   TableBody,
@@ -104,7 +104,7 @@ export function TeamApprovalsPage({ title }: Props) {
 
       {q.data ? (
         q.data.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No pending registrations.</p>
+          <InlineEmpty>No pending registrations.</InlineEmpty>
         ) : filteredRows.length === 0 ? (
           <div className="surface-elevated rounded border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
             No pending registrations match this search.

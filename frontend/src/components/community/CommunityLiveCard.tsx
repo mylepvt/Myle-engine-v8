@@ -65,7 +65,7 @@ export function CommunityLiveCard() {
   const { period, stats } = data ? pickStats(data) : { period: '', stats: [] }
 
   return (
-    <Card className="border-success/25">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-ds-h3">
           <span className="relative flex size-2.5 shrink-0" aria-hidden>

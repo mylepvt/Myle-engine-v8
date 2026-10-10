@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import first_name, person_name
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
@@ -34,7 +35,7 @@ STATUS_ORDER = {"not_started": 0, "idle": 1, "working": 2, "done": 3}
 
 
 def _first(user: User) -> str:
-    return (user.name or user.username or user.fbo_id or "Teammate").split(" ")[0]
+    return first_name(user.name or user.username or user.fbo_id, "Teammate")
 
 
 def member_status(*, calls_today: int, target: int, last_work_at: datetime | None, now: datetime) -> str:
@@ -152,7 +153,7 @@ async def build_control_room(
         members.append(
             {
                 "user_id": u.id,
-                "name": u.name or u.username or u.fbo_id,
+                "name": person_name(u.name or u.username or u.fbo_id),
                 "role": u.role,
                 "status": status,
                 "calls_today": calls,

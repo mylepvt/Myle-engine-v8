@@ -47,7 +47,7 @@ function markSeen(date: string) {
 
 /** Tonight's jackpot wheel: before 9 PM it shows who is in (slice = tickets); once the
  * server has drawn, it spins and lands on the winner the server picked. */
-export function JackpotWheel({ myTickets }: { myTickets: number }) {
+export function JackpotWheel({ myTickets, bare = false }: { myTickets: number; bare?: boolean }) {
   const { data } = useJackpotWheelQuery()
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
@@ -139,11 +139,13 @@ export function JackpotWheel({ myTickets }: { myTickets: number }) {
   const showResult = drawn && (revealed || (!spinning && seenDraw(data.draw_date)))
 
   return (
-    <div className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-3">
-      <p className="text-center text-ds-caption font-semibold text-foreground">
-        {drawn ? "Tonight's draw" : "Tonight's wheel"} · {data.entries.length} in ·{' '}
-        {rupees(data.pot_rupees)}
-      </p>
+    <div className={cn(!bare && 'rounded-xl border border-warning/30 bg-warning/5 px-3 py-3')}>
+      {bare ? null : (
+        <p className="text-center text-ds-caption font-semibold text-foreground">
+          {drawn ? "Tonight's draw" : "Tonight's wheel"} · {data.entries.length} in ·{' '}
+          {rupees(data.pot_rupees)}
+        </p>
+      )}
       <div className="relative mx-auto mt-2" style={{ width: SIZE, height: SIZE + 10 }}>
         {/* Pointer */}
         <div
@@ -227,7 +229,7 @@ export function JackpotWheel({ myTickets }: { myTickets: number }) {
         ) : null
       ) : (
         <p className="mt-1 text-center text-ds-caption text-muted-foreground">
-          Spins at 9 PM · bigger slice = more tickets
+          {bare ? `${data.entries.length} in tonight's draw · ` : ''}Spins at 9 PM · bigger slice = more tickets
           {chance ? (
             <>
               {' '}

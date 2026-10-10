@@ -147,7 +147,7 @@ const TILES: { key: keyof TeamReportsLiveSummary; label: string; color: string }
     label: 'FLP invoice approved (day)',
     color: 'text-teal-400',
   },
-  { key: 'day1_total', label: 'In Day 1', color: 'text-sky-400' },
+  { key: 'day1_total', label: 'In Day 1', color: 'text-primary' },
   { key: 'day2_total', label: 'In Day 2', color: 'text-violet-400' },
   { key: 'converted_total', label: 'Converted', color: 'text-muted-foreground' },
 ]

@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
+from app.core.person_name import person_name
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.call_event import CallEvent
 from app.models.daily_member_stat import DailyMemberStat
@@ -43,9 +44,9 @@ def _require_admin(user: AuthUser) -> None:
 
 def _leader_display_name(user: User) -> str:
     if user.name and user.name.strip():
-        return user.name.strip()
+        return person_name(user.name)
     if user.username and user.username.strip():
-        return user.username.strip()
+        return person_name(user.username)
     return user.fbo_id
 
 

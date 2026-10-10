@@ -372,7 +372,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
                   <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
                 ) : null}
                 {showReassignedBadge ? (
-                  <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-ds-caption font-semibold text-orange-500">{reassignedCount}</span>
+                  <span className="rounded bg-warning/20 px-1.5 py-0.5 text-ds-caption font-semibold text-warning-ink">{reassignedCount}</span>
                 ) : null}
               </button>
             )

@@ -12,6 +12,7 @@ import {
   type ActionQueueItem,
 } from '@/hooks/use-action-queue'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 const ACTION_META: Record<ActionKey, { label: string; Icon: typeof MessageCircle }> = {
   alert_leader: { label: 'WhatsApp Leader', Icon: MessageCircle },
@@ -29,7 +30,7 @@ const TYPE_LABEL: Record<ActionQueueItem['item_type'], string> = {
 function severityClasses(severity: number): string {
   if (severity >= 70) return 'bg-destructive/15 text-destructive-ink'
   if (severity >= 50) return 'bg-warning/15 text-warning-ink'
-  return 'bg-sky-500/15 text-sky-600'
+  return 'bg-primary/15 text-primary'
 }
 
 function QueueRow({ item }: { item: ActionQueueItem }) {
@@ -139,7 +140,7 @@ export function ActionQueuePanel({ className, admin }: { className?: string; adm
         <CardContent className="py-8 text-center">
           <CheckCircle2 className="mx-auto size-8 text-success-ink" />
           <p className="mt-2 text-sm font-semibold text-foreground">Action queue clear</p>
-          <p className="mt-1 text-xs text-muted-foreground">No zombie leads, missed missions, or stuck verifications right now.</p>
+          <InlineEmpty>No zombie leads, missed missions, or stuck verifications right now.</InlineEmpty>
         </CardContent>
       </Card>
     )

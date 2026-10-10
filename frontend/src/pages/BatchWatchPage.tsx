@@ -171,7 +171,7 @@ export function BatchWatchPage() {
     <div className="relative min-h-screen overflow-x-hidden bg-room-base text-white">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-8rem] top-[-10rem] h-[24rem] w-[24rem] rounded-full bg-cyan-400/18 blur-3xl" />
-        <div className="absolute right-[-10rem] top-[4rem] h-[28rem] w-[28rem] rounded-full bg-blue-500/16 blur-3xl" />
+        <div className="absolute right-[-10rem] top-[4rem] h-[28rem] w-[28rem] rounded-full bg-primary/16 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_35%),linear-gradient(180deg,rgba(8,15,30,0.72),rgba(3,6,13,0.96))]" />
       </div>
 
@@ -183,7 +183,7 @@ export function BatchWatchPage() {
             <Skeleton className="h-10 w-full rounded-2xl bg-white/10" />
           </div>
         ) : error ? (
-          <div className="mx-auto max-w-xl rounded-2xl border border-red-400/20 bg-red-500/[0.08] px-6 py-8 text-center">
+          <div className="mx-auto max-w-xl rounded-2xl border border-destructive/20 bg-destructive/[0.08] px-6 py-8 text-center">
             <p className="text-base font-semibold text-white">This batch room could not be opened.</p>
             <p className="mt-2 text-sm text-white/70">{error}</p>
           </div>
@@ -219,13 +219,13 @@ export function BatchWatchPage() {
                 seekPrevention
               />
             ) : (
-              <div className={`rounded-2xl border px-5 py-6 text-left transition-colors ${startingSoon ? 'border-emerald-400/30 bg-emerald-400/[0.07]' : 'border-amber-300/20 bg-amber-400/[0.08]'}`}>
+              <div className={`rounded-2xl border px-5 py-6 text-left transition-colors ${startingSoon ? 'border-success/30 bg-success/[0.07]' : 'border-warning/20 bg-warning/[0.08]'}`}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className={`text-sm font-semibold uppercase tracking-[0.24em] ${startingSoon ? 'text-emerald-300/80' : 'text-amber-200/80'}`}>
+                  <p className={`text-sm font-semibold uppercase tracking-[0.24em] ${startingSoon ? 'text-success-ink' : 'text-warning-ink'}`}>
                     {startingSoon ? 'Starting soon' : 'Scheduled access'}
                   </p>
                   {countdownLabel && (
-                    <p className={`font-mono text-3xl font-bold tabular-nums ${startingSoon ? 'text-emerald-300' : 'text-white'}`}>
+                    <p className={`font-mono text-3xl font-bold tabular-nums ${startingSoon ? 'text-success-ink' : 'text-white'}`}>
                       {countdownLabel}
                     </p>
                   )}
@@ -239,7 +239,7 @@ export function BatchWatchPage() {
                     : (data.gate_message ?? 'Please open this room only at your scheduled batch time.')}
                 </p>
                 {!startingSoon && (
-                  <p className="mt-3 text-sm text-amber-100">
+                  <p className="mt-3 text-sm text-warning-ink">
                     Opens at {formatGateTime(data.opens_at)}
                   </p>
                 )}
@@ -262,9 +262,9 @@ export function BatchWatchPage() {
             ) : null}
 
             {completionError ? (
-              <p className="text-sm text-red-300">{completionError}</p>
+              <p className="text-sm text-destructive-ink">{completionError}</p>
             ) : watchComplete ? (
-              <div className="flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-3 text-sm text-emerald-100">
+              <div className="flex items-start gap-3 rounded-2xl border border-success/20 bg-success/[0.08] px-4 py-3 text-sm text-success-ink">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
                 {/* emoji-ok: the prospect literally replies with this emoji */}
                 <p>{greetingCopy?.completionMessage ?? 'Batch watched. Reply ✅ to your coach to confirm.'}</p>

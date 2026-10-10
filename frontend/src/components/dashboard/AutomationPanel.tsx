@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAutomationRules, useAutomationLogs, useEvaluateAutomation, useToggleAutomationRule } from '@/hooks/use-automation-query'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 const TRIGGER_LABELS: Record<string, string> = {
   missed_missions: 'Missed Missions',
@@ -142,7 +143,7 @@ export function AutomationPanel({ className }: { className?: string }) {
           ) : (logs.data ?? []).length === 0 ? (
             <div className="py-6 text-center">
               <AlertTriangle className="mx-auto size-6 text-muted-foreground" />
-              <p className="mt-1 text-xs text-muted-foreground">No actions triggered yet. Run rules to see results.</p>
+              <InlineEmpty>No actions triggered yet. Run rules to see results.</InlineEmpty>
             </div>
           ) : (
             <div className="space-y-1.5">

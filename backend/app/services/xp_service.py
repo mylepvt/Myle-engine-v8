@@ -21,6 +21,7 @@ from typing import Optional
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import person_name
 from app.models.lead import Lead
 from app.models.user import User
 from app.models.xp_event import XpEvent
@@ -535,7 +536,7 @@ async def get_process_leaderboard(
         result.append({
             "rank": rank,
             "user_id": u.id,
-            "name": u.name or u.username or u.fbo_id,
+            "name": person_name(u.name or u.username or u.fbo_id),
             "fbo_id": u.fbo_id,
             "level": _calculate_level(u.xp_total or 0),
             "level_label": _calculate_level(u.xp_total or 0).title(),
@@ -590,7 +591,7 @@ async def get_assignable_members(session: AsyncSession, days: int = 7) -> list[d
         level = _calculate_level(u.xp_total or 0)
         result.append({
             "user_id": u.id,
-            "name": u.name or u.username or u.fbo_id,
+            "name": person_name(u.name or u.username or u.fbo_id),
             "fbo_id": u.fbo_id,
             "role": u.role,
             "level": level,
@@ -620,7 +621,7 @@ async def get_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
         result.append({
             "rank": rank,
             "user_id": u.id,
-            "name": u.name or u.username or u.fbo_id,
+            "name": person_name(u.name or u.username or u.fbo_id),
             "fbo_id": u.fbo_id,
             "level": _calculate_level(u.xp_total or 0),
             "level_label": _calculate_level(u.xp_total or 0).title(),

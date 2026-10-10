@@ -11,6 +11,7 @@ import {
 } from '@/hooks/use-wallet-recharge-query'
 import { playAppSound } from '@/lib/app-sounds'
 import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = {
   title: string
@@ -229,7 +230,7 @@ export function WalletRechargePage({ title }: Props) {
         ) : null}
 
         {requestsQuery.data && requestsQuery.data.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No recharge requests yet.</p>
+          <InlineEmpty>No recharge requests yet.</InlineEmpty>
         ) : null}
 
         {requestsQuery.data && requestsQuery.data.items.length > 0 ? (

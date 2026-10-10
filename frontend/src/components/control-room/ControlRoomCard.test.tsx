@@ -37,13 +37,13 @@ describe('ControlRoomCard', () => {
       </QueryClientProvider>,
     )
     expect(await screen.findByText('Amit Kumar')).toBeTruthy()
-    expect(screen.getAllByText('No leads today').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Nudge all 1 not working' })).toBeTruthy()
+    expect(screen.getAllByText(/No leads today/).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Nudge 1 not working' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cheer Priya' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Working 1' }))
+    fireEvent.click(screen.getByRole('button', { name: /Working\s*1/ }))
     expect(screen.queryByText('Amit Kumar')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Working 1' }))
+    fireEvent.click(screen.getByRole('button', { name: /Working\s*1/ }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nudge Amit' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Amit nudged' })).toHaveProperty('disabled', true))

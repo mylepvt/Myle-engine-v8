@@ -33,6 +33,7 @@ vi.mock('@/components/community/CommunityLiveCard', () => ({
 vi.mock('@/components/contacts/Day2ContactsCard', () => ({
   Day2ContactsCard: () => <div data-testid="day2-contacts" />,
 }))
+vi.mock('@/components/rewards/JackpotCard', () => ({ JackpotCard: () => null }))
 vi.mock('@/components/rewards/AdminRewardsCard', () => ({ AdminRewardsCard: () => <div data-testid="admin-rewards" /> }))
 vi.mock('@/components/dashboard/overview/AppSetupCard', () => ({ AppSetupCard: () => <div data-testid="app-setup" /> }))
 vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))
@@ -515,9 +516,10 @@ describe('AdminCommandCenter', () => {
     // Default landing is the simple Overview: who is working today.
     expect(screen.getByTestId('control-room')).toBeInTheDocument()
     expect(screen.getByTestId('app-setup')).toBeInTheDocument()
-    // Live card + Day 2 contacts sit on the first (Overview) screen
+    // Live card sits on Overview; Day 2 contacts + the rewards audit moved to the Tools tab.
     expect(screen.getByTestId('community-live')).toBeInTheDocument()
-    expect(screen.getByTestId('day2-contacts')).toBeInTheDocument()
+    expect(screen.queryByTestId('day2-contacts')).toBeNull()
+    expect(screen.queryByTestId('admin-rewards')).toBeNull()
     // Views are selected via a single Apple-style dropdown switcher; Overview is current.
     const switcher = screen.getByRole('button', { name: /Overview/ })
     expect(switcher).toHaveAttribute('aria-haspopup', 'menu')
@@ -525,5 +527,9 @@ describe('AdminCommandCenter', () => {
     expect(screen.getByRole('menuitem', { name: /War Room/ })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Leads/ })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /System/ })).toBeInTheDocument()
+    // Tools holds Day 2 contacts and the rewards audit.
+    fireEvent.click(screen.getByRole('menuitem', { name: /Tools/ }))
+    expect(screen.getByTestId('day2-contacts')).toBeInTheDocument()
+    expect(screen.getByTestId('admin-rewards')).toBeInTheDocument()
   })
 })

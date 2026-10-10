@@ -36,6 +36,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import first_name, person_name
 from app.core.time_ist import IST
 from app.models.activity_log import ActivityLog
 from app.models.app_setting import AppSetting
@@ -723,14 +724,13 @@ async def pipeline_meter(session: AsyncSession, user_id: int, now: datetime) -> 
 def _name(user: User | None) -> str:
     if user is None:
         return "—"
-    raw = (user.name or user.username or user.fbo_id or "Member").strip()
-    return raw.split(" ")[0] or "Member"
+    return first_name(user.name or user.username or user.fbo_id, "Member")
 
 
 def _name_from_entry(entry) -> str:
     if entry is None:
         return "—"
-    return (entry.display_name or "Leader").split(" ")[0] or "Leader"
+    return first_name(entry.display_name, "Leader")
 
 
 async def last_draw(session: AsyncSession) -> dict | None:
@@ -831,7 +831,7 @@ async def admin_points(session: AsyncSession, days: int = 7, now: datetime | Non
         {
             "id": pt.id,
             "user_id": u.id,
-            "user_name": (u.name or u.username or u.fbo_id or "").strip(),
+            "user_name": person_name(u.name or u.username or u.fbo_id),
             "lead_id": pt.lead_id,
             "lead_name": lead_name,
             "step": base_step(pt.step),
@@ -862,7 +862,7 @@ async def admin_draws(session: AsyncSession, limit: int = 30) -> list[dict]:
             "date": d.draw_date.isoformat(),
             "pot_rupees": d.pot_cents // 100,
             "winner_user_id": d.winner_user_id,
-            "winner_name": (winners[d.winner_user_id].name or "").strip() if d.winner_user_id in winners else None,
+            "winner_name": person_name(winners[d.winner_user_id].name) if d.winner_user_id in winners else None,
             "players": d.players,
             "tickets_total": d.tickets_total,
         }

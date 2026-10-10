@@ -32,10 +32,10 @@ const statusPill =
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-warning'
-  if (status === 'lost' || status === 'inactive') return 'bg-gray-500'
-  if (status === 'new_lead' || status === 'new') return 'bg-sky-400'
+  if (status === 'lost' || status === 'inactive') return 'bg-muted'
+  if (status === 'new_lead' || status === 'new') return 'bg-primary'
   if (['day1', 'day2'].includes(status)) return 'bg-success'
-  return 'bg-orange-400'
+  return 'bg-warning'
 }
 
 function normalizeCallStatus(raw: string | null | undefined): CallStatusApi {
@@ -169,7 +169,7 @@ export function CtcsLeadCard({
             </p>
           ) : null}
           {lead.is_reassigned ? (
-            <span className="mt-1 inline-flex items-center gap-1 rounded bg-orange-500/15 px-1.5 py-0.5 text-ds-micro font-semibold uppercase tracking-wide text-orange-500">
+            <span className="mt-1 inline-flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-ds-micro font-semibold uppercase tracking-wide text-warning-ink">
               <UserRoundCog className="size-3" aria-hidden />
               Reassigned
             </span>

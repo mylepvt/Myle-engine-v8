@@ -1617,11 +1617,19 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
         <div className="space-y-3">
           {/* Day 3 summary chips */}
           <div className="flex flex-wrap gap-2">
-            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-success/15 text-success-ink border-success/25'],
-              ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-warning/15 text-warning-ink border-warning/25'],
-              ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'],
-            ].map(([label, count, cls]) =>
-              <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
+            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-success'],
+              ['In progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-warning'],
+              ['Not started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted-foreground'],
+            ].map(([label, count, dot]) => (
+              <span
+                key={label as string}
+                className="flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-ds-caption font-medium text-muted-foreground"
+              >
+                <span className={cn('size-1.5 rounded-full', dot as string)} aria-hidden />
+                {label}
+                <span className="tabular-nums text-foreground">{count}</span>
+              </span>
+            ))}
           </div>
           <Grid
             leads={day2}
@@ -1715,26 +1723,19 @@ export function WorkboardPage({ title }: Props) {
   return (
     <div className="space-y-4 pb-20 md:pb-10">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <button type="button" onClick={goBack} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
-          <h1 className="text-ds-h2">{title}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {surfaceRole === 'admin'
-              ? 'Organization pipeline — Day 2 onwards.'
-              : 'Day 2 onwards execution pipeline.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="space-y-1">
+        <button type="button" onClick={goBack} className="text-ds-caption text-muted-foreground hover:text-foreground">← Back</button>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-ds-h1">{title}</h1>
           <Button type="button" size="sm" asChild>
-            <Link to="/dashboard/work/leads">Add Lead</Link>
+            <Link to="/dashboard/work/leads">Add lead</Link>
           </Button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="surface-elevated px-3 py-2">
-        <div className="relative max-w-sm">
+      <div>
+        <div className="relative w-full sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden/>
           <input value={qInput} onChange={(e) => setQInput(e.target.value)}
             placeholder="Search by name or phone…"

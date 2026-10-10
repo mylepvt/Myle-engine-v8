@@ -4,7 +4,7 @@ import { useXpLeaderboardQuery, LEVEL_COLORS } from '@/hooks/use-xp-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const RANK_COLORS = ['text-warning-ink', 'text-slate-400', 'text-warning-ink/80']
+const RANK_COLORS = ['text-warning-ink', 'text-muted-foreground', 'text-warning-ink/80']
 
 export function XpLeaderboard() {
   const { data, isPending, isError } = useXpLeaderboardQuery()

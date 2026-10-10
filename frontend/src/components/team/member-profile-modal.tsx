@@ -27,6 +27,7 @@ import {
   formatMemberDate,
   formatMemberTimestamp,
 } from '@/components/team/member-utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 export function MemberProfileModal({
   member,
@@ -417,7 +418,7 @@ export function MemberProfileModal({
                 ))}
               </div>
             ) : !data?.items.length ? (
-              <p className="text-ds-caption text-muted-foreground">No leads yet.</p>
+              <InlineEmpty>No leads yet.</InlineEmpty>
             ) : (
               <ul className="max-h-64 space-y-1 overflow-y-auto">
                 {data.items.map((lead) => (
@@ -452,7 +453,7 @@ export function MemberProfileModal({
                 ))}
               </div>
             ) : !invQuery.data?.items.length ? (
-              <p className="text-ds-caption text-muted-foreground">No invoices yet.</p>
+              <InlineEmpty>No invoices yet.</InlineEmpty>
             ) : (
               <ul className="max-h-48 space-y-1 overflow-y-auto text-ds-caption">
                 {invQuery.data.items.map((inv) => (

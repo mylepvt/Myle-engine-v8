@@ -21,6 +21,7 @@ import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { leadStatusSelectOptionsForLead, teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import { stageBadgeClass } from '@/lib/stage-colors'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = {
   leadId: number
@@ -51,7 +52,7 @@ function StatusBadge({ status }: { status: string }) {
 function PaymentStatusBadge({ status }: { status: string }) {
   const cls: Record<string, string> = {
     pending: 'bg-warning/10 text-warning-ink dark:bg-warning/15',
-    proof_uploaded: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-400',
+    proof_uploaded: 'bg-primary/10 text-primary',
     approved: 'bg-[hsl(142_71%_48%)]/15 text-[hsl(142_71%_48%)]',
     rejected: 'bg-destructive/15 text-destructive',
   }
@@ -544,7 +545,7 @@ export function LeadDetailPage({ leadId }: Props) {
             ) : null}
 
             {callsQuery.data && callsQuery.data.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No calls logged yet.</p>
+              <InlineEmpty>No calls logged yet.</InlineEmpty>
             ) : null}
 
             {callsQuery.data && callsQuery.data.items.length > 0 ? (

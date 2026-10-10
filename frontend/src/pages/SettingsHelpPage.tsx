@@ -4,6 +4,7 @@ import { Bell, Briefcase, ClipboardList, KeyRound, LifeBuoy, type LucideIcon, Us
 import { Skeleton } from '@/components/ui/skeleton'
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = { title: string }
 
@@ -114,7 +115,7 @@ export function SettingsHelpPage({ title }: Props) {
             ))}
           </ul>
           {data.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No help articles available.</p>
+            <InlineEmpty>No help articles available.</InlineEmpty>
           ) : null}
         </div>
       ) : null}

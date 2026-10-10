@@ -233,7 +233,7 @@ export function Day2TestPage() {
     >
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-8rem] top-[-10rem] h-[24rem] w-[24rem] rounded-full bg-cyan-400/18 blur-3xl" />
-        <div className="absolute right-[-10rem] top-[4rem] h-[28rem] w-[28rem] rounded-full bg-blue-500/16 blur-3xl" />
+        <div className="absolute right-[-10rem] top-[4rem] h-[28rem] w-[28rem] rounded-full bg-primary/16 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_35%),linear-gradient(180deg,rgba(8,15,30,0.72),rgba(3,6,13,0.96))]" />
       </div>
 
@@ -256,7 +256,7 @@ export function Day2TestPage() {
         {loading ? (
           <p className="text-center text-white/60">Loading…</p>
         ) : error && !state ? (
-          <div className="mx-auto max-w-xl rounded-4xl border border-red-400/20 bg-red-500/[0.08] px-6 py-8 text-center">
+          <div className="mx-auto max-w-xl rounded-4xl border border-destructive/20 bg-destructive/[0.08] px-6 py-8 text-center">
             <p className="text-base font-semibold text-white">This test could not be opened.</p>
             <p className="mt-2 text-sm text-white/70">{error}</p>
           </div>
@@ -295,11 +295,11 @@ export function Day2TestPage() {
                 className="mt-2 w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
               />
             </label>
-            {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+            {error ? <p className="mt-3 text-sm text-destructive-ink">{error}</p> : null}
             <Button type="submit" disabled={startBusy} className="mt-5 w-full">
               {startBusy ? 'Starting…' : 'Start test'}
             </Button>
-            <div className="mt-4 flex items-start gap-2 rounded-3xl border border-amber-300/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100">
+            <div className="mt-4 flex items-start gap-2 rounded-3xl border border-warning/20 bg-warning/[0.07] px-4 py-3 text-xs text-warning-ink">
               <ShieldCheck className="mt-0.5 size-4 shrink-0" />
               <span>
                 Tab switch, copy-paste aur back allowed nahi hai. Timer start hone ke baad test paused
@@ -348,7 +348,7 @@ export function Day2TestPage() {
                   </button>
                 ))}
               </div>
-              {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
+              {error ? <p className="mt-4 text-sm text-destructive-ink">{error}</p> : null}
               <Button
                 type="button"
                 disabled={choice === null || answerBusy}
@@ -364,7 +364,7 @@ export function Day2TestPage() {
             </div>
 
             {warning > 0 ? (
-              <div className="mt-4 flex items-center gap-2 rounded-3xl border border-red-400/20 bg-red-500/[0.08] px-4 py-3 text-sm text-red-200">
+              <div className="mt-4 flex items-center gap-2 rounded-3xl border border-destructive/20 bg-destructive/[0.08] px-4 py-3 text-sm text-destructive-ink">
                 <AlertTriangle className="size-4 shrink-0" />
                 Warning: tab-switch / app-switch {warning} baar detect hua. Yeh record ho raha hai.
               </div>
@@ -374,9 +374,9 @@ export function Day2TestPage() {
           // ── Result ─────────────────────────────────────────────────────
           <div className="mx-auto max-w-md rounded-4xl border border-white/10 bg-muted/50 p-8 text-center backdrop-blur-xl">
             {state.passed ? (
-              <CheckCircle2 className="mx-auto size-14 text-emerald-400" />
+              <CheckCircle2 className="mx-auto size-14 text-success-ink" />
             ) : (
-              <XCircle className="mx-auto size-14 text-red-400" />
+              <XCircle className="mx-auto size-14 text-destructive-ink" />
             )}
             <h1 className="mt-4 text-2xl font-semibold">
               {state.passed ? 'Congratulations! You passed' : 'You did not pass this time'}
@@ -395,7 +395,7 @@ export function Day2TestPage() {
                 href={apiUrl(`/api/test/d2/${token}/certificate`)}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-3xl border border-emerald-400/40 bg-emerald-400/15 px-4 py-3 text-sm font-bold text-emerald-200 transition hover:bg-emerald-400/25"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-3xl border border-success/40 bg-success/15 px-4 py-3 text-sm font-bold text-success-ink transition hover:bg-success/25"
               >
                 <ShieldCheck className="size-4" />
                 Download certificate

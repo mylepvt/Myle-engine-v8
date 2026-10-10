@@ -55,7 +55,7 @@ export function LeaderReassignSheet({
             className={cn(
               'flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition active:scale-[0.98] disabled:opacity-50',
               isReassigned
-                ? 'border-orange-500/40 bg-orange-500/[0.08] text-orange-600 hover:bg-orange-500/15 dark:text-orange-300'
+                ? 'border-warning/40 bg-warning/[0.08] text-warning-ink hover:bg-warning/15'
                 : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/60',
             )}
           >
@@ -64,7 +64,7 @@ export function LeaderReassignSheet({
           <p
             className={cn(
               'mt-2 text-ds-caption',
-              revertNotice ? 'text-orange-600 dark:text-orange-300' : 'text-muted-foreground',
+              revertNotice ? 'text-warning-ink' : 'text-muted-foreground',
             )}
           >
             {revertNotice ?? 'Undoes the last reassignment and restores the previous assignee. Stage stays the same.'}
