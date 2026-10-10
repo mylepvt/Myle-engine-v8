@@ -515,6 +515,7 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
     power = await power_hour_config(session)
 
     awarded = revoked = 0
+    gained: dict[int, int] = defaultdict(int)
     for lead in leads:
         have = existing.get(lead.id, {})
         owner = users.get(owner_of.get(lead.id))
@@ -563,8 +564,100 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
                 continue
             have[step] = point
             awarded += 1
+            gained[owner.id] += pts
     await session.commit()
-    return {"awarded": awarded, "revoked": revoked}
+    level_ups = await _record_level_ups(session, gained)
+    return {"awarded": awarded, "revoked": revoked, "level_ups": level_ups}
+
+
+async def _record_level_ups(session: AsyncSession, gained: dict[int, int]) -> list[tuple[int, str]]:
+    """(user_id, new level label) for members whose new points just crossed a level. Commits."""
+    if not gained:
+        return []
+    from app.services.wins import record_win
+
+    totals = await lifetime_points(session, list(gained))
+    ups: list[tuple[int, str]] = []
+    for uid, pts in gained.items():
+        after = level_for(totals.get(uid, 0))
+        if after["key"] != level_for(max(0, totals.get(uid, 0) - pts))["key"]:
+            record_win(session, user_id=uid, kind="level_up", detail=after["key"])
+            ups.append((uid, after["label"]))
+    if ups:
+        await session.commit()
+    return ups
+
+
+# ── Levels (lifetime MP) ────────────────────────────────────────────────────────
+
+# (key, label, MP needed). The member's level comes from all the MP they ever earned.
+LEVELS: tuple[tuple[str, str, int], ...] = (
+    ("rookie", "Rookie", 0),
+    ("agent", "Agent", 250),
+    ("pro", "Pro", 750),
+    ("elite", "Elite", 1500),
+    ("legend", "Legend", 3000),
+)
+
+
+def level_for(mp: int) -> dict:
+    """Level for a lifetime MP total, plus how far to the next one."""
+    idx = max(i for i, (_, _, at) in enumerate(LEVELS) if mp >= at)
+    key, label, at = LEVELS[idx]
+    nxt = LEVELS[idx + 1] if idx + 1 < len(LEVELS) else None
+    return {
+        "key": key,
+        "label": label,
+        "mp": mp,
+        "next_label": nxt[1] if nxt else None,
+        "next_at": nxt[2] if nxt else None,
+        "progress_pct": 100 if nxt is None else int((mp - at) * 100 / (nxt[2] - at)),
+    }
+
+
+async def lifetime_points(session: AsyncSession, user_ids: list[int]) -> dict[int, int]:
+    rows = (
+        await session.execute(
+            select(ProcessPoint.user_id, func.sum(ProcessPoint.points))
+            .where(ProcessPoint.user_id.in_(user_ids or [-1]), ProcessPoint.revoked_at.is_(None))
+            .group_by(ProcessPoint.user_id)
+        )
+    ).all()
+    return {int(uid): int(total or 0) for uid, total in rows}
+
+
+async def period_leaderboard(
+    session: AsyncSession, *, period: str, viewer_user_id: int, now: datetime | None = None, limit: int = 10
+) -> dict:
+    """MP earned today / this week / this month (IST) — top ``limit`` plus the viewer's own rank."""
+    now = _aware(now or datetime.now(timezone.utc))
+    today = _ist_date(now)
+    start_day = {
+        "today": today,
+        "week": today - timedelta(days=today.weekday()),
+        "month": today.replace(day=1),
+    }[period]
+    start = datetime.combine(start_day, time.min, tzinfo=IST)
+    points = await points_in_window(session, start, now + timedelta(seconds=1))
+    users = {
+        u.id: u
+        for u in (
+            await session.execute(
+                select(User).where(
+                    User.id.in_([uid for uid, p in points.items() if p > 0] or [-1]),
+                    User.role.in_(EARNING_ROLES),
+                    User.removed_at.is_(None),
+                )
+            )
+        ).scalars().all()
+    }
+    ordered = sorted(((uid, p) for uid, p in points.items() if uid in users), key=lambda kv: (-kv[1], kv[0]))
+    ranked = [
+        {"rank": i + 1, "user_id": uid, "name": _name(users[uid]), "role": users[uid].role, "mp": p}
+        for i, (uid, p) in enumerate(ordered)
+    ]
+    me = next((r for r in ranked if r["user_id"] == viewer_user_id), None)
+    return {"period": period, "items": ranked[:limit], "me": me, "total": len(ranked)}
 
 
 # ── Tickets + jackpot ───────────────────────────────────────────────────────────
@@ -835,6 +928,7 @@ async def my_rewards(session: AsyncSession, user: User, now: datetime | None = N
         "eligible": eligible,
         "points_today": my_points,
         "points_total": int(total or 0),
+        "level": level_for(int(total or 0)),
         "tickets": tickets_for(my_points) * mult if eligible else 0,
         "max_tickets": MAX_TICKETS_PER_DAY * mult,
         "mp_per_ticket": MP_PER_TICKET,

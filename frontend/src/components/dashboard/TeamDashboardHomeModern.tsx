@@ -4,11 +4,11 @@ import { ArrowRight, Clock3 } from 'lucide-react'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSection'
-import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
+import { PointsLeaderboardCard } from '@/components/rewards/PointsLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
 import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { RewardsCard } from '@/components/rewards/RewardsCard'
-import { XpBadge } from '@/components/xp/XpBadge'
+import { LevelCard } from '@/components/rewards/LevelCard'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
 import type { LeadPublic } from '@/hooks/use-leads-query'
@@ -173,12 +173,12 @@ export function TeamDashboardHomeModern({
         </div>
       </section>
 
-      <XpBadge />
+      <LevelCard />
 
       <RewardsCard />
       <CommunityLiveCard />
       <WinsFeedCard />
-      <TodayLeaderboardCard />
+      <PointsLeaderboardCard />
 
       <GateAssistantCard sessionReady={sessionReady} />
 

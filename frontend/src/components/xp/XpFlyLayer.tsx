@@ -91,7 +91,7 @@ export function XpFlyLayer() {
             }
             style={{ left: b.x, top: b.y - 32 }}
           >
-            {b.streak ? `${b.streak}-day streak!` : `+${b.amount} XP`}
+            {b.streak ? `${b.streak}-day streak!` : `+${b.amount} MP`}
           </span>
         </div>
       ))}

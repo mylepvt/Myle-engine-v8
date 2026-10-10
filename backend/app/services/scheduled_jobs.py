@@ -355,6 +355,15 @@ async def job_process_rewards_scan() -> None:
         async with AsyncSessionLocal() as session:
             result = await scan(session)
             result["scratch_cards"] = await grant_scratch_cards(session, datetime.now(timezone.utc))
+            for uid, label in result.get("level_ups", []):
+                try:
+                    await send_push_to_user(
+                        session, uid, title="Level up! 🎉",
+                        body=f"You reached {label} level with your MYLE Points. Keep going!",
+                        url="/dashboard",
+                    )
+                except Exception as exc:
+                    logger.warning("level-up push failed user_id=%s: %s", uid, exc)
         if any(result.values()):
             logger.info("process_rewards_scan: %s", result)
     except Exception as exc:

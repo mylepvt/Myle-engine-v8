@@ -2,7 +2,7 @@ import { type ReactNode, useEffect } from 'react'
 
 import { playAppSound, primeAppSounds } from '@/lib/app-sounds'
 import { XpFlyLayer } from '@/components/xp/XpFlyLayer'
-import { useXpRewardSound } from '@/hooks/use-xp-reward-sound'
+import { useRewardSound } from '@/hooks/use-reward-sound'
 
 // Elements matching these selectors get the tap sound on pointerdown.
 const TAP_SELECTOR =
@@ -24,7 +24,7 @@ function isInteractive(target: EventTarget | null): boolean {
 }
 
 export function AppSoundProvider({ children }: { children: ReactNode }) {
-  useXpRewardSound()
+  useRewardSound()
 
   useEffect(() => {
     let primed = false

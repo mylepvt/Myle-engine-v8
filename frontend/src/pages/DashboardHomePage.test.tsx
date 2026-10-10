@@ -14,8 +14,6 @@ const mockUseLeadPoolQuery = vi.fn()
 const mockUseTeamReportsQuery = vi.fn()
 const mockUsePingLoginMutation = vi.fn()
 const mockUseXpMeQuery = vi.fn()
-const mockUseXpHistoryQuery = vi.fn()
-const mockUseXpLeaderboardQuery = vi.fn()
 const mockUsePatchLeadMutation = vi.fn()
 const mockAdminCommandCenter = vi.fn()
 
@@ -30,6 +28,8 @@ vi.mock('@/components/community/CommunityLiveCard', () => ({
   CommunityLiveCard: () => <div data-testid="community-live" />,
 }))
 vi.mock('@/components/rewards/RewardsCard', () => ({ RewardsCard: () => <div data-testid="rewards" /> }))
+vi.mock('@/components/rewards/LevelCard', () => ({ LevelCard: () => <div data-testid="level" /> }))
+vi.mock('@/components/rewards/PointsLeaderboardCard', () => ({ PointsLeaderboardCard: () => <div data-testid="points-board" /> }))
 vi.mock('@/components/dashboard/GateAssistantCard', () => ({
   GateAssistantCard: () => <div data-testid="gate-assistant">Gate Assistant</div>,
 }))
@@ -88,9 +88,6 @@ vi.mock('@/hooks/use-team-reports-query', () => ({
 vi.mock('@/hooks/use-xp-query', () => ({
   usePingLoginMutation: () => mockUsePingLoginMutation(),
   useXpMeQuery: () => mockUseXpMeQuery(),
-  useXpHistoryQuery: () => mockUseXpHistoryQuery(),
-  useXpLeaderboardQuery: () => mockUseXpLeaderboardQuery(),
-  useXpPeriodLeaderboardQuery: () => ({ data: { period: 'today', items: [], me: null, total: 0 }, isPending: false, isError: false }),
   LEVEL_COLORS: {
     rookie: { bg: 'bg-zinc-500/20', text: 'text-zinc-400', border: 'border-zinc-500/30' },
   },
@@ -172,16 +169,6 @@ function seedBaseMocks(role: 'team' | 'leader' | 'admin') {
       season_year: 2026,
       season_month: 4,
     },
-    isPending: false,
-    isError: false,
-  })
-  mockUseXpHistoryQuery.mockReturnValue({
-    data: [],
-    isPending: false,
-    isError: false,
-  })
-  mockUseXpLeaderboardQuery.mockReturnValue({
-    data: [],
     isPending: false,
     isError: false,
   })

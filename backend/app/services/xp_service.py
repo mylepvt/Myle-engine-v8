@@ -26,7 +26,6 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.models.xp_event import XpEvent
 from app.models.xp_monthly_archive import XpMonthlyArchive
-from app.services.push_service import send_push_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -263,24 +262,10 @@ async def grant_xp(
     event = XpEvent(user_id=user_id, action=action, xp=actual_xp, lead_id=lead_id)
     session.add(event)
 
-    prev_level = user.xp_level or "rookie"
     user.xp_total = (user.xp_total or 0) + actual_xp
+    # XP is internal now (activity signal only) — levels, level-up wins and pushes come
+    # from MYLE Points (process_rewards.level_for).
     user.xp_level = _calculate_level(user.xp_total)
-
-    if user.xp_level != prev_level:
-        from app.services.wins import record_win
-
-        record_win(session, user_id=user.id, kind="level_up", detail=user.xp_level)
-        try:
-            await send_push_to_user(
-                session,
-                user.id,
-                title="Level Up! 🎉",
-                body=f"You reached {user.xp_level.title()} level. Keep it up!",
-                url="/dashboard",
-            )
-        except Exception as exc:
-            logger.warning("Level-up push failed user_id=%s: %s", user.id, exc)
 
     await session.flush()
     return actual_xp

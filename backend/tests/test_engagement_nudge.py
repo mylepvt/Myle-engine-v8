@@ -12,6 +12,7 @@ from app.db.base import Base
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.lead import Lead
+from app.models.process_reward import ProcessPoint
 from app.models.user import User
 from app.models.user_presence_session import UserPresenceSession
 from app.models.xp_event import XpEvent
@@ -39,14 +40,14 @@ def test_window():
 
 
 def test_priority_and_copy():
-    assert pick_nudge(ctx(rival_name="Priya", rival_gap_xp=10, streak=6), NOON) == (
+    assert pick_nudge(ctx(rival_name="Priya", rival_gap_mp=10, streak=6), NOON) == (
         "overtaken",
         "You just got passed",
-        "Priya just passed you on today's leaderboard. 2 calls puts you back ahead.",
+        "Priya just passed you on today's MYLE Points board. 11 MP puts you back ahead.",
     )
     assert pick_nudge(ctx(streak=6), NOON)[0] == "streak"
-    assert pick_nudge(ctx(next_level="pro", xp_to_next_level=12), NOON)[2] == (
-        "You're 12 XP away from Pro level. A few calls gets you there."
+    assert pick_nudge(ctx(next_level="pro", mp_to_next_level=12), NOON)[2] == (
+        "You're 12 MP away from Pro level. Move one prospect forward to get there."
     )
     assert pick_nudge(ctx(), NOON)[:2] == ("leads", "3 new leads waiting")
 
@@ -91,7 +92,7 @@ async def test_context_from_data(Session):
     now = datetime.now(timezone.utc)
     async with Session() as s:
         s.add_all([
-            User(id=1, fbo_id="f1", email="a@t", role="team", name="Asha Rao", xp_total=90,
+            User(id=1, fbo_id="f1", email="a@t", role="team", name="Asha Rao", xp_total=900,
                  work_streak=5, work_streak_date=now.astimezone(IST).date()),
             User(id=2, fbo_id="f2", email="b@t", role="team", name="Bina Shah"),
         ])
@@ -101,6 +102,19 @@ async def test_context_from_data(Session):
         s.add_all([
             XpEvent(user_id=1, action="login_daily", xp=5, created_at=now),  # opening app ≠ work
             XpEvent(user_id=2, action="call_logged", xp=24, created_at=now),
+            ProcessPoint(user_id=1, lead_id=1, step="enrolled", points=50, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="mindset_complete", points=20, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="d1_morning", points=10, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="d1_afternoon", points=10, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="d1_evening", points=10, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="video_watched", points=25, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="day2_test_passed", points=30, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="day3_interview", points=25, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="day3_2cc", points=25, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=1, lead_id=1, step="day3_blueprint", points=25, created_at=now - timedelta(days=3)),
+            ProcessPoint(user_id=2, lead_id=1, step="fast_first_call", points=5, created_at=now),
+            ProcessPoint(user_id=2, lead_id=1, step="d2_morning", points=10, created_at=now),
+            ProcessPoint(user_id=2, lead_id=1, step="d2_afternoon", points=10, created_at=now),
             CallEvent(lead_id=1, user_id=2, outcome="answered", called_at=now - timedelta(minutes=20)),
             ActivityLog(user_id=1, action=NUDGE_ACTION, meta={"type": "leads"}, created_at=now - timedelta(hours=4)),
             UserPresenceSession(user_id=2, session_key="b-1", status="online",
@@ -113,8 +127,8 @@ async def test_context_from_data(Session):
     asha = contexts[1]
     assert asha.last_work_at is None
     assert (asha.new_leads, asha.streak, asha.calls_today) == (1, 5, 0)
-    assert (asha.rival_name, asha.rival_gap_xp) == ("Bina", 19)
-    assert (asha.next_level, asha.xp_to_next_level) == ("agent", 10)
+    assert (asha.rival_name, asha.rival_gap_mp) == ("Bina", 25)  # today's MP, not XP
+    assert (asha.next_level, asha.mp_to_next_level) == ("agent", 20)  # 230 lifetime MP → Agent at 250
     assert [k for k, _ in asha.sent_today] == ["leads"]
     assert contexts[2].last_work_at is not None
     assert (asha.online, asha.live_online, asha.live_names) == (False, 1, ["Bina"])

@@ -10,20 +10,20 @@ describe('XpFlyLayer', () => {
     vi.useRealTimers()
   })
 
-  it('floats "+N XP" up from the last tap, then clears itself', () => {
+  it('floats "+N MP" up from the last tap, then clears itself', () => {
     vi.useFakeTimers()
     const { container } = render(<XpFlyLayer />)
     window.dispatchEvent(new MouseEvent('pointerdown', { clientX: 120, clientY: 500 }))
 
     act(() => emitXpFly({ amount: 8 }))
-    const label = screen.getByText('+8 XP')
+    const label = screen.getByText('+8 MP')
     expect(label.style.left).toBe('120px')
     expect(container.querySelectorAll('.xp-fly-icon')).toHaveLength(6)
 
     act(() => {
       vi.advanceTimersByTime(1600)
     })
-    expect(screen.queryByText('+8 XP')).toBeNull()
+    expect(screen.queryByText('+8 MP')).toBeNull()
   })
 
   it('shows a flame burst with the streak when the call target is hit', () => {
@@ -36,6 +36,6 @@ describe('XpFlyLayer', () => {
   it('ignores zero/negative amounts', () => {
     render(<XpFlyLayer />)
     act(() => emitXpFly({ amount: 0 }))
-    expect(screen.queryByText(/XP/)).toBeNull()
+    expect(screen.queryByText(/MP/)).toBeNull()
   })
 })
