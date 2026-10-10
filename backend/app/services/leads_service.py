@@ -1191,6 +1191,13 @@ class LeadsService:
             lead.next_followup_at = body.next_followup_at
         if body.call_status is not None:
             lead.call_status = body.call_status
+            # When + who wrote down a call's result (process rewards: fast first call, connected call).
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="lead.call_result",
+                lead_id=lead.id,
+                meta={"call_status": body.call_status},
+            )
         if body.whatsapp_sent is True:
             lead.whatsapp_sent_at = now
             if lead.status in {"contacted", "invited"}:
@@ -1280,6 +1287,8 @@ class LeadsService:
                         status_code=http_status.HTTP_400_BAD_REQUEST, detail="Pick a time within the next 7 days."
                     )
                 lead.slot_deadline_at = deadline
+        batch_slots = ("d1_morning", "d1_afternoon", "d1_evening", "d2_morning", "d2_afternoon", "d2_evening")
+        ticked_before = {slot: bool(getattr(lead, slot)) for slot in batch_slots}
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
         if any(x is not None for x in explicit_d1):
             if body.d1_morning is not None:
@@ -1312,6 +1321,12 @@ class LeadsService:
             lead.d2_morning = False
             lead.d2_afternoon = False
             lead.d2_evening = False
+        for slot in batch_slots:
+            if bool(getattr(lead, slot)) and not ticked_before[slot]:
+                # Who ticked a batch (process rewards: never the lead's own owner).
+                await self._repository.add_lead_activity(
+                    user_id=user.user_id, action="lead.batch_ticked", lead_id=lead.id, meta={"slot": slot}
+                )
         if body.day3_completed is True:
             lead.day3_completed_at = now
         elif body.day3_completed is False:

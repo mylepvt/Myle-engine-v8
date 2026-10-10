@@ -75,7 +75,8 @@ async def test_power_hour_steps_count_double(Session):
         await _seed(s)
         await pr.save_power_hour_config(s, True, "14:00", "16:00")  # NOW is 15:00 IST
         s.add(FlpMinBillingShareLink(token="x", lead_id=5, created_by_user_id=PRIYA,
-                                     first_viewed_at=NOW - timedelta(minutes=20), expires_at=NOW + timedelta(days=1)))
+                                     first_viewed_at=NOW - timedelta(minutes=20), last_viewed_at=NOW - timedelta(minutes=5),
+                                     status_synced=True, expires_at=NOW + timedelta(days=1)))
         await s.commit()
         await pr.scan(s, NOW)
         point = (await s.execute(select(ProcessPoint))).scalar_one()

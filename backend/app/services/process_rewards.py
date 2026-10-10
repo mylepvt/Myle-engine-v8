@@ -8,15 +8,20 @@ How it works
   No tickets → no winner, the pot rolls over to tomorrow.
 
 Cheat-proofing — a step only counts when someone other than the member proves it:
-- Enrollment (₹149–200): the payment screenshot, once the leader accepted it (worked the
-  lead's Day 1 batch, or 6h passed without a send-back). A send-back clears the proof → points revoked.
-- Video / batches / Day 2 test: the *prospect* opened their personal link (number gate)
-  or passed the locked test. Batch links can only be made by a leader/admin.
+- Enrollment (₹149–200): the payment screenshot, once the leader accepted it by ticking a
+  Day 1 batch (team members can't tick Day 1). A leader's own prospect also needs the
+  enrollment video watched to the end. A send-back clears the proof → points revoked.
+- Video: the *prospect* watched the enrollment video to the end (the page blocks
+  skipping) — opening the link is not enough.
+- Batches: the prospect stayed in the batch room ≥ BATCH_MIN_WATCH (server heartbeats)
+  AND someone other than the owner ticked that batch.
+- Day 2 test: the prospect passed the locked test.
 - Mindset: the member's own mindset-lock call (server-timed, min 5 min) on a paid prospect.
 - Day 3 ticks: must be ticked by someone else (the leader), never self.
 - Day 3 steps, stage and closing also need the prospect's passed Day 2 test.
 - Calls are self-logged, so call + video points are capped at EARLY_DAILY_CAP a day
-  and only count on the day they happen.
+  and only count on the day they happen. Fast first call needs the dial AND the call's
+  result recorded in the window; a connected call needs a "spoke to them" result.
 - No points on a lead with the member's own phone number; admins and removed
   members never earn. Proof that disappears (lead deleted, batch unticked, enrollment
   rejected …) revokes the points on the next scan. Admin can revoke any line.
@@ -72,9 +77,9 @@ POINTS: dict[str, int] = {
     "converted": 150,
 }
 LABELS: dict[str, str] = {
-    "fast_first_call": "First call within 2h of claim (booked leads: 4h)",
-    "connected_call": "Connected call",
-    "video_watched": "Prospect watched the Day 1 video",
+    "fast_first_call": "Call + result within 2h of claim (booked leads: 4h)",
+    "connected_call": "Spoke to the prospect",
+    "video_watched": "Prospect watched the whole Day 1 video",
     "enrolled": "Enrollment payment (first closing)",
     "mindset_complete": "Mindset complete",
     "d1_morning": "Day 1 morning batch",
@@ -114,6 +119,12 @@ POWER_HOUR_KEY = "rewards.power_hour"
 POWER_HOUR_DEFAULT = {"enabled": True, "start": "18:00", "end": "19:00"}
 
 CONNECTED_OUTCOMES = ("answered", "callback_requested")
+# Call results (lead.call_status) that mean the member actually spoke to the prospect.
+CONNECTED_CALL_STATUSES = frozenset(
+    {"call_received", "interested", "not_interested", "follow_up", "callback_requested"}
+)
+CALL_RESULT_ACTION = "lead.call_result"
+BATCH_TICK_ACTION = "lead.batch_ticked"
 FAST_CALL_WINDOW = timedelta(hours=2)
 # Booked leads are claimed automatically when the pool loads, often before the member is
 # at the phone — they get longer to make the first call.
@@ -139,9 +150,8 @@ PIPELINE_STATUSES = (
 )
 AT_RISK_AFTER = timedelta(hours=24)
 
-# Enrollment pays once the leader has accepted the payment screenshot: a Day 1 batch was
-# watched (leader-shared link) or ENROLL_CONFIRM_AFTER passed without a send-back.
-ENROLL_CONFIRM_AFTER = timedelta(hours=6)
+# A batch only counts when the prospect stayed in the batch room this long.
+BATCH_MIN_WATCH = timedelta(minutes=10)
 ENROLLED_STATUSES = frozenset({"day1", "mindset_lock", "day2", "day3", "converted", "training"})
 
 
@@ -260,21 +270,25 @@ async def launched_at(session: AsyncSession, now: datetime) -> datetime:
 
 @dataclass
 class _Proofs:
-    flp_views: dict[int, datetime]
-    batches: dict[int, dict[str, datetime]]
+    flp_views: dict[int, datetime]  # prospect watched the enrollment video to the end
+    batches: dict[int, dict[str, datetime]]  # lead → slot → prospect in the room ≥ BATCH_MIN_WATCH
     test_passed: dict[int, datetime]
     ticks: dict[int, list[tuple[str, int, datetime]]]  # lead → (task, actor, at)
     claims: dict[int, list[tuple[int, datetime, timedelta]]]  # lead → (claimer, at, first-call window)
     calls: dict[int, list[tuple[int, str, datetime]]]  # lead → (user, outcome, at)
+    results: dict[int, list[tuple[int, str, datetime]]]  # lead → (user, call_status, at)
+    batch_ticks: dict[int, dict[str, list[tuple[int, datetime]]]]  # lead → slot → (ticker, at)
 
 
 async def _candidate_lead_ids(session: AsyncSession, since: datetime, now: datetime) -> set[int]:
     queries = [
-        select(BatchShareLink.lead_id).where(BatchShareLink.used.is_(True), BatchShareLink.used_at >= since),
-        select(FlpMinBillingShareLink.lead_id).where(FlpMinBillingShareLink.first_viewed_at >= since),
+        select(BatchShareLink.lead_id).where(BatchShareLink.last_seen_at >= since),
+        select(FlpMinBillingShareLink.lead_id).where(FlpMinBillingShareLink.last_viewed_at >= since),
         select(Day2TestSession.lead_id).where(Day2TestSession.passed.is_(True), Day2TestSession.submitted_at >= since),
         select(ActivityLog.entity_id).where(
-            ActivityLog.action == "process.task_done", ActivityLog.entity_type == "lead", ActivityLog.created_at >= since
+            ActivityLog.action.in_(("process.task_done", CALL_RESULT_ACTION, BATCH_TICK_ACTION)),
+            ActivityLog.entity_type == "lead",
+            ActivityLog.created_at >= since,
         ),
         select(Lead.id).where(Lead.mindset_completed_at >= since),
         select(Lead.id).where(Lead.enrollment_proof_uploaded_at >= since),
@@ -295,7 +309,9 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
     for lead_id, at in (
         await session.execute(
             select(FlpMinBillingShareLink.lead_id, FlpMinBillingShareLink.first_viewed_at).where(
-                FlpMinBillingShareLink.lead_id.in_(ids), FlpMinBillingShareLink.first_viewed_at >= launch
+                FlpMinBillingShareLink.lead_id.in_(ids),
+                FlpMinBillingShareLink.first_viewed_at >= launch,
+                FlpMinBillingShareLink.status_synced.is_(True),  # watched to the end
             )
         )
     ).all():
@@ -304,14 +320,23 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
             flp[lead_id] = at
 
     batches: dict[int, dict[str, datetime]] = defaultdict(dict)
-    for lead_id, slot, at in (
+    for lead_id, slot, first_at, last_at, used_at in (
         await session.execute(
-            select(BatchShareLink.lead_id, BatchShareLink.slot, BatchShareLink.used_at).where(
-                BatchShareLink.lead_id.in_(ids), BatchShareLink.used.is_(True), BatchShareLink.used_at >= launch
-            )
+            select(
+                BatchShareLink.lead_id,
+                BatchShareLink.slot,
+                BatchShareLink.first_accessed_at,
+                BatchShareLink.last_seen_at,
+                BatchShareLink.used_at,
+            ).where(BatchShareLink.lead_id.in_(ids), BatchShareLink.first_accessed_at >= launch)
         )
     ).all():
-        batches[lead_id].setdefault(slot, _aware(at))
+        first_at = _aware(first_at)
+        last_at = max((_aware(t) for t in (last_at, used_at) if t is not None), default=first_at)
+        if last_at - first_at >= BATCH_MIN_WATCH:  # a tap on "complete" alone proves nothing
+            at = first_at + BATCH_MIN_WATCH
+            if slot not in batches[lead_id] or at < batches[lead_id][slot]:
+                batches[lead_id][slot] = at
 
     test_passed: dict[int, datetime] = {}
     for lead_id, at in (
@@ -325,6 +350,8 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
 
     ticks: dict[int, list[tuple[str, int, datetime]]] = defaultdict(list)
     claims: dict[int, list[tuple[int, datetime, timedelta]]] = defaultdict(list)
+    results: dict[int, list[tuple[int, str, datetime]]] = defaultdict(list)
+    batch_ticks: dict[int, dict[str, list[tuple[int, datetime]]]] = defaultdict(lambda: defaultdict(list))
     for lead_id, action, actor, meta, at in (
         await session.execute(
             select(
@@ -332,11 +359,16 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
             ).where(
                 ActivityLog.entity_type == "lead",
                 ActivityLog.entity_id.in_(ids),
-                ActivityLog.action.in_(("process.task_done", "lead.claimed")),
+                ActivityLog.action.in_(("process.task_done", "lead.claimed", CALL_RESULT_ACTION, BATCH_TICK_ACTION)),
             )
         )
     ).all():
-        if action == "lead.claimed":
+        if action == CALL_RESULT_ACTION:
+            if _aware(at) >= launch:
+                results[int(lead_id)].append((actor, (meta or {}).get("call_status") or "", _aware(at)))
+        elif action == BATCH_TICK_ACTION:
+            batch_ticks[int(lead_id)][(meta or {}).get("slot") or ""].append((actor, _aware(at)))
+        elif action == "lead.claimed":
             booked = (meta or {}).get("source") == "booking"
             claims[int(lead_id)].append((actor, _aware(at), BOOKED_FAST_CALL_WINDOW if booked else FAST_CALL_WINDOW))
         elif _aware(at) >= launch:
@@ -351,10 +383,12 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
         )
     ).all():
         calls[lead_id].append((user_id, outcome, _aware(at)))
-    return _Proofs(flp, batches, test_passed, ticks, claims, calls)
+    return _Proofs(flp, batches, test_passed, ticks, claims, calls, results, batch_ticks)
 
 
-def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: datetime) -> dict[str, datetime]:
+def proven_steps(
+    lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: datetime, *, owner_is_leader: bool = False
+) -> dict[str, datetime]:
     """Every step this lead has proof for right now → when it happened."""
     out: dict[str, datetime] = {}
     lid = lead.id
@@ -364,12 +398,17 @@ def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: d
         out["video_watched"] = p.flp_views[lid]
 
     own_calls = [(o, at) for (u, o, at) in p.calls.get(lid, []) if u == owner_id]
+    own_results = sorted((at, status) for (u, status, at) in p.results.get(lid, []) if u == owner_id)
     claim = min(((at, window) for (u, at, window) in p.claims.get(lid, []) if u == owner_id), default=None)
-    if claim is not None and own_calls and own_calls[0][1] - claim[0] <= claim[1]:
-        out["fast_first_call"] = own_calls[0][1]
-    for outcome, at in own_calls:
-        if outcome in CONNECTED_OUTCOMES:
-            out.setdefault(f"connected_call:{_ist_date(at).isoformat()}", at)
+    if claim is not None and own_calls and own_results:
+        # Dialled AND wrote down what happened, both inside the window — a bare dial tap doesn't count.
+        done_at = max(own_calls[0][1], own_results[0][0])
+        if done_at - claim[0] <= claim[1]:
+            out["fast_first_call"] = done_at
+    connected = [at for outcome, at in own_calls if outcome in CONNECTED_OUTCOMES]
+    connected += [at for at, status in own_results if status in CONNECTED_CALL_STATUSES]
+    for at in sorted(connected):
+        out.setdefault(f"connected_call:{_ist_date(at).isoformat()}", at)
 
     # The member runs the mindset-lock call themselves; the server enforces the 5-min
     # session, and it only counts on a paid (enrolled) prospect.
@@ -377,21 +416,32 @@ def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: d
     if mindset_at and mindset_at >= launch and lead.enrollment_proof_uploaded_at is not None:
         out["mindset_complete"] = mindset_at
 
-    used = p.batches.get(lid, {})
+    watched = p.batches.get(lid, {})
+    ticks_by_slot = p.batch_ticks.get(lid, {})
+
+    def others_tick(slot: str) -> datetime | None:
+        return min((at for (u, at) in ticks_by_slot.get(slot, []) if u != owner_id), default=None)
 
     proof_at = _aware(lead.enrollment_proof_uploaded_at)
+    d1_ticked = [s for s in BATCH_SLOTS[:3] if bool(getattr(lead, s, False))]
     if (
         proof_at
         and proof_at >= launch
         and (lead.enrollment_proof_url or "").strip()
         and lead.status in ENROLLED_STATUSES
+        and d1_ticked  # only a leader/admin can tick Day 1 = the leader accepted the payment
     ):
-        leader_worked = list(used.values())  # a Day 1 batch only a leader can share
-        if leader_worked or now - proof_at >= ENROLL_CONFIRM_AFTER:
-            out["enrolled"] = min(leader_worked, default=proof_at + ENROLL_CONFIRM_AFTER)
+        accepted_at = min((t for s in d1_ticked if (t := others_tick(s))), default=None)
+        if accepted_at is None and (not owner_is_leader or lid in p.flp_views):
+            # Ticked before ticks were logged, or the leader's own prospect who watched the video.
+            accepted_at = max(proof_at, _aware(lead.day1_completed_at) or proof_at)
+        if accepted_at is not None:
+            out["enrolled"] = accepted_at
     for slot in BATCH_SLOTS:
-        if slot in used and bool(getattr(lead, slot, False)):  # prospect watched AND still ticked
-            out[slot] = used[slot]
+        tick_at = others_tick(slot)
+        # Prospect sat in the room AND someone else (leader/admin) ticked it AND it's still ticked.
+        if slot in watched and tick_at is not None and bool(getattr(lead, slot, False)):
+            out[slot] = max(watched[slot], tick_at)
     for day in ("d1", "d2"):
         slots = [f"{day}_{s}" for s in ("morning", "afternoon", "evening")]
         if all(s in out for s in slots):
@@ -482,7 +532,7 @@ async def scan(session: AsyncSession, now: datetime | None = None) -> dict[str, 
                     revoked += 1
             continue
 
-        steps = proven_steps(lead, owner.id, proofs, launch, now)
+        steps = proven_steps(lead, owner.id, proofs, launch, now, owner_is_leader=owner.role == "leader")
         for step, pt in have.items():
             if (
                 pt.revoked_at is None

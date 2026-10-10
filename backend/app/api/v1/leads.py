@@ -14,6 +14,7 @@ from app.api.deps import get_db
 from app.api.deps import AuthUser, require_auth_user
 from app.core.time_ist import IST, now_ist
 from app.core.realtime_hub import notify_topics
+from app.models.activity_log import ActivityLog
 from app.models.app_setting import AppSetting
 from app.models.batch_share_link import BatchShareLink
 from app.models.lead import Lead
@@ -989,6 +990,16 @@ async def complete_batch_video_watch(
     if not bool(getattr(lead, slot, False)):
         setattr(lead, slot, True)
         _sync_batch_completion_timestamps(lead, now)
+        # The prospect finished it on the link the leader shared → counts as that leader's tick.
+        session.add(
+            ActivityLog(
+                user_id=link.created_by_user_id,
+                action="lead.batch_ticked",
+                entity_type="lead",
+                entity_id=lead.id,
+                meta={"slot": slot, "source": "watch_complete"},
+            )
+        )
         enqueue_lead_shadow_upsert(session, lead)
         changed = True
     if not link.used:
