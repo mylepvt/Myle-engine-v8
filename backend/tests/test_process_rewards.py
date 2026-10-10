@@ -61,15 +61,28 @@ def _lead(lead_id: int, owner: int = PRIYA, **kw) -> Lead:
     return Lead(**base)
 
 
-def _video(lead_id: int, at: datetime) -> FlpMinBillingShareLink:
+def _video(lead_id: int, at: datetime, *, finished: bool = True) -> FlpMinBillingShareLink:
+    """The prospect opened the enrollment video at ``at`` (and watched to the end unless finished=False)."""
     return FlpMinBillingShareLink(
         token=f"flp{next(_tok)}", lead_id=lead_id, created_by_user_id=PRIYA, first_viewed_at=at,
-        expires_at=at + timedelta(days=1),
+        last_viewed_at=at + timedelta(minutes=10), status_synced=finished, expires_at=at + timedelta(days=1),
     )
 
 
-def _batch(lead_id: int, slot: str, at: datetime) -> BatchShareLink:
-    return BatchShareLink(token=f"b{next(_tok)}", lead_id=lead_id, slot=slot, created_by_user_id=LEADER, used=True, used_at=at)
+def _batch(lead_id: int, slot: str, at: datetime, *, watched=timedelta(minutes=12), by: int = LEADER) -> list:
+    """The prospect sat in the batch room for ``watched`` up to ``at``; ``by`` ticked the batch."""
+    return [
+        BatchShareLink(token=f"b{next(_tok)}", lead_id=lead_id, slot=slot, created_by_user_id=LEADER,
+                       first_accessed_at=at - watched, last_seen_at=at),
+        ActivityLog(user_id=by, action=pr.BATCH_TICK_ACTION, entity_type="lead", entity_id=lead_id,
+                    meta={"slot": slot}, created_at=at),
+    ]
+
+
+def _result(lead_id: int, status: str, at: datetime, by: int = PRIYA) -> ActivityLog:
+    """The member wrote down the call's result."""
+    return ActivityLog(user_id=by, action=pr.CALL_RESULT_ACTION, entity_type="lead", entity_id=lead_id,
+                       meta={"call_status": status}, created_at=at)
 
 
 def _test_pass(lead_id: int, at: datetime) -> Day2TestSession:
@@ -105,7 +118,7 @@ async def test_full_funnel_pays_each_verified_step_once(Session):
         await s.flush()
         s.add_all([
             _video(1, t),
-            *[_batch(1, slot, t) for slot in ("d1_morning", "d1_afternoon", "d1_evening", "d2_morning")],
+            *[x for slot in ("d1_morning", "d1_afternoon", "d1_evening", "d2_morning") for x in _batch(1, slot, t)],
             _test_pass(1, t),
             *[_tick(1, task, LEADER, t) for task in
               ("day3_interview", "day3_live_session", "day3_blueprint_video", "day3_stage_selection")],
@@ -168,7 +181,7 @@ async def test_proof_gone_revokes_and_comes_back(Session):
         await _seed(s)
         s.add(_lead(1, d1_morning=True, d1_afternoon=True, d1_evening=True))
         await s.flush()
-        s.add_all([_batch(1, slot, t) for slot in ("d1_morning", "d1_afternoon", "d1_evening")])
+        s.add_all([x for slot in ("d1_morning", "d1_afternoon", "d1_evening") for x in _batch(1, slot, t)])
         await s.commit()
         await pr.scan(s, NOW)
         assert "1:d1_all" in await _points(s)
@@ -237,13 +250,16 @@ async def test_fast_first_call_and_connected_calls(Session):
         s.add_all([
             ActivityLog(user_id=PRIYA, action="lead.claimed", entity_type="lead", entity_id=1, created_at=claim),
             ActivityLog(user_id=PRIYA, action="lead.claimed", entity_type="lead", entity_id=2, created_at=claim),
-            CallEvent(lead_id=1, user_id=PRIYA, outcome="answered", called_at=claim + timedelta(minutes=30)),
-            CallEvent(lead_id=1, user_id=PRIYA, outcome="answered", called_at=claim + timedelta(minutes=50)),
+            CallEvent(lead_id=1, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(minutes=30)),
+            _result(1, "call_received", claim + timedelta(minutes=31)),
+            CallEvent(lead_id=1, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(minutes=50)),
+            _result(1, "interested", claim + timedelta(minutes=51)),
             CallEvent(lead_id=2, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(hours=3)),
+            _result(2, "no_answer", claim + timedelta(hours=3)),
         ])
         await s.commit()
         await pr.scan(s, NOW)
-        day = (claim + timedelta(minutes=30)).astimezone(IST).date().isoformat()
+        day = (claim + timedelta(minutes=31)).astimezone(IST).date().isoformat()
         assert await _points(s) == {"1:fast_first_call": 5, f"1:connected_call:{day}": 2}
 
 
@@ -262,6 +278,7 @@ async def test_booked_leads_get_four_hours_for_the_first_call(Session):
             CallEvent(lead_id=1, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(hours=3, minutes=50)),
             CallEvent(lead_id=2, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(hours=4, minutes=10)),
             CallEvent(lead_id=3, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(hours=3)),  # manual: 2h
+            *[_result(i, "no_answer", claim + timedelta(hours=3, minutes=50)) for i in (1, 2, 3)],
         ])
         await s.commit()
         await pr.scan(s, NOW)
@@ -372,27 +389,94 @@ async def test_enrollment_pays_once_the_leader_accepts_it(Session):
     async with Session() as s:
         await _seed(s)
         proof = dict(enrollment_proof_url="/media/proof.png", enrollment_amount_cents=19_600)
+        up = NOW - timedelta(hours=1)
         s.add_all([
-            _lead(1, enrollment_proof_uploaded_at=NOW - timedelta(hours=1), **proof),  # just uploaded
-            _lead(2, enrollment_proof_uploaded_at=NOW - timedelta(hours=1), d1_morning=True, **proof),
-            _lead(3, enrollment_proof_uploaded_at=NOW - timedelta(hours=7), **proof),  # 6h, no send-back
+            _lead(1, enrollment_proof_uploaded_at=up, **proof),  # just uploaded
+            _lead(2, enrollment_proof_uploaded_at=up, d1_morning=True, **proof),  # leader ticked Day 1
+            _lead(3, enrollment_proof_uploaded_at=NOW - timedelta(hours=7), **proof),  # 7h, nobody looked
+            _lead(4, enrollment_proof_uploaded_at=up, d1_morning=True, **proof),  # ticked before ticks were logged
+            _lead(5, owner=LEADER, enrollment_proof_uploaded_at=up, d1_morning=True, **proof),  # leader's own
+            _lead(6, owner=LEADER, enrollment_proof_uploaded_at=up, d1_morning=True, **proof),
         ])
         await s.flush()
-        s.add(_batch(2, "d1_morning", NOW - timedelta(minutes=30)))  # leader is working lead 2
+        s.add_all([
+            ActivityLog(user_id=LEADER, action=pr.BATCH_TICK_ACTION, entity_type="lead", entity_id=i,
+                        meta={"slot": "d1_morning"}, created_at=NOW - timedelta(minutes=30))
+            for i in (2, 5, 6)
+        ])
+        s.add(_video(6, NOW - timedelta(hours=2)))  # lead 6's prospect watched the whole video
         await s.commit()
 
         await pr.scan(s, NOW)
         pts = await _points(s)
-        assert pts["2:enrolled"] == 50 and pts["3:enrolled"] == 50
-        assert "1:enrolled" not in pts
+        enrolled = {k for k in pts if k.endswith(":enrolled")}
+        # No more "6h without a send-back" — a screenshot nobody accepted never pays.
+        # A leader can't accept their own prospect's screenshot on their own tick alone.
+        assert enrolled == {"2:enrolled", "4:enrolled", "6:enrolled"}
 
-        # Leader sends lead 3 back (screenshot rejected) → points go.
-        lead = await s.get(Lead, 3)
+        # Leader sends lead 2 back (screenshot rejected) → points go.
+        lead = await s.get(Lead, 2)
         lead.status, lead.enrollment_proof_url, lead.enrollment_proof_uploaded_at = "video_watched", None, None
         await s.commit()
         await pr.scan(s, NOW + timedelta(minutes=10))
-        pts = await _points(s)
-        assert "3:enrolled" not in pts
-        # Lead 1 crosses 6h without a send-back → pays.
-        await pr.scan(s, NOW + timedelta(hours=6))
-        assert "1:enrolled" in await _points(s)
+        assert "2:enrolled" not in await _points(s)
+        await pr.scan(s, NOW + timedelta(hours=8))
+        assert "1:enrolled" not in await _points(s)
+
+
+async def test_opening_the_video_without_finishing_it_pays_nothing(Session):
+    async with Session() as s:
+        await _seed(s)
+        s.add_all([_lead(1, status="video_sent"), _lead(2, status="video_sent")])
+        await s.flush()
+        s.add_all([_video(1, NOW - timedelta(minutes=30), finished=False), _video(2, NOW - timedelta(minutes=30))])
+        await s.commit()
+        await pr.scan(s, NOW)
+        assert await _points(s) == {"2:video_watched": 25}
+
+        # The prospect comes back and finishes it → the point arrives on the next scan.
+        link = (await s.execute(select(FlpMinBillingShareLink).where(FlpMinBillingShareLink.lead_id == 1))).scalar_one()
+        link.status_synced, link.last_viewed_at = True, NOW + timedelta(minutes=5)
+        await s.commit()
+        await pr.scan(s, NOW + timedelta(minutes=10))
+        assert "1:video_watched" in await _points(s)
+
+
+async def test_batches_need_real_watch_time_and_someone_elses_tick(Session):
+    t = NOW - timedelta(hours=1)
+    async with Session() as s:
+        await _seed(s)
+        s.add_all([
+            _lead(1, d1_morning=True, d1_afternoon=True, d1_evening=True),
+            _lead(2, owner=LEADER, d1_morning=True),
+        ])
+        await s.flush()
+        s.add_all([
+            *_batch(1, "d1_morning", t),  # 12 min in the room, leader ticked → pays
+            *_batch(1, "d1_afternoon", t, watched=timedelta(minutes=2)),  # opened and hit "complete"
+            *_batch(1, "d1_evening", t, by=PRIYA),  # ticked by the owner herself
+            *_batch(2, "d1_morning", t),  # the leader's own prospect, ticked by the leader
+        ])
+        await s.commit()
+        await pr.scan(s, NOW)
+        assert await _points(s) == {"1:d1_morning": 10}
+
+
+async def test_a_bare_dial_tap_is_not_a_first_call(Session):
+    claim = NOW - timedelta(hours=3)
+    async with Session() as s:
+        await _seed(s)
+        s.add_all([_lead(i, status="contacted") for i in (1, 2)])
+        await s.flush()
+        s.add_all([
+            ActivityLog(user_id=PRIYA, action="lead.claimed", entity_type="lead", entity_id=i, created_at=claim)
+            for i in (1, 2)
+        ])
+        s.add_all([
+            CallEvent(lead_id=1, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(minutes=5)),  # tap only
+            CallEvent(lead_id=2, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(minutes=5)),
+            _result(2, "no_answer", claim + timedelta(minutes=6)),
+        ])
+        await s.commit()
+        await pr.scan(s, NOW)
+        assert await _points(s) == {"2:fast_first_call": 5}
