@@ -105,6 +105,16 @@ async def admin_overview(
     return await rx.admin_overview(session)
 
 
+@router.get("/admin/members")
+async def admin_members(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Points per team member / leader: today, this week, this month (+ what for)."""
+    _require_admin(user)
+    return {"members": await rx.member_totals(session, datetime.now(timezone.utc))}
+
+
 class PowerHourBody(BaseModel):
     enabled: bool
     start: str = Field(pattern=r"^\d{1,2}:\d{2}$")

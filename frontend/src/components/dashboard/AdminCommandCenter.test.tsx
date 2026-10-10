@@ -35,6 +35,7 @@ vi.mock('@/components/contacts/Day2ContactsCard', () => ({
 }))
 vi.mock('@/components/rewards/JackpotCard', () => ({ JackpotCard: () => null }))
 vi.mock('@/components/rewards/AdminRewardsCard', () => ({ AdminRewardsCard: () => <div data-testid="admin-rewards" /> }))
+vi.mock('@/components/rewards/MemberPointsCard', () => ({ MemberPointsCard: () => <div data-testid="member-points" /> }))
 vi.mock('@/components/dashboard/overview/AppSetupCard', () => ({ AppSetupCard: () => <div data-testid="app-setup" /> }))
 vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))
 vi.mock('@/components/control-room/ControlRoomCard', () => ({ ControlRoomCard: () => <div data-testid="control-room" /> }))

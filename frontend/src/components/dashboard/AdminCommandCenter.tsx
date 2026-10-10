@@ -45,6 +45,7 @@ import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
 import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { Day2ContactsCard } from '@/components/contacts/Day2ContactsCard'
 import { AdminRewardsCard } from '@/components/rewards/AdminRewardsCard'
+import { MemberPointsCard } from '@/components/rewards/MemberPointsCard'
 import { JackpotCard } from '@/components/rewards/JackpotCard'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
@@ -869,6 +870,7 @@ export function AdminCommandCenter({ firstName }: Props) {
 
         {/* ==================== TOOLS ==================== */}
         <TabsContent value="tools" className="space-y-4">
+          <MemberPointsCard />
           <AdminRewardsCard />
           <Day2ContactsCard />
         </TabsContent>

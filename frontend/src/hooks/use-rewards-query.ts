@@ -160,6 +160,28 @@ export function useAdminRewardPointsQuery(enabled = true) {
   })
 }
 
+export type MemberPoints = {
+  user_id: number
+  name: string
+  role: string
+  leader_name: string | null
+  today: number
+  week: number
+  month: number
+  last_at: string | null
+  breakdown: { label: string; count: number; points: number }[]
+}
+
+/** Admin: MP per team member / leader — today, this week, this month. */
+export function useAdminMemberPointsQuery(enabled = true) {
+  return useQuery<{ members: MemberPoints[] }>({
+    queryKey: ['rewards', 'admin', 'members'],
+    queryFn: () => getJson('/api/v1/rewards/admin/members'),
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
 export function useAdminDrawsQuery(enabled = true) {
   return useQuery<{ draws: JackpotDraw[] }>({
     queryKey: ['rewards', 'admin', 'draws'],
