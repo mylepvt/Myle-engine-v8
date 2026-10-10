@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 
 import type { MyRewards, ScratchCardInfo } from '@/hooks/use-rewards-query'
 import { useScratchCardMutation } from '@/hooks/use-rewards-query'
+import { playAppSound } from '@/lib/app-sounds'
 import { monthName, powerHourLine, rupees, streakLine } from '@/lib/rewards'
 import { cn } from '@/lib/utils'
 
@@ -43,15 +44,25 @@ function ScratchTile({ card }: { card: ScratchCardInfo }) {
   const [revealed, setRevealed] = useState<{ amount: number; bonus: number } | null>(null)
   const result = card.scratched ? { amount: card.amount_rupees, bonus: card.bonus_points } : revealed
 
-  const onScratch = () =>
+  const onScratch = () => {
+    playAppSound('scratch')
     scratch.mutate(card.id, {
       onSuccess: (r) => {
         setRevealed({ amount: r.amount_rupees, bonus: r.bonus_points })
-        if (r.amount_rupees) toast.success(`You won ${rupees(r.amount_rupees)} — added to your wallet`)
-        else toast(`+${r.bonus_points} MP bonus`, { description: 'Better luck on the next card' })
+        if (r.amount_rupees) {
+          playAppSound(r.amount_rupees >= 20 ? 'jackpot' : 'claim')
+          toast.success(`You won ${rupees(r.amount_rupees)} — added to your wallet`)
+        } else {
+          playAppSound('notify')
+          toast(`+${r.bonus_points} MP bonus`, { description: 'Better luck on the next card' })
+        }
       },
-      onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not scratch'),
+      onError: (e) => {
+        playAppSound('error')
+        toast.error(e instanceof Error ? e.message : 'Could not scratch')
+      },
     })
+  }
 
   return (
     <li>

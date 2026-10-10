@@ -6,10 +6,12 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMyRewardsQuery } from '@/hooks/use-rewards-query'
-import { JackpotWheel } from './JackpotWheel'
-import { RewardsExtras, StreakPowerLines } from './RewardsExtras'
+import { playAppSound } from '@/lib/app-sounds'
 import { rupees, takeNewPoints, ticketLine, untilDraw } from '@/lib/rewards'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
+
+import { JackpotWheel } from './JackpotWheel'
+import { RewardsExtras, StreakPowerLines } from './RewardsExtras'
 
 /** MYLE Points → tonight's jackpot tickets, plus what the member's pipeline is worth. */
 export function RewardsCard() {
@@ -24,7 +26,9 @@ export function RewardsCard() {
 
   useEffect(() => {
     if (!data) return
-    for (const p of takeNewPoints(data.recent).slice(-3)) {
+    const fresh = takeNewPoints(data.recent).slice(-3)
+    if (fresh.length) playAppSound('reward')
+    for (const p of fresh) {
       toast.success(`+${p.points} MP — ${p.label}`, { description: p.lead_name ?? undefined })
     }
   }, [data])

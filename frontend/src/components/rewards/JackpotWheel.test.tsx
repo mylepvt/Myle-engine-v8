@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { chanceLabel, spinRotation, wheelSlices } from '@/lib/rewards'
@@ -8,6 +8,14 @@ const wheel = vi.hoisted(() => ({ data: null as unknown }))
 vi.mock('@/hooks/use-rewards-query', () => ({ useJackpotWheelQuery: () => ({ data: wheel.data }) }))
 const toast = vi.hoisted(() => ({ success: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
+const sound = vi.hoisted(() => ({ ready: true, play: vi.fn() }))
+vi.mock('@/lib/app-sounds', () => ({
+  audioReady: () => sound.ready,
+  playAppSound: (...args: unknown[]) => sound.play(...args),
+}))
+const FAKE: Parameters<typeof vi.useFakeTimers>[0] = {
+  toFake: ['setTimeout', 'clearTimeout', 'Date', 'requestAnimationFrame', 'cancelAnimationFrame'],
+}
 
 const entries = [
   { user_id: 1, name: 'Priya', tickets: 6 },
@@ -19,7 +27,11 @@ afterEach(() => {
   cleanup()
   vi.useRealTimers()
 })
-beforeEach(() => window.localStorage.clear())
+beforeEach(() => {
+  window.localStorage.clear()
+  sound.ready = true
+  sound.play.mockClear()
+})
 
 describe('JackpotWheel', () => {
   it('before the draw: who is in and my chance', () => {
@@ -30,16 +42,34 @@ describe('JackpotWheel', () => {
     expect(screen.getByText('Priya')).toBeInTheDocument()
   })
 
-  it('after the draw: spins once and lands on the server-picked winner', () => {
-    vi.useFakeTimers()
+  it('after the draw: spins for 30 s with ticks, then lands on the server-picked winner', () => {
+    vi.useFakeTimers(FAKE)
     wheel.data = { status: 'drawn', draw_date: '2026-10-06', draw_at: '', pot_rupees: 300, entries, winner_user_id: 2 }
     render(<JackpotWheel myTickets={0} />)
     act(() => vi.advanceTimersByTime(500))
-    expect(screen.getByText('Spinning…')).toBeInTheDocument()
-    act(() => vi.advanceTimersByTime(6000))
+    expect(screen.getByText(/Spinning… \d+s/)).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(20_000))
+    expect(screen.queryByText('Rahul won ₹300')).not.toBeInTheDocument() // still spinning at 20 s
+    act(() => vi.advanceTimersByTime(11_000))
     expect(screen.getByText('Rahul won ₹300')).toBeInTheDocument()
     expect(toast.success).toHaveBeenCalledWith('Rahul won ₹300!')
+    const kinds = sound.play.mock.calls.map((c) => c[0])
+    expect(kinds.filter((k) => k === 'wheel_tick').length).toBeGreaterThan(50)
+    expect(kinds.at(-1)).toBe('jackpot')
     expect(window.localStorage.getItem('myle.rewards.wheelSeen')).toBe('2026-10-06')
+  })
+
+  it('without unlocked audio it waits for a tap, and Skip jumps to the result', () => {
+    vi.useFakeTimers(FAKE)
+    sound.ready = false
+    wheel.data = { status: 'drawn', draw_date: '2026-10-07', draw_at: '', pot_rupees: 150, entries, winner_user_id: 1 }
+    render(<JackpotWheel myTickets={0} />)
+    act(() => vi.advanceTimersByTime(500))
+    fireEvent.click(screen.getByText("Watch tonight's draw"))
+    act(() => vi.advanceTimersByTime(2_000))
+    fireEvent.click(screen.getByText('Skip'))
+    expect(screen.getByText('Priya won ₹150')).toBeInTheDocument()
+    expect(sound.play).toHaveBeenLastCalledWith('jackpot')
   })
 
   it('already watched: shows the result without spinning again', () => {
