@@ -1,4 +1,13 @@
-export type AppSound = 'tap' | 'success' | 'error' | 'claim' | 'notify' | 'reward'
+export type AppSound =
+  | 'tap'
+  | 'success'
+  | 'error'
+  | 'claim'
+  | 'notify'
+  | 'reward'
+  | 'wheel_tick'
+  | 'jackpot'
+  | 'scratch'
 
 // ─── Global enable/mute (SaaS: user-controllable, persisted) ──────────────────
 const SOUND_PREF_KEY = 'myle-sound-enabled'
@@ -69,6 +78,9 @@ const SOUND_COOLDOWN_MS: Record<AppSound, number> = {
   claim: 1100,
   notify: 800,
   reward: 1500,
+  wheel_tick: 28,
+  jackpot: 2500,
+  scratch: 300,
 }
 
 let audioGraph: AudioGraph | null = null
@@ -376,7 +388,73 @@ function playReward(graph: AudioGraph) {
   })
 }
 
+// ─── wheel_tick ──────────────────────────────────────────────────────────────
+// Prize-wheel clicker: a short woody "tk" each time a peg passes the pointer.
+// `speed` 0..1 — fast spin = brighter, quieter clicks; the last slow clicks land heavier.
+function playWheelTick(graph: AudioGraph, speed = 0.5) {
+  const { ctx, output } = graph
+  const now = ctx.currentTime + 0.002
+  const s = Math.max(0, Math.min(1, speed))
+  const lvl = 1.15 - s * 0.45
+  scheduleNoise(ctx, output, {
+    at: now, duration: 0.012, peak: 0.05 * lvl, highpass: 1800 + s * 1400, lowpass: 7000,
+  })
+  scheduleTone(ctx, output, {
+    at: now, frequency: 520 + s * 260, endFrequency: 300, type: 'triangle',
+    peak: 0.02 * lvl, attack: 0.001, decay: 0.035,
+    filter: { type: 'bandpass', frequency: 1100, q: 1.2 },
+  })
+}
+
+// ─── jackpot ─────────────────────────────────────────────────────────────────
+// Winner fanfare: rising brass-ish arpeggio, a held major chord and coin sparkles.
+function playJackpot(graph: AudioGraph) {
+  const { ctx, output } = graph
+  const now = ctx.currentTime + 0.03
+  const run = [523.25, 659.25, 783.99, 1046.5]
+  run.forEach((f, i) => {
+    scheduleTone(ctx, output, {
+      at: now + i * 0.11, frequency: f, type: 'sawtooth', peak: 0.012, decay: 0.22,
+      pan: -0.2 + i * 0.13, filter: { type: 'lowpass', frequency: 2600, q: 0.7 },
+    })
+  })
+  const chordAt = now + 0.48
+  ;[523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+    scheduleTone(ctx, output, {
+      at: chordAt, frequency: f, type: i % 2 ? 'triangle' : 'sawtooth', peak: 0.011, attack: 0.02,
+      decay: 1.6, pan: -0.25 + i * 0.17, detune: i * 3 - 4,
+      filter: { type: 'lowpass', frequency: 2400, q: 0.6 },
+    })
+  })
+  scheduleTone(ctx, output, { at: chordAt, frequency: 130.81, type: 'sine', peak: 0.02, decay: 1.4 })
+  for (let i = 0; i < 9; i += 1) {
+    const at = chordAt + 0.08 + i * 0.09
+    scheduleTone(ctx, output, {
+      at, frequency: 1800 + ((i * 377) % 900), type: 'sine', peak: 0.006, decay: 0.16,
+      pan: i % 2 ? 0.35 : -0.35,
+    })
+  }
+  scheduleNoise(ctx, output, { at: chordAt, duration: 0.25, peak: 0.004, highpass: 5000, lowpass: 12000 })
+}
+
+// ─── scratch ─────────────────────────────────────────────────────────────────
+// Coin scratching foil: a few quick filtered-noise strokes.
+function playScratch(graph: AudioGraph) {
+  const { ctx, output } = graph
+  const now = ctx.currentTime + 0.005
+  ;[0, 0.07, 0.15, 0.22].forEach((t, i) => {
+    scheduleNoise(ctx, output, {
+      at: now + t, duration: 0.06, peak: 0.02, highpass: 2500 + i * 300, lowpass: 9000, pan: i % 2 ? 0.2 : -0.2,
+    })
+  })
+}
+
 // ─── Exports ─────────────────────────────────────────────────────────────────
+
+/** True once the browser lets us make sound (a tap has unlocked audio). */
+export function audioReady(): boolean {
+  return audioGraph?.ctx.state === 'running'
+}
 
 export function primeAppSounds() {
   const graph = ensureAudioGraph()
@@ -384,7 +462,7 @@ export function primeAppSounds() {
   if (graph.ctx.state === 'suspended') void graph.ctx.resume()
 }
 
-export function playAppSound(kind: AppSound) {
+export function playAppSound(kind: AppSound, opts?: { speed?: number }) {
   if (!soundsEnabled) return
   if (!canPlay(kind)) return
   const graph = ensureAudioGraph()
@@ -397,5 +475,8 @@ export function playAppSound(kind: AppSound) {
     case 'claim':    playClaim(graph); break
     case 'notify':   playNotify(graph); break
     case 'reward':   playReward(graph); break
+    case 'wheel_tick': playWheelTick(graph, opts?.speed); break
+    case 'jackpot':  playJackpot(graph); break
+    case 'scratch':  playScratch(graph); break
   }
 }

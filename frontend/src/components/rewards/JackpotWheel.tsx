@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Play, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useJackpotWheelQuery } from '@/hooks/use-rewards-query'
+import { audioReady, playAppSound } from '@/lib/app-sounds'
 import { chanceLabel, rupees, spinRotation, wheelSlices, type WheelSlice } from '@/lib/rewards'
 import { cn } from '@/lib/utils'
 
 const SIZE = 220
 const R = SIZE / 2
-const SPIN_MS = 5500
+export const SPIN_MS = 30_000 // the draw spins for 30 s
+const TURNS = 18 // full turns before it settles on the winner
+const PEG_DEG = 15 // a "tick" every 15° (24 pegs round the wheel)
+const easeOut = (x: number) => 1 - (1 - x) ** 3 // fast start, long suspenseful crawl
 const TONES = ['fill-primary', 'fill-warning', 'fill-success', 'fill-destructive']
 const SEEN_KEY = 'myle.rewards.wheelSeen'
 
@@ -48,6 +52,10 @@ export function JackpotWheel({ myTickets }: { myTickets: number }) {
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  const [needsTap, setNeedsTap] = useState(false)
+  const [secondsLeft, setSecondsLeft] = useState(0)
+  const frame = useRef<number | null>(null)
+  const finish = useRef<(() => void) | null>(null)
 
   const slices = useMemo(
     () => (data ? wheelSlices(data.entries, data.winner_user_id) : []),
@@ -57,34 +65,73 @@ export function JackpotWheel({ myTickets }: { myTickets: number }) {
   const winner = data?.entries.find((e) => e.user_id === data.winner_user_id) ?? null
   const drawn = data?.status === 'drawn'
 
+  useEffect(
+    () => () => {
+      if (frame.current != null) window.cancelAnimationFrame(frame.current)
+    },
+    [],
+  )
+
   const spin = () => {
     if (!data || data.winner_user_id == null) return
+    if (frame.current != null) window.cancelAnimationFrame(frame.current)
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const from = rotation
+    const target = from - (from % 360) + spinRotation(slices, data.winner_user_id as number, TURNS) + 360
+    const startedAt = Date.now()
+    let lastPeg = Math.floor(from / PEG_DEG)
+
+    const done = () => {
+      frame.current = null
+      finish.current = null
+      setRotation(target)
+      setSpinning(false)
+      setRevealed(true)
+      setNeedsTap(false)
+      markSeen(data.draw_date)
+      playAppSound('jackpot')
+      if (winner) toast.success(`${winner.name} won ${rupees(data.pot_rupees)}!`)
+    }
+    finish.current = done
     setRevealed(false)
+    setNeedsTap(false)
+    if (reduce) return done()
+
     setSpinning(true)
-    setRotation((r) => r - (r % 360) + spinRotation(slices, data.winner_user_id as number) + 360)
-    window.setTimeout(
-      () => {
-        setSpinning(false)
-        setRevealed(true)
-        markSeen(data.draw_date)
-        if (winner) toast.success(`${winner.name} won ${rupees(data.pot_rupees)}!`)
-      },
-      reduce ? 0 : SPIN_MS,
-    )
+    const step = () => {
+      const x = Math.min(1, (Date.now() - startedAt) / SPIN_MS)
+      const angle = from + (target - from) * easeOut(x)
+      const peg = Math.floor(angle / PEG_DEG)
+      if (peg !== lastPeg) {
+        lastPeg = peg
+        playAppSound('wheel_tick', { speed: 1 - x })
+      }
+      setRotation(angle)
+      setSecondsLeft(Math.ceil(((1 - x) * SPIN_MS) / 1000))
+      if (x < 1) frame.current = window.requestAnimationFrame(step)
+      else done()
+    }
+    frame.current = window.requestAnimationFrame(step)
   }
 
-  // Auto-play the draw once per day, the first time the member sees the result.
+  const skip = () => {
+    if (frame.current != null) window.cancelAnimationFrame(frame.current)
+    finish.current?.()
+  }
+
+  // The draw plays once per day. Browsers only allow sound after a tap, so if audio is
+  // not unlocked yet we show a "Watch the draw" button instead of spinning silently.
   const autoPlay = drawn && data?.winner_user_id != null && !seenDraw(data.draw_date)
   useEffect(() => {
     if (!autoPlay) return
-    const id = window.setTimeout(spin, 400)
+    const id = window.setTimeout(() => (audioReady() ? spin() : setNeedsTap(true)), 400)
     return () => window.clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when the result arrives
   }, [autoPlay])
 
   // Already watched today → rest the wheel on the winner (no animation).
-  const restOnWinner = drawn && data?.winner_user_id != null && !autoPlay && !spinning && rotation === 0
+  const restOnWinner =
+    drawn && data?.winner_user_id != null && !autoPlay && !spinning && rotation === 0
   const rest = restOnWinner ? spinRotation(slices, data.winner_user_id as number, 0) : rotation
 
   if (!data || !slices.length) return null
@@ -110,7 +157,7 @@ export function JackpotWheel({ myTickets }: { myTickets: number }) {
           className="mt-2.5 drop-shadow-sm"
           style={{
             transform: `rotate(${rest}deg)`,
-            transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.7, 0.1, 1)` : 'none',
+            willChange: spinning ? 'transform' : undefined,
           }}
           role="img"
           aria-label={`Jackpot wheel with ${data.entries.length} members`}
@@ -160,11 +207,24 @@ export function JackpotWheel({ myTickets }: { myTickets: number }) {
               <RotateCcw className="size-3.5" aria-hidden /> Watch again
             </button>
           </div>
-        ) : (
+        ) : spinning ? (
           <p className="mt-1 text-center text-ds-caption font-semibold text-warning-ink" aria-live="polite">
-            {spinning ? 'Spinning…' : ''}
+            Spinning… {secondsLeft}s{' '}
+            <button type="button" onClick={skip} className="ml-1 font-normal text-muted-foreground underline">
+              Skip
+            </button>
           </p>
-        )
+        ) : needsTap ? (
+          <div className="mt-1 text-center">
+            <button
+              type="button"
+              onClick={spin}
+              className="inline-flex animate-pulse items-center gap-1.5 rounded-full bg-warning px-4 py-1.5 text-ds-caption font-bold text-warning-foreground"
+            >
+              <Play className="size-3.5" aria-hidden /> Watch tonight&apos;s draw
+            </button>
+          </div>
+        ) : null
       ) : (
         <p className="mt-1 text-center text-ds-caption text-muted-foreground">
           Spins at 9 PM · bigger slice = more tickets
