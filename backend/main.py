@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 
 from app.api.deps import get_db
 from app.api.capture_public import router as capture_public_router
@@ -95,7 +94,7 @@ async def lifespan(_app: FastAPI):
     if _SCHEDULER_ENABLED:
         _scheduler.add_job(
             job_flp_min_billing_proof_alert,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="flp_min_billing_proof_alert",
             replace_existing=True,
             misfire_grace_time=120,
@@ -123,7 +122,7 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_google_contacts_sync,
-            IntervalTrigger(minutes=15),
+            CronTrigger(minute="*/15", timezone="Asia/Kolkata"),
             id="google_contacts_sync",
             replace_existing=True,
             misfire_grace_time=600,
@@ -137,7 +136,7 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_process_rewards_scan,
-            IntervalTrigger(minutes=10),
+            CronTrigger(minute="*/10", timezone="Asia/Kolkata"),
             id="process_rewards_scan",
             replace_existing=True,
             misfire_grace_time=300,
@@ -151,7 +150,7 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_power_hour_alert,
-            IntervalTrigger(minutes=5),
+            CronTrigger(minute="*/5", timezone="Asia/Kolkata"),
             id="power_hour_alert",
             replace_existing=True,
             misfire_grace_time=240,
@@ -200,28 +199,28 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_watch_archive_maintenance,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="watch_archive_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
             job_closing_pipeline_maintenance,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="closing_pipeline_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
             job_general_pipeline_maintenance,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="general_pipeline_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
             job_lead_booking_fulfillment,
-            IntervalTrigger(minutes=10),
+            CronTrigger(minute="*/10", timezone="Asia/Kolkata"),
             id="lead_booking_fulfillment",
             replace_existing=True,
             misfire_grace_time=120,
