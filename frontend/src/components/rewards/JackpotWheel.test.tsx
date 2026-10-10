@@ -9,9 +9,15 @@ vi.mock('@/hooks/use-rewards-query', () => ({ useJackpotWheelQuery: () => ({ dat
 const toast = vi.hoisted(() => ({ success: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
 const sound = vi.hoisted(() => ({ ready: true, play: vi.fn() }))
+const whoosh = vi.hoisted(() => ({ started: 0, stopped: 0 }))
 vi.mock('@/lib/app-sounds', () => ({
   audioReady: () => sound.ready,
   playAppSound: (...args: unknown[]) => sound.play(...args),
+  haptic: () => undefined,
+  startWheelWhoosh: () => {
+    whoosh.started += 1
+    return { update: () => undefined, stop: () => { whoosh.stopped += 1 } }
+  },
 }))
 const FAKE: Parameters<typeof vi.useFakeTimers>[0] = {
   toFake: ['setTimeout', 'clearTimeout', 'Date', 'requestAnimationFrame', 'cancelAnimationFrame'],
@@ -57,6 +63,8 @@ describe('JackpotWheel', () => {
     expect(kinds.filter((k) => k === 'wheel_tick').length).toBeGreaterThan(50)
     expect(kinds.at(-1)).toBe('jackpot')
     expect(window.localStorage.getItem('myle.rewards.wheelSeen')).toBe('2026-10-06')
+    expect(whoosh.started).toBeGreaterThan(0) // the spin whooshes…
+    expect(whoosh.stopped).toBe(whoosh.started) // …and goes quiet when it lands
   })
 
   it('without unlocked audio it waits for a tap, and Skip jumps to the result', () => {

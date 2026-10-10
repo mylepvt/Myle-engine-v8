@@ -27,16 +27,11 @@ export function AppSoundProvider({ children }: { children: ReactNode }) {
   useRewardSound()
 
   useEffect(() => {
-    let primed = false
     let touchStartX = 0
     let touchStartY = 0
 
-    const prime = () => {
-      if (!primed) {
-        primeAppSounds()
-        primed = true
-      }
-    }
+    // Every tap re-primes: phones suspend audio when the app goes to the background.
+    const prime = () => primeAppSounds()
 
     const handlePointerDown = (e: PointerEvent) => {
       prime()
