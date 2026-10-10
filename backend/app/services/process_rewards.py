@@ -72,7 +72,7 @@ POINTS: dict[str, int] = {
     "converted": 150,
 }
 LABELS: dict[str, str] = {
-    "fast_first_call": "First call within 2h of claim",
+    "fast_first_call": "First call within 2h of claim (booked leads: 4h)",
     "connected_call": "Connected call",
     "video_watched": "Prospect watched the Day 1 video",
     "enrolled": "Enrollment payment (first closing)",
@@ -115,6 +115,9 @@ POWER_HOUR_DEFAULT = {"enabled": True, "start": "18:00", "end": "19:00"}
 
 CONNECTED_OUTCOMES = ("answered", "callback_requested")
 FAST_CALL_WINDOW = timedelta(hours=2)
+# Booked leads are claimed automatically when the pool loads, often before the member is
+# at the phone — they get longer to make the first call.
+BOOKED_FAST_CALL_WINDOW = timedelta(hours=4)
 SCAN_LOOKBACK = timedelta(days=3)
 REVOKE_LOOKBACK = timedelta(days=30)
 LAUNCH_KEY = "rewards.launched_at"
@@ -261,7 +264,7 @@ class _Proofs:
     batches: dict[int, dict[str, datetime]]
     test_passed: dict[int, datetime]
     ticks: dict[int, list[tuple[str, int, datetime]]]  # lead → (task, actor, at)
-    claims: dict[int, list[tuple[int, datetime]]]  # lead → (claimer, at)
+    claims: dict[int, list[tuple[int, datetime, timedelta]]]  # lead → (claimer, at, first-call window)
     calls: dict[int, list[tuple[int, str, datetime]]]  # lead → (user, outcome, at)
 
 
@@ -321,7 +324,7 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
         test_passed.setdefault(lead_id, _aware(at))
 
     ticks: dict[int, list[tuple[str, int, datetime]]] = defaultdict(list)
-    claims: dict[int, list[tuple[int, datetime]]] = defaultdict(list)
+    claims: dict[int, list[tuple[int, datetime, timedelta]]] = defaultdict(list)
     for lead_id, action, actor, meta, at in (
         await session.execute(
             select(
@@ -334,7 +337,8 @@ async def _load_proofs(session: AsyncSession, ids: list[int], launch: datetime) 
         )
     ).all():
         if action == "lead.claimed":
-            claims[int(lead_id)].append((actor, _aware(at)))
+            booked = (meta or {}).get("source") == "booking"
+            claims[int(lead_id)].append((actor, _aware(at), BOOKED_FAST_CALL_WINDOW if booked else FAST_CALL_WINDOW))
         elif _aware(at) >= launch:
             ticks[int(lead_id)].append(((meta or {}).get("task") or "", actor, _aware(at)))
 
@@ -360,8 +364,8 @@ def proven_steps(lead: Lead, owner_id: int, p: _Proofs, launch: datetime, now: d
         out["video_watched"] = p.flp_views[lid]
 
     own_calls = [(o, at) for (u, o, at) in p.calls.get(lid, []) if u == owner_id]
-    claim_at = min((at for (u, at) in p.claims.get(lid, []) if u == owner_id), default=None)
-    if claim_at is not None and own_calls and own_calls[0][1] - claim_at <= FAST_CALL_WINDOW:
+    claim = min(((at, window) for (u, at, window) in p.claims.get(lid, []) if u == owner_id), default=None)
+    if claim is not None and own_calls and own_calls[0][1] - claim[0] <= claim[1]:
         out["fast_first_call"] = own_calls[0][1]
     for outcome, at in own_calls:
         if outcome in CONNECTED_OUTCOMES:

@@ -247,6 +247,26 @@ async def test_fast_first_call_and_connected_calls(Session):
         assert await _points(s) == {"1:fast_first_call": 5, f"1:connected_call:{day}": 2}
 
 
+
+async def test_booked_leads_get_four_hours_for_the_first_call(Session):
+    async with Session() as s:
+        await _seed(s)
+        s.add_all([_lead(i, status="contacted") for i in (1, 2, 3)])
+        await s.flush()
+        claim = NOW - timedelta(hours=5)
+        booked = {"source": "booking"}
+        s.add_all([
+            ActivityLog(user_id=PRIYA, action="lead.claimed", entity_type="lead", entity_id=1, created_at=claim, meta=booked),
+            ActivityLog(user_id=PRIYA, action="lead.claimed", entity_type="lead", entity_id=2, created_at=claim, meta=booked),
+            ActivityLog(user_id=PRIYA, action="lead.claimed", entity_type="lead", entity_id=3, created_at=claim),
+            CallEvent(lead_id=1, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(hours=3, minutes=50)),
+            CallEvent(lead_id=2, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(hours=4, minutes=10)),
+            CallEvent(lead_id=3, user_id=PRIYA, outcome="no_answer", called_at=claim + timedelta(hours=3)),  # manual: 2h
+        ])
+        await s.commit()
+        await pr.scan(s, NOW)
+        assert await _points(s) == {"1:fast_first_call": 5}
+
 def test_tickets_and_windows():
     assert pr.tickets_for(49) == 0
     assert pr.tickets_for(120) == 2
