@@ -194,7 +194,7 @@ async def fulfill_open_bookings(session: AsyncSession, *, day: date | None = Non
 
         actor = AuthUser(user_id=user.id, role=user.role, email=user.email or "")
         try:
-            claimed, _ = await service.claim_lead_pool_batch(count=count, user=actor)
+            claimed, _ = await service.claim_lead_pool_batch(count=count, user=actor, source="booking")
         except Exception:
             await session.rollback()
             logger.exception("lead booking %s fulfilment failed", booking_id)

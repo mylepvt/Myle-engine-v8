@@ -628,6 +628,7 @@ class LeadsService:
         *,
         count: int,
         user: AuthUser,
+        source: str | None = None,
     ) -> tuple[list[Lead], int]:
         if user.role not in _POOL_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -688,7 +689,7 @@ class LeadsService:
                 user_id=user.user_id,
                 action="lead.claimed",
                 lead_id=lead.id,
-                meta={"price_cents": price, "batch_claim_count": len(leads)},
+                meta={"price_cents": price, "batch_claim_count": len(leads), **({"source": source} if source else {})},
             )
             await self._session.flush()
             enqueue_lead_shadow_upsert(self._session, lead)
