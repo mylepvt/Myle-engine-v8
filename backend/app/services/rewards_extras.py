@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import person_name
 from app.core.time_ist import IST
 from app.models.lead import Lead
 from app.models.process_reward import JackpotDraw, LeagueWeek, ProcessPoint, ScratchCard, SeasonResult
@@ -495,3 +496,65 @@ async def admin_overview(session: AsyncSession, now: datetime | None = None) -> 
         "seasons": [{"month": s.month.isoformat(), "winners": s.winners} for s in seasons],
         "season_live": _trim_season(await season_standings(session, month_start_for(now))),
     }
+
+
+# ── Admin: points per member ────────────────────────────────────────────────────
+
+
+async def member_totals(session: AsyncSession, now: datetime) -> list[dict]:
+    """Every active team member / leader: effective MP today, this week and this month,
+    what this month's points came for, and when they last earned. Highest month first."""
+    now = _aware(now)
+    today, week, month = _day_start(now.astimezone(IST).date()), _day_start(week_start_for(now)), _day_start(month_start_for(now))
+    since = min(week, month)
+    users = (
+        await session.execute(
+            select(User).where(User.role.in_(pr.EARNING_ROLES), User.removed_at.is_(None))
+        )
+    ).scalars().all()
+    rows = (
+        await session.execute(
+            select(ProcessPoint.user_id, ProcessPoint.step, ProcessPoint.points * ProcessPoint.multiplier, ProcessPoint.created_at)
+            .where(ProcessPoint.created_at >= since, ProcessPoint.revoked_at.is_(None))
+        )
+    ).all()
+    stats: dict[int, dict] = {
+        u.id: {"today": 0, "week": 0, "month": 0, "steps": defaultdict(lambda: [0, 0]), "last_at": None} for u in users
+    }
+    for uid, step, pts, at in rows:
+        s = stats.get(uid)
+        if s is None:
+            continue
+        at = _aware(at)
+        if at >= today:
+            s["today"] += pts
+        if at >= week:
+            s["week"] += pts
+        if at >= month:
+            s["month"] += pts
+            label = pr.label_for(step)
+            s["steps"][label][0] += 1
+            s["steps"][label][1] += pts
+        if s["last_at"] is None or at > s["last_at"]:
+            s["last_at"] = at
+    entries = await load_user_hierarchy_entries(session, [u.id for u in users])
+    out = []
+    for u in users:
+        s = stats[u.id]
+        leader = nearest_leader_entry(u.id, entries) if u.role != "leader" else None
+        out.append({
+            "user_id": u.id,
+            "name": person_name(u.name or u.username or u.fbo_id),
+            "role": u.role,
+            "leader_name": person_name(leader.display_name) if leader else None,
+            "today": s["today"],
+            "week": s["week"],
+            "month": s["month"],
+            "last_at": s["last_at"].isoformat() if s["last_at"] else None,
+            "breakdown": [
+                {"label": label, "count": c, "points": p}
+                for label, (c, p) in sorted(s["steps"].items(), key=lambda kv: -kv[1][1])
+            ],
+        })
+    out.sort(key=lambda m: (-m["month"], -m["week"], m["name"].lower()))
+    return out

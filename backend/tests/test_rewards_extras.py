@@ -288,3 +288,32 @@ async def test_jackpot_wheel_open_then_drawn_then_next_day(Session):
 async def test_wheel_endpoint(team_client):
     body = (await team_client.get("/api/v1/rewards/jackpot/wheel")).json()
     assert body["status"] in {"open", "drawn"} and "entries" in body
+
+
+# ── Admin: points per member ────────────────────────────────────────────────────
+
+
+async def test_member_totals_per_person(Session):
+    async with Session() as s:
+        await _seed(s)
+        s.add_all([
+            _pt(PRIYA, 1, "fast_first_call", 5, NOW, mult=2),
+            _pt(PRIYA, 2, "fast_first_call", 5, NOW - timedelta(minutes=5)),
+            _pt(PRIYA, 3, "enrolled", 50, NOW - timedelta(days=40)),  # last month or older: not counted
+            _pt(RAHUL, 4, "video_watched", 10, NOW),
+        ])
+        revoked = _pt(RAHUL, 5, "enrolled", 50, NOW)
+        revoked.revoked_at = NOW
+        s.add(revoked)
+        await s.commit()
+
+        members = await rx.member_totals(s, NOW)
+        assert [m["user_id"] for m in members][:2] == [PRIYA, RAHUL]
+        assert {m["user_id"] for m in members} == {AMAN, PRIYA, RAHUL, NEHA, RAVI}  # admin never earns
+        priya = members[0]
+        assert (priya["today"], priya["week"], priya["month"]) == (15, 15, 15)
+        assert priya["leader_name"] == "Aman Gill"
+        assert priya["breakdown"] == [{"label": pr.label_for("fast_first_call"), "count": 2, "points": 15}]
+        assert members[1]["month"] == 10  # the revoked enrollment does not count
+        ravi = next(m for m in members if m["user_id"] == RAVI)
+        assert (ravi["month"], ravi["last_at"], ravi["breakdown"]) == (0, None, [])
