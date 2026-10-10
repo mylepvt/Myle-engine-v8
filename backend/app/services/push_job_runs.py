@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 JOBS: dict[str, tuple[str, str]] = {
     "morning_plan": ("Daily plan", "9 AM"),
     "inactivity_nudge": ("Idle nudges", "11–4:30"),
+    "batch_reminders": ("Batch reminders", "10·1·3·4"),
     "star_alert": ("15+ club alert", "10–8"),
     "call_target_reminder": ("Call target", "5 PM"),
     "evening_recap": ("Evening recap", "8:30 PM"),

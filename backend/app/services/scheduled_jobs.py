@@ -12,6 +12,7 @@ Jobs (all IST-aware):
 - power_hour_alert                : every 5 min — push "Power Hour is on" once when it starts
 - league_settle                   : Monday 00:10 IST — close last week's Team League, pay the winning team
 - season_settle                   : 1st 00:20 IST — record last month's Season winners (admin pays)
+- batch_reminders                 : 10:00 / 13:00 / 15:00 / 16:00 IST — Day 1-2 batch start + follow-up reminders to member + leader
 - star_alert                      : every 15 min 10:00–20:00 IST — "X crossed 15 calls" push to members under 15 (max 1/day)
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
@@ -32,7 +33,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.time_ist import today_ist
+from app.core.time_ist import IST, today_ist
 from app.db.session import AsyncSessionLocal
 from app.models.current_cc import CurrentCcSheet
 from app.models.activity_log import ActivityLog
@@ -474,6 +475,31 @@ async def job_season_settle() -> None:
     except Exception as exc:
         logger.error("job_season_settle failed: %s", exc)
         await record_push_run("season_settle", targeted=0, sent=0, error=str(exc))
+
+
+async def job_batch_reminders() -> None:
+    """10 AM / 1 PM / 3 PM / 4 PM IST — batch start + follow-up reminders (see batch_notify)."""
+    from app.services.batch_notify import build_reminders, claim_checkpoint
+    from app.services.push_service import send_push_to_user
+
+    now = datetime.now(timezone.utc)
+    hour = now.astimezone(IST).hour
+    try:
+        async with AsyncSessionLocal() as session:
+            if not await claim_checkpoint(session, now, hour):
+                return
+            reminders = await build_reminders(session, hour)
+            sent = 0
+            for uid, (title, body) in reminders.items():
+                try:
+                    sent += bool(await send_push_to_user(session, uid, title=title, body=body, url="/dashboard/work/workboard"))
+                except Exception as exc:  # noqa: BLE001 — one bad subscription must not stop the batch
+                    logger.warning("batch reminder push failed for user_id=%s: %s", uid, exc)
+            logger.info("batch_reminders: hour=%s targeted=%d sent=%d", hour, len(reminders), sent)
+        await record_push_run("batch_reminders", targeted=len(reminders), sent=sent)
+    except Exception as exc:
+        logger.error("job_batch_reminders failed: %s", exc)
+        await record_push_run("batch_reminders", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------

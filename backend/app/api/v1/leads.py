@@ -36,6 +36,7 @@ from app.schemas.leads import (
     LeadUpdate,
 )
 from app.schemas.watch import BatchWatchPageData, Day6LivePageData
+from app.services.batch_notify import task_given_pushes
 from app.services.all_leads_service import AllLeadsService, get_all_leads_service
 from app.services import day2_test_service
 from app.services.lead_file_import import run_personal_lead_import
@@ -512,6 +513,7 @@ async def generate_batch_share_url(
     request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> BatchShareUrlResponse:
     slot = body.slot
     if slot not in _BATCH_SLOTS:
@@ -551,6 +553,13 @@ async def generate_batch_share_url(
             )
         )
         await session.commit()
+        # Task given → tell the team member (+ admin on Day 1, + leader on Day 2).
+        for uid, title, body_text, url in await task_given_pushes(
+            session, lead=lead, slot=slot, actor_id=user.user_id
+        ):
+            background_tasks.add_task(
+                send_push_to_user_bg, AsyncSessionLocal, uid, title=title, body=body_text, url=url
+            )
 
     base = str(request.base_url).rstrip("/")
     if slot.startswith("d6_"):
