@@ -29,7 +29,7 @@ const TYPE_LABEL: Record<ActionQueueItem['item_type'], string> = {
 function severityClasses(severity: number): string {
   if (severity >= 70) return 'bg-destructive/15 text-destructive-ink'
   if (severity >= 50) return 'bg-warning/15 text-warning-ink'
-  return 'bg-sky-500/15 text-sky-600'
+  return 'bg-primary/15 text-primary'
 }
 
 function QueueRow({ item }: { item: ActionQueueItem }) {

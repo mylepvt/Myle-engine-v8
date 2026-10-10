@@ -21,6 +21,7 @@ from datetime import datetime, time, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import person_name
 from app.core.time_ist import IST
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
@@ -212,7 +213,7 @@ async def build_nudge_contexts(
     online_ids = {u.id for u in online_now}
 
     plans = await build_morning_plans(session, users, today)
-    names = {u.id: (u.name or u.username or u.fbo_id or "").split(" ")[0] for u in users}
+    names = {u.id: person_name(u.name or u.username or u.fbo_id or "").split(" ")[0] for u in users}
     board = sorted((uid for uid, xp in xp_today.items() if xp > 0), key=lambda uid: -xp_today[uid])
 
     contexts: dict[int, NudgeContext] = {}

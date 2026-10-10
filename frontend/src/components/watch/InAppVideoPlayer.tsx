@@ -100,7 +100,7 @@ export function InAppVideoPlayer({
     }
 
     return (
-      <div className="flex aspect-video flex-col items-center justify-center rounded-4xl border border-amber-300/20 bg-amber-300/[0.06] px-6 text-center">
+      <div className="flex aspect-video flex-col items-center justify-center rounded-4xl border border-warning/20 bg-warning/20/[0.06] px-6 text-center">
         <p className="text-ds-h3 text-white">Video could not be played cleanly inside this room.</p>
         <p className="mt-2 max-w-md text-ds-body text-white/65">
           For the cleanest in-app player, use a direct hosted video file link like `.mp4` or `.webm` instead of a

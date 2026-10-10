@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import distinct, func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import first_name as _first_name
 from app.core.time_ist import IST
 from app.models.batch_share_link import BatchShareLink
 from app.models.call_event import CallEvent
@@ -52,8 +53,7 @@ _cache: tuple[float, dict[str, Any]] | None = None
 
 
 def first_name(user: User) -> str:
-    raw = (user.name or user.username or user.fbo_id or "A teammate").strip()
-    return raw.split(" ")[0] or "A teammate"
+    return _first_name(user.name or user.username or user.fbo_id, "A teammate")
 
 
 def _member_filter():

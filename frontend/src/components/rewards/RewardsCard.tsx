@@ -36,7 +36,7 @@ export function RewardsCard() {
   if (isError || (data && !data.eligible)) return null
 
   return (
-    <Card className="border-warning/30">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-ds-h3">
           <Trophy className="size-4 text-warning-ink" aria-hidden />

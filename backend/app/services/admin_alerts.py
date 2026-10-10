@@ -26,6 +26,7 @@ from sqlalchemy import event as sa_event, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session as SASession
 
+from app.core.person_name import person_name
 from app.core.lead_status import LEAD_STATUS_LABELS
 from app.models.app_setting import AppSetting
 from app.models.lead import Lead
@@ -322,7 +323,7 @@ def member_came_online(user: User) -> None:
             AlertEvent(
                 kind="online",
                 actor_id=user.id,
-                actor_name=user.name or user.username or user.fbo_id,
+                actor_name=person_name(user.name or user.username or user.fbo_id),
                 owner_id=user.id,
             )
         ]

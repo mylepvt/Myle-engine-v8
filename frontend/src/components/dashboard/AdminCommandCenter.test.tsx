@@ -33,6 +33,7 @@ vi.mock('@/components/community/CommunityLiveCard', () => ({
 vi.mock('@/components/contacts/Day2ContactsCard', () => ({
   Day2ContactsCard: () => <div data-testid="day2-contacts" />,
 }))
+vi.mock('@/components/rewards/JackpotCard', () => ({ JackpotCard: () => null }))
 vi.mock('@/components/rewards/AdminRewardsCard', () => ({ AdminRewardsCard: () => <div data-testid="admin-rewards" /> }))
 vi.mock('@/components/dashboard/overview/AppSetupCard', () => ({ AppSetupCard: () => <div data-testid="app-setup" /> }))
 vi.mock('@/components/closing/ClosingReadyCard', () => ({ ClosingReadyCard: () => <div data-testid="closing-ready" /> }))

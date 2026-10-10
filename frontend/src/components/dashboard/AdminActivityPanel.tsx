@@ -31,8 +31,8 @@ const ACTION_COLORS: Record<string, ActionColors> = {
     pill: 'bg-cyan-400/30', pillText: 'text-cyan-700 dark:text-cyan-200', tag: 'bg-cyan-400/25 text-cyan-700 dark:text-cyan-200',
   },
   'lead:auto_reassigned': {
-    bg: 'bg-orange-400/20', border: 'border-l-orange-400',
-    pill: 'bg-orange-400/30', pillText: 'text-orange-700 dark:text-orange-200', tag: 'bg-orange-400/25 text-orange-700 dark:text-orange-200',
+    bg: 'bg-warning/20', border: 'border-l-warning/30',
+    pill: 'bg-warning/30', pillText: 'text-warning-ink', tag: 'bg-warning/25 text-warning-ink',
   },
   'lead:closed': {
     bg: 'bg-lime-400/20', border: 'border-l-lime-400',
@@ -51,20 +51,20 @@ const ACTION_COLORS: Record<string, ActionColors> = {
     pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'lead:shadow_created': {
-    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
+    bg: 'bg-primary/20', border: 'border-l-primary/30',
+    pill: 'bg-primary/30', pillText: 'text-primary', tag: 'bg-primary/25 text-primary',
   },
   'lead:shadow_synced': {
-    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
+    bg: 'bg-primary/20', border: 'border-l-primary/30',
+    pill: 'bg-primary/30', pillText: 'text-primary', tag: 'bg-primary/25 text-primary',
   },
   'shadow_delivery': {
-    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
+    bg: 'bg-primary/20', border: 'border-l-primary/30',
+    pill: 'bg-primary/30', pillText: 'text-primary', tag: 'bg-primary/25 text-primary',
   },
   'LEAD_UPSERT': {
-    bg: 'bg-sky-400/20', border: 'border-l-sky-400',
-    pill: 'bg-sky-400/30', pillText: 'text-sky-700 dark:text-sky-200', tag: 'bg-sky-400/25 text-sky-700 dark:text-sky-200',
+    bg: 'bg-primary/20', border: 'border-l-primary/30',
+    pill: 'bg-primary/30', pillText: 'text-primary', tag: 'bg-primary/25 text-primary',
   },
   'lead:shadow_deleted': {
     bg: 'bg-destructive/20', border: 'border-l-destructive',
@@ -111,16 +111,16 @@ const ACTION_COLORS: Record<string, ActionColors> = {
     pill: 'bg-destructive/30', pillText: 'text-destructive-ink', tag: 'bg-destructive/25 text-destructive-ink',
   },
   'system:scheduler_tick': {
-    bg: 'bg-slate-400/15', border: 'border-l-slate-400',
-    pill: 'bg-slate-400/25', pillText: 'text-slate-200', tag: 'bg-slate-400/20 text-slate-200',
+    bg: 'bg-muted/15', border: 'border-l-border',
+    pill: 'bg-muted/25', pillText: 'text-foreground', tag: 'bg-muted/20 text-foreground',
   },
   'scheduler.watch_archive': {
-    bg: 'bg-slate-400/15', border: 'border-l-slate-400',
-    pill: 'bg-slate-400/25', pillText: 'text-slate-200', tag: 'bg-slate-400/20 text-slate-200',
+    bg: 'bg-muted/15', border: 'border-l-border',
+    pill: 'bg-muted/25', pillText: 'text-foreground', tag: 'bg-muted/20 text-foreground',
   },
   'scheduler.leader_enforcement': {
-    bg: 'bg-slate-400/15', border: 'border-l-slate-400',
-    pill: 'bg-slate-400/25', pillText: 'text-slate-200', tag: 'bg-slate-400/20 text-slate-200',
+    bg: 'bg-muted/15', border: 'border-l-border',
+    pill: 'bg-muted/25', pillText: 'text-foreground', tag: 'bg-muted/20 text-foreground',
   },
 }
 

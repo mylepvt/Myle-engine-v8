@@ -21,10 +21,10 @@ function PowerHourForm({ initial }: { initial: { enabled: boolean; start: string
   const dirty = cfg.enabled !== initial.enabled || cfg.start !== initial.start || cfg.end !== initial.end
 
   return (
-    <div className="rounded-lg border border-border/60 px-3 py-2.5">
+    <div className="rounded-xl border border-border/60 p-3">
       <div className="flex items-center gap-2">
         <Zap className="size-3.5 text-primary" aria-hidden />
-        <span className="text-ds-caption font-semibold">Power Hour (2× points)</span>
+        <span className="text-ds-body font-medium">Power Hour (2× points)</span>
         <Switch
           className="ml-auto"
           checked={cfg.enabled}
@@ -38,7 +38,7 @@ function PowerHourForm({ initial }: { initial: { enabled: boolean; start: string
           aria-label="Power Hour start"
           value={cfg.start}
           onChange={(e) => setCfg({ ...cfg, start: e.target.value })}
-          className="h-8 w-28"
+          className="h-9 min-w-0 flex-1"
         />
         <span className="text-ds-caption text-muted-foreground">to</span>
         <Input
@@ -46,11 +46,11 @@ function PowerHourForm({ initial }: { initial: { enabled: boolean; start: string
           aria-label="Power Hour end"
           value={cfg.end}
           onChange={(e) => setCfg({ ...cfg, end: e.target.value })}
-          className="h-8 w-28"
+          className="h-9 min-w-0 flex-1"
         />
         <Button
           size="sm"
-          className="ml-auto h-8"
+          className="h-9 shrink-0"
           disabled={!dirty || save.isPending}
           onClick={() =>
             save.mutate(cfg, {

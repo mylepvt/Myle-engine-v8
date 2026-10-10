@@ -34,3 +34,21 @@ export function formatRelativeTimeShort(iso: string, nowMs = Date.now()): string
   if (diffD < 7) return `${diffD}d ago`
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
+
+const LOGIN_ID = /^[a-z]+(-[a-z0-9]+)+$/i
+
+/** "Akansha_Kharwar" / "anushka_jaiswal" → "Akansha Kharwar" / "Anushka Jaiswal".
+ * Login ids such as "fbo-leader-001" are left as they are. Mirrors backend `person_name`. */
+export function personName(raw: string | null | undefined, fallback = ''): string {
+  const text = (raw ?? '').trim()
+  if (!text || LOGIN_ID.test(text)) return text || fallback
+  return text
+    .replace(/[_\s]+/g, ' ')
+    .split(' ')
+    .map((w) => (w && w[0] === w[0].toLowerCase() && w[0] !== w[0].toUpperCase() ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ')
+}
+
+export function firstNameOf(raw: string | null | undefined, fallback = ''): string {
+  return personName(raw).split(' ')[0] || fallback
+}

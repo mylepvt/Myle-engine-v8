@@ -38,7 +38,7 @@ export function ClosingReadyCard() {
   const items = data?.items ?? []
 
   return (
-    <Card className="border-success/30">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-2 text-ds-h3">
           <span className="flex items-center gap-2">

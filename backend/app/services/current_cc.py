@@ -8,6 +8,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import person_name
 from app.api.deps import AuthUser
 from app.models.current_cc import CurrentCcSheet
 from app.models.daily_member_stat import DailyMemberStat
@@ -112,7 +113,7 @@ def build_match(*, claimed_cc: float, claimed_enrollment: float, actuals: Curren
 def _display_name(u: User | None) -> str:
     if u is None:
         return "—"
-    return u.name or u.username or u.fbo_id or f"User #{u.id}"
+    return person_name(u.name or u.username or u.fbo_id) or f"User #{u.id}"
 
 
 async def _can_access(session: AsyncSession, *, actor: AuthUser, subject_user_id: int) -> bool:

@@ -14,7 +14,6 @@ import { rupees } from '@/lib/rewards'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
 
 import { AdminRewardsSettings } from './AdminRewardsSettings'
-import { JackpotWheel } from './JackpotWheel'
 
 /** Admin audit: who earned MYLE Points for what (last 7 days), revoke, and jackpot history. */
 export function AdminRewardsCard() {
@@ -24,7 +23,7 @@ export function AdminRewardsCard() {
   const [showAll, setShowAll] = useState(false)
 
   const rows = points.data?.points ?? []
-  const shown = showAll ? rows : rows.slice(0, 12)
+  const shown = showAll ? rows : rows.slice(0, 6)
   const live = rows.filter((p) => !p.revoked_at)
 
   return (
@@ -39,7 +38,6 @@ export function AdminRewardsCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <JackpotWheel myTickets={0} />
         <AdminRewardsSettings />
         {draws.data?.draws.length ? (
           <ul className="flex flex-wrap gap-1.5">
@@ -59,21 +57,21 @@ export function AdminRewardsCard() {
         ) : (
           <ul className="divide-y divide-border/60">
             {shown.map((p) => (
-              <li key={p.id} className={cn('flex items-center gap-2 py-1.5 text-ds-caption', p.revoked_at && 'opacity-50')}>
-                <span className="w-9 shrink-0 font-bold tabular-nums">+{p.points}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="font-semibold text-foreground">{p.user_name}</span>
-                  <span className="text-muted-foreground">
-                    {' '}· {p.label} · {p.lead_name ?? `#${p.lead_id}`} · {formatRelativeTimeShort(p.at)}
-                  </span>
-                </span>
+              <li key={p.id} className={cn('flex items-center gap-3 py-2.5', p.revoked_at && 'opacity-50')}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-ds-body font-medium text-foreground">{p.user_name}</p>
+                  <p className="truncate text-ds-caption font-normal text-muted-foreground">
+                    {p.label} · {p.lead_name ?? `#${p.lead_id}`} · {formatRelativeTimeShort(p.at)}
+                  </p>
+                </div>
+                <span className="shrink-0 text-ds-body font-semibold tabular-nums text-foreground">+{p.points}</span>
                 {p.revoked_at ? (
-                  <span className="shrink-0 text-ds-micro text-muted-foreground">revoked ({p.revoked_reason})</span>
+                  <span className="w-16 shrink-0 text-right text-ds-micro text-muted-foreground">revoked</span>
                 ) : (
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 shrink-0 px-2 text-destructive-ink"
+                    className="h-8 w-16 shrink-0 px-2 text-ds-caption text-muted-foreground hover:text-destructive-ink"
                     disabled={revoke.isPending}
                     onClick={() =>
                       revoke.mutate(p.id, {
@@ -89,8 +87,12 @@ export function AdminRewardsCard() {
             ))}
           </ul>
         )}
-        {rows.length > 12 ? (
-          <button type="button" className="text-ds-caption font-semibold text-primary" onClick={() => setShowAll((v) => !v)}>
+        {rows.length > 6 ? (
+          <button
+            type="button"
+            className="h-9 w-full rounded-lg text-ds-caption font-semibold text-primary hover:bg-primary/5"
+            onClick={() => setShowAll((v) => !v)}
+          >
             {showAll ? 'Show less' : `Show all ${rows.length}`}
           </button>
         ) : null}

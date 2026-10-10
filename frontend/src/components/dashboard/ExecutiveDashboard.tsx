@@ -177,7 +177,7 @@ export function ExecutiveDashboard() {
               <Badge className="bg-warning/10 text-warning-ink hover:bg-warning/10">
                 Medium: {rsk.org_stats.medium_risk} ({rsk.org_stats.band_pct_medium}%)
               </Badge>
-              <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+              <Badge className="bg-warning/10 text-warning-ink hover:bg-warning/10">
                 High: {rsk.org_stats.high_risk} ({rsk.org_stats.band_pct_high}%)
               </Badge>
               <Badge className="bg-destructive/10 text-destructive-ink hover:bg-destructive/10">
