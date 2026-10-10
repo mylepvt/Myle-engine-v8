@@ -58,6 +58,7 @@ from app.services.scheduled_jobs import (
     job_google_contacts_sync,
     job_morning_plan,
     job_star_alert,
+    job_batch_reminders,
     job_process_rewards_scan,
     job_jackpot_draw,
     job_power_hour_alert,
@@ -168,6 +169,13 @@ async def lifespan(_app: FastAPI):
             id="season_settle",
             replace_existing=True,
             misfire_grace_time=6 * 3600,
+        )
+        _scheduler.add_job(
+            job_batch_reminders,
+            CronTrigger(hour="10,13,15,16", minute=0, timezone="Asia/Kolkata"),
+            id="batch_reminders",
+            replace_existing=True,
+            misfire_grace_time=900,
         )
         _scheduler.add_job(
             job_evening_recap,
