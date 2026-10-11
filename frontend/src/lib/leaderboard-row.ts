@@ -5,6 +5,8 @@ export type LeaderboardTableRow = {
   email: string
   points: string
   xp: string
+  /** MYLE Points this month (current API). */
+  mp: string
   level: string
 }
 
@@ -25,6 +27,7 @@ export function parseLeaderboardStubItem(
   let email = '—'
   let points = '—'
   let xp = '—'
+  let mp = '—'
   let level = '—'
 
   const detail = typeof row.detail === 'string' ? row.detail : ''
@@ -38,9 +41,11 @@ export function parseLeaderboardStubItem(
     if (mPts?.[1]) points = mPts[1]
     const mXp = (tail || detail).match(/xp:\s*(\d+)/i)
     if (mXp?.[1]) xp = mXp[1]
+    const mMp = (tail || detail).match(/\bmp:\s*(\d+)/i)
+    if (mMp?.[1]) mp = mMp[1]
     const mLvl = (tail || detail).match(/level:\s*([a-z_]+)/i)
     if (mLvl?.[1]) level = mLvl[1].toLowerCase()
   }
 
-  return { rank, name, role, email, points, xp, level }
+  return { rank, name, role, email, points, xp, mp, level }
 }

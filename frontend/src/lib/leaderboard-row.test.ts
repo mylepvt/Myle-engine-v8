@@ -19,6 +19,7 @@ describe('parseLeaderboardStubItem', () => {
       email: 'a@x.com',
       points: '42',
       xp: '—',
+      mp: '—',
       level: '—',
     })
   })
@@ -39,6 +40,7 @@ describe('parseLeaderboardStubItem', () => {
       email: 'a@x.com',
       points: '42',
       xp: '1250',
+      mp: '—',
       level: 'champion',
     })
   })
@@ -60,5 +62,13 @@ describe('parseLeaderboardStubItem', () => {
   it('falls back rank to index', () => {
     const r = parseLeaderboardStubItem({ title: 'x', detail: '' }, 4)
     expect(r.rank).toBe(5)
+  })
+
+  it('parses the MYLE Points leaderboard shape', () => {
+    const r = parseLeaderboardStubItem(
+      { title: '#2 Akansha', detail: 'leader · 170 MP this month · mp: 170 · level: agent', count: 2 },
+      0,
+    )
+    expect(r).toMatchObject({ rank: 2, name: 'Akansha', role: 'leader', mp: '170', level: 'agent' })
   })
 })

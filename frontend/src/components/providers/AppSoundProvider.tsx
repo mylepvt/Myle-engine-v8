@@ -2,7 +2,7 @@ import { type ReactNode, useEffect } from 'react'
 
 import { playAppSound, primeAppSounds } from '@/lib/app-sounds'
 import { XpFlyLayer } from '@/components/xp/XpFlyLayer'
-import { useXpRewardSound } from '@/hooks/use-xp-reward-sound'
+import { useRewardSound } from '@/hooks/use-reward-sound'
 
 // Elements matching these selectors get the tap sound on pointerdown.
 const TAP_SELECTOR =
@@ -24,19 +24,14 @@ function isInteractive(target: EventTarget | null): boolean {
 }
 
 export function AppSoundProvider({ children }: { children: ReactNode }) {
-  useXpRewardSound()
+  useRewardSound()
 
   useEffect(() => {
-    let primed = false
     let touchStartX = 0
     let touchStartY = 0
 
-    const prime = () => {
-      if (!primed) {
-        primeAppSounds()
-        primed = true
-      }
-    }
+    // Every tap re-primes: phones suspend audio when the app goes to the background.
+    const prime = () => primeAppSounds()
 
     const handlePointerDown = (e: PointerEvent) => {
       prime()

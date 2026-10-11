@@ -8,6 +8,7 @@ export type AppSound =
   | 'wheel_tick'
   | 'jackpot'
   | 'scratch'
+  | 'level_up'
 
 // ─── Global enable/mute (SaaS: user-controllable, persisted) ──────────────────
 const SOUND_PREF_KEY = 'myle-sound-enabled'
@@ -81,7 +82,10 @@ const SOUND_COOLDOWN_MS: Record<AppSound, number> = {
   wheel_tick: 28,
   jackpot: 2500,
   scratch: 300,
+  level_up: 2500,
 }
+
+const MASTER_GAIN = 2.6
 
 let audioGraph: AudioGraph | null = null
 let noiseCache: AudioBuffer | null = null
@@ -101,12 +105,20 @@ function ensureAudioGraph(): AudioGraph | null {
   const Ctor = getAudioContextCtor()
   if (!Ctor) return null
 
+  // iOS: let web audio play even with the ringer switch on silent (Safari 16.4+).
+  try {
+    const nav = navigator as Navigator & { audioSession?: { type: string } }
+    if (nav.audioSession) nav.audioSession.type = 'playback'
+  } catch { /* not supported */ }
+
   const ctx = new Ctor()
   const output = ctx.createGain()
   const toneSoftener = ctx.createBiquadFilter()
   const limiter = ctx.createDynamicsCompressor()
 
-  output.gain.value = 0.9
+  // The voices below are mixed quiet; this lifts them to a clearly audible level on phones
+  // (the compressor keeps the loud moments — jackpot, coin shower — from clipping).
+  output.gain.value = MASTER_GAIN
   toneSoftener.type = 'highshelf'
   toneSoftener.frequency.value = 2400
   toneSoftener.gain.value = -6
@@ -218,7 +230,7 @@ function canPlay(kind: AppSound) {
 function playTap(graph: AudioGraph) {
   const { ctx, output } = graph
   const now = ctx.currentTime + 0.003
-  const lvl = 0.82 + Math.random() * 0.34
+  const lvl = (0.82 + Math.random() * 0.34) * 0.42 // taps stay subtle under MASTER_GAIN
   const pitch = 1 + (Math.random() * 0.08 - 0.04)
 
   scheduleTone(ctx, output, {
@@ -356,85 +368,177 @@ function playNotify(graph: AudioGraph) {
 }
 
 // ─── reward ──────────────────────────────────────────────────────────────────
-// Bright ascending sparkle — XP earned / level-up / streak milestone.
+// MYLE Points arrived — ASMR "coin into glass": a soft bubble pop, two bright coin
+// clinks with metallic (inharmonic) partials, then a glassy pentatonic shimmer over a warm pad.
+function coinClink(ctx: AudioContext, output: AudioNode, at: number, base: number, peak: number, pan: number) {
+  ;[
+    [1, 1, 0.28],
+    [2.41, 0.42, 0.14],
+    [3.87, 0.22, 0.08],
+    [5.3, 0.1, 0.05],
+  ].forEach(([ratio, gain, decay]) => {
+    scheduleTone(ctx, output, {
+      at, frequency: base * ratio, type: 'sine', peak: peak * gain, attack: 0.001, decay, pan,
+    })
+  })
+  scheduleNoise(ctx, output, { at, duration: 0.012, peak: peak * 0.5, highpass: 5000, lowpass: 12000, pan })
+}
+
 function playReward(graph: AudioGraph) {
   const { ctx, output } = graph
   const now = ctx.currentTime + 0.02
-  const notes = [
-    { offset: 0, freq: 783.99, pan: -0.2 },
-    { offset: 0.08, freq: 987.77, pan: -0.08 },
-    { offset: 0.16, freq: 1174.66, pan: 0.05 },
-    { offset: 0.24, freq: 1567.98, pan: 0.2 },
-  ]
-
+  // bubble pop
   scheduleTone(ctx, output, {
-    at: now, frequency: 392, type: 'triangle', peak: 0.007, decay: 0.5,
+    at: now, frequency: 220, endFrequency: 90, type: 'sine', peak: 0.05, attack: 0.002, decay: 0.07,
   })
-
-  notes.forEach((note, i) => {
-    const at = now + note.offset
-    const peak = 0.018 - i * 0.002
+  coinClink(ctx, output, now + 0.035, 2093, 0.03, -0.25)
+  coinClink(ctx, output, now + 0.12, 2637, 0.026, 0.25)
+  // glassy shimmer, rising
+  ;[1568, 1976, 2349, 3136].forEach((f, i) => {
     scheduleTone(ctx, output, {
-      at, frequency: note.freq, type: 'triangle', peak,
-      decay: 0.35 + i * 0.04, pan: note.pan, detune: i * 3,
-    })
-    scheduleTone(ctx, output, {
-      at: at + 0.005, frequency: note.freq * 2, type: 'sine',
-      peak: peak * 0.3, decay: 0.2, pan: note.pan * 0.6,
+      at: now + 0.2 + i * 0.055, frequency: f, type: 'sine', peak: 0.012 - i * 0.0015,
+      attack: 0.004, decay: 0.55, pan: -0.3 + i * 0.2,
     })
   })
-  scheduleNoise(ctx, output, {
-    at: now + 0.12, duration: 0.07, peak: 0.0015, highpass: 5000, lowpass: 12000,
+  // warm pad underneath
+  ;[523.25, 659.25, 783.99].forEach((f, i) => {
+    scheduleTone(ctx, output, {
+      at: now + 0.05, frequency: f, type: 'triangle', peak: 0.006, attack: 0.06, decay: 0.9,
+      pan: -0.15 + i * 0.15, filter: { type: 'lowpass', frequency: 1600, q: 0.5 },
+    })
   })
 }
 
+// ─── level_up ────────────────────────────────────────────────────────────────
+// A rising "whoosh" sweep into a bright arpeggio + sparkle rain.
+function playLevelUp(graph: AudioGraph) {
+  const { ctx, output } = graph
+  const now = ctx.currentTime + 0.02
+  const src = ctx.createBufferSource()
+  const bp = ctx.createBiquadFilter()
+  const g = ctx.createGain()
+  src.buffer = getNoiseBuffer(ctx)
+  src.loop = true
+  bp.type = 'bandpass'
+  bp.Q.value = 1.4
+  bp.frequency.setValueAtTime(300, now)
+  bp.frequency.exponentialRampToValueAtTime(5200, now + 0.6)
+  g.gain.setValueAtTime(0.0001, now)
+  g.gain.exponentialRampToValueAtTime(0.05, now + 0.45)
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.7)
+  src.connect(bp)
+  bp.connect(g)
+  g.connect(output)
+  src.start(now)
+  src.stop(now + 0.75)
+  ;[523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => {
+    scheduleTone(ctx, output, {
+      at: now + 0.55 + i * 0.07, frequency: f, type: 'triangle', peak: 0.02, decay: 0.6,
+      pan: -0.3 + i * 0.15,
+    })
+  })
+  for (let i = 0; i < 8; i += 1) {
+    scheduleTone(ctx, output, {
+      at: now + 0.9 + i * 0.06, frequency: 2400 + ((i * 523) % 1600), type: 'sine', peak: 0.007,
+      decay: 0.25, pan: i % 2 ? 0.4 : -0.4,
+    })
+  }
+}
+
 // ─── wheel_tick ──────────────────────────────────────────────────────────────
-// Prize-wheel clicker: a short woody "tk" each time a peg passes the pointer.
-// `speed` 0..1 — fast spin = brighter, quieter clicks; the last slow clicks land heavier.
+// Prize-wheel clicker: a crisp plastic "tk" each time a peg flicks the pointer.
+// `speed` 0..1 — fast spin = light, quick clicks; the last slow clicks land heavy and woody.
 function playWheelTick(graph: AudioGraph, speed = 0.5) {
   const { ctx, output } = graph
   const now = ctx.currentTime + 0.002
   const s = Math.max(0, Math.min(1, speed))
-  const lvl = 1.15 - s * 0.45
+  const heavy = 1 - s
+  const pitch = 1 + (Math.random() * 0.06 - 0.03)
   scheduleNoise(ctx, output, {
-    at: now, duration: 0.012, peak: 0.05 * lvl, highpass: 1800 + s * 1400, lowpass: 7000,
+    at: now, duration: 0.009, peak: 0.07 + heavy * 0.05, highpass: 2200, lowpass: 6500,
   })
   scheduleTone(ctx, output, {
-    at: now, frequency: 520 + s * 260, endFrequency: 300, type: 'triangle',
-    peak: 0.02 * lvl, attack: 0.001, decay: 0.035,
-    filter: { type: 'bandpass', frequency: 1100, q: 1.2 },
+    at: now, frequency: (1500 + s * 500) * pitch, endFrequency: 900, type: 'triangle',
+    peak: 0.03 + heavy * 0.02, attack: 0.001, decay: 0.025,
+    filter: { type: 'bandpass', frequency: 1800, q: 1.4 },
   })
+  if (heavy > 0.5) {
+    // body "thock" on the slow last clicks
+    scheduleTone(ctx, output, {
+      at: now, frequency: 160 * pitch, endFrequency: 90, type: 'sine', peak: 0.05 * heavy, attack: 0.001, decay: 0.06,
+    })
+  }
+}
+
+/** Continuous spin whoosh: filtered air that brightens and swells with speed. */
+export type WheelWhoosh = { update: (speed: number) => void; stop: () => void }
+
+export function startWheelWhoosh(): WheelWhoosh | null {
+  if (!soundsEnabled) return null
+  const graph = ensureAudioGraph()
+  if (!graph) return null
+  const { ctx, output } = graph
+  const src = ctx.createBufferSource()
+  const bp = ctx.createBiquadFilter()
+  const g = ctx.createGain()
+  src.buffer = getNoiseBuffer(ctx)
+  src.loop = true
+  bp.type = 'bandpass'
+  bp.Q.value = 0.8
+  bp.frequency.value = 1400
+  g.gain.value = 0.0001
+  src.connect(bp)
+  bp.connect(g)
+  g.connect(output)
+  src.start()
+  let stopped = false
+  return {
+    update(speed: number) {
+      if (stopped) return
+      const s = Math.max(0, Math.min(1, speed))
+      const t = ctx.currentTime
+      bp.frequency.setTargetAtTime(250 + s * 2200, t, 0.08)
+      g.gain.setTargetAtTime(0.0002 + s * s * 0.03, t, 0.1)
+    },
+    stop() {
+      if (stopped) return
+      stopped = true
+      const t = ctx.currentTime
+      g.gain.setTargetAtTime(0.0001, t, 0.08)
+      src.stop(t + 0.4)
+    },
+  }
 }
 
 // ─── jackpot ─────────────────────────────────────────────────────────────────
-// Winner fanfare: rising brass-ish arpeggio, a held major chord and coin sparkles.
+// Winner: a deep drum hit, a big bell, a major-chord swell and a shower of coins.
 function playJackpot(graph: AudioGraph) {
   const { ctx, output } = graph
   const now = ctx.currentTime + 0.03
-  const run = [523.25, 659.25, 783.99, 1046.5]
-  run.forEach((f, i) => {
+  // drum hit
+  scheduleTone(ctx, output, { at: now, frequency: 110, endFrequency: 42, type: 'sine', peak: 0.16, attack: 0.002, decay: 0.45 })
+  scheduleNoise(ctx, output, { at: now, duration: 0.08, peak: 0.05, highpass: 200, lowpass: 2400 })
+  // big bell
+  ;[
+    [1, 0.04, 2.2],
+    [2.76, 0.016, 1.2],
+    [5.4, 0.008, 0.6],
+  ].forEach(([ratio, peak, decay]) => {
+    scheduleTone(ctx, output, { at: now + 0.02, frequency: 523.25 * ratio, type: 'sine', peak, decay })
+  })
+  // chord swell
+  ;[261.63, 329.63, 392, 523.25, 659.25].forEach((f, i) => {
     scheduleTone(ctx, output, {
-      at: now + i * 0.11, frequency: f, type: 'sawtooth', peak: 0.012, decay: 0.22,
-      pan: -0.2 + i * 0.13, filter: { type: 'lowpass', frequency: 2600, q: 0.7 },
+      at: now + 0.1, frequency: f, type: i % 2 ? 'triangle' : 'sawtooth', peak: 0.009, attack: 0.25,
+      decay: 2.2, pan: -0.4 + i * 0.2, detune: i * 4 - 8,
+      filter: { type: 'lowpass', frequency: 2200, q: 0.6 },
     })
   })
-  const chordAt = now + 0.48
-  ;[523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
-    scheduleTone(ctx, output, {
-      at: chordAt, frequency: f, type: i % 2 ? 'triangle' : 'sawtooth', peak: 0.011, attack: 0.02,
-      decay: 1.6, pan: -0.25 + i * 0.17, detune: i * 3 - 4,
-      filter: { type: 'lowpass', frequency: 2400, q: 0.6 },
-    })
-  })
-  scheduleTone(ctx, output, { at: chordAt, frequency: 130.81, type: 'sine', peak: 0.02, decay: 1.4 })
-  for (let i = 0; i < 9; i += 1) {
-    const at = chordAt + 0.08 + i * 0.09
-    scheduleTone(ctx, output, {
-      at, frequency: 1800 + ((i * 377) % 900), type: 'sine', peak: 0.006, decay: 0.16,
-      pan: i % 2 ? 0.35 : -0.35,
-    })
+  // coin shower
+  for (let i = 0; i < 26; i += 1) {
+    const at = now + 0.15 + Math.random() * 1.7
+    coinClink(ctx, output, at, 2000 + Math.random() * 2200, 0.008 + Math.random() * 0.012, Math.random() * 1.6 - 0.8)
   }
-  scheduleNoise(ctx, output, { at: chordAt, duration: 0.25, peak: 0.004, highpass: 5000, lowpass: 12000 })
 }
 
 // ─── scratch ─────────────────────────────────────────────────────────────────
@@ -444,7 +548,7 @@ function playScratch(graph: AudioGraph) {
   const now = ctx.currentTime + 0.005
   ;[0, 0.07, 0.15, 0.22].forEach((t, i) => {
     scheduleNoise(ctx, output, {
-      at: now + t, duration: 0.06, peak: 0.02, highpass: 2500 + i * 300, lowpass: 9000, pan: i % 2 ? 0.2 : -0.2,
+      at: now + t, duration: 0.06, peak: 0.035, highpass: 2500 + i * 300, lowpass: 9000, pan: i % 2 ? 0.2 : -0.2,
     })
   })
 }
@@ -456,10 +560,19 @@ export function audioReady(): boolean {
   return audioGraph?.ctx.state === 'running'
 }
 
+/** Call on every tap: unlocks audio, and wakes it again after the phone suspended it. */
 export function primeAppSounds() {
   const graph = ensureAudioGraph()
   if (!graph) return
-  if (graph.ctx.state === 'suspended') void graph.ctx.resume()
+  if (graph.ctx.state !== 'running') void graph.ctx.resume()
+}
+
+/** A light buzz on phones that support it (Android). No-op elsewhere or when sounds are off. */
+export function haptic(pattern: number | number[]) {
+  if (!soundsEnabled) return
+  try {
+    navigator.vibrate?.(pattern)
+  } catch { /* not supported */ }
 }
 
 export function playAppSound(kind: AppSound, opts?: { speed?: number }) {
@@ -478,5 +591,6 @@ export function playAppSound(kind: AppSound, opts?: { speed?: number }) {
     case 'wheel_tick': playWheelTick(graph, opts?.speed); break
     case 'jackpot':  playJackpot(graph); break
     case 'scratch':  playScratch(graph); break
+    case 'level_up': playLevelUp(graph); break
   }
 }

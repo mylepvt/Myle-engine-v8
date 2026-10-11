@@ -30,10 +30,21 @@ export type JackpotDraw = {
   rolled_over: boolean
 }
 
+export type MpLevel = {
+  key: 'rookie' | 'agent' | 'pro' | 'elite' | 'legend'
+  label: string
+  mp: number
+  next_label: string | null
+  next_at: number | null
+  progress_pct: number
+}
+
 export type MyRewards = {
   eligible: boolean
   points_today: number
   points_total: number
+  /** Level from lifetime MYLE Points (replaces the old XP level). */
+  level?: MpLevel
   tickets: number
   max_tickets: number
   mp_per_ticket: number
@@ -148,6 +159,18 @@ export function useMyRewardsQuery() {
     queryFn: () => getJson('/api/v1/rewards/me'),
     staleTime: 30_000,
     refetchInterval: 60_000,
+  })
+}
+
+export type MpPeriod = 'today' | 'week' | 'month'
+export type MpBoardRow = { rank: number; user_id: number; name: string; role: string; mp: number }
+
+/** MYLE Points earned today / this week / this month — top 10 + my own rank. */
+export function useMpLeaderboardQuery(period: MpPeriod) {
+  return useQuery<{ period: MpPeriod; items: MpBoardRow[]; me: MpBoardRow | null; total: number }>({
+    queryKey: ['rewards', 'leaderboard', period],
+    queryFn: () => getJson(`/api/v1/rewards/leaderboard?period=${period}`),
+    staleTime: 60_000,
   })
 }
 

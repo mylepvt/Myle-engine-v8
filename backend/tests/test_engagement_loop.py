@@ -16,6 +16,7 @@ from app.models.daily_report import DailyReport
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
+from app.models.process_reward import ProcessPoint
 from app.models.xp_event import XpEvent
 from app.services.engagement_digest import (
     EveningRecap,
@@ -39,14 +40,14 @@ def test_morning_copy():
 
 def test_evening_copy():
     title, body = evening_recap_message(
-        EveningRecap(calls_today=32, calls_yesterday=24, xp_today=180, rank_today=3,
+        EveningRecap(calls_today=32, calls_yesterday=24, mp_today=180, rank_today=3,
                      ranked_total=40, report_submitted=False)
     )
     assert title == "Your day so far"
-    assert body == ("32 calls today, 8 more than yesterday. You earned 180 XP — #3 of 40 today. "
+    assert body == ("32 calls today, 8 more than yesterday. You earned 180 MYLE Points — #3 of 40 today. "
                     "Submit your daily report before midnight.")
     title, _ = evening_recap_message(
-        EveningRecap(calls_today=0, calls_yesterday=5, xp_today=0, rank_today=None,
+        EveningRecap(calls_today=0, calls_yesterday=5, mp_today=0, rank_today=None,
                      ranked_total=0, report_submitted=True)
     )
     assert title == "Great work today"
@@ -79,9 +80,11 @@ async def ctx():
         s.add_all([
             CallEvent(lead_id=called.id, user_id=ASHA, outcome="answered", called_at=now),
             CallEvent(lead_id=fresh.id, user_id=ASHA, outcome="no_answer", called_at=now),
-            XpEvent(user_id=ASHA, action="call_logged", xp=16, created_at=now),
-            XpEvent(user_id=BINA, action="report_submitted", xp=25, created_at=now),
-            XpEvent(user_id=BINA, action="call_logged", xp=8, created_at=now - timedelta(days=10)),
+            XpEvent(user_id=ASHA, action="call_logged", xp=16, created_at=now),  # XP no longer ranks anyone
+            ProcessPoint(user_id=ASHA, lead_id=called.id, step="fast_first_call", points=5, created_at=now),
+            ProcessPoint(user_id=BINA, lead_id=fresh.id, step="video_watched", points=25, created_at=now),
+            ProcessPoint(user_id=BINA, lead_id=called.id, step="enrolled", points=50,
+                         created_at=now - timedelta(days=10)),
         ])
         s.add(DailyReport(user_id=BINA, report_date=today_ist(), total_calling=0))
         await s.commit()
@@ -111,9 +114,19 @@ async def test_digest_data(ctx):
     assert recaps[BINA].report_submitted is True
 
 
-async def test_today_leaderboard_counts_only_todays_xp(ctx):
+async def test_today_leaderboard_counts_only_todays_myle_points(ctx):
     client, _Session = ctx
-    body = (await client.get("/api/v1/xp/leaderboard/period", params={"period": "today"})).json()
-    assert [(r["name"], r["xp"]) for r in body["items"]] == [("Bina", 25), ("Asha", 16)]
+    body = (await client.get("/api/v1/rewards/leaderboard", params={"period": "today"})).json()
+    assert [(r["name"], r["mp"]) for r in body["items"]] == [("Bina", 25), ("Asha", 5)]
     assert body["me"]["rank"] == 2
-    assert (await client.get("/api/v1/xp/leaderboard/period", params={"period": "year"})).status_code == 422
+    month = (await client.get("/api/v1/rewards/leaderboard", params={"period": "month"})).json()
+    assert month["total"] == 2
+    assert (await client.get("/api/v1/rewards/leaderboard", params={"period": "year"})).status_code == 422
+
+
+async def test_leaderboard_page_ranks_by_myle_points(ctx):
+    client, _Session = ctx
+    items = (await client.get("/api/v1/other/leaderboard")).json()["items"]
+    assert [i["title"] for i in items] == ["#1 Bina", "#2 Asha"]
+    assert "mp: " in items[0]["detail"] and "level: rookie" in items[0]["detail"]
+    assert "xp" not in items[0]["detail"]

@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
@@ -19,7 +19,6 @@ from app.models.daily_report import DailyReport
 from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_video import TrainingVideo
-from app.models.user import User
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse, ReactionSummary, ReactionToggle
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
 from app.services.team_reports_metrics import IST
@@ -151,64 +150,22 @@ async def other_leaderboard(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> SystemStubResponse:
-    """Public leaderboard — mirrors legacy ``/leaderboard`` *points board* section.
+    """Leaderboard: top 20 members by MYLE Points earned this month, with their level."""
+    from app.services import process_rewards as pr
 
-    Legacy (``social_routes.leaderboard``): approved ``team`` rows only, top 20 by
-    ``users.total_points`` (with empty-DB fallback to all approved users). vl2 has no
-    ``total_points`` column; ranking uses **sum of** ``daily_scores.points`` (lifetime-style).
-    """
-    _ = user
-    team_approved_ct = int(
-        (
-            await session.execute(
-                select(func.count())
-                .select_from(User)
-                .where(User.role == "team", User.registration_status == "approved")
-            )
-        ).scalar_one()
-    )
-    # Legacy: if no approved team members, show all approved users so the board is not blank.
-    lb_conds = [User.registration_status == "approved"]
-    if team_approved_ct > 0:
-        lb_conds.append(User.role == "team")
-
-    stmt = (
-        select(
-            User.id,
-            User.fbo_id,
-            User.username,
-            User.email,
-            User.role,
-            func.coalesce(User.xp_total, 0).label("xp"),
-            func.coalesce(User.xp_level, "rookie").label("lvl"),
-        )
-        .select_from(User)
-        .where(and_(*lb_conds))
-        .order_by(desc("xp"))
-        .limit(20)
-    )
-    rows = (await session.execute(stmt)).all()
-    items: list[dict] = []
-    for rank, r in enumerate(rows, start=1):
-        _uid, fbo, uname, email, role, xp, lvl = r
-        label = (uname or "").strip() or (email.split("@", 1)[0] if email else "") or fbo
-        items.append(
-            {
-                "title": f"#{rank} {label}",
-                "detail": f"{role} · {email} · xp: {int(xp)} · level: {lvl or 'rookie'}",
-                "count": rank,
-            }
-        )
-    scope = "approved team" if team_approved_ct > 0 else "all approved users (legacy empty-team fallback)"
-    return SystemStubResponse(
-        items=items,
-        total=len(items),
-        note=(
-            f"Top 20 by XP ({scope}). "
-            "Legacy Flask used `users.total_points` + `daily_scores` for today only; "
-            "see `backend/legacy/myle_dashboard_main3/routes/social_routes.py` leaderboard()."
-        ),
-    )
+    board = await pr.period_leaderboard(session, period="month", viewer_user_id=user.user_id, limit=20)
+    totals = await pr.lifetime_points(session, [r["user_id"] for r in board["items"]])
+    items = [
+        {
+            "title": f"#{r['rank']} {r['name']}",
+            # "<role> · <shown under the name> · mp: N · level: key" — parsed by the leaderboard page.
+            "detail": f"{r['role']} · {r['mp']} MP this month · mp: {r['mp']} · "
+            f"level: {pr.level_for(totals.get(r['user_id'], 0))['key']}",
+            "count": r["rank"],
+        }
+        for r in board["items"]
+    ]
+    return SystemStubResponse(items=items, total=len(items), note="Top 20 by MYLE Points this month.")
 
 
 @router.get("/notice-board", response_model=NoticeBoardResponse)

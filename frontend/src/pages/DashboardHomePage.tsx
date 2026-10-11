@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
-import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
+import { PointsLeaderboardCard } from '@/components/rewards/PointsLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
 import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { RewardsCard } from '@/components/rewards/RewardsCard'
 import { ClosingReadyCard } from '@/components/closing/ClosingReadyCard'
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
-import { XpBadge } from '@/components/xp/XpBadge'
+import { LevelCard } from '@/components/rewards/LevelCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
@@ -289,12 +289,12 @@ export function DashboardHomePage() {
         </CardContent>
       </Card>
 
-      <XpBadge />
+      <LevelCard />
 
       <RewardsCard />
       <CommunityLiveCard />
       <WinsFeedCard />
-      <TodayLeaderboardCard />
+      <PointsLeaderboardCard />
 
       <CollapsibleSection title="Today's Leads" defaultOpen={false}>
         <Card>

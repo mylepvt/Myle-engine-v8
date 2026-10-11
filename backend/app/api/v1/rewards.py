@@ -36,6 +36,16 @@ async def my_rewards(
     return {**base, **(await rx.my_extras(session, me, base))}
 
 
+@router.get("/leaderboard")
+async def mp_leaderboard(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    period: str = Query(default="today", pattern="^(today|week|month)$"),
+) -> dict:
+    """MYLE Points earned today / this week / this month — top 10 + the viewer's own rank."""
+    return await pr.period_leaderboard(session, period=period, viewer_user_id=user.user_id)
+
+
 @router.get("/jackpot/wheel")
 async def jackpot_wheel(
     user: Annotated[AuthUser, Depends(require_auth_user)],

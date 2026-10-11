@@ -144,10 +144,19 @@ async def reassign_eligible(
     if user.role not in ("admin", "leader"):
         raise HTTPException(status_code=403, detail="Forbidden")
     if user.role == "admin":
-        return await get_assignable_members(session)
-    from app.services.downline import recursive_downline_user_ids
-    within_ids = await recursive_downline_user_ids(session, user.user_id)
-    return await get_process_leaderboard(session, limit=10, within_user_ids=within_ids)
+        rows = await get_assignable_members(session)
+    else:
+        from app.services.downline import recursive_downline_user_ids
+        within_ids = await recursive_downline_user_ids(session, user.user_id)
+        rows = await get_process_leaderboard(session, limit=10, within_user_ids=within_ids)
+    # Levels shown in the app come from MYLE Points, not XP.
+    from app.services import process_rewards as pr
+
+    totals = await pr.lifetime_points(session, [int(r["user_id"]) for r in rows])
+    for r in rows:
+        lvl = pr.level_for(totals.get(int(r["user_id"]), 0))
+        r["level"], r["level_label"] = lvl["key"], lvl["label"]
+    return rows
 
 
 @router.post("/admin/reset-month")
