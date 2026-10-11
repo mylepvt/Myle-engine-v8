@@ -105,10 +105,12 @@ function ensureAudioGraph(): AudioGraph | null {
   const Ctor = getAudioContextCtor()
   if (!Ctor) return null
 
-  // iOS: let web audio play even with the ringer switch on silent (Safari 16.4+).
+  // iOS (Safari 16.4+): short UI sounds that mix with the user's music. Never 'playback' —
+  // that makes iOS treat the app as a media player (a stuck "Now Playing" card on the lock
+  // screen / Dynamic Island) and pauses whatever else is playing.
   try {
     const nav = navigator as Navigator & { audioSession?: { type: string } }
-    if (nav.audioSession) nav.audioSession.type = 'playback'
+    if (nav.audioSession) nav.audioSession.type = 'ambient'
   } catch { /* not supported */ }
 
   const ctx = new Ctor()
