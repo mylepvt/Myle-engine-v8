@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy import func, select
@@ -10,6 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.app_setting import AppSetting
 from app.models.user import User
+from app.services.login_identity import assert_safe_username
+
+# Fields a member may change on their own profile.
+SELF_PROFILE_FIELDS = frozenset({"username", "phone", "name"})
+# Everything the profile update accepts (the rest is admin-only).
+PROFILE_UPDATE_FIELDS = SELF_PROFILE_FIELDS | {
+    "registration_status",
+    "training_required",
+    "training_status",
+    "access_blocked",
+    "discipline_status",
+    "joining_date",
+    "upline_user_id",
+}
 
 
 class SettingsService:
@@ -112,59 +126,50 @@ class SettingsService:
         user = await self.session.get(User, user_id)
         if not user:
             return False, "User not found"
-        
+
         # Track what fields are being updated
         updated_fields = []
-        
-        # Update allowed fields
-        allowed_fields = [
-            "username", "phone", "name", "registration_status",
-            "training_required", "training_status", "access_blocked",
-            "discipline_status", "joining_date", "upline_user_id"
-        ]
-        
+
         for field, value in updates.items():
-            if field not in allowed_fields:
+            if field not in PROFILE_UPDATE_FIELDS:
                 continue
-            
-            # Validate field-specific rules
-            if field == "username" and value:
-                # Check username uniqueness
+
+            if field == "username":
+                # Username is a login handle: it can be changed but never cleared.
+                if value is None:
+                    continue
+                try:
+                    assert_safe_username(value)
+                except ValueError:
+                    return False, "Username can only use letters, numbers, dot, dash and underscore"
                 existing = await self.session.execute(
-                    select(User).where(
-                        User.username == value,
-                        User.id != user_id
+                    select(User.id).where(
+                        func.lower(func.trim(User.username)) == value.lower(),
+                        User.id != user_id,
                     )
                 )
                 if existing.scalar_one_or_none():
                     return False, "Username already taken"
-            
+
             if field == "phone" and value:
-                # Check phone uniqueness
                 existing = await self.session.execute(
-                    select(User).where(
-                        User.phone == value,
-                        User.id != user_id
-                    )
+                    select(User.id).where(User.phone == value, User.id != user_id)
                 )
                 if existing.scalar_one_or_none():
                     return False, "Phone number already registered"
-            
-            if field == "email" and value:
-                # Email should not be updatable here (separate flow)
-                continue
-            
-            if field == "role":
-                # Role changes should be handled separately with proper authorization
-                continue
-            
-            # Update the field
+
+            if field == "joining_date" and isinstance(value, str):
+                try:
+                    value = date.fromisoformat(value)
+                except ValueError:
+                    return False, "Joining date must be YYYY-MM-DD"
+
             setattr(user, field, value)
             updated_fields.append(field)
-        
+
         if not updated_fields:
             return False, "No valid fields to update"
-        
+
         try:
             await self.session.commit()
             return True, f"Profile updated: {', '.join(updated_fields)}"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Bell, Lock, Mail, RotateCcw, Shield, User } from 'lucide-react'
 
@@ -57,19 +57,52 @@ export default function SettingsPage() {
   const [profileError, setProfileError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
+  const lastSyncedProfile = useRef<typeof profileForm | null>(null)
   useEffect(() => {
     if (!userProfile.data) return
-    setProfileForm({
+    const next = {
       username: userProfile.data.username || '',
       phone: userProfile.data.phone || '',
       name: userProfile.data.name || '',
+    }
+    const prevSynced = lastSyncedProfile.current
+    lastSyncedProfile.current = next
+    // A refetch (e.g. after a photo upload) must not wipe fields the member is still typing.
+    setProfileForm((form) => {
+      if (!prevSynced) return next
+      return {
+        username: form.username !== prevSynced.username ? form.username : next.username,
+        phone: form.phone !== prevSynced.phone ? form.phone : next.phone,
+        name: form.name !== prevSynced.name ? form.name : next.name,
+      }
     })
   }, [userProfile.data])
+
+  const savedProfile = {
+    username: userProfile.data?.username || '',
+    phone: userProfile.data?.phone || '',
+    name: userProfile.data?.name || '',
+  }
+  // Only send what the member actually changed, so an untouched empty field can't block the save.
+  const profileChanges = (Object.keys(profileForm) as (keyof typeof profileForm)[]).reduce<
+    Partial<typeof profileForm>
+  >((acc, key) => {
+    if (profileForm[key].trim() !== savedProfile[key].trim()) acc[key] = profileForm[key].trim()
+    return acc
+  }, {})
+  const hasProfileChanges = Object.keys(profileChanges).length > 0
+
+  const editProfileField = (key: keyof typeof profileForm, value: string) => {
+    setProfileSuccess(null)
+    setProfileError(null)
+    setProfileForm((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleProfileUpdate = () => {
     setProfileSuccess(null)
     setProfileError(null)
-    updateProfile.mutate(profileForm, {
+    if (!hasProfileChanges) return
+    updateProfile.mutate(profileChanges, {
       onSuccess: () => setProfileSuccess('Profile updated successfully.'),
       onError: (error) =>
         setProfileError(error instanceof Error ? error.message : 'Update failed.'),
@@ -227,6 +260,16 @@ export default function SettingsPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       JPEG, PNG, or WebP. Max 2 MB.
                     </p>
+                    {avatarUpload.isSuccess ? (
+                      <p className="mt-1 text-xs text-success-ink" role="status">
+                        Photo saved.
+                      </p>
+                    ) : null}
+                    {avatarUpload.isPending ? (
+                      <p className="mt-1 text-xs text-muted-foreground" role="status">
+                        Uploading photo...
+                      </p>
+                    ) : null}
                     {avatarUpload.isError ? (
                       <p className="mt-1 text-xs text-destructive" role="alert">
                         {avatarUpload.error instanceof Error ? avatarUpload.error.message : 'Upload failed'}
@@ -247,8 +290,10 @@ export default function SettingsPage() {
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     value={profileForm.username}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, username: e.target.value }))}
+                    onChange={(e) => editProfileField('username', e.target.value)}
                   />
                 </div>
                 <div>
@@ -256,18 +301,21 @@ export default function SettingsPage() {
                   <Input
                     id="name"
                     value={profileForm.name}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => editProfileField('name', e.target.value)}
                   />
                 </div>
                 <div>
                   <Label htmlFor="phone">Phone</Label>
                   <Input
                     id="phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     value={profileForm.phone}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) => editProfileField('phone', e.target.value)}
                   />
                 </div>
-                <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending}>
+                <Button onClick={handleProfileUpdate} disabled={updateProfile.isPending || !hasProfileChanges}>
                   {updateProfile.isPending ? 'Saving...' : 'Save Profile'}
                 </Button>
                 {profileSuccess ? <p className="text-sm text-success-ink" role="status">{profileSuccess}</p> : null}

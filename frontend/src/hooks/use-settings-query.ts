@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 export type UserProfileResponse = {
   id: number
@@ -126,7 +127,7 @@ async function updateUserProfile(request: UserProfileUpdateRequest): Promise<{ m
     body: JSON.stringify(request),
   })
   if (!res.ok) {
-    throw new Error(`Update profile HTTP ${res.status}`)
+    throw new Error(await getApiErrorMessage(res))
   }
   return res.json()
 }
@@ -162,8 +163,7 @@ async function uploadUserAvatar(file: File): Promise<{ avatar_url: string; messa
     body: JSON.stringify({ data_url: dataUrl }),
   })
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { detail?: string }
-    throw new Error(err.detail ?? `Upload HTTP ${res.status}`)
+    throw new Error(await getApiErrorMessage(res))
   }
   return res.json() as Promise<{ avatar_url: string; message: string }>
 }

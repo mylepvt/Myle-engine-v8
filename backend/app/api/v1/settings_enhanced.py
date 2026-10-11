@@ -31,7 +31,7 @@ from app.services.flp_min_billing_video_uploads import (
 )
 from app.services.flp_min_billing_video import normalize_video_source_url
 from app.services.push_service import send_push_to_roles_bg
-from app.services.settings_service import SettingsService
+from app.services.settings_service import SELF_PROFILE_FIELDS, SettingsService
 
 router = APIRouter()
 
@@ -72,10 +72,18 @@ async def update_user_profile(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Dict[str, str]:
     """Update current user's profile."""
+    updates = request.model_dump(exclude_unset=True)
+    if user.role != "admin":
+        blocked = sorted(set(updates) - SELF_PROFILE_FIELDS)
+        if blocked:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail=f"Only an admin can change: {', '.join(blocked)}",
+            )
     service = SettingsService(session)
     try:
         success, message = await service.update_user_profile(
-            user.user_id, request.model_dump(exclude_unset=True), user.user_id
+            user.user_id, updates, user.user_id
         )
         if not success:
             raise HTTPException(
