@@ -6,7 +6,8 @@ gen, age``) from lead quality signals:
 * ``bad``  — not interested, switched off / unreachable, wrong number, lost/dead.
   Upload as a Custom Audience and use it as an **exclusion** audience so ads stop
   reaching (and finding look-alikes of) poor-quality people.
-* ``good`` — converted / paid leads. Upload as a Custom Audience and build the
+* ``interested`` — leads a team member / leader tagged *Interested* (call status
+  or the CTCS "Interested" button). Upload as a Custom Audience and build the
   **Lookalike** from this list to get better-quality leads.
 """
 
@@ -20,11 +21,12 @@ from typing import Iterable, Optional
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 
 SEGMENT_BAD = "bad"
-SEGMENT_GOOD = "good"
-SEGMENTS = (SEGMENT_BAD, SEGMENT_GOOD)
+SEGMENT_INTERESTED = "interested"
+SEGMENTS = (SEGMENT_BAD, SEGMENT_INTERESTED)
 
 # Reason buckets (shown in the optional ``reason`` column).
 REASON_NOT_INTERESTED = "not_interested"
@@ -47,8 +49,12 @@ _WRONG_NUMBER_CALL = {"wrong_number", "wrong number"}
 _BAD_DROP_REASONS = {"not_interested", "wrong_number", "no_budget"}
 _BAD_STATUSES = {"lost"}
 
-_GOOD_STATUSES = {"converted"}
-_GOOD_CALL = {"payment_done", "converted", "payment done"}
+_CONVERTED_STATUSES = {"converted"}
+# Call statuses meaning "tagged Interested" (vl2 slug + legacy string).
+_INTERESTED_CALL = {"interested", "called - interested"}
+_INTERESTED_CALL_DB = ("interested", "Called - Interested")
+# Activity written by the CTCS "Interested" button.
+CTCS_INTERESTED_ACTION = "ctcs.interested"
 
 CSV_HEADER = ["phone", "email", "fn", "ln", "ct", "country", "gen", "age"]
 CSV_DETAIL_HEADER = ["reason", "status", "call_status", "drop_reason", "source", "ad_name"]
@@ -94,7 +100,7 @@ def _split_name(name: Optional[str]) -> tuple[str, str]:
 def bad_reason(lead: Lead) -> Optional[str]:
     """Why a lead counts as poor quality, or ``None`` if it does not."""
     status = _norm(lead.status)
-    if status in _GOOD_STATUSES:
+    if status in _CONVERTED_STATUSES:
         return None
     call = _norm(lead.call_status)
     drop = _norm(lead.drop_reason)
@@ -109,22 +115,27 @@ def bad_reason(lead: Lead) -> Optional[str]:
     return None
 
 
-def good_reason(lead: Lead) -> Optional[str]:
-    if _norm(lead.status) in _GOOD_STATUSES or _norm(lead.outcome) == "converted":
-        return "converted"
-    if _norm(lead.call_status) in _GOOD_CALL or _norm(lead.payment_status) == "approved":
-        return "paid"
+def interested_reason(lead: Lead, *, ctcs_interested_ids: frozenset[int] = frozenset()) -> Optional[str]:
+    """``"interested"`` if the team tagged this lead Interested and it has not since gone bad."""
+    if bad_reason(lead) is not None:
+        return None
+    if _norm(lead.call_status) in _INTERESTED_CALL or lead.id in ctcs_interested_ids:
+        return "interested"
     return None
 
 
-def _candidate_condition(segment: str):
-    if segment == SEGMENT_GOOD:
-        return or_(
-            Lead.status.in_(_GOOD_STATUSES),
-            Lead.outcome == "converted",
-            Lead.call_status.in_(_GOOD_CALL | {"Payment Done"}),
-            Lead.payment_status == "approved",
-        )
+async def fetch_ctcs_interested_ids(session: AsyncSession) -> frozenset[int]:
+    stmt = (
+        select(ActivityLog.entity_id)
+        .where(ActivityLog.action == CTCS_INTERESTED_ACTION)
+        .where(ActivityLog.entity_type == "lead")
+        .where(ActivityLog.entity_id.is_not(None))
+        .distinct()
+    )
+    return frozenset(int(i) for i in (await session.execute(stmt)).scalars().all())
+
+
+def _bad_condition():
     legacy_call = {"Called - Not Interested", "Called - Switch Off", "Called - No Answer", "Called - Busy", "Wrong Number"}
     return or_(
         Lead.status.in_(_BAD_STATUSES),
@@ -134,13 +145,19 @@ def _candidate_condition(segment: str):
     )
 
 
-async def fetch_segment_leads(session: AsyncSession, segment: str) -> list[Lead]:
-    stmt = (
-        select(Lead)
-        .where(Lead.deleted_at.is_(None))
-        .where(_candidate_condition(segment))
-        .order_by(Lead.id.desc())
-    )
+async def fetch_segment_leads(
+    session: AsyncSession,
+    segment: str,
+    *,
+    ctcs_interested_ids: frozenset[int] = frozenset(),
+) -> list[Lead]:
+    if segment == SEGMENT_INTERESTED:
+        cond = Lead.call_status.in_(_INTERESTED_CALL_DB)
+        if ctcs_interested_ids:
+            cond = or_(cond, Lead.id.in_(ctcs_interested_ids))
+    else:
+        cond = _bad_condition()
+    stmt = select(Lead).where(Lead.deleted_at.is_(None)).where(cond).order_by(Lead.id.desc())
     return list((await session.execute(stmt)).scalars().all())
 
 
@@ -150,9 +167,14 @@ def build_csv(
     segment: str,
     reasons: Optional[set[str]] = None,
     with_details: bool = False,
+    ctcs_interested_ids: frozenset[int] = frozenset(),
 ) -> tuple[str, int]:
     """Return ``(csv_text, row_count)``. Rows are de-duplicated by phone/email."""
-    classify = good_reason if segment == SEGMENT_GOOD else bad_reason
+    if segment == SEGMENT_INTERESTED:
+        def classify(lead: Lead) -> Optional[str]:
+            return interested_reason(lead, ctcs_interested_ids=ctcs_interested_ids)
+    else:
+        classify = bad_reason
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(CSV_HEADER + (CSV_DETAIL_HEADER if with_details else []))
