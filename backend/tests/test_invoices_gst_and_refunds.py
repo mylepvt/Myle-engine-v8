@@ -164,8 +164,13 @@ async def test_admin_refund_issues_a_credit_note_and_returns_the_money(ctx):
         cn = (await s.execute(select(Invoice).where(Invoice.doc_type == "credit_note"))).scalar_one()
         assert cn.payload_json["against_invoice"] == inv.invoice_number
         assert [line["lead_ref"] for line in cn.payload_json["lines"]] == [f"Lead #{i}" for i in lead_ids[:2]]
-        assert (await s.get(Lead, lead_ids[0])).in_pool is True
-        assert (await s.get(Lead, lead_ids[2])).in_pool is False
+        # The refunded lead leaves the member's board; a fresh, unowned copy goes back to the pool.
+        old = await s.get(Lead, lead_ids[0])
+        assert old.in_pool is False and old.archived_at is not None and old.owner_user_id == A
+        assert (await s.get(Lead, lead_ids[2])).archived_at is None
+        copies = (await s.execute(select(Lead).where(Lead.in_pool.is_(True)))).scalars().all()
+        assert sorted(c.name for c in copies) == sorted([old.name, (await s.get(Lead, lead_ids[1])).name])
+        assert all(c.owner_user_id is None and c.status == "new_lead" for c in copies)
         html = render_invoice_html(invoice=cn, member=await s.get(User, A))
     assert "CREDIT NOTE" in html and inv.invoice_number in html and "Wrong number" in html
 
@@ -179,6 +184,37 @@ async def test_admin_refund_issues_a_credit_note_and_returns_the_money(ctx):
     r = await client.post(f"/api/v1/invoices/{inv.invoice_number}/refund",
                           json={"lead_ids": [999999], "reason": "nope"})
     assert r.status_code == 400
+
+    # Someone else can buy the returned leads (the old owner stays on the original row).
+    who["user"] = AuthUser(user_id=A, role="team", email="m@t.myle")
+    r = await client.post("/api/v1/lead-pool/claim", json={"count": 2})
+    assert r.status_code == 200, r.text
+    assert len(r.json()["leads"]) == 2
+
+
+async def test_refund_only_pays_back_the_debit_of_that_invoice(ctx):
+    """Old single-claim invoices all said "Lead #1": a refund must never pull in a payment that
+    belongs to a different invoice."""
+    client, Session, who = ctx
+    await _claim(client, n=1)
+    inv = await _the_invoice(Session)
+    lead_id = int(inv.payload_json["lines"][0]["lead_ref"].split("#")[1])
+    async with Session() as s:
+        stale = Invoice(
+            invoice_number=f"MYL-{FY}-0099", doc_type="tax_invoice", user_id=A, total_cents=PRICE,
+            issued_at=datetime(2026, 4, 20, tzinfo=timezone.utc),
+            payload_json={"lines": [{"lead_ref": f"Lead #{lead_id}", "amount_cents": PRICE}]},
+        )
+        s.add(stale)
+        await s.commit()
+
+    who["user"] = AuthUser(user_id=ADMIN, role="admin", email="a@t.myle")
+    r = await client.post(f"/api/v1/invoices/{stale.invoice_number}/refund",
+                          json={"lead_ids": [lead_id], "reason": "Wrong number", "return_to_pool": False})
+    assert r.status_code == 400, r.text
+    r = await client.post(f"/api/v1/invoices/{inv.invoice_number}/refund",
+                          json={"lead_ids": [lead_id], "reason": "Wrong number", "return_to_pool": False})
+    assert r.status_code == 200, r.text
 
 
 async def test_owner_can_download_new_numbers_others_cannot(ctx):
