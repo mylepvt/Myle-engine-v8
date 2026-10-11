@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { apiFetch } from '@/lib/api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
-type Segment = 'bad' | 'good'
+type Segment = 'bad' | 'interested'
 
 const BAD_REASONS = [
   { slug: 'not_interested', label: 'Not interested' },
@@ -63,7 +63,7 @@ export function MetaAudienceExportCard() {
         <CardDescription>
           CSV in Meta customer-list format (phone with 91, email, name, city, gender, age). Upload in Meta Ads Manager →
           Audiences → Custom audience → Customer list. Use the poor-quality list as an <strong>exclusion</strong> audience,
-          and build the <strong>Lookalike</strong> from the converted list.
+          and build the <strong>Lookalike</strong> from the list of leads your team and leaders tagged Interested.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -88,9 +88,9 @@ export function MetaAudienceExportCard() {
             <Download className="size-4" />
             {busy === 'bad' ? 'Exporting…' : 'Poor-quality leads CSV'}
           </Button>
-          <Button type="button" disabled={busy !== null} onClick={() => void download('good')}>
+          <Button type="button" disabled={busy !== null} onClick={() => void download('interested')}>
             <Download className="size-4" />
-            {busy === 'good' ? 'Exporting…' : 'Converted leads CSV (for Lookalike)'}
+            {busy === 'interested' ? 'Exporting…' : 'Interested leads CSV (for Lookalike)'}
           </Button>
         </div>
         {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}

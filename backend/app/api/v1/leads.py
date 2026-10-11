@@ -272,7 +272,7 @@ async def list_all_leads(
 async def export_meta_audience(
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    segment: str = Query(default="bad", description="bad = not interested / switch off / wrong number / lost; good = converted"),
+    segment: str = Query(default="bad", description="bad = not interested / switch off / wrong number / lost; interested = tagged Interested by team/leaders"),
     reasons: Optional[str] = Query(
         default=None,
         max_length=200,
@@ -287,10 +287,17 @@ async def export_meta_audience(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
     segment = (segment or "").strip().lower()
     if segment not in mae.SEGMENTS:
-        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="segment must be bad or good")
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="segment must be bad or interested")
     reason_set = {r.strip() for r in (reasons or "").split(",") if r.strip()} or None
-    leads = await mae.fetch_segment_leads(session, segment)
-    body, count = mae.build_csv(leads, segment=segment, reasons=reason_set, with_details=with_details)
+    ctcs_ids = await mae.fetch_ctcs_interested_ids(session) if segment == mae.SEGMENT_INTERESTED else frozenset()
+    leads = await mae.fetch_segment_leads(session, segment, ctcs_interested_ids=ctcs_ids)
+    body, count = mae.build_csv(
+        leads,
+        segment=segment,
+        reasons=reason_set,
+        with_details=with_details,
+        ctcs_interested_ids=ctcs_ids,
+    )
     stamp = now_ist().strftime("%Y%m%d")
     filename = f"meta-audience-{segment}-leads-{stamp}.csv"
     return Response(

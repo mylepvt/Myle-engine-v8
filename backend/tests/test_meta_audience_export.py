@@ -7,7 +7,7 @@ import io
 import pytest
 
 from app.models.lead import Lead
-from app.services.meta_audience_export import bad_reason, build_csv, good_reason, normalize_phone_in
+from app.services.meta_audience_export import bad_reason, build_csv, interested_reason, normalize_phone_in
 
 
 def _lead(**kw) -> Lead:
@@ -35,10 +35,28 @@ def test_bad_reason_buckets():
     assert bad_reason(_lead(status="converted", call_status="no_answer")) is None
 
 
-def test_good_reason():
-    assert good_reason(_lead(status="converted")) == "converted"
-    assert good_reason(_lead(call_status="payment_done")) == "paid"
-    assert good_reason(_lead()) is None
+def test_interested_reason():
+    assert interested_reason(_lead(call_status="interested")) == "interested"
+    assert interested_reason(_lead(call_status="Called - Interested")) == "interested"
+    # Tagged via the CTCS "Interested" button (activity log), call status untouched.
+    assert interested_reason(_lead(id=7, call_status="call_received"), ctcs_interested_ids=frozenset({7})) == "interested"
+    # Converted-only leads are not in this list.
+    assert interested_reason(_lead(status="converted", call_status="payment_done")) is None
+    # Tagged interested earlier but later marked lost → excluded.
+    assert interested_reason(_lead(id=8, status="lost"), ctcs_interested_ids=frozenset({8})) is None
+    assert interested_reason(_lead()) is None
+
+
+def test_build_csv_interested_segment():
+    leads = [
+        _lead(call_status="interested"),
+        _lead(id=9, name="Ravi", phone="9000000001", call_status="call_received"),
+        _lead(name="Paid", phone="9000000002", status="converted", call_status="payment_done"),
+    ]
+    body, count = build_csv(leads, segment="interested", ctcs_interested_ids=frozenset({9}))
+    rows = list(csv.reader(io.StringIO(body)))
+    assert count == 2
+    assert [r[0] for r in rows[1:]] == ["919876543210", "919000000001"]
 
 
 def test_build_csv_meta_format_dedup_and_filter():
@@ -75,5 +93,7 @@ async def test_export_endpoint_admin_csv(admin_client):
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/csv")
     assert r.text.splitlines()[0] == "phone,email,fn,ln,ct,country,gen,age"
+    r = await admin_client.get("/api/v1/leads/export/meta-audience?segment=interested")
+    assert r.status_code == 200
     r = await admin_client.get("/api/v1/leads/export/meta-audience?segment=nope")
     assert r.status_code == 422
