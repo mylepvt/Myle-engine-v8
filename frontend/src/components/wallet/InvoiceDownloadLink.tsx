@@ -3,7 +3,7 @@ import { FileDown } from 'lucide-react'
 import { invoiceDownloadUrl } from '@/lib/invoice-url'
 import { cn } from '@/lib/utils'
 
-export type InvoiceDownloadKind = 'receipt' | 'tax_invoice' | 'ledger'
+export type InvoiceDownloadKind = 'receipt' | 'tax_invoice' | 'credit_note' | 'ledger'
 
 type Props = {
   invoiceNumber: string
@@ -14,15 +14,17 @@ type Props = {
   className?: string
 }
 
-function resolveLabel(kind: InvoiceDownloadKind, amountCents?: number): string {
+function resolveLabel(kind: InvoiceDownloadKind, amountCents?: number, invoiceNumber = ''): string {
+  if (kind === 'ledger' && invoiceNumber.startsWith('CN-')) return 'Download credit note' // a refund
   if (kind === 'receipt') return 'Download payment receipt'
   if (kind === 'tax_invoice') return 'Download tax invoice'
+  if (kind === 'credit_note') return 'Download credit note'
   const cents = amountCents ?? 0
   return cents >= 0 ? 'Download payment receipt' : 'Download tax invoice'
 }
 
 export function InvoiceDownloadLink({ invoiceNumber, kind, amountCents, className }: Props) {
-  const label = resolveLabel(kind, amountCents)
+  const label = resolveLabel(kind, amountCents, invoiceNumber)
   return (
     <a
       href={invoiceDownloadUrl(invoiceNumber)}

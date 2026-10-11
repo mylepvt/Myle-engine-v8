@@ -23,6 +23,7 @@ from app.models.invoice import Invoice
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.services.wallet_guard import lock_wallet, wallet_balance_cents
 from app.services.invoice_records import (
     create_payment_receipt_for_positive_adjustment,
     create_payment_receipt_for_recharge,
@@ -56,7 +57,29 @@ async def _invoice_numbers_for_ledger_ids(session: AsyncSession, ledger_ids: lis
         Invoice.wallet_ledger_entry_id.in_(ledger_ids)
     )
     rows = (await session.execute(stmt)).all()
-    return {int(lid): str(num) for lid, num in rows if lid is not None}
+    out = {int(lid): str(num) for lid, num in rows if lid is not None}
+    # A batch claim (or a multi-lead refund) has one document for many ledger rows, linked to
+    # the first. The rest were written in the same transaction, so they share its timestamp.
+    rest = [i for i in ledger_ids if i not in out]
+    if rest:
+        pairs = (
+            await session.execute(
+                select(WalletLedgerEntry.id, Invoice.invoice_number)
+                .join(
+                    Invoice,
+                    (Invoice.user_id == WalletLedgerEntry.user_id)
+                    & (Invoice.issued_at == WalletLedgerEntry.created_at)
+                    & Invoice.doc_type.in_(("tax_invoice", "credit_note")),
+                )
+                .where(
+                    WalletLedgerEntry.id.in_(rest),
+                    WalletLedgerEntry.idempotency_key.like("pool\\_claim\\_%", escape="\\")
+                    | WalletLedgerEntry.idempotency_key.like("lead\\_refund\\_%", escape="\\"),
+                )
+            )
+        ).all()
+        out.update({int(lid): str(num) for lid, num in pairs})
+    return out
 
 
 async def _invoice_numbers_for_recharge_ids(session: AsyncSession, recharge_ids: list[int]) -> dict[int, str]:
@@ -250,6 +273,14 @@ async def _fastapi_wallet_adjustment(
     target = await session.get(User, body.user_id)
     if target is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
+    if body.amount_cents < 0:
+        # A debit can never take a wallet below zero.
+        await lock_wallet(session, body.user_id)
+        if await wallet_balance_cents(session, body.user_id) + body.amount_cents < 0:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="This debit would make the wallet negative.",
+            )
 
     entry = WalletLedgerEntry(
         user_id=body.user_id,

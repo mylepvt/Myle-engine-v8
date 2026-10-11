@@ -161,17 +161,31 @@ class SqlAlchemyLeadsRepository:
         lead_id: int,
         lead_name: str,
         price_cents: int,
-    ) -> None:
-        self._session.add(
-            WalletLedgerEntry(
-                user_id=user_id,
-                amount_cents=-price_cents,
-                currency="INR",
-                idempotency_key=f"pool_claim_{lead_id}_{user_id}",
-                note=f"Lead pool claim — #{lead_id} {lead_name}",
-                created_by_user_id=user_id,
-            )
+    ) -> WalletLedgerEntry:
+        """One debit per claim. A lead that went back to the pool and is claimed again by the
+        same member gets ``pool_claim_{lead}_{user}_{n}`` (the first claim keeps the plain key)."""
+        base = f"pool_claim_{lead_id}_{user_id}"
+        earlier = int(
+            (
+                await self._session.execute(
+                    select(func.count()).select_from(WalletLedgerEntry).where(
+                        (WalletLedgerEntry.idempotency_key == base)
+                        | WalletLedgerEntry.idempotency_key.like(f"{base}\\_%", escape="\\")
+                    )
+                )
+            ).scalar_one()
         )
+        entry = WalletLedgerEntry(
+            user_id=user_id,
+            amount_cents=-price_cents,
+            currency="INR",
+            idempotency_key=base if earlier == 0 else f"{base}_{earlier + 1}",
+            note=f"Lead pool claim — #{lead_id} {lead_name}",
+            created_by_user_id=user_id,
+        )
+        self._session.add(entry)
+        await self._session.flush()
+        return entry
 
     async def mark_lead_claimed(self, lead: Lead, user_id: int) -> None:
         lead.created_by_user_id = user_id

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiFetch } from '@/lib/api'
@@ -109,11 +110,11 @@ export function useLeadPoolDefaultsMutation() {
   })
 }
 
-async function claimLeadPoolBatch(count: number): Promise<LeadPoolBatchClaimResponse> {
+async function claimLeadPoolBatch(count: number, clientKey: string): Promise<LeadPoolBatchClaimResponse> {
   const res = await apiFetch('/api/v1/lead-pool/claim', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ count }),
+    body: JSON.stringify({ count, client_key: clientKey }),
   })
   if (!res.ok) {
     await parseError(res)
@@ -121,10 +122,25 @@ async function claimLeadPoolBatch(count: number): Promise<LeadPoolBatchClaimResp
   return res.json()
 }
 
+function newClaimKey(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 export function useLeadPoolBatchClaimMutation() {
   const qc = useQueryClient()
+  // One key per claim: a double-tap while the first request is in flight reuses it, so the
+  // server refuses the repeat instead of charging the wallet twice.
+  const pendingKey = useRef<string | null>(null)
   return useMutation({
-    mutationFn: claimLeadPoolBatch,
+    mutationFn: (count: number) => {
+      pendingKey.current ??= newClaimKey()
+      return claimLeadPoolBatch(count, pendingKey.current)
+    },
+    onSettled: () => {
+      pendingKey.current = null
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['lead-pool'] })
       void qc.invalidateQueries({ queryKey: ['leads'] })
