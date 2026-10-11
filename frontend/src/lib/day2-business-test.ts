@@ -19,6 +19,7 @@ export function buildDay2BusinessTestWhatsAppUrl({
       ? 'Please complete your Day 2 business evaluation using this link:'
       : 'Your Day 2 business evaluation is separate from the 7-day training test.',
     testUrl || 'Coordinator will share the business evaluation link separately.',
+    ...(testUrl ? ['', 'This link is only for you: start it with this mobile number within 2 hours.'] : []),
   ]
 
   return `https://wa.me/${digits}?text=${encodeURIComponent(lines.join('\n'))}`
@@ -43,6 +44,7 @@ export function buildDay2BusinessTestWhatsAppBusinessUrl({
       ? 'Please complete your Day 2 business evaluation using this link:'
       : 'Your Day 2 business evaluation is separate from the 7-day training test.',
     testUrl || 'Coordinator will share the business evaluation link separately.',
+    ...(testUrl ? ['', 'This link is only for you: start it with this mobile number within 2 hours.'] : []),
   ]
 
   return `https://www.whatsapp.com/contact/${digits}?text=${encodeURIComponent(lines.join('\n'))}`

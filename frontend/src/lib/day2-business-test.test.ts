@@ -36,5 +36,6 @@ describe('buildDay2BusinessTestWhatsAppUrl', () => {
     const text = new URL(url!).searchParams.get('text')
     expect(text).toContain('Please complete your Day 2 business evaluation using this link:')
     expect(text).toContain('https://app.example.com/day2-test/demo-token')
+    expect(text).toContain('within 2 hours')
   })
 })

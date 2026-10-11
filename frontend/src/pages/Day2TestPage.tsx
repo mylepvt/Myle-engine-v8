@@ -32,6 +32,8 @@ async function readJsonError(res: Response): Promise<string> {
   if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') {
     return body.detail
   }
+  const message = (body as { error?: { message?: unknown } } | null)?.error?.message
+  if (typeof message === 'string' && message.trim()) return message
   return res.statusText || `HTTP ${res.status}`
 }
 
@@ -66,6 +68,7 @@ export function Day2TestPage() {
     async (suffix: string, body?: unknown): Promise<TestState> => {
       const res = await fetch(apiUrl(`/api/test/d2/${token}${suffix}`), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
       })
@@ -80,6 +83,7 @@ export function Day2TestPage() {
       if (!token) return
       void fetch(apiUrl(`/api/test/d2/${token}/event`), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type }),
       }).catch(() => undefined)
@@ -97,7 +101,7 @@ export function Day2TestPage() {
     let cancelled = false
     void (async () => {
       try {
-        const res = await fetch(apiUrl(`/api/test/d2/${token}`))
+        const res = await fetch(apiUrl(`/api/test/d2/${token}`), { credentials: 'include' })
         if (!res.ok) throw new Error(await readJsonError(res))
         const data = (await res.json()) as TestState
         if (!cancelled) {
@@ -130,7 +134,7 @@ export function Day2TestPage() {
     } catch {
       // ignore — server timer is authoritative; reload state
       try {
-        const res = await fetch(apiUrl(`/api/test/d2/${token}`))
+        const res = await fetch(apiUrl(`/api/test/d2/${token}`), { credentials: 'include' })
         if (res.ok) applyState((await res.json()) as TestState)
       } catch {
         /* noop */
@@ -286,12 +290,12 @@ export function Day2TestPage() {
               />
             </label>
             <label className="mt-4 block">
-              <span className="text-sm font-medium">Phone number</span>
+              <span className="text-sm font-medium">Mobile number</span>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 inputMode="numeric"
-                placeholder="Registered mobile number"
+                placeholder="The number this link was sent to"
                 className="mt-2 w-full rounded-3xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
               />
             </label>

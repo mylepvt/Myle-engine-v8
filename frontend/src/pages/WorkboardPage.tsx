@@ -149,7 +149,8 @@ function workboardBatchWhatsAppUrl(
     `Day ${dayKey} — ${slotLabel} Batch\n` +
     (linkBlock ? `\n${linkBlock}` : '\n') +
     // emoji-ok: WhatsApp message text sent to the prospect
-    (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.')
+    (isDay6 ? 'Please watch the final video and reply ✅.' : 'Please watch both videos and reply ✅.') +
+    (isDay6 ? '' : '\n\nThese links are only for you: open them with this mobile number within 2 hours.')
   const url = whatsAppChatWithTextHref(lead.phone, msg)
   return url === '#' ? null : url
 }

@@ -22,6 +22,7 @@ from app.services.invoice_records import create_credit_note
 from app.services.wallet_guard import lock_wallet
 
 _LEAD_REF = re.compile(r"#(\d+)")
+_SAME_TXN_SECONDS = 2
 
 
 def invoice_lead_ids(inv: Invoice) -> list[int]:
@@ -49,7 +50,13 @@ async def refunded_lead_ids(session: AsyncSession, inv: Invoice) -> set[int]:
 
 
 async def _paid_for(session: AsyncSession, inv: Invoice, lead_id: int) -> int:
-    """What the member paid for this lead on this invoice (the debit nearest the invoice)."""
+    """What the member paid for this lead on this invoice.
+
+    Only the debit written in the invoice's own transaction counts (Postgres ``now()`` is per
+    transaction, so it shares ``created_at`` with ``issued_at``). Each debit therefore belongs to
+    exactly one invoice and can be refunded once — old invoices whose lines all say "Lead #1"
+    can't pull in some other claim of lead #1.
+    """
     base = f"pool_claim_{lead_id}_{inv.user_id}"
     debits = (
         await session.execute(
@@ -61,18 +68,40 @@ async def _paid_for(session: AsyncSession, inv: Invoice, lead_id: int) -> int:
             )
         )
     ).scalars().all()
-    if not debits:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail=f"No wallet payment found for Lead #{lead_id} on this invoice.",
-        )
 
     def _aware(dt: datetime) -> datetime:
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
     issued = _aware(inv.issued_at)
-    nearest = min(debits, key=lambda d: abs((_aware(d.created_at) - issued).total_seconds()))
-    return -int(nearest.amount_cents)
+    # Tiny tolerance for SQLite in tests; on Postgres the two timestamps are identical.
+    same_txn = [d for d in debits if abs((_aware(d.created_at) - issued).total_seconds()) <= _SAME_TXN_SECONDS]
+    if len(same_txn) != 1:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=f"No wallet payment found for Lead #{lead_id} on this invoice.",
+        )
+    return -int(same_txn[0].amount_cents)
+
+
+def _fresh_pool_copy(lead: Lead, admin_user_id: int) -> Lead:
+    """A refunded lead goes back to the pool as a new, unowned row: the owner of a lead never
+    changes (``Lead._prevent_owner_reassignment``), and the next buyer shouldn't inherit the
+    old pipeline status, ticks and notes."""
+    return Lead(
+        name=lead.name,
+        status="new_lead",
+        created_by_user_id=admin_user_id,
+        assigned_to_user_id=None,
+        phone=lead.phone,
+        city=lead.city,
+        age=lead.age,
+        gender=lead.gender,
+        ad_name=lead.ad_name,
+        source=lead.source,
+        in_pool=True,
+        pool_type=lead.pool_type,
+        pool_price_cents=lead.pool_price_cents,
+    )
 
 
 async def refund_invoice_leads(
@@ -132,10 +161,14 @@ async def refund_invoice_leads(
     )
 
     if return_to_pool:
+        now = datetime.now(timezone.utc)
         for lead_id in wanted:
             lead = await session.get(Lead, lead_id)
-            if lead is not None and lead.deleted_at is None and lead.owner_user_id == inv.user_id:
-                lead.in_pool = True
-                lead.archived_at = None
+            if lead is None or lead.deleted_at is not None or lead.owner_user_id != inv.user_id:
+                continue
+            session.add(_fresh_pool_copy(lead, admin_user_id))
+            # The member got their money back, so the lead leaves their board.
+            if lead.archived_at is None:
+                lead.archived_at = now
     await session.flush()
     return note

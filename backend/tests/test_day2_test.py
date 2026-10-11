@@ -23,14 +23,17 @@ from app.models.lead import Lead
 
 
 _PHONE_SEQ = iter(range(9120000000, 9120009999))
+_PHONES: dict[int, str] = {}
 
 
 async def _create_lead(admin_client: AsyncClient) -> int:
+    phone = str(next(_PHONE_SEQ))
     resp = await admin_client.post(
         "/api/v1/leads",
-        json={"name": "Test Prospect", "status": "new_lead", "phone": str(next(_PHONE_SEQ))},
+        json={"name": "Test Prospect", "status": "new_lead", "phone": phone},
     )
     assert resp.status_code == 201, resp.text
+    _PHONES[resp.json()["id"]] = phone
     return resp.json()["id"]
 
 
@@ -104,7 +107,7 @@ async def test_start_requires_identity(admin_client: AsyncClient):
     assert bad.status_code == 400
 
     ok = await admin_client.post(
-        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]}
     )
     assert ok.status_code == 200, ok.text
     body = ok.json()
@@ -125,7 +128,7 @@ async def test_all_correct_passes(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]}
     )
     final = await _drive(admin_client, engine, token, correct=True)
     assert final["status"] == "submitted"
@@ -162,7 +165,7 @@ async def test_all_wrong_fails_and_locks(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]}
     )
     final = await _drive(admin_client, engine, token, correct=False)
     assert final["status"] == "submitted"
@@ -178,7 +181,7 @@ async def test_all_wrong_fails_and_locks(admin_client: AsyncClient, engine):
     assert again.status_code == 409
     # and the spent token cannot be restarted
     restart = await admin_client.post(
-        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]}
     )
     assert restart.status_code == 409
 
@@ -190,7 +193,7 @@ async def test_no_back_rejects_wrong_index(admin_client: AsyncClient):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]}
     )
     # current_index is 0; answering index 5 must be rejected
     resp = await admin_client.post(
@@ -206,7 +209,7 @@ async def test_event_counters(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]}
     )
     for ev in ("blur", "blur", "hidden", "copy", "paste", "paste", "paste"):
         r = await admin_client.post(f"/api/test/d2/{token}/event", json={"type": ev})
@@ -229,7 +232,7 @@ async def test_timer_auto_submits(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
     await admin_client.post(
-        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9123456780"}
+        f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]}
     )
     # force expiry
     async with AsyncSession(engine, expire_on_commit=False) as s:
@@ -252,7 +255,7 @@ async def test_timer_auto_submits(admin_client: AsyncClient, engine):
 async def test_result_shows_cheat_signals(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
-    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]})
     for ev in ("blur", "hidden", "blur", "paste"):
         await admin_client.post(f"/api/test/d2/{token}/event", json={"type": ev})
     await _drive(admin_client, engine, token, correct=True)
@@ -286,7 +289,7 @@ async def test_team_cannot_read_result(admin_client: AsyncClient, team_client: A
 async def test_certificate_after_pass(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
-    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]})
     await _drive(admin_client, engine, token, correct=True)
     resp = await admin_client.get(f"/api/test/d2/{token}/certificate")
     assert resp.status_code == 200, resp.text
@@ -299,7 +302,7 @@ async def test_resend_link_while_test_in_progress(admin_client: AsyncClient):
     """The Workboard offers 'Resend test link' for a started test — it must return the same link."""
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
-    start = await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    start = await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]})
     assert start.status_code == 200, start.text
     assert await _issue_link(admin_client, lead_id) == token
 
@@ -310,7 +313,7 @@ async def test_day2_certificate_verifies_publicly(admin_client: AsyncClient, ano
 
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
-    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]})
     await _drive(admin_client, engine, token, correct=True)
     async with AsyncSession(engine, expire_on_commit=False) as s:
         row = (await s.execute(select(Day2TestSession).where(Day2TestSession.token == token))).scalar_one()
@@ -328,7 +331,7 @@ async def test_leader_admin_redownload_certificate(admin_client: AsyncClient, en
     lead_id = await _create_lead(admin_client)
     assert (await admin_client.get(f"/api/v1/leads/{lead_id}/day2-test-certificate")).status_code == 404
     token = await _issue_link(admin_client, lead_id)
-    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]})
     await _drive(admin_client, engine, token, correct=True)
 
     resp = await admin_client.get(f"/api/v1/leads/{lead_id}/day2-test-certificate")
@@ -347,6 +350,6 @@ async def test_team_cannot_redownload_certificate(team_client: AsyncClient):
 async def test_no_redownload_for_failed_test(admin_client: AsyncClient, engine):
     lead_id = await _create_lead(admin_client)
     token = await _issue_link(admin_client, lead_id)
-    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": "9876543210"})
+    await admin_client.post(f"/api/test/d2/{token}/start", json={"name": "Ravi Kumar", "phone": _PHONES[lead_id]})
     await _drive(admin_client, engine, token, correct=False)
     assert (await admin_client.get(f"/api/v1/leads/{lead_id}/day2-test-certificate")).status_code == 404

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, ShieldCheck } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,10 @@ type BatchWatchData = {
   video_id: string | null
   watch_complete: boolean
   day2_evaluation_ready: boolean
+  /** False until the lead's mobile is entered on this phone — the video stays hidden. */
+  verified: boolean
+  phone_hint: string | null
+  expires_at: string | null
 }
 
 function toAbsoluteUrl(url: string | null | undefined): string | null {
@@ -39,6 +43,8 @@ async function readJsonError(res: Response): Promise<string> {
   if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') {
     return body.detail
   }
+  const message = (body as { error?: { message?: unknown } } | null)?.error?.message
+  if (typeof message === 'string' && message.trim()) return message
   return res.statusText || `HTTP ${res.status}`
 }
 
@@ -62,13 +68,19 @@ export function BatchWatchPage() {
   const [error, setError] = useState<string | null>(null)
   const [completionBusy, setCompletionBusy] = useState(false)
   const [completionError, setCompletionError] = useState<string | null>(null)
+  const [phone, setPhone] = useState('')
+  const [unlockBusy, setUnlockBusy] = useState(false)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
 
   const isDay6 = slot?.startsWith('d6_') ?? false
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   const loadPayload = async () => {
     if (!slot || !version || !token) return
-    const res = await fetch(apiUrl(`/api/v1/watch/batch/${slot}/${version}/payload?token=${encodeURIComponent(token)}`))
+    const res = await fetch(
+      apiUrl(`/api/v1/watch/batch/${slot}/${version}/payload?token=${encodeURIComponent(token)}`),
+      { credentials: 'include' },
+    )
     if (!res.ok) throw new Error(await readJsonError(res))
     const payload = (await res.json()) as BatchWatchData
     setData(payload)
@@ -93,12 +105,15 @@ export function BatchWatchPage() {
       })
   }, [slot, token, version])
 
+  const verified = !!data?.verified
+
   // Heartbeat every 20s so admin sees live batch viewers
   useEffect(() => {
-    if (!slot || !token) return
+    if (!slot || !token || !verified) return
     const beat = () => {
       void fetch(apiUrl('/api/v1/watch/batch/heartbeat'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, slot }),
       }).catch(() => undefined)
@@ -106,7 +121,7 @@ export function BatchWatchPage() {
     beat()
     const id = setInterval(beat, 20_000)
     return () => clearInterval(id)
-  }, [slot, token])
+  }, [slot, token, verified])
 
   // 1-second ticker for waiting room countdown
   useEffect(() => {
@@ -146,6 +161,7 @@ export function BatchWatchPage() {
     try {
       const res = await fetch(apiUrl('/api/v1/watch/batch/complete'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, slot }),
       })
@@ -155,6 +171,27 @@ export function BatchWatchPage() {
       setCompletionError(err instanceof Error ? err.message : 'Could not update watch status.')
     } finally {
       setCompletionBusy(false)
+    }
+  }
+
+  const handleUnlock = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!slot || !token || unlockBusy) return
+    setUnlockBusy(true)
+    setUnlockError(null)
+    try {
+      const res = await fetch(apiUrl(`/api/v1/watch/batch/${slot}/unlock`), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, phone: phone.trim() }),
+      })
+      if (!res.ok) throw new Error(await readJsonError(res))
+      await loadPayload()
+    } catch (err) {
+      setUnlockError(err instanceof Error ? err.message : 'Could not open this video.')
+    } finally {
+      setUnlockBusy(false)
     }
   }
 
@@ -200,14 +237,47 @@ export function BatchWatchPage() {
                   Video {data.version}
                 </Badge>
               )}
-              {watchComplete ? <Badge variant="success">Watch tracked</Badge> : <Badge variant="warning">Playing now</Badge>}
+              {watchComplete ? (
+                <Badge variant="success">Watch tracked</Badge>
+              ) : verified ? (
+                <Badge variant="warning">Playing now</Badge>
+              ) : null}
             </div>
             <h1 className="text-xl font-semibold leading-tight text-white sm:text-2xl">
               {greetingCopy?.heroTitle ?? `${data.slot_label} batch ready for ${data.lead_name}.`}
             </h1>
 
-            {/* Video first — old-app style, shown immediately */}
-            {accessOpen ? (
+            {/* This link is for the lead only: their mobile number unlocks it on this phone. */}
+            {!verified ? (
+              <form
+                onSubmit={(e) => void handleUnlock(e)}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-6"
+              >
+                <div className="flex items-center gap-2 text-white">
+                  <ShieldCheck className="size-5 shrink-0 text-cyan-300" />
+                  <p className="text-base font-semibold">Confirm it's you</p>
+                </div>
+                <p className="mt-2 text-sm text-white/70">
+                  Enter the mobile number this link was sent to
+                  {data.phone_hint ? ` (${data.phone_hint})` : ''}. The video opens only on your phone.
+                </p>
+                <label className="mt-4 block">
+                  <span className="sr-only">Mobile number</span>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="Mobile number"
+                    className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-base text-white outline-none focus:border-cyan-300/30 focus:ring-2 focus:ring-cyan-300/15"
+                  />
+                </label>
+                {unlockError ? <p role="alert" className="mt-3 text-sm text-destructive-ink">{unlockError}</p> : null}
+                <Button type="submit" disabled={unlockBusy || phone.trim().length < 10} className="mt-4 w-full">
+                  {unlockBusy ? 'Checking...' : 'Open video'}
+                </Button>
+              </form>
+            ) : accessOpen ? (
               <InAppVideoPlayer
                 embedUrl={playerEmbedUrl}
                 title={data.title}
@@ -247,7 +317,7 @@ export function BatchWatchPage() {
             )}
 
             {/* Confirm watched */}
-            {accessOpen ? (
+            {verified && accessOpen ? (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-white/55">If the video doesn't start, tap play on the screen.</p>
                 <Button
@@ -269,7 +339,7 @@ export function BatchWatchPage() {
                 {/* emoji-ok: the prospect literally replies with this emoji */}
                 <p>{greetingCopy?.completionMessage ?? 'Batch watched. Reply ✅ to your coach to confirm.'}</p>
               </div>
-            ) : accessOpen ? (
+            ) : verified && accessOpen ? (
               <p className="text-center text-sm text-white/60">
                 {/* emoji-ok: the prospect literally replies with this emoji */}
                 Finished watching? Message your coach and reply ✅ to confirm.
