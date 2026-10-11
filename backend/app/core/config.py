@@ -69,6 +69,11 @@ class Settings(BaseSettings):
         validation_alias="JWT_REFRESH_DAYS_REMEMBER",
         description="Refresh JWT lifetime when “remember me” is checked (days).",
     )
+    jwt_refresh_days_admin: int = Field(
+        default=365,
+        validation_alias="JWT_REFRESH_DAYS_ADMIN",
+        description="Refresh JWT lifetime for admins (days). Re-issued on every refresh, so an admin who opens the app within this window stays signed in.",
+    )
     auth_login_rate_limit_per_minute: int = Field(
         default=30,
         validation_alias="AUTH_LOGIN_RATE_LIMIT_PER_MINUTE",
