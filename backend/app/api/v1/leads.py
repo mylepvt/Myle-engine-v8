@@ -39,7 +39,8 @@ from app.schemas.leads import (
 from app.schemas.watch import BatchWatchPageData, Day6LivePageData
 from app.services.batch_notify import task_given_pushes
 from app.services.all_leads_service import AllLeadsService, get_all_leads_service
-from app.services import day2_test_service
+from app.services import day2_test_service, prospect_links
+from app.services.flp_min_billing_video import mask_phone
 from app.services.lead_file_import import run_personal_lead_import
 from app.services.leads_service import LeadsService, get_leads_service
 from app.services.team_tracking import refresh_daily_member_stat_after_change
@@ -541,14 +542,17 @@ async def generate_batch_share_url(
             )
     existing = (
         await session.execute(
-            select(BatchShareLink).where(
+            select(BatchShareLink)
+            .where(
                 BatchShareLink.lead_id == lead_id,
                 BatchShareLink.slot == slot,
                 BatchShareLink.used.is_(False),
             )
+            .order_by(BatchShareLink.id.desc())
         )
-    ).scalar_one_or_none()
-    if existing is not None:
+    ).scalars().first()
+    # A link lives 2 hours from when it was made; after that, sharing again issues a new one.
+    if existing is not None and not prospect_links.is_expired(existing.created_at):
         token = existing.token
     else:
         token = secrets.token_urlsafe(16)
@@ -886,10 +890,25 @@ async def transition_lead_status(
     return result
 
 
+def _prospect_link_http_error(exc: prospect_links.ProspectLinkError) -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.message)
+
+
+def _require_batch_viewer(request: Request, link: BatchShareLink) -> None:
+    """Progress (heartbeat / watched) only counts from the phone that unlocked the link."""
+    if prospect_links.is_staff_browser(request):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail=prospect_links.STAFF_MESSAGE)
+    if not prospect_links.is_bound(link.bound_devices, prospect_links.device_id(request)):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail=prospect_links.WRONG_PHONE_MESSAGE)
+    if not prospect_links.can_still_finish(link.created_at):
+        raise HTTPException(status_code=http_status.HTTP_410_GONE, detail=prospect_links.EXPIRED_MESSAGE)
+
+
 @watch_router.get("/watch/batch/{slot}/{v}/payload", response_model=BatchWatchPageData)
 async def watch_batch_video_payload(
     slot: str,
     v: int,
+    request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
     token: str = Query(...),
 ) -> BatchWatchPageData:
@@ -897,18 +916,27 @@ async def watch_batch_video_payload(
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid link")
 
     link, lead = await _resolve_batch_watch_context(session=session, slot=slot, token=token)
+    if prospect_links.is_staff_browser(request):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail=prospect_links.STAFF_MESSAGE)
+    verified = prospect_links.is_bound(link.bound_devices, prospect_links.device_id(request))
+    if (verified and not prospect_links.can_still_finish(link.created_at)) or (
+        not verified and prospect_links.is_expired(link.created_at)
+    ):
+        raise HTTPException(status_code=http_status.HTTP_410_GONE, detail=prospect_links.EXPIRED_MESSAGE)
     now = datetime.now(timezone.utc)
-    if link.first_accessed_at is None:
-        link.first_accessed_at = now
-    link.last_seen_at = now
-    await session.commit()
+    if verified:
+        if link.first_accessed_at is None:
+            link.first_accessed_at = now
+        link.last_seen_at = now
+        await session.commit()
     day_number = _batch_day_number(slot)
     access_open, opens_at, gate_message = await _batch_slot_gate(session, slot)
     watch_complete = bool(getattr(lead, slot, False))
     if watch_complete:
         access_open = True
         gate_message = None
-    video_url = await _resolve_batch_video_url(session, slot, v) if access_open else None
+    # Until the lead's number is entered on this phone, the video itself stays hidden.
+    video_url = await _resolve_batch_video_url(session, slot, v) if access_open and verified else None
     day2_evaluation_ready = bool(
         day_number == 2 and getattr(lead, "d2_morning", False) and getattr(lead, "d2_afternoon", False) and getattr(lead, "d2_evening", False)
     )
@@ -935,7 +963,38 @@ async def watch_batch_video_payload(
         video_id=_youtube_video_id(video_url),
         watch_complete=watch_complete,
         day2_evaluation_ready=day2_evaluation_ready,
+        verified=verified,
+        phone_hint=mask_phone(lead.phone),
+        expires_at=prospect_links.link_expires_at(link.created_at),
     )
+
+
+class BatchUnlockBody(BaseModel):
+    token: str = Field(..., max_length=128)
+    phone: str = Field(..., max_length=32)
+
+
+@watch_router.post("/watch/batch/{slot}/unlock")
+async def unlock_batch_watch(
+    slot: str,
+    body: BatchUnlockBody,
+    request: Request,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, bool]:
+    """The prospect proves it's them (the lead's mobile) — this phone may now watch."""
+    if slot not in _BATCH_SLOTS:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid link")
+    link, lead = await _resolve_batch_watch_context(session=session, slot=slot, token=body.token)
+    try:
+        link.bound_devices = prospect_links.unlock(
+            request, response, lead=lead, created_at=link.created_at,
+            bound=link.bound_devices, phone=body.phone,
+        )
+    except prospect_links.ProspectLinkError as exc:
+        raise _prospect_link_http_error(exc)
+    await session.commit()
+    return {"ok": True}
 
 
 @watch_router.get("/watch/batch/{slot}/{v}")
@@ -953,6 +1012,7 @@ async def watch_batch_video(
 @watch_router.post("/watch/batch/heartbeat")
 async def batch_watch_heartbeat(
     payload: dict,
+    request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, bool]:
     token = str(payload.get("token") or "").strip()
@@ -963,6 +1023,10 @@ async def batch_watch_heartbeat(
         await session.execute(select(BatchShareLink).where(BatchShareLink.token == token))
     ).scalar_one_or_none()
     if link is None or link.slot != slot:
+        return {"ok": False}
+    try:
+        _require_batch_viewer(request, link)
+    except HTTPException:
         return {"ok": False}
     now = datetime.now(timezone.utc)
     if link.first_accessed_at is None:
@@ -975,6 +1039,7 @@ async def batch_watch_heartbeat(
 @watch_router.post("/watch/batch/complete")
 async def complete_batch_video_watch(
     payload: dict,
+    request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, bool]:
     token = str(payload.get("token") or "").strip()
@@ -988,6 +1053,7 @@ async def complete_batch_video_watch(
     ).scalar_one_or_none()
     if link is None or link.slot != slot:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invalid token")
+    _require_batch_viewer(request, link)
     lead = await session.get(Lead, link.lead_id)
     if lead is None or lead.deleted_at is not None or lead.in_pool:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")

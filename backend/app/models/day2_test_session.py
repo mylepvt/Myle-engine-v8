@@ -54,6 +54,8 @@ class Day2TestSession(Base):
     # Prospect identity gate (entered on the link before the test unlocks).
     prospect_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     prospect_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    # Hashed ids of the browsers allowed to take this test (see app.services.prospect_links).
+    bound_devices: Mapped[Optional[list[str]]] = mapped_column(_JSON, nullable=True)
 
     # Anti-cheat telemetry counters.
     blur_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)

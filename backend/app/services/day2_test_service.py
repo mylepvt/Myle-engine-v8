@@ -28,6 +28,7 @@ from app.core.day2_test_bank import (
 )
 from app.models.day2_test_session import Day2TestSession
 from app.models.lead import Lead
+from app.services import prospect_links
 
 _OPTION_KEYS = ["A", "B", "C", "D"]
 
@@ -77,6 +78,10 @@ async def create_link(
     if existing is not None:
         if _is_expired(existing):
             await _finalize(session, existing)
+        elif existing.status == "created" and prospect_links.is_expired(existing.created_at):
+            # Never opened within 2 hours — retire it (no attempt used) and issue a fresh one.
+            existing.status = "expired"
+            await session.flush()
         else:
             return existing
 
@@ -227,6 +232,14 @@ async def _get_by_token(session: AsyncSession, token: str) -> Day2TestSession:
     return row
 
 
+def _require_device(link: Day2TestSession, device: str | None) -> None:
+    """A started test continues only on the phone that started it."""
+    if link.bound_devices is None and link.status != "created":
+        return  # started before phone locking existed — let it finish
+    if not prospect_links.is_bound(link.bound_devices, device):
+        raise Day2TestError(prospect_links.OTHER_DEVICE_MESSAGE, status_code=403)
+
+
 def _is_expired(link: Day2TestSession) -> bool:
     exp = _as_aware(link.expires_at)
     return link.status == "active" and exp is not None and _now() >= exp
@@ -302,8 +315,14 @@ def _public_state(link: Day2TestSession) -> dict[str, Any]:
     return state
 
 
-async def get_state(session: AsyncSession, token: str) -> dict[str, Any]:
+async def get_state(session: AsyncSession, token: str, *, device: str | None) -> dict[str, Any]:
     link = await _get_by_token(session, token)
+    if link.status == "expired" or (
+        link.status == "created" and prospect_links.is_expired(link.created_at)
+    ):
+        raise Day2TestError(prospect_links.EXPIRED_MESSAGE, status_code=410)
+    if link.status == "active":
+        _require_device(link, device)
     if _is_expired(link):
         link = await _finalize(session, link)
     return _public_state(link)
@@ -312,16 +331,19 @@ async def get_state(session: AsyncSession, token: str) -> dict[str, Any]:
 # ── Public: start (identity gate → lock subset) ──────────────────────────────
 
 async def start(
-    session: AsyncSession, token: str, *, prospect_name: str, prospect_phone: str
+    session: AsyncSession, token: str, *, prospect_name: str, prospect_phone: str, device: str
 ) -> dict[str, Any]:
     link = await _get_by_token(session, token)
     if link.status == "submitted":
         raise Day2TestError("Test already submitted", status_code=409)
     if link.status == "active":
-        # idempotent resume — already started, just return current state
+        # idempotent resume on the same phone — already started, just return current state
+        _require_device(link, device)
         if _is_expired(link):
             link = await _finalize(session, link)
         return _public_state(link)
+    if link.status == "expired" or prospect_links.is_expired(link.created_at):
+        raise Day2TestError(prospect_links.EXPIRED_MESSAGE, status_code=410)
 
     name = (prospect_name or "").strip()
     phone = "".join(ch for ch in (prospect_phone or "") if ch.isdigit())
@@ -329,6 +351,10 @@ async def start(
         raise Day2TestError("Please enter your full name", status_code=400)
     if len(phone) < 10:
         raise Day2TestError("Please enter a valid phone number", status_code=400)
+    lead = await session.get(Lead, link.lead_id)
+    if lead is None or not prospect_links.phone_matches(lead, phone):
+        raise Day2TestError(prospect_links.WRONG_PHONE_MESSAGE, status_code=403)
+    link.bound_devices = prospect_links.bind_device(link.bound_devices, device)
 
     pool = list(DAY2_TEST_BY_ID.keys())
     n = min(QUESTIONS_PER_ATTEMPT, len(pool))
@@ -350,7 +376,6 @@ async def start(
     link.started_at = now
     link.expires_at = now + timedelta(seconds=TIME_LIMIT_SECONDS)
 
-    lead = await session.get(Lead, link.lead_id)
     if lead is not None:
         lead.day2_test_status = "in_progress"
         lead.day2_test_attempts = (lead.day2_test_attempts or 0) + 1
@@ -362,9 +387,10 @@ async def start(
 # ── Public: answer (no-back, advance) ────────────────────────────────────────
 
 async def answer(
-    session: AsyncSession, token: str, *, question_index: int, choice_index: int
+    session: AsyncSession, token: str, *, question_index: int, choice_index: int, device: str | None
 ) -> dict[str, Any]:
     link = await _get_by_token(session, token)
+    _require_device(link, device)
     if _is_expired(link):
         link = await _finalize(session, link)
         return _public_state(link)
@@ -405,8 +431,11 @@ _EVENT_FIELDS = {
 }
 
 
-async def record_event(session: AsyncSession, token: str, *, event_type: str) -> dict[str, Any]:
+async def record_event(
+    session: AsyncSession, token: str, *, event_type: str, device: str | None
+) -> dict[str, Any]:
     link = await _get_by_token(session, token)
+    _require_device(link, device)
     field = _EVENT_FIELDS.get(event_type)
     if field is None:
         raise Day2TestError("Unknown event type", status_code=400)
@@ -418,8 +447,9 @@ async def record_event(session: AsyncSession, token: str, *, event_type: str) ->
 
 # ── Public: explicit finalize (e.g. timer hits 0 client-side) ────────────────
 
-async def finalize(session: AsyncSession, token: str) -> dict[str, Any]:
+async def finalize(session: AsyncSession, token: str, *, device: str | None) -> dict[str, Any]:
     link = await _get_by_token(session, token)
+    _require_device(link, device)
     if link.status == "submitted":
         return _public_state(link)
     if link.status != "active":

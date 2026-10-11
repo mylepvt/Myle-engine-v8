@@ -25,6 +25,7 @@ describe('BatchWatchPage', () => {
       video_id: null,
       watch_complete: false,
       day2_evaluation_ready: false,
+      verified: true,
     }
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
@@ -69,6 +70,7 @@ describe('BatchWatchPage', () => {
       video_id: null,
       watch_complete: false,
       day2_evaluation_ready: true,
+      verified: true,
     }
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
@@ -117,6 +119,7 @@ describe('BatchWatchPage', () => {
       video_id: null,
       watch_complete: false,
       day2_evaluation_ready: false,
+      verified: true,
     }
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })),
@@ -138,5 +141,67 @@ describe('BatchWatchPage', () => {
     expect(screen.getByText(/unlocks at 07:00 PM IST/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Send selected video' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'I watched this' })).not.toBeInTheDocument()
+  })
+
+  it('hides the video until the lead enters their own mobile number', async () => {
+    const base = {
+      token: 'demo-token',
+      slot: 'd1_morning',
+      version: 1,
+      day_number: 1,
+      slot_label: 'Morning',
+      title: 'Day 1 Morning Batch',
+      subtitle: 'Watch your batch inside Myle.',
+      lead_name: 'rahul',
+      video_id: null,
+      watch_complete: false,
+      day2_evaluation_ready: false,
+      phone_hint: '*******210',
+      expires_at: null,
+    }
+    let unlocked = false
+    const json = (body: unknown, status = 200) =>
+      Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/unlock')) {
+        const phone = JSON.parse(String(init?.body)).phone as string
+        if (phone !== '9876543210') {
+          return json({ error: { message: 'Enter the mobile number this link was sent to.' } }, 403)
+        }
+        unlocked = true
+        return json({ ok: true })
+      }
+      if (url.includes('/payload')) {
+        return json(
+          unlocked
+            ? { ...base, verified: true, youtube_url: 'https://youtu.be/dQw4w9WgXcQ' }
+            : { ...base, verified: false, youtube_url: null },
+        )
+      }
+      return json({ ok: true })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <MemoryRouter initialEntries={['/watch/batch/d1_morning/1?token=demo-token']}>
+        <Routes>
+          <Route path="/watch/batch/:slot/:version" element={<BatchWatchPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await screen.findByText("Confirm it's you")
+    expect(screen.getByText(/\*\*\*\*\*\*\*210/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Play video' })).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/heartbeat'))).toBe(false)
+
+    fireEvent.change(screen.getByPlaceholderText('Mobile number'), { target: { value: '9000000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open video' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter the mobile number this link was sent to.')
+
+    fireEvent.change(screen.getByPlaceholderText('Mobile number'), { target: { value: '9876543210' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open video' }))
+    expect(await screen.findByRole('button', { name: 'Play video' })).toBeInTheDocument()
+    expect(screen.queryByText("Confirm it's you")).not.toBeInTheDocument()
   })
 })

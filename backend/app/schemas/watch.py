@@ -22,6 +22,10 @@ class BatchWatchPageData(BaseModel):
     video_id: Optional[str] = None
     watch_complete: bool = False
     day2_evaluation_ready: bool = False
+    # False until the lead's mobile is entered on this phone (the video stays hidden).
+    verified: bool = False
+    phone_hint: Optional[str] = None
+    expires_at: Optional[datetime] = None
 
 
 class Day6LivePageData(BaseModel):
