@@ -20,13 +20,6 @@ export type XpMe = {
   season_month: number | null
 }
 
-export type XpHistoryEntry = {
-  year: number
-  month: number
-  final_xp: number
-  final_level: string
-}
-
 export type XpLeaderboardEntry = {
   user_id: number
   name: string
@@ -55,61 +48,6 @@ export function useXpMeQuery() {
       return res.json()
     },
     staleTime: 60_000,
-  })
-}
-
-export function useXpLeaderboardQuery() {
-  return useQuery<XpLeaderboardEntry[]>({
-    queryKey: ['xp', 'leaderboard'],
-    queryFn: async () => {
-      const res = await apiFetch('/api/v1/xp/leaderboard')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return res.json()
-    },
-    staleTime: 30_000,
-  })
-}
-
-export type XpPeriod = 'today' | 'week'
-
-export type XpPeriodRow = {
-  rank: number
-  user_id: number
-  name: string
-  role: string
-  xp: number
-}
-
-export type XpPeriodLeaderboard = {
-  period: XpPeriod
-  items: XpPeriodRow[]
-  me: XpPeriodRow | null
-  total: number
-}
-
-/** XP earned today / this week (IST) — top 10 plus the viewer's own rank. */
-export function useXpPeriodLeaderboardQuery(period: XpPeriod) {
-  return useQuery<XpPeriodLeaderboard>({
-    queryKey: ['xp', 'leaderboard', period],
-    queryFn: async () => {
-      const res = await apiFetch(`/api/v1/xp/leaderboard/period?period=${period}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return res.json()
-    },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  })
-}
-
-export function useXpHistoryQuery() {
-  return useQuery<XpHistoryEntry[]>({
-    queryKey: ['xp', 'history'],
-    queryFn: async () => {
-      const res = await apiFetch('/api/v1/xp/me/history')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return res.json()
-    },
-    staleTime: 300_000,
   })
 }
 

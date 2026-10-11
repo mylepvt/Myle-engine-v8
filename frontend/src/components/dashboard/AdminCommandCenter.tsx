@@ -26,6 +26,7 @@ import {
   Users,
   Video,
   Wallet,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -34,12 +35,18 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardLink, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { EmptyState, ErrorState } from '@/components/ui/states'
+import { EmptyState, ErrorState, InlineEmpty } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useHideOnScroll } from '@/hooks/use-hide-on-scroll'
 import { useAdminActivitySSE } from '@/hooks/use-admin-activity-sse'
 import { ActionQueuePanel } from '@/components/dashboard/ActionQueuePanel'
 import { AdminActivityPanel } from '@/components/dashboard/AdminActivityPanel'
 import { LiveTeamActivity } from '@/components/dashboard/LiveTeamActivity'
+import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
+import { Day2ContactsCard } from '@/components/contacts/Day2ContactsCard'
+import { AdminRewardsCard } from '@/components/rewards/AdminRewardsCard'
+import { MemberPointsCard } from '@/components/rewards/MemberPointsCard'
+import { JackpotCard } from '@/components/rewards/JackpotCard'
 import { LiveOpsDashboard } from '@/components/dashboard/live-ops/LiveOpsDashboard'
 import { useLiveDashboardStore } from '@/stores/live-dashboard-store'
 import { ExecutiveDashboard } from '@/components/dashboard/ExecutiveDashboard'
@@ -568,6 +575,7 @@ const DASHBOARD_TABS: readonly { value: string; label: string; Icon: LucideIcon 
   { value: 'leads', label: 'Leads', Icon: Search },
   { value: 'people', label: 'People', Icon: Users },
   { value: 'execution', label: 'Execution', Icon: ClipboardCheck },
+  { value: 'tools', label: 'Tools', Icon: Wrench },
   { value: 'system', label: 'System', Icon: Cog },
 ]
 
@@ -685,6 +693,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const [activeTab, setActiveTab] = useState('overview')
   const [leadSearch, setLeadSearch] = useState('')
   const [showCreateTask, setShowCreateTask] = useState(false)
+  const fabHidden = useHideOnScroll()
   const deferredLeadSearch = useDeferredValue(leadSearch.trim())
 
   useAdminActivitySSE(true)
@@ -796,7 +805,7 @@ export function AdminCommandCenter({ firstName }: Props) {
   const openApprovals = approvalItems.filter((item) => item.count > 0)
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden">
+    <div className="mx-auto max-w-7xl space-y-6 overflow-x-hidden pb-24 md:pb-0">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="mb-5 flex items-center justify-between gap-3">
           {/* Phone/tablet: one compact switcher. Desktop: every view visible as a tab so
@@ -830,7 +839,7 @@ export function AdminCommandCenter({ firstName }: Props) {
               openApprovals.length > 0 ? (
                 <section aria-label="Action needed" className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <h2 className="flex items-center gap-2 text-ds-h3 text-foreground">
                       <BellRing className="size-4 text-warning-ink" aria-hidden />
                       Action needed
                     </h2>
@@ -850,7 +859,20 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </section>
               ) : null
             }
+            highlights={
+              <>
+                <JackpotCard />
+                <CommunityLiveCard />
+              </>
+            }
           />
+        </TabsContent>
+
+        {/* ==================== TOOLS ==================== */}
+        <TabsContent value="tools" className="space-y-4">
+          <MemberPointsCard />
+          <AdminRewardsCard />
+          <Day2ContactsCard />
         </TabsContent>
 
         {/* ==================== WAR ROOM ==================== */}
@@ -1206,7 +1228,10 @@ export function AdminCommandCenter({ firstName }: Props) {
 
           {/* Member Desk */}
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
-            <LiveTeamActivity />
+            <div className="space-y-4">
+              {/* Same live card the team and leaders see on their home screen */}
+              <LiveTeamActivity />
+            </div>
             <div className="space-y-4">
               <Card>
                 <CardHeader>
@@ -1421,7 +1446,7 @@ export function AdminCommandCenter({ firstName }: Props) {
                 </CardHeader>
                 <CardContent>
                   {(vSummary.data?.task_type_breakdown ?? []).length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No tasks created yet</p>
+                    <InlineEmpty>No tasks created yet</InlineEmpty>
                   ) : (
                     <div className="space-y-2">{vSummary.data?.task_type_breakdown.map((t) => (
                       <div key={t.task_type} className="flex items-center justify-between"><span className="text-sm capitalize">{t.task_type.toLowerCase().replace(/_/g, ' ')}</span><Badge variant="secondary">{t.count}</Badge></div>
@@ -1618,7 +1643,10 @@ export function AdminCommandCenter({ firstName }: Props) {
       <button
         type="button"
         onClick={() => setShowCreateTask(true)}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-50 flex size-14 md:bottom-6 md:right-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-95"
+        className={cn(
+          'fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] right-4 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition duration-200 hover:bg-primary/90 active:scale-95 md:bottom-6 md:right-6',
+          fabHidden && 'pointer-events-none translate-y-24 opacity-0',
+        )}
         aria-label="Create Task"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-6"><path d="M5 12h14"/><path d="M12 5v14"/></svg>

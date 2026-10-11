@@ -62,13 +62,8 @@ async def create_link(
     link is issued. An unused 'created'/'active' session is reused so re-sharing the
     link is idempotent.
     """
-    if (lead.day2_test_status or "pending") in {"passed", "failed"}:
-        raise Day2TestError("Test already completed for this lead", status_code=409)
-    if (lead.day2_test_attempts or 0) >= MAX_ATTEMPTS and (
-        lead.day2_test_status or "pending"
-    ) != "pending":
-        raise Day2TestError("No attempts remaining", status_code=409)
-
+    # Re-sharing the link of an unused or running attempt must always work — check this
+    # before the attempt limit (a started test already counts as the one attempt).
     existing = (
         await session.execute(
             select(Day2TestSession)
@@ -80,7 +75,17 @@ async def create_link(
         )
     ).scalars().first()
     if existing is not None:
-        return existing
+        if _is_expired(existing):
+            await _finalize(session, existing)
+        else:
+            return existing
+
+    if (lead.day2_test_status or "pending") in {"passed", "failed"}:
+        raise Day2TestError("Test already completed for this lead", status_code=409)
+    if (lead.day2_test_attempts or 0) >= MAX_ATTEMPTS and (
+        lead.day2_test_status or "pending"
+    ) != "pending":
+        raise Day2TestError("No attempts remaining", status_code=409)
 
     link = Day2TestSession(
         token=secrets.token_urlsafe(24),
@@ -95,11 +100,75 @@ async def create_link(
     return link
 
 
+# ── Leader/admin: result + cheat signals ─────────────────────────────────────
+
+# Thresholds for flagging an attempt as suspicious (shown to leader/admin only).
+SUSPICIOUS_FOCUS_LOSSES = 3      # tab switches + app hidden
+SUSPICIOUS_MIN_SECONDS = 240     # 30 questions in under 4 minutes
+
+
+async def latest_result(session: AsyncSession, lead_id: int) -> dict[str, Any] | None:
+    """Latest started/submitted attempt for a lead with its integrity signals."""
+    link = (
+        await session.execute(
+            select(Day2TestSession)
+            .where(
+                Day2TestSession.lead_id == lead_id,
+                Day2TestSession.status.in_(("active", "submitted")),
+            )
+            .order_by(Day2TestSession.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        return None
+    if _is_expired(link):
+        link = await _finalize(session, link)
+
+    started = _as_aware(link.started_at)
+    submitted = _as_aware(link.submitted_at)
+    duration = int((submitted - started).total_seconds()) if started and submitted else None
+    tab_switches = int(link.blur_count or 0)
+    app_hidden = int(link.hidden_count or 0)
+    copies = int(link.copy_count or 0)
+    pastes = int(link.paste_count or 0)
+
+    flags: list[str] = []
+    if tab_switches + app_hidden >= SUSPICIOUS_FOCUS_LOSSES:
+        flags.append(f"Left the test screen {tab_switches + app_hidden} times")
+    if copies or pastes:
+        flags.append("Copy/paste used during the test")
+    if duration is not None and duration < SUSPICIOUS_MIN_SECONDS and link.status == "submitted":
+        flags.append(f"Finished very fast ({max(duration, 0) // 60} min {max(duration, 0) % 60} s)")
+
+    return {
+        "status": link.status,
+        "score": link.score,
+        "total": len(link.question_ids or []) or QUESTIONS_PER_ATTEMPT,
+        "passed": bool(link.passed) if link.status == "submitted" else None,
+        "started_at": started.isoformat() if started else None,
+        "submitted_at": submitted.isoformat() if submitted else None,
+        "duration_seconds": duration,
+        "tab_switches": tab_switches,
+        "app_hidden": app_hidden,
+        "copy_count": copies,
+        "paste_count": pastes,
+        "suspicious": bool(flags),
+        "flags": flags,
+    }
+
+
 # ── Public: pass certificate ─────────────────────────────────────────────────
 
-async def certificate_pdf(session: AsyncSession, token: str) -> tuple[bytes, str]:
+async def certificate_pdf(
+    session: AsyncSession, token: str, base_url: str | None = None
+) -> tuple[bytes, str]:
     """Return (pdf_bytes, filename) for a PASSED test. Raises if not passed."""
-    from app.services.day2_certificate_pdf import build_day2_business_certificate_pdf
+    from app.services.day2_certificate_pdf import (
+        build_day2_business_certificate_pdf,
+        day2_certificate_number,
+    )
+    from app.services.certificate_verify import verification_code, verify_url
 
     link = await _get_by_token(session, token)
     if link.status != "submitted" or not link.passed:
@@ -107,15 +176,42 @@ async def certificate_pdf(session: AsyncSession, token: str) -> tuple[bytes, str
     total = len(link.question_ids or []) or QUESTIONS_PER_ATTEMPT
     name = (link.prospect_name or "Participant").strip() or "Participant"
     when = _as_aware(link.submitted_at) or _now()
-    date_display = when.astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%d %B %Y")
+    when_ist = when.astimezone(timezone(timedelta(hours=5, minutes=30)))
+    cert_no = day2_certificate_number(link.id, when_ist)
     pdf = build_day2_business_certificate_pdf(
         recipient_name=name,
         score=int(link.score or 0),
         total_questions=total,
-        date_display=date_display,
+        date_display=when_ist.strftime("%d %B %Y"),
+        cert_no=cert_no,
+        year=when_ist.year,
+        verify_link=verify_url(base_url, cert_no) if base_url else None,
+        verify_code=verification_code(cert_no),
     )
     safe = "".join(ch for ch in name if ch.isalnum() or ch in " -_").strip().replace(" ", "_") or "certificate"
     return pdf, f"day2_certificate_{safe}.pdf"
+
+
+async def certificate_pdf_for_lead(
+    session: AsyncSession, lead_id: int, base_url: str | None = None
+) -> tuple[bytes, str]:
+    """Leader/admin re-download: the certificate of the lead's latest PASSED test
+    (identical to the one the prospect downloaded from their link)."""
+    link = (
+        await session.execute(
+            select(Day2TestSession)
+            .where(
+                Day2TestSession.lead_id == lead_id,
+                Day2TestSession.status == "submitted",
+                Day2TestSession.passed.is_(True),
+            )
+            .order_by(Day2TestSession.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        raise Day2TestError("No passed Day 2 test for this lead", status_code=404)
+    return await certificate_pdf(session, link.token, base_url=base_url)
 
 
 # ── Public: load session by token ────────────────────────────────────────────

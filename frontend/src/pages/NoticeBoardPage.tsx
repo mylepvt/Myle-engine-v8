@@ -6,6 +6,7 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useNoticeBoardMutations, useNoticeBoardQuery } from '@/hooks/use-notice-board-query'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 // emoji-ok: user reaction emoji are content
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
@@ -158,7 +159,7 @@ export function NoticeBoardPage({ title }: Props) {
             Showing {data.items.length} of {data.total} notice{data.total === 1 ? '' : 's'}
           </p>
           {data.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No announcements yet.</p>
+            <InlineEmpty>No announcements yet.</InlineEmpty>
           ) : null}
           <ul className="space-y-3">
             {data.items.map((row) => (

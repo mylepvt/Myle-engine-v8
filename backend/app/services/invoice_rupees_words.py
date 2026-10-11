@@ -68,3 +68,15 @@ def rupees_int_to_words(n: int) -> str:
         parts.append(_under_thousand(n))
     body = " ".join(p for p in parts if p).strip()
     return f"{body} Rupees Only"
+
+
+def amount_in_words_from_cents(cents: int) -> str:
+    """₹33.32 → "Thirty Three Rupees and Thirty Two Paise Only"."""
+    cents = abs(int(cents))
+    rupees, paise = divmod(cents, 100)
+    words = rupees_int_to_words(rupees)
+    if not paise:
+        return words
+    if not rupees:
+        return f"{_under_hundred(paise)} Paise Only"
+    return f"{words[: -len(' Only')]} and {_under_hundred(paise)} Paise Only"

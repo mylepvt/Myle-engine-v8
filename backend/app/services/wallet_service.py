@@ -8,10 +8,10 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.lead import Lead
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.services.wallet_guard import lock_wallet
 from app.services.invoice_records import create_payment_receipt_for_positive_adjustment
 
 
@@ -49,61 +49,6 @@ class WalletService:
             return False, f"Insufficient balance. Need {deficit // 100} rupees more."
         
         return True, "Sufficient balance"
-
-    async def deduct_for_lead_claim(
-        self, user_id: int, lead_id: int, lead_price_cents: int
-    ) -> Tuple[bool, str]:
-        """Deduct wallet balance for lead claim."""
-        # Check balance first
-        can_afford, message = await self.can_afford_lead_claim(user_id, lead_price_cents)
-        if not can_afford:
-            return False, message
-
-        # Get lead details
-        lead = await self.session.get(Lead, lead_id)
-        if not lead:
-            return False, "Lead not found"
-
-        if lead.assigned_to_user_id != user_id:
-            return False, "Lead not assigned to user"
-
-        # Create ledger entry for deduction
-        idem_key = f"lead_claim_{lead_id}_{user_id}_{datetime.utcnow().isoformat()}"
-        
-        ledger_entry = WalletLedgerEntry(
-            user_id=user_id,
-            amount_cents=-lead_price_cents,  # Negative for deduction
-            currency="INR",
-            note=f"Lead claim deduction - Lead #{lead_id} ({lead.name})",
-            idempotency_key=idem_key,
-            created_by_user_id=user_id,
-        )
-        
-        self.session.add(ledger_entry)
-        await self.session.commit()
-        
-        return True, f"Successfully deducted {lead_price_cents // 100} rupees for lead claim"
-
-    async def refund_for_lead_return(
-        self, user_id: int, lead_id: int, lead_price_cents: int, reason: str
-    ) -> Tuple[bool, str]:
-        """Refund wallet balance when lead is returned to pool."""
-        # Create ledger entry for refund
-        idem_key = f"lead_refund_{lead_id}_{user_id}_{datetime.utcnow().isoformat()}"
-        
-        ledger_entry = WalletLedgerEntry(
-            user_id=user_id,
-            amount_cents=lead_price_cents,  # Positive for refund
-            currency="INR",
-            note=f"Lead refund - Lead #{lead_id} ({reason})",
-            idempotency_key=idem_key,
-            created_by_user_id=user_id,
-        )
-        
-        self.session.add(ledger_entry)
-        await self.session.commit()
-        
-        return True, f"Successfully refunded {lead_price_cents // 100} rupees"
 
     async def get_wallet_summary(self, user_id: int) -> Dict:
         """Get comprehensive wallet summary."""
@@ -256,6 +201,8 @@ class WalletService:
         if not admin_user or admin_user.role != "admin":
             return False, "Only admin can make manual adjustments"
         
+        if amount_cents < 0:
+            await lock_wallet(self.session, target_user_id)  # balance check below can't race a claim
         # Validate transaction
         is_valid, message = await self.validate_transaction(target_user_id, amount_cents, note)
         if not is_valid:

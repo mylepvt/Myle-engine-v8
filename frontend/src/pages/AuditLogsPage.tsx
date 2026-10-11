@@ -18,7 +18,7 @@ function actionChip(action: string): Chip {
   if (action.startsWith('wallet'))            return { bg: 'bg-warning/15',   text: 'text-warning-ink',   border: 'border-warning/30' }
   if (action.startsWith('wa.') || action.startsWith('whatsapp')) return { bg: 'bg-success/15', text: 'text-success-ink', border: 'border-success/30' }
   if (action.startsWith('enrollment'))        return { bg: 'bg-teal-500/15',    text: 'text-teal-600 dark:text-teal-300',    border: 'border-teal-500/30' }
-  return { bg: 'bg-slate-500/15', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-500/30' }
+  return { bg: 'bg-muted/15', text: 'text-muted-foreground', border: 'border-border/30' }
 }
 
 function friendlyAction(action: string): string {

@@ -3,12 +3,56 @@
 from __future__ import annotations
 
 import html
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Iterable
 
+from app.core.time_ist import IST
 from app.models.invoice import Invoice
 from app.models.user import User
-from app.services.invoice_rupees_words import rupees_int_to_words
+from app.services.invoice_rupees_words import amount_in_words_from_cents, rupees_int_to_words
+
+# The supplier on every document. Snapshotted into each new invoice's payload at issue time,
+# so a later change here never rewrites an invoice that was already issued.
+SELLER: dict[str, str] = {
+    "name": "M/S KARAN VEER SINGH",
+    "gstin": "08HKSPS3607C1ZS",
+    "address": "Karanpur, Sri Ganganagar, Rajasthan – 335073",
+    "state": "Rajasthan",
+    "state_code": "08",
+    "constitution": "Proprietorship",
+}
+GST_RATE = 0.18
+# "igst" (default): IGST 18% on every tax invoice.
+# "by_state": CGST 9% + SGST 9% when the buyer is in the seller's state or their state is
+# unknown (B2C place of supply = supplier's location); IGST 18% for another state.
+GST_MODE_KEY = "invoice.gst_mode"
+
+
+def gst_split(*, mode: str, buyer_state_code: str | None) -> str:
+    """"igst" or "cgst_sgst" for a new tax invoice."""
+    if mode != "by_state":
+        return "igst"
+    if buyer_state_code and buyer_state_code != SELLER["state_code"]:
+        return "igst"
+    return "cgst_sgst"
+
+
+def buyer_snapshot(member: User) -> dict[str, str]:
+    """Bill-To as it was when the invoice was issued (a rename or removal never changes it)."""
+    out = {
+        "name": (member.name or member.username or member.email or f"User #{member.id}").strip(),
+        "username": (member.username or "").strip(),
+        "phone": (member.phone or "").strip(),
+        "fbo_id": (member.fbo_id or "").strip(),
+    }
+    return {k: v for k, v in out.items() if v}
+
+
+def issued_on_ist(when: datetime | None = None) -> str:
+    when = when or datetime.now(timezone.utc)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return when.astimezone(IST).strftime("%d-%b-%Y")
 
 
 def _fmt_inr(cents: int) -> str:
@@ -28,34 +72,38 @@ def _gst_from_inclusive_total_cents(total_cents: int) -> tuple[float, float, flo
     return base_r, igst_r, total_r
 
 
+_TITLES = {"tax_invoice": "TAX INVOICE", "payment_receipt": "PAYMENT RECEIPT", "credit_note": "CREDIT NOTE"}
+_LABELS = {"tax_invoice": "Tax Invoice", "payment_receipt": "Payment Receipt", "credit_note": "Credit Note"}
+
+
 def _doc_title(doc_type: str) -> str:
-    return "TAX INVOICE" if doc_type == "tax_invoice" else "PAYMENT RECEIPT"
+    return _TITLES.get(doc_type, "PAYMENT RECEIPT")
 
 
 def _type_label(doc_type: str) -> str:
-    return "Tax Invoice" if doc_type == "tax_invoice" else "Payment Receipt"
+    return _LABELS.get(doc_type, "Payment Receipt")
 
 
 def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     payload: dict[str, Any] = dict(invoice.payload_json or {})
-    display_name = html.escape(
-        (member.name or member.username or member.email or f"User #{member.id}").strip()
-    )
-    un = (member.username or "").strip()
+    # Issued documents render from their own snapshot; older ones fall back to live data.
+    buyer = payload.get("buyer") or buyer_snapshot(member)
+    seller = {**SELLER, **(payload.get("seller") or {})}
+    display_name = html.escape(str(buyer.get("name") or f"User #{member.id}"))
+    un = str(buyer.get("username") or "")
     username_line = html.escape(f"@{un}") if un else ""
-    phone_line = html.escape(member.phone.strip()) if member.phone and member.phone.strip() else ""
+    phone_line = html.escape(str(buyer.get("phone") or ""))
 
-    supplier = """
+    supplier = f"""
     <div class="block">
-      <div class="doctitle">{doctitle}</div>
-      <p><strong>Name:</strong> M/S KARAN VEER SINGH</p>
-      <p><strong>GSTIN:</strong> 08HKSPS3607C1ZS</p>
-      <p><strong>Address:</strong> Karanpur, Sri Ganganagar, Rajasthan – 335073</p>
-      <p><strong>Constitution:</strong> Proprietorship</p>
+      <div class="doctitle">{_doc_title(invoice.doc_type)}</div>
+      <p><strong>Name:</strong> {html.escape(seller["name"])}</p>
+      <p><strong>GSTIN:</strong> {html.escape(seller["gstin"])}</p>
+      <p><strong>Address:</strong> {html.escape(seller["address"])}</p>
+      <p><strong>State:</strong> {html.escape(seller["state"])} ({html.escape(seller["state_code"])})</p>
+      <p><strong>Constitution:</strong> {html.escape(seller["constitution"])}</p>
     </div>
-    """.format(
-        doctitle=_doc_title(invoice.doc_type),
-    )
+    """
 
     recipient = f"""
     <div class="block">
@@ -67,21 +115,22 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     """
 
     issued = invoice.issued_at
-    if isinstance(issued, datetime):
-        date_s = issued.strftime("%d-%b-%Y")
-    else:
-        date_s = str(issued)
+    date_s = str(payload.get("issued_on") or (issued_on_ist(issued) if isinstance(issued, datetime) else issued))
+    against = payload.get("against_invoice")
+    place = payload.get("place_of_supply")
 
     header_info = f"""
     <table class="meta">
       <tr><td><strong>No.</strong></td><td>{html.escape(invoice.invoice_number)}</td></tr>
       <tr><td><strong>Date of issue</strong></td><td>{html.escape(date_s)}</td></tr>
       <tr><td><strong>Type</strong></td><td>{html.escape(_type_label(invoice.doc_type))}</td></tr>
+      {f'<tr><td><strong>Against invoice</strong></td><td>{html.escape(str(against))}</td></tr>' if against else ''}
+      {f'<tr><td><strong>Place of supply</strong></td><td>{html.escape(str(place))}</td></tr>' if place else ''}
     </table>
     """
 
     body_main = ""
-    if invoice.doc_type == "tax_invoice":
+    if invoice.doc_type in ("tax_invoice", "credit_note"):
         lines = payload.get("lines") or []
         rows = []
         for row in lines:
@@ -96,10 +145,19 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
                 f"<td class='r'>{unit}</td><td class='r'>{amt}</td></tr>"
             )
         sub = float(payload.get("subtotal_rupees", 0))
-        igst = float(payload.get("igst_rupees", 0))
         tot = float(payload.get("total_rupees", invoice.total_cents / 100.0))
         words = html.escape(str(payload.get("amount_in_words", _rupees_words_from_cents(invoice.total_cents))))
+        if "cgst_rupees" in payload:
+            tax_rows = (
+                f"<p><strong>CGST @9%</strong> <span class=\"r\">₹{float(payload['cgst_rupees']):,.2f}</span></p>"
+                f"<p><strong>SGST @9%</strong> <span class=\"r\">₹{float(payload['sgst_rupees']):,.2f}</span></p>"
+            )
+        else:
+            tax_rows = f"<p><strong>IGST @18%</strong> <span class=\"r\">₹{float(payload.get('igst_rupees', 0)):,.2f}</span></p>"
+        reason = payload.get("reason")
+        reason_html = f"<p><strong>Reason:</strong> {html.escape(str(reason))}</p>" if reason else ""
         body_main = f"""
+        {reason_html}
         <h3>Line items</h3>
         <table class="grid">
           <thead>
@@ -112,8 +170,8 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
         </table>
         <div class="taxbox">
           <p><strong>Subtotal (taxable value)</strong> <span class="r">₹{sub:,.2f}</span></p>
-          <p><strong>IGST @18%</strong> <span class="r">₹{igst:,.2f}</span></p>
-          <p class="big"><strong>Total Amount</strong> <span class="r">₹{tot:,.2f}</span></p>
+          {tax_rows}
+          <p class="big"><strong>{"Total Credit" if invoice.doc_type == "credit_note" else "Total Amount"}</strong> <span class="r">₹{tot:,.2f}</span></p>
           <p class="words"><em>Amount in words:</em> {words}</p>
         </div>
         """
@@ -176,7 +234,10 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
 </body></html>"""
 
 
-def build_tax_payload_for_claims(*, claims: Iterable[dict[str, Any]]) -> dict[str, Any]:
+def build_tax_payload_for_claims(
+    *, claims: Iterable[dict[str, Any]], split: str = "igst"
+) -> dict[str, Any]:
+    """Lines + GST from GST-inclusive prices. ``split`` is "igst" or "cgst_sgst"."""
     lines: list[dict[str, Any]] = []
     subtotal_rupees = 0.0
     total_cents = 0
@@ -208,14 +269,20 @@ def build_tax_payload_for_claims(*, claims: Iterable[dict[str, Any]]) -> dict[st
         total_cents += line_total_cents
 
     total_rupees = round(total_cents / 100.0, 2)
-    igst_rupees = round(total_rupees - subtotal_rupees, 2)
-    return {
+    tax_rupees = round(total_rupees - subtotal_rupees, 2)
+    out: dict[str, Any] = {
         "lines": lines,
         "subtotal_rupees": subtotal_rupees,
-        "igst_rupees": igst_rupees,
         "total_rupees": total_rupees,
-        "amount_in_words": _rupees_words_from_cents(total_cents),
+        "amount_in_words": amount_in_words_from_cents(total_cents),
     }
+    if split == "cgst_sgst":
+        cgst = round(tax_rupees / 2, 2)
+        out["cgst_rupees"] = cgst
+        out["sgst_rupees"] = round(tax_rupees - cgst, 2)
+    else:
+        out["igst_rupees"] = tax_rupees
+    return out
 
 
 def build_tax_payload_for_single_lead(*, total_cents: int, lead_index: int = 1, lead_ref: str | None = None) -> dict[str, Any]:

@@ -55,7 +55,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
         <span
           className={cn(
             'absolute bottom-0 right-0 block size-3 rounded-full border-2 border-background dark:border-card',
-            isOnline ? 'bg-success dark:bg-success' : 'bg-gray-500 dark:bg-gray-600',
+            isOnline ? 'bg-success dark:bg-success' : 'bg-muted',
           )}
         />
       </div>
@@ -102,7 +102,7 @@ function TeamRow({ leader }: { leader: LeaderHealthItem }) {
         <span
           className={cn(
             'absolute -bottom-0.5 -right-0.5 block size-2.5 rounded-full border-[1.5px] border-background dark:border-card',
-            isOnline ? 'bg-success dark:bg-success' : 'bg-muted-foreground/40 dark:bg-gray-600',
+            isOnline ? 'bg-success dark:bg-success' : 'bg-muted-foreground/40',
           )}
         />
       </div>

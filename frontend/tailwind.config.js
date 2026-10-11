@@ -62,6 +62,11 @@ export default {
         96: '0.96',
       },
       fontSize: {
+        /* Tailwind's own xs / sm snap onto the type scale, so the ~1,100 older
+           `text-xs` / `text-sm` usages match ds-caption (13px) / ds-body (15px)
+           instead of adding 12px and 14px sizes next to them. */
+        xs: ['0.8125rem', { lineHeight: '1.2rem' }],
+        sm: ['0.9375rem', { lineHeight: '1.375rem' }],
         /* 28px — big KPI / stat numbers only (dashboard tiles, scores). */
         'ds-display': ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.03em' }],
         /* iOS large title feel on web (scaled for dashboard density) */

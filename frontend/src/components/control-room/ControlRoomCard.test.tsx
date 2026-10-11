@@ -17,12 +17,13 @@ const room = {
   members: [member(1, 'Amit Kumar', 'not_started', 0), member(2, 'Priya', 'working', 3)],
 }
 
-const apiFetch = vi.fn(async (url: string, _init?: RequestInit) =>
-  new Response(
+const apiFetch = vi.fn(async (url: string, init?: RequestInit) => {
+  void init
+  return new Response(
     JSON.stringify(url.endsWith('/nudge') ? { delivered: true, nudge_available_at: new Date(Date.now() + 3600e3).toISOString() } : room),
     { status: 200 },
-  ),
-)
+  )
+})
 vi.mock('@/lib/api', () => ({ apiFetch: (url: string, init?: RequestInit) => apiFetch(url, init) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() } }))
 
@@ -36,13 +37,13 @@ describe('ControlRoomCard', () => {
       </QueryClientProvider>,
     )
     expect(await screen.findByText('Amit Kumar')).toBeTruthy()
-    expect(screen.getAllByText('No leads today').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Nudge all 1 not working' })).toBeTruthy()
+    expect(screen.getAllByText(/No leads today/).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Nudge 1 not working' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cheer Priya' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Working 1' }))
+    fireEvent.click(screen.getByRole('button', { name: /Working\s*1/ }))
     expect(screen.queryByText('Amit Kumar')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Working 1' }))
+    fireEvent.click(screen.getByRole('button', { name: /Working\s*1/ }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nudge Amit' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Amit nudged' })).toHaveProperty('disabled', true))

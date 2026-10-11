@@ -148,6 +148,7 @@ async def claim_lead_pool_batch(
     leads, total_price_cents = await service.claim_lead_pool_batch(
         count=body.count,
         user=user,
+        client_key=body.client_key,
     )
     return LeadPoolClaimBatchResponse(
         leads=await service.serialize_lead_public_list(leads),

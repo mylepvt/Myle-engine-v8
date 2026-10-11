@@ -13,13 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 
 from app.api.deps import get_db
 from app.api.capture_public import router as capture_public_router
 from app.api.invoice_public import router as invoice_public_router
 from app.api.legal_public import router as legal_public_router
 from app.api.day2_test_public import router as day2_test_public_router
+from app.api.certificate_verify_public import router as certificate_verify_public_router
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.health_migrations import alembic_head_revisions, db_alembic_revision
@@ -54,7 +54,15 @@ from app.services.scheduled_jobs import (
     job_integrity_audit,
     job_general_pipeline_maintenance,
     job_lead_booking_fulfillment,
+    job_google_contacts_sync,
     job_morning_plan,
+    job_star_alert,
+    job_batch_reminders,
+    job_process_rewards_scan,
+    job_jackpot_draw,
+    job_power_hour_alert,
+    job_league_settle,
+    job_season_settle,
     job_leader_basics_enforcement,
     job_tracking_report_reminder,
     job_watch_archive_maintenance,
@@ -86,7 +94,7 @@ async def lifespan(_app: FastAPI):
     if _SCHEDULER_ENABLED:
         _scheduler.add_job(
             job_flp_min_billing_proof_alert,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="flp_min_billing_proof_alert",
             replace_existing=True,
             misfire_grace_time=120,
@@ -113,6 +121,62 @@ async def lifespan(_app: FastAPI):
             misfire_grace_time=600,
         )
         _scheduler.add_job(
+            job_google_contacts_sync,
+            CronTrigger(minute="*/15", timezone="Asia/Kolkata"),
+            id="google_contacts_sync",
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
+        _scheduler.add_job(
+            job_star_alert,
+            CronTrigger(hour="10-19", minute="*/15", timezone="Asia/Kolkata"),
+            id="star_alert",
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
+        _scheduler.add_job(
+            job_process_rewards_scan,
+            CronTrigger(minute="*/10", timezone="Asia/Kolkata"),
+            id="process_rewards_scan",
+            replace_existing=True,
+            misfire_grace_time=300,
+        )
+        _scheduler.add_job(
+            job_jackpot_draw,
+            CronTrigger(hour=21, minute=0, timezone="Asia/Kolkata"),
+            id="jackpot_draw",
+            replace_existing=True,
+            misfire_grace_time=3 * 3600,
+        )
+        _scheduler.add_job(
+            job_power_hour_alert,
+            CronTrigger(minute="*/5", timezone="Asia/Kolkata"),
+            id="power_hour_alert",
+            replace_existing=True,
+            misfire_grace_time=240,
+        )
+        _scheduler.add_job(
+            job_league_settle,
+            CronTrigger(day_of_week="mon", hour=0, minute=10, timezone="Asia/Kolkata"),
+            id="league_settle",
+            replace_existing=True,
+            misfire_grace_time=6 * 3600,
+        )
+        _scheduler.add_job(
+            job_season_settle,
+            CronTrigger(day=1, hour=0, minute=20, timezone="Asia/Kolkata"),
+            id="season_settle",
+            replace_existing=True,
+            misfire_grace_time=6 * 3600,
+        )
+        _scheduler.add_job(
+            job_batch_reminders,
+            CronTrigger(hour="10,13,15,16", minute=0, timezone="Asia/Kolkata"),
+            id="batch_reminders",
+            replace_existing=True,
+            misfire_grace_time=900,
+        )
+        _scheduler.add_job(
             job_evening_recap,
             CronTrigger(hour=20, minute=30, timezone="Asia/Kolkata"),
             id="evening_recap",
@@ -135,28 +199,28 @@ async def lifespan(_app: FastAPI):
         )
         _scheduler.add_job(
             job_watch_archive_maintenance,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="watch_archive_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
             job_closing_pipeline_maintenance,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="closing_pipeline_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
             job_general_pipeline_maintenance,
-            IntervalTrigger(minutes=30),
+            CronTrigger(minute="*/30", timezone="Asia/Kolkata"),
             id="general_pipeline_maintenance",
             replace_existing=True,
             misfire_grace_time=120,
         )
         _scheduler.add_job(
             job_lead_booking_fulfillment,
-            IntervalTrigger(minutes=10),
+            CronTrigger(minute="*/10", timezone="Asia/Kolkata"),
             id="lead_booking_fulfillment",
             replace_existing=True,
             misfire_grace_time=120,
@@ -217,13 +281,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID"],
+    expose_headers=["X-Request-ID", "X-Row-Count", "Content-Disposition"],
 )
 
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(invoice_public_router)
 app.include_router(legal_public_router)
 app.include_router(day2_test_public_router)
+app.include_router(certificate_verify_public_router)
 app.include_router(capture_public_router)
 
 _uploads_dir = Path(__file__).resolve().parent / "uploads"

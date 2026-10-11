@@ -147,6 +147,9 @@ async function resizeToDataUrl(file: File): Promise<string> {
       canvas.width = w
       canvas.height = h
       const ctx = canvas.getContext('2d')!
+      // JPEG has no alpha — paint white first so transparent PNGs don't turn black.
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, w, h)
       ctx.drawImage(img, 0, 0, w, h)
       resolve(canvas.toDataURL('image/jpeg', 0.82))
     }
@@ -156,6 +159,9 @@ async function resizeToDataUrl(file: File): Promise<string> {
 }
 
 async function uploadUserAvatar(file: File): Promise<{ avatar_url: string; message: string }> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Please choose an image file (JPEG, PNG, or WebP).')
+  }
   const dataUrl = await resizeToDataUrl(file)
   const res = await apiFetch('/api/v1/settings-enhanced/profile/avatar', {
     method: 'POST',

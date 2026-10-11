@@ -131,20 +131,6 @@ export type WalletOverview = {
   }>
 }
 
-export type LeadClaimRequest = {
-  lead_id: number
-  lead_price_cents: number
-}
-
-export type LeadClaimResponse = {
-  success: boolean
-  message: string
-  lead_id: number
-  amount_deducted_cents: number
-  new_balance_cents: number
-  currency: string
-}
-
 export type WalletAdjustmentRequest = {
   target_user_id: number
   amount_cents: number
@@ -169,16 +155,6 @@ async function fetchWalletSummaryEnhanced(): Promise<WalletSummaryEnhanced> {
 
 async function fetchWalletOverview(): Promise<WalletOverview> {
   const res = await apiFetch('/api/v1/wallet/enhanced/overview')
-  if (!res.ok) await parseError(res)
-  return res.json()
-}
-
-async function claimLeadWithWallet(request: LeadClaimRequest): Promise<LeadClaimResponse> {
-  const res = await apiFetch('/api/v1/wallet/enhanced/lead-claim', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  })
   if (!res.ok) await parseError(res)
   return res.json()
 }
@@ -224,17 +200,6 @@ export function useWalletOverviewQuery() {
     queryKey: ['wallet', 'enhanced', 'overview'],
     queryFn: fetchWalletOverview,
     staleTime: 60_000,
-  })
-}
-
-export function useLeadClaimMutation() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: claimLeadWithWallet,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['wallet'] })
-      qc.invalidateQueries({ queryKey: ['pipeline'] })
-    },
   })
 }
 

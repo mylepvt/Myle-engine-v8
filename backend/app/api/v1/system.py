@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import random
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.core.time_ist import IST, today_ist
 from app.models.training_day_note import TrainingDayNote
 from app.models.training_progress import TrainingProgress
 from app.models.training_question import TrainingQuestion
@@ -32,12 +34,48 @@ from app.schemas.training_test import (
 from app.core.realtime_hub import notify_topics
 from app.services.member_compliance import start_practice_window
 from app.services.training_certificate_storage import save_training_certificate_bytes
-from app.services.training_surface import build_training_surface
+from app.services.training_surface import build_training_surface, training_day_unlock_date
 from app.services.training_uploads import save_training_notes_image
 
 router = APIRouter()
 
 PASS_MARK_PERCENT = 60
+# Quiz tries per member per IST day — stops "submit, see the score, change one answer, repeat".
+MAX_QUIZ_ATTEMPTS_PER_DAY = 3
+
+
+async def _all_training_days_done(session: AsyncSession, user_id: int) -> bool:
+    catalog = (await session.execute(select(TrainingVideo.day_number))).scalars().all()
+    if not catalog:
+        return True
+    done = set(
+        (
+            await session.execute(
+                select(TrainingProgress.day_number).where(
+                    TrainingProgress.user_id == user_id,
+                    TrainingProgress.completed.is_(True),
+                )
+            )
+        ).scalars().all()
+    )
+    return all(d in done for d in catalog)
+
+
+async def _quiz_attempts_today(session: AsyncSession, user_id: int) -> int:
+    start_ist = datetime.now(IST).replace(hour=0, minute=0, second=0, microsecond=0)
+    start_utc = start_ist.astimezone(timezone.utc)
+    rows = (
+        await session.execute(
+            select(TrainingTestAttempt.attempted_at).where(TrainingTestAttempt.user_id == user_id)
+        )
+    ).scalars().all()
+    count = 0
+    for at in rows:
+        if at.tzinfo is None:
+            at = at.replace(tzinfo=timezone.utc)
+        if start_utc <= at < start_utc + timedelta(days=1):
+            count += 1
+    return count
 
 
 def _require_admin(user: AuthUser) -> None:
@@ -179,16 +217,16 @@ async def mark_training_day(
                 detail=f"Complete Day {body.day_number - 1} first",
             )
     
-    # Check calendar enforcement for days 2-7
+    # Calendar rule (same one the training page shows): Day N opens on the IST date
+    # of Day 1's completion + (N - 1).
     if body.day_number > 1:
         day1_progress = next((p for p in progress_rows if p.day_number == 1), None)
         if day1_progress and day1_progress.completed_at:
-            days_since_day1 = (datetime.now(timezone.utc) - day1_progress.completed_at).days
-            min_days_required = body.day_number - 1
-            if days_since_day1 < min_days_required:
+            opens_on = training_day_unlock_date(day1_progress.completed_at, body.day_number)
+            if today_ist() < opens_on:
                 raise HTTPException(
                     status_code=http_status.HTTP_400_BAD_REQUEST,
-                    detail=f"Day {body.day_number} unlocks {min_days_required} days after completing Day 1",
+                    detail=f"Day {body.day_number} opens on {opens_on.strftime('%d %b %Y')}.",
                 )
 
     # Require notes upload before marking complete
@@ -213,8 +251,10 @@ async def mark_training_day(
     )
     row = existing.scalar_one_or_none()
     if row:
+        if not row.completed or row.completed_at is None:
+            # Never move an existing completion date: later days are scheduled from it.
+            row.completed_at = now
         row.completed = True
-        row.completed_at = now
     else:
         session.add(
             TrainingProgress(
@@ -303,7 +343,9 @@ async def training_test_questions(
     """MCQ bank for certification (answers verified server-side on submit)."""
     _ = user
     q = await session.execute(select(TrainingQuestion).order_by(TrainingQuestion.sort_order.asc()))
-    rows = q.scalars().all()
+    rows = list(q.scalars().all())
+    # A fresh order every time, so answers can't be passed around as "1-b, 2-b, 3-c…".
+    random.shuffle(rows)
     return [
         TrainingTestQuestionPublic(
             id=r.id,
@@ -332,6 +374,31 @@ async def training_test_submit(
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="No training questions configured",
+        )
+
+    if user.role != "admin":
+        if not await _all_training_days_done(session, user.user_id):
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Complete all training days before taking the quiz.",
+            )
+        if await _quiz_attempts_today(session, user.user_id) >= MAX_QUIZ_ATTEMPTS_PER_DAY:
+            raise HTTPException(
+                status_code=http_status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=(
+                    f"You have used all {MAX_QUIZ_ATTEMPTS_PER_DAY} quiz attempts for today. "
+                    "Revise the training and try again tomorrow."
+                ),
+            )
+
+    unanswered = [
+        tq for tq in questions
+        if (body.answers.get(str(tq.id)) or "").strip().lower() not in {"a", "b", "c", "d"}
+    ]
+    if unanswered:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Answer all {len(questions)} questions before submitting.",
         )
 
     total = len(questions)

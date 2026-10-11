@@ -5,7 +5,7 @@ import re
 from urllib.parse import parse_qs, urlparse
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -14,6 +14,7 @@ from app.api.deps import get_db
 from app.api.deps import AuthUser, require_auth_user
 from app.core.time_ist import IST, now_ist
 from app.core.realtime_hub import notify_topics
+from app.models.activity_log import ActivityLog
 from app.models.app_setting import AppSetting
 from app.models.batch_share_link import BatchShareLink
 from app.models.lead import Lead
@@ -36,6 +37,7 @@ from app.schemas.leads import (
     LeadUpdate,
 )
 from app.schemas.watch import BatchWatchPageData, Day6LivePageData
+from app.services.batch_notify import task_given_pushes
 from app.services.all_leads_service import AllLeadsService, get_all_leads_service
 from app.services import day2_test_service
 from app.services.lead_file_import import run_personal_lead_import
@@ -266,6 +268,49 @@ async def list_all_leads(
     )
 
 
+@router.get("/export/meta-audience")
+async def export_meta_audience(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    segment: str = Query(default="bad", description="bad = not interested / switch off / wrong number / lost; interested = tagged Interested by team/leaders"),
+    reasons: Optional[str] = Query(
+        default=None,
+        max_length=200,
+        description="Comma list to narrow the bad segment: not_interested,switch_off_unreachable,wrong_number,lost_dead",
+    ),
+    with_details: bool = Query(default=False, description="Append reason/status columns (untick them in Meta upload)"),
+) -> Response:
+    """Admin: CSV customer list for Meta Ads Custom / Lookalike audiences."""
+    from app.services import meta_audience_export as mae
+
+    if user.role != "admin":
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Admin only")
+    segment = (segment or "").strip().lower()
+    if segment not in mae.SEGMENTS:
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="segment must be bad or interested")
+    reason_set = {r.strip() for r in (reasons or "").split(",") if r.strip()} or None
+    ctcs_ids = await mae.fetch_ctcs_interested_ids(session) if segment == mae.SEGMENT_INTERESTED else frozenset()
+    leads = await mae.fetch_segment_leads(session, segment, ctcs_interested_ids=ctcs_ids)
+    body, count = mae.build_csv(
+        leads,
+        segment=segment,
+        reasons=reason_set,
+        with_details=with_details,
+        ctcs_interested_ids=ctcs_ids,
+    )
+    stamp = now_ist().strftime("%Y%m%d")
+    filename = f"meta-audience-{segment}-leads-{stamp}.csv"
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Row-Count": str(count),
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @router.get("", response_model=LeadListResponse)
 async def list_leads(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -476,6 +521,7 @@ async def generate_batch_share_url(
     request: Request,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ) -> BatchShareUrlResponse:
     slot = body.slot
     if slot not in _BATCH_SLOTS:
@@ -515,6 +561,13 @@ async def generate_batch_share_url(
             )
         )
         await session.commit()
+        # Task given → tell the team member (+ admin on Day 1, + leader on Day 2).
+        for uid, title, body_text, url in await task_given_pushes(
+            session, lead=lead, slot=slot, actor_id=user.user_id
+        ):
+            background_tasks.add_task(
+                send_push_to_user_bg, AsyncSessionLocal, uid, title=title, body=body_text, url=url
+            )
 
     base = str(request.base_url).rstrip("/")
     if slot.startswith("d6_"):
@@ -563,6 +616,53 @@ async def generate_day2_test_link(
         token=link.token,
         test_url=f"{base}/test/d2/{link.token}",
         status=link.status,
+    )
+
+
+@router.get("/{lead_id}/day2-test-result")
+async def get_day2_test_result(
+    lead_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Leader/admin: the prospect's Day 2 test result with cheat signals
+    (tab switches, app hidden, copy/paste, time taken)."""
+    if user.role not in ("leader", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    lead = await session.get(Lead, lead_id)
+    if lead is None or lead.deleted_at is not None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    result = await day2_test_service.latest_result(session, lead_id)
+    return {"lead_id": lead_id, "result": result}
+
+
+@router.get("/{lead_id}/day2-test-certificate")
+async def get_day2_test_certificate(
+    lead_id: int,
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Leader/admin: re-download the prospect's Day 2 certificate (passed tests only)."""
+    if user.role not in ("leader", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    lead = await session.get(Lead, lead_id)
+    if lead is None or lead.deleted_at is not None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not await user_can_access_lead(session, user, lead):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        pdf, filename = await day2_test_service.certificate_pdf_for_lead(
+            session, lead_id, base_url=str(request.base_url)
+        )
+    except day2_test_service.Day2TestError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -897,6 +997,16 @@ async def complete_batch_video_watch(
     if not bool(getattr(lead, slot, False)):
         setattr(lead, slot, True)
         _sync_batch_completion_timestamps(lead, now)
+        # The prospect finished it on the link the leader shared → counts as that leader's tick.
+        session.add(
+            ActivityLog(
+                user_id=link.created_by_user_id,
+                action="lead.batch_ticked",
+                entity_type="lead",
+                entity_id=lead.id,
+                meta={"slot": slot, "source": "watch_complete"},
+            )
+        )
         enqueue_lead_shadow_upsert(session, lead)
         changed = True
     if not link.used:

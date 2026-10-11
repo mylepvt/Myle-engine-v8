@@ -114,6 +114,14 @@ class LeadPublic(BaseModel):
     stage_price_cents: Optional[int] = None
     seat_hold_amount_cents: Optional[int] = None
     seat_hold_expiry: Optional[datetime] = None
+    slot_deadline_at: Optional[datetime] = None
+
+    @field_validator("slot_deadline_at", mode="after")
+    @classmethod
+    def _slot_deadline_utc(cls, v: Optional[datetime]) -> Optional[datetime]:
+        # SQLite (dev/tests) drops the offset; the stored value is UTC — say so, or
+        # browsers would read it as local time and the countdown would be off.
+        return v.replace(tzinfo=timezone.utc) if v is not None and v.tzinfo is None else v
 
     # Batch slots (M/A/E)
     d1_morning: bool = False
@@ -291,6 +299,10 @@ class LeadUpdate(BaseModel):
         default=None,
         description="True = start the seat-hold reserve window (needs a selected stage)",
     )
+    slot_deadline_at: Optional[datetime] = Field(
+        default=None, description="Day 3: slot reserved till (leader/admin); must be in the next 7 days"
+    )
+    clear_slot_deadline: Optional[bool] = Field(default=None, description="True = remove the slot deadline")
     no_response_attempt_count: Optional[int] = Field(default=None, ge=0, description="Optional counter")
     next_followup_at: Optional[datetime] = Field(
         default=None,
@@ -342,6 +354,8 @@ class LeadUpdate(BaseModel):
             self.process_task_done,
             self.stage_selected,
             self.collect_seat_hold,
+            self.slot_deadline_at,
+            self.clear_slot_deadline,
             self.no_response_attempt_count,
             self.next_followup_at,
         ]
@@ -594,6 +608,8 @@ class LeadPoolDefaultsUpdateRequest(BaseModel):
 
 class LeadPoolClaimBatchRequest(BaseModel):
     count: int = Field(ge=1, le=50)
+    # One per tap on "Claim": a double-tap / retry with the same key is refused, never charged twice.
+    client_key: str | None = Field(default=None, max_length=64)
 
 
 class LeadPoolBatchPreviewResponse(BaseModel):

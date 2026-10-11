@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { buildCsv } from '@/lib/csv-string'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = { title: string }
 
@@ -633,7 +634,7 @@ export function BudgetExportPage({ title }: Props) {
                       </table>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No visible team members under this leader for the selected filters.</p>
+                    <InlineEmpty>No visible team members under this leader for the selected filters.</InlineEmpty>
                   )}
                 </CardContent>
               </Card>
@@ -716,7 +717,7 @@ export function BudgetExportPage({ title }: Props) {
             </CardHeader>
             <CardContent className="space-y-3">
               {selectedHistoryUserId === null ? (
-                <p className="text-sm text-muted-foreground">No person selected yet.</p>
+                <InlineEmpty>No person selected yet.</InlineEmpty>
               ) : null}
 
               {historyQuery.isPending ? (
@@ -783,7 +784,7 @@ export function BudgetExportPage({ title }: Props) {
                       </table>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No wallet movement in the selected window.</p>
+                    <InlineEmpty>No wallet movement in the selected window.</InlineEmpty>
                   )}
                 </>
               ) : null}

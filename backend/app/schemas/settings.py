@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserProfileResponse(BaseModel):
@@ -29,8 +29,9 @@ class UserProfileResponse(BaseModel):
 
 class UserProfileUpdateRequest(BaseModel):
     """Request for updating user profile."""
-    username: Optional[str] = Field(None, min_length=3, max_length=128)
-    phone: Optional[str] = Field(None, min_length=10, max_length=32)
+    # Blank username/phone clears the value; length rules are checked in SettingsService.
+    username: Optional[str] = Field(None, max_length=128)
+    phone: Optional[str] = Field(None, max_length=32)
     name: Optional[str] = Field(None, max_length=255)
     joining_date: Optional[str] = Field(None, description="Date in YYYY-MM-DD format")
     upline_user_id: Optional[int] = Field(None, ge=1)
@@ -41,15 +42,6 @@ class UserProfileUpdateRequest(BaseModel):
     training_status: Optional[str] = Field(None, description="Admin only")
     access_blocked: Optional[bool] = Field(None, description="Admin only")
     discipline_status: Optional[str] = Field(None, description="Admin only")
-
-    @field_validator("username", "phone", "name", mode="before")
-    @classmethod
-    def _blank_to_none(cls, v: object) -> object:
-        # A cleared input arrives as "" — store it as "no value" instead of failing min_length.
-        if isinstance(v, str):
-            v = v.strip()
-            return v or None
-        return v
 
 
 class UserPreferencesResponse(BaseModel):

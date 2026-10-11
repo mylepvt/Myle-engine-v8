@@ -4,9 +4,11 @@ import { ArrowRight, Clock3 } from 'lucide-react'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { HandedOffLeadsSection } from '@/components/dashboard/HandedOffLeadsSection'
-import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
+import { PointsLeaderboardCard } from '@/components/rewards/PointsLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
-import { XpBadge } from '@/components/xp/XpBadge'
+import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
+import { RewardsCard } from '@/components/rewards/RewardsCard'
+import { LevelCard } from '@/components/rewards/LevelCard'
 import { Card, CardContent } from '@/components/ui/card'
 import type { HomeQuickAction } from '@/config/dashboard-home-actions'
 import type { LeadPublic } from '@/hooks/use-leads-query'
@@ -77,26 +79,26 @@ export function TeamDashboardHomeModern({
         <div className="relative space-y-4 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-ds-micro font-semibold uppercase tracking-[0.22em] text-blue-100/70">
+              <p className="text-ds-micro font-semibold uppercase tracking-[0.22em] text-primary">
                 {greeting}
               </p>
               <h1 className="mt-2 font-heading text-ds-display font-semibold leading-none tracking-[-0.04em] text-white">
                 {firstName}
               </h1>
-              <p className="mt-2 max-w-[16rem] text-sm leading-6 text-blue-100/74">
+              <p className="mt-2 max-w-[16rem] text-sm leading-6 text-primary">
                 Keep fresh leads moving, close follow-ups faster, and stay on the
                 proof-ready queue.
               </p>
             </div>
 
             <div className="shrink-0 rounded-3xl border border-white/10 bg-white/10 px-3 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md">
-              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/68">
+              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-primary">
                 Min. FLP Billed
               </p>
               <p className="mt-1 text-2xl font-semibold leading-none text-white">
                 {today?.flp_min_billing_today ?? 0}
               </p>
-              <p className="mt-1 text-ds-micro text-blue-100/70">
+              <p className="mt-1 text-ds-micro text-primary">
                 today
               </p>
             </div>
@@ -104,7 +106,7 @@ export function TeamDashboardHomeModern({
 
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-3xl border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
-              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
+              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-primary">
                 Today&apos;s leads
               </p>
               <p className="mt-2 text-xl font-semibold leading-none text-white">
@@ -112,7 +114,7 @@ export function TeamDashboardHomeModern({
               </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/8 px-3 py-3 backdrop-blur-sm">
-              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
+              <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-primary">
                 Calls
               </p>
               <p className="mt-2 text-xl font-semibold leading-none text-white">
@@ -127,12 +129,12 @@ export function TeamDashboardHomeModern({
               className="group flex items-center justify-between rounded-3xl border border-white/10 bg-white/15 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition hover:bg-white/20"
             >
               <div className="min-w-0">
-                <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-blue-100/64">
+                <p className="text-ds-label font-semibold uppercase tracking-[0.18em] text-primary">
                   Primary action
                 </p>
                 <div className="mt-1 flex items-center gap-2">
                   <primaryAction.Icon
-                    className="size-4 shrink-0 text-blue-100"
+                    className="size-4 shrink-0 text-primary"
                     aria-hidden
                   />
                   <span className="truncate text-sm font-semibold text-white">
@@ -140,7 +142,7 @@ export function TeamDashboardHomeModern({
                   </span>
                 </div>
               </div>
-              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition-transform group-hover:translate-x-0.5">
+              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-foreground shadow-lg transition-transform group-hover:translate-x-0.5">
                 <ArrowRight className="size-4" aria-hidden />
               </span>
             </Link>
@@ -152,15 +154,15 @@ export function TeamDashboardHomeModern({
                 <Link
                   key={action.path}
                   to={action.to}
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3.5 py-2 text-xs font-semibold text-blue-50 transition hover:bg-white/15"
+                  className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3.5 py-2 text-xs font-semibold text-primary transition hover:bg-white/15"
                 >
                   <action.Icon
-                    className="size-3.5 shrink-0 text-blue-100/90"
+                    className="size-3.5 shrink-0 text-primary"
                     aria-hidden
                   />
                   <span>{action.label}</span>
                   {action.badgeCount != null ? (
-                    <span className="rounded-full bg-white/12 px-1.5 py-0.5 text-ds-micro text-blue-50">
+                    <span className="rounded-full bg-white/12 px-1.5 py-0.5 text-ds-micro text-primary">
                       {action.badgeCount}
                     </span>
                   ) : null}
@@ -171,10 +173,12 @@ export function TeamDashboardHomeModern({
         </div>
       </section>
 
-      <XpBadge />
+      <LevelCard />
 
+      <RewardsCard />
+      <CommunityLiveCard />
       <WinsFeedCard />
-      <TodayLeaderboardCard />
+      <PointsLeaderboardCard />
 
       <GateAssistantCard sessionReady={sessionReady} />
 

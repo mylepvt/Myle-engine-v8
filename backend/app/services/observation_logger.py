@@ -280,31 +280,50 @@ def _broadcast_to_feed(record: dict[str, Any]) -> None:
 
 
 # ── SQLAlchemy transaction boundary hook ──────────────────────────────────
-# Fires after every session.commit(). Captures lead_id from the session's
-# new/dirty/deleted Lead objects and emits an observation automatically.
+# Fires after every session.commit(). Emits one observation per Lead that was
+# inserted, changed or deleted in that transaction — never for leads that were
+# only read (a background scan can load hundreds; emitting for each one spawned
+# thousands of feed-write tasks and ran the server out of memory).
 _LEAD_TXN_METRIC = "commit_boundary"
 _LEAD_TXN_SOURCE = "sa_after_commit"
+_CHANGED_LEADS_KEY = "_obs_changed_leads"
+
+
+@sa_event.listens_for(SASession, "after_flush")
+def _after_flush_hook(session: SASession, _flush_context: Any) -> None:
+    """Remember the leads this flush wrote, for the after_commit observation."""
+    if not settings.phase1_observation_enabled:
+        return
+    try:
+        changed = [
+            obj
+            for obj in (*session.new, *session.dirty, *session.deleted)
+            if getattr(obj, "__tablename__", None) == "leads"
+            and (obj in session.new or obj in session.deleted or session.is_modified(obj, include_collections=False))
+        ]
+    except Exception:
+        return
+    if changed:
+        session.info.setdefault(_CHANGED_LEADS_KEY, {}).update({id(obj): obj for obj in changed})
+
+
+@sa_event.listens_for(SASession, "after_rollback")
+def _after_rollback_hook(session: SASession) -> None:
+    session.info.pop(_CHANGED_LEADS_KEY, None)
 
 
 @sa_event.listens_for(SASession, "after_commit")
 def _after_commit_hook(session: SASession) -> None:
     """Automatic observation after every successful SQLAlchemy commit.
 
-    Observes Lead changes across ALL code paths — not just those that
-    explicitly call emit_observation(). Uses session.identity_map to
-    find tracked Lead objects (safe with expire_on_commit=False).
+    Observes Lead writes across ALL code paths — not just those that
+    explicitly call emit_observation().
     """
-    if not settings.phase1_observation_enabled:
+    changed = session.info.pop(_CHANGED_LEADS_KEY, None)
+    if not changed or not settings.phase1_observation_enabled:
         return
-    try:
-        tracked = list(session.identity_map.values())
-    except Exception:
-        return
-    for lead in tracked:
+    for lead in changed.values():
         try:
-            tbl = getattr(lead, "__tablename__", None)
-            if tbl != "leads":
-                continue
             lead_id = lead.id
             if lead_id is None:
                 continue

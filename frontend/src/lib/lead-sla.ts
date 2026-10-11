@@ -7,7 +7,8 @@ export type LeadSlaTone = {
   leftBorder: string
 }
 
-export const LEAD_SLA_SMOOTH_REFRESH_MS = 100
+/** Board-level refresh (card colours / order). The clock itself animates on its own — see LiveSlaClock. */
+export const LEAD_SLA_BOARD_REFRESH_MS = 5000
 
 export type LeadSlaClockAngles = {
   hourAngle: number

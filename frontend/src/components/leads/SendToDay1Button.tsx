@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowRightCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -48,7 +49,10 @@ export function SendToDay1Button({ lead, className }: { lead: LeadPublic; classN
         Send to Day 1
       </button>
 
-      {open ? (
+      {/* Portal to <body>: the calling-board card uses backdrop-blur + overflow-hidden, which
+          traps a `position: fixed` child inside the card — the form was clipped out of view and
+          the app looked frozen. */}
+      {open ? createPortal(
         <div
           className="keyboard-safe-modal fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           onClick={close}
@@ -116,7 +120,8 @@ export function SendToDay1Button({ lead, className }: { lead: LeadPublic; classN
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </>
   )

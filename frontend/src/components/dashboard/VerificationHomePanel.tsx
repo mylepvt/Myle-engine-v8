@@ -33,7 +33,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   submitted: { label: 'Submitted', className: 'bg-info/10 text-info-ink ' },
   verified: { label: 'Verified', className: 'bg-success/10 text-success-ink ' },
   rejected: { label: 'Rejected', className: 'bg-destructive/10 text-destructive-ink ' },
-  blocked: { label: 'Blocked', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
+  blocked: { label: 'Blocked', className: 'bg-warning/10 text-warning-ink' },
   result_produced: { label: 'Done', className: 'bg-success/10 text-success-ink ' },
 }
 
@@ -62,7 +62,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
       </div>
 
       {task.blocker_reason && (
-        <p className="text-xs text-orange-600 dark:text-orange-400">
+        <p className="text-xs text-warning-ink">
           Blocked: {BLOCKER_OPTIONS.find(o => o.value === task.blocker_reason)?.label ?? task.blocker_reason}
         </p>
       )}
@@ -267,7 +267,7 @@ export function VerificationHomePanel() {
           loading={loading}
         />
         <SectionCard
-          icon={<AlertCircle className="size-4 text-orange-500" />}
+          icon={<AlertCircle className="size-4 text-warning-ink" />}
           title="Blocked"
           count={blockedTasks.length}
           emptyMessage="No blockers"

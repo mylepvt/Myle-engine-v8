@@ -1,6 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import { useWalletLedgerQuery, useWalletMeQuery } from '@/hooks/use-wallet-query'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = { title: string }
 
@@ -48,7 +49,7 @@ export function WalletPage({ title }: Props) {
         </div>
         {me.isPending ? <Skeleton className="h-24 w-full" /> : null}
         {me.data && me.data.recent_entries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No ledger lines yet.</p>
+          <InlineEmpty>No ledger lines yet.</InlineEmpty>
         ) : null}
         {me.data && me.data.recent_entries.length > 0 ? (
           <ul className="space-y-2 text-sm">

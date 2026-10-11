@@ -2,28 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.app_setting import AppSetting
 from app.models.user import User
-from app.services.login_identity import assert_safe_username
-
-# Fields a member may change on their own profile.
-SELF_PROFILE_FIELDS = frozenset({"username", "phone", "name"})
-# Everything the profile update accepts (the rest is admin-only).
-PROFILE_UPDATE_FIELDS = SELF_PROFILE_FIELDS | {
-    "registration_status",
-    "training_required",
-    "training_status",
-    "access_blocked",
-    "discipline_status",
-    "joining_date",
-    "upline_user_id",
-}
 
 
 class SettingsService:
@@ -119,60 +106,95 @@ class SettingsService:
             "created_at": user.created_at.isoformat(),
         }
 
+    # Fields a member may edit on their own profile (everything else is admin-only).
+    SELF_EDITABLE_PROFILE_FIELDS = frozenset({"username", "phone", "name"})
+
     async def update_user_profile(
-        self, user_id: int, updates: dict[str, any], updated_by_user_id: int
+        self,
+        user_id: int,
+        updates: dict[str, any],
+        updated_by_user_id: int,
+        *,
+        self_service: bool = False,
     ) -> Tuple[bool, str]:
-        """Update user profile with validation."""
+        """Update user profile with validation.
+
+        ``self_service=True`` limits the update to name / username / phone so a
+        member cannot change their own status, block flag or upline.
+        """
         user = await self.session.get(User, user_id)
         if not user:
             return False, "User not found"
-
+        
         # Track what fields are being updated
         updated_fields = []
-
+        
+        # Update allowed fields
+        allowed_fields = [
+            "username", "phone", "name", "registration_status",
+            "training_required", "training_status", "access_blocked",
+            "discipline_status", "joining_date", "upline_user_id"
+        ]
+        if self_service:
+            allowed_fields = [f for f in allowed_fields if f in self.SELF_EDITABLE_PROFILE_FIELDS]
+        
         for field, value in updates.items():
-            if field not in PROFILE_UPDATE_FIELDS:
+            if field not in allowed_fields:
                 continue
 
-            if field == "username":
-                # Username is a login handle: it can be changed but never cleared.
-                if value is None:
-                    continue
-                try:
-                    assert_safe_username(value)
-                except ValueError:
-                    return False, "Username can only use letters, numbers, dot, dash and underscore"
+            # Optional text fields: trim, and treat blank as "clear".
+            if field in self.SELF_EDITABLE_PROFILE_FIELDS:
+                value = (str(value).strip() or None) if value is not None else None
+            
+            # Validate field-specific rules
+            if field == "username" and value:
+                if len(value) < 3:
+                    return False, "Username must be at least 3 characters"
+                # Check username uniqueness (case-insensitive, matches DB index)
                 existing = await self.session.execute(
                     select(User.id).where(
-                        func.lower(func.trim(User.username)) == value.lower(),
-                        User.id != user_id,
+                        func.lower(User.username) == value.lower(),
+                        User.id != user_id
                     )
                 )
-                if existing.scalar_one_or_none():
+                if existing.first():
                     return False, "Username already taken"
-
+            
             if field == "phone" and value:
+                digits = "".join(ch for ch in value if ch.isdigit())
+                if not 10 <= len(digits) <= 15:
+                    return False, "Enter a valid phone number (10-15 digits)"
+                # Check phone uniqueness
                 existing = await self.session.execute(
-                    select(User.id).where(User.phone == value, User.id != user_id)
+                    select(User.id).where(
+                        User.phone == value,
+                        User.id != user_id
+                    )
                 )
-                if existing.scalar_one_or_none():
+                if existing.first():
                     return False, "Phone number already registered"
-
-            if field == "joining_date" and isinstance(value, str):
-                try:
-                    value = date.fromisoformat(value)
-                except ValueError:
-                    return False, "Joining date must be YYYY-MM-DD"
-
+            
+            if field == "email" and value:
+                # Email should not be updatable here (separate flow)
+                continue
+            
+            if field == "role":
+                # Role changes should be handled separately with proper authorization
+                continue
+            
+            # Update the field
             setattr(user, field, value)
             updated_fields.append(field)
-
+        
         if not updated_fields:
             return False, "No valid fields to update"
-
+        
         try:
             await self.session.commit()
             return True, f"Profile updated: {', '.join(updated_fields)}"
+        except IntegrityError:
+            await self.session.rollback()
+            return False, "Username or phone is already in use"
         except Exception as e:
             await self.session.rollback()
             return False, f"Failed to update profile: {str(e)}"

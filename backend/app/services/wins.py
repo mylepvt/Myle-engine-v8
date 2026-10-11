@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import person_name
 from app.core.time_ist import IST
 from app.models.user import User
 from app.models.win import Win, WinCheer
@@ -57,7 +58,7 @@ def _iso_utc(dt: datetime) -> str:
 
 
 def _first_name(user: User) -> str:
-    raw = user.name or user.username or user.fbo_id or "A teammate"
+    raw = person_name(user.name or user.username or user.fbo_id or "A teammate")
     return raw.split(" ")[0]
 
 

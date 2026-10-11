@@ -1,4 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Day2TestSignals } from '@/components/leads/Day2TestSignals'
+import { Day3SlotTimer } from '@/components/leads/Day3SlotTimer'
 import { buildLiveSessionMessage, extractPasscode } from '@/lib/live-session-message'
 import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -38,10 +40,12 @@ import { useLeadControlRevertMutation } from '@/hooks/use-lead-control-query'
 import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { SaveContactButton } from '@/components/contacts/SaveContactButton'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { callStatusSelectOptions } from '@/lib/call-status-options'
-import { formatCountdown, timerRemainingMs } from '@/lib/ctcs-timer'
+import { timerRemainingMs } from '@/lib/ctcs-timer'
+import { LiveSlaClock } from '@/components/leads/LiveSlaClock'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import {
   closeExternalShareWindow,
@@ -51,7 +55,7 @@ import {
 } from '@/lib/external-share-window'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { checklistForStage } from '@/lib/lead-process-map'
-import { LEAD_SLA_SMOOTH_REFRESH_MS, formatLeadSlaTime, leadSlaClockAngles, leadSlaTone } from '@/lib/lead-sla'
+import { LEAD_SLA_BOARD_REFRESH_MS, leadSlaTone } from '@/lib/lead-sla'
 import { buildDay2BusinessTestWhatsAppUrl } from '@/lib/day2-business-test'
 import { isDay2AdvanceUnlocked } from '@/lib/workboard-stage'
 import { whatsAppChatWithTextHref, whatsappDigits } from '@/lib/phone-links'
@@ -294,8 +298,6 @@ const LeadCard = memo(function LeadCard({
   const slaOverdue = slaMs < 0
   const slaRemainingSec = Math.max(0, Math.floor(slaMs / 1000))
   const slaTone = leadSlaTone(slaOverdue ? 0 : slaRemainingSec)
-  const { hourAngle: slaHourAngle, minuteAngle: slaMinuteAngle, secondAngle: slaSecondAngle } =
-    leadSlaClockAngles(slaOverdue ? 0 : slaMs)
   const callOptions = callStatusSelectOptions(surfaceRole ?? null, lead.status as LeadStatus)
   const rawCallStatus = (lead.call_status ?? '').trim()
   const callValue = callOptions.some((option) => option.value === rawCallStatus)
@@ -361,58 +363,12 @@ const LeadCard = memo(function LeadCard({
           </NativeSelect>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <div className={cn('relative size-8 shrink-0 rounded-full', slaTone.glow)}>
-              <svg viewBox="0 0 40 40" className="size-full" aria-hidden>
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="18"
-                  fill="transparent"
-                  stroke={slaTone.stroke}
-                  strokeWidth="2"
-                  strokeOpacity="0.5"
-                />
-                <line
-                  x1="20"
-                  y1="20"
-                  x2="20"
-                  y2="10"
-                  stroke={slaTone.stroke}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  transform={`rotate(${slaHourAngle}, 20, 20)`}
-                />
-                <line
-                  x1="20"
-                  y1="20"
-                  x2="20"
-                  y2="7"
-                  stroke={slaTone.stroke}
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  transform={`rotate(${slaMinuteAngle}, 20, 20)`}
-                />
-                <line
-                  x1="20"
-                  y1="20"
-                  x2="20"
-                  y2="5"
-                  stroke={slaTone.stroke}
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  transform={`rotate(${slaSecondAngle}, 20, 20)`}
-                />
-                <circle cx="20" cy="20" r="2" fill={slaTone.stroke} />
-              </svg>
-            </div>
-            <div>
-              <p className={cn('text-ds-caption font-semibold leading-tight', slaTone.text)}>
-                {slaOverdue ? formatCountdown(slaMs) : formatLeadSlaTime(slaRemainingSec)}
-              </p>
-              <p className="text-ds-caption text-muted-foreground">{slaOverdue ? 'SLA' : 'remaining'}</p>
-            </div>
-          </div>
+          <LiveSlaClock
+            deadlineMs={nowMs + slaMs}
+            leftLabel="remaining"
+            overdueLabel="SLA"
+            className="min-w-0"
+          />
           <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
             {showLeadContactActions ? (
               <>
@@ -554,7 +510,6 @@ function ProcessChecklistSection({
   nextLabel?: string
   taskKeys?: string[]
 }) {
-  const qc = useQueryClient()
   const [busyTask, setBusyTask] = useState<string | null>(null)
   const [taskError, setTaskError] = useState<string | null>(null)
   const { data: contentLinks = {} } = useContentLinksQuery()
@@ -581,7 +536,7 @@ function ProcessChecklistSection({
           process_task_done: done,
         },
       })
-      await qc.refetchQueries({ queryKey: ['workboard'] })
+      // The tick is painted optimistically; the mutation re-syncs the board in the background.
     } catch (err) {
       setTaskError(err instanceof Error ? err.message : 'Could not update process task')
     } finally {
@@ -1033,6 +988,7 @@ function Day2TestLinkRow({ lead, busy, onSend }: {
           {label[status]}
         </span>
       </div>
+      <Day2TestSignals leadId={lead.id} status={status} leadName={lead.name} />
       {!done ? (
         <button type="button"
           disabled={busy}
@@ -1272,6 +1228,15 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           taskKeys={['day3_interview', 'day3_live_session', 'day3_blueprint_video']}
         />
         <Day3StagePicker lead={lead} pm={pm} leadPatchBusy={leadPatchBusy} />
+        <Day3SlotTimer
+          lead={lead}
+          pm={pm}
+          leadPatchBusy={leadPatchBusy}
+          stage={(() => {
+            const opt = STAGE_OPTIONS.find((o) => o.key === lead.stage_selected)
+            return opt ? { label: opt.label, price: rupees(lead.stage_price_cents ?? opt.priceCents) } : null
+          })()}
+        />
         <Day3StagePayment lead={lead} leadPatchBusy={leadPatchBusy} />
         {onMoveNext ? (
           <button
@@ -1360,6 +1325,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
           </div>
           {batchError ? <p className="text-ds-caption text-destructive">{batchError}</p> : null}
         </div>
+        {stageKey === 'day2' ? <SaveContactButton leadId={lead.id} hasPhone={Boolean(lead.phone)} /> : null}
         {stageKey === 'day2' ? (
           allSlotsDone ? (
             <Day2TestLinkRow lead={lead} busy={testLinkBusy} onSend={() => void handleSendTestLink()} />
@@ -1651,11 +1617,19 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
         <div className="space-y-3">
           {/* Day 3 summary chips */}
           <div className="flex flex-wrap gap-2">
-            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-success/15 text-success-ink border-success/25'],
-              ['In Progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-warning/15 text-warning-ink border-warning/25'],
-              ['Not Started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted/30 text-muted-foreground border-border dark:border-white/10'],
-            ].map(([label, count, cls]) =>
-              <span key={label as string} className={cn('rounded-full border px-2.5 py-0.5 text-ds-caption font-medium', cls as string)}>{label}: {count}</span>)}
+            {[['Complete', day2.filter((l) => !!l.day2_completed_at).length, 'bg-success'],
+              ['In progress', day2.filter((l) => !l.day2_completed_at && !!l.day1_completed_at).length, 'bg-warning'],
+              ['Not started', day2.filter((l) => !l.day1_completed_at).length, 'bg-muted-foreground'],
+            ].map(([label, count, dot]) => (
+              <span
+                key={label as string}
+                className="flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-ds-caption font-medium text-muted-foreground"
+              >
+                <span className={cn('size-1.5 rounded-full', dot as string)} aria-hidden />
+                {label}
+                <span className="tabular-nums text-foreground">{count}</span>
+              </span>
+            ))}
           </div>
           <Grid
             leads={day2}
@@ -1714,7 +1688,7 @@ export function WorkboardPage({ title }: Props) {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const adminTab = parseAdminTab(searchParams.get('tab'))
   useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
+    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_BOARD_REFRESH_MS)
     return () => window.clearInterval(id)
   }, [])
   useEffect(() => {
@@ -1749,26 +1723,19 @@ export function WorkboardPage({ title }: Props) {
   return (
     <div className="space-y-4 pb-20 md:pb-10">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <button type="button" onClick={goBack} className="mb-1 text-sm text-primary underline-offset-2 hover:underline">← Back</button>
-          <h1 className="text-ds-h2">{title}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {surfaceRole === 'admin'
-              ? 'Organization pipeline — Day 2 onwards.'
-              : 'Day 2 onwards execution pipeline.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="space-y-1">
+        <button type="button" onClick={goBack} className="text-ds-caption text-muted-foreground hover:text-foreground">← Back</button>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-ds-h1">{title}</h1>
           <Button type="button" size="sm" asChild>
-            <Link to="/dashboard/work/leads">Add Lead</Link>
+            <Link to="/dashboard/work/leads">Add lead</Link>
           </Button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="surface-elevated px-3 py-2">
-        <div className="relative max-w-sm">
+      <div>
+        <div className="relative w-full sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden/>
           <input value={qInput} onChange={(e) => setQInput(e.target.value)}
             placeholder="Search by name or phone…"

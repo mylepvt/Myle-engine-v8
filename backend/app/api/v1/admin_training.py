@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
+from app.api.v1.certificate import build_training_certificate, pdf_response
 from app.models.training_progress import TrainingProgress
+from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.training_video import TrainingVideo
 from app.models.user import User
@@ -92,6 +94,107 @@ async def admin_upload_training_audio(
     return {"day_number": day_number, "audio_url": audio_path}
 
 
+class TrainingQuestionBody(BaseModel):
+    question: str = Field(min_length=3, max_length=2000)
+    option_a: str = Field(min_length=1, max_length=500)
+    option_b: str = Field(min_length=1, max_length=500)
+    option_c: str = Field(min_length=1, max_length=500)
+    option_d: str = Field(min_length=1, max_length=500)
+    correct_answer: str
+    sort_order: int = 0
+
+    @field_validator("question", "option_a", "option_b", "option_c", "option_d")
+    @classmethod
+    def _strip(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("correct_answer")
+    @classmethod
+    def _letter(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"a", "b", "c", "d"}:
+            raise ValueError("correct_answer must be a, b, c or d")
+        return v
+
+
+def _question_out(q: TrainingQuestion) -> dict:
+    return {
+        "id": q.id,
+        "question": q.question,
+        "option_a": q.option_a,
+        "option_b": q.option_b,
+        "option_c": q.option_c,
+        "option_d": q.option_d,
+        "correct_answer": q.correct_answer,
+        "sort_order": q.sort_order,
+    }
+
+
+@router.get("/training/questions")
+async def admin_list_training_questions(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Admin: the final-quiz question bank, with the correct answers."""
+    _require_admin(user)
+    rows = (
+        await session.execute(
+            select(TrainingQuestion).order_by(TrainingQuestion.sort_order.asc(), TrainingQuestion.id.asc())
+        )
+    ).scalars().all()
+    return {"items": [_question_out(q) for q in rows]}
+
+
+@router.post("/training/questions")
+async def admin_create_training_question(
+    body: TrainingQuestionBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    _require_admin(user)
+    row = TrainingQuestion(**body.model_dump())
+    session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return _question_out(row)
+
+
+@router.put("/training/questions/{question_id}")
+async def admin_update_training_question(
+    question_id: int,
+    body: TrainingQuestionBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    _require_admin(user)
+    row = await session.get(TrainingQuestion, question_id)
+    if row is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Question not found")
+    for key, value in body.model_dump().items():
+        setattr(row, key, value)
+    await session.commit()
+    await session.refresh(row)
+    return _question_out(row)
+
+
+@router.delete("/training/questions/{question_id}")
+async def admin_delete_training_question(
+    question_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    _require_admin(user)
+    row = await session.get(TrainingQuestion, question_id)
+    if row is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Question not found")
+    await session.delete(row)
+    await session.commit()
+    return {"ok": True, "id": question_id}
+
+
 @router.get("/training/progress")
 async def admin_training_progress(
     user: Annotated[AuthUser, Depends(require_auth_user)],
@@ -109,6 +212,19 @@ async def _load_target(session: AsyncSession, user_id: int) -> User:
     if target is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found")
     return target
+
+
+@router.get("/training/{user_id}/certificate")
+async def admin_download_member_certificate(
+    user_id: int,
+    request: Request,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Admin: re-download a member's training certificate (identical to the member's copy)."""
+    _require_admin(user)
+    pdf_bytes, filename = await build_training_certificate(session, user_id, str(request.base_url))
+    return pdf_response(pdf_bytes, filename)
 
 
 @router.post("/training/{user_id}/toggle")

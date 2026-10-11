@@ -1,0 +1,202 @@
+"""Day 2 prospects as phone contacts (admin only).
+
+Contacts are named "<prospect> – <leader> – MYLE". Three ways to get them into
+the admin's iPhone:
+- one lead  → ``.vcf`` file ("Save contact" on the Workboard),
+- all leads → one ``.vcf`` with every contact ("Add All Contacts"),
+- Google    → synced into the admin's Google Contacts, which the iPhone already syncs
+              (see app/services/google_contacts.py).
+
+"Day 2 prospect" = any lead that has reached Day 2 (also later stages), so a contact
+does not vanish from the phone when the lead moves on to Day 3 or converts.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import secrets
+from datetime import datetime, timezone
+
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.app_setting import AppSetting
+from app.models.lead import Lead
+from app.services.lead_payloads import _response_owner_user_id
+from app.services.user_hierarchy import load_user_hierarchy_entries, nearest_leader_entry
+
+BOOK_NAME = "MYLE Day 2"  # the iPhone list / address book
+BRAND = "MYLE"
+REACHED_DAY2_STATUSES = ("day2", "day3", "converted", "training")
+
+
+def reached_day2_clause():
+    return or_(
+        Lead.status.in_(REACHED_DAY2_STATUSES),
+        Lead.d2_morning.is_(True),
+        Lead.d2_afternoon.is_(True),
+        Lead.d2_evening.is_(True),
+        Lead.day2_test_status.in_(("in_progress", "passed", "failed")),
+    )
+
+
+async def day2_contact_leads(session: AsyncSession) -> list[Lead]:
+    rows = (
+        await session.execute(
+            select(Lead)
+            .where(reached_day2_clause(), Lead.deleted_at.is_(None), Lead.phone.isnot(None), Lead.phone != "")
+            .order_by(Lead.id)
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+def _esc(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\r", "").replace("\n", "\\n")
+    )
+
+
+def phone_for_contact(raw: str | None) -> str:
+    """Indian 10-digit numbers get +91 so the iPhone dials and matches WhatsApp correctly."""
+    digits = re.sub(r"\D", "", raw or "")
+    if len(digits) == 10:
+        return f"+91{digits}"
+    if len(digits) == 12 and digits.startswith("91"):
+        return f"+{digits}"
+    return (raw or "").strip()
+
+
+async def leader_names(session: AsyncSession, leads: list[Lead]) -> dict[int, str | None]:
+    """Lead id → its leader's name (same rule as the Workboard: owner's nearest leader)."""
+    owners = {lead.id: _response_owner_user_id(lead) for lead in leads}
+    entries = await load_user_hierarchy_entries(session, owners.values())
+    out: dict[int, str | None] = {}
+    for lead_id, owner_id in owners.items():
+        leader = nearest_leader_entry(owner_id, entries)
+        out[lead_id] = " ".join(leader.display_name.split()) if leader is not None else None
+    return out
+
+
+def contact_name(lead: Lead, leader: str | None = None) -> str:
+    """"Prospect – Leader – MYLE" (leader left out when the lead has none)."""
+    name = " ".join((lead.name or "").split()) or "Prospect"
+    return " – ".join(part for part in (name, leader, BRAND) if part)
+
+
+def _rev(lead: Lead) -> str:
+    stamp = getattr(lead, "updated_at", None) or lead.created_at or datetime.now(timezone.utc)
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    return stamp.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def vcard_for_lead(lead: Lead, leader: str | None = None) -> str:
+    """vCard 3.0 (what iOS Contacts reads best). CRLF line endings per RFC 2426."""
+    full = contact_name(lead, leader)
+    lines = [
+        "BEGIN:VCARD",
+        "VERSION:3.0",
+        f"UID:myle-lead-{lead.id}",
+        f"FN:{_esc(full)}",
+        f"N:;{_esc(full)};;;",
+        "ORG:MYLE Community",
+        f"TEL;TYPE=CELL:{_esc(phone_for_contact(lead.phone))}",
+    ]
+    if lead.city:
+        lines.append(f"ADR;TYPE=HOME:;;;{_esc(lead.city)};;;")
+    lines += [
+        f"NOTE:{_esc(f'MYLE lead #{lead.id} (Day 2 prospect)' + (f' · Leader: {leader}' if leader else ''))}",
+        "CATEGORIES:MYLE",
+        f"REV:{_rev(lead)}",
+        "END:VCARD",
+    ]
+    return "\r\n".join(lines) + "\r\n"
+
+
+async def contact_cards(session: AsyncSession, leads: list[Lead]) -> dict[int, str]:
+    """Lead id → vCard, with each lead's leader in the contact name."""
+    leaders = await leader_names(session, leads)
+    return {lead.id: vcard_for_lead(lead, leaders.get(lead.id)) for lead in leads}
+
+
+def etag_for(card: str) -> str:
+    return '"' + hashlib.sha256(card.encode()).hexdigest()[:32] + '"'
+
+
+def safe_filename(text: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", text).strip("_") or "contact"
+
+
+# ── "Save only new" — remember which prospects this admin already took to the phone ──
+#
+# app_settings["day2_vcf_export:<admin id>"] = {"exported": [lead ids], "batches": {token: [lead ids]}}
+# A "new" export is a two-step: POST creates a batch (and marks it exported), then the phone
+# opens GET …/export/<token>.vcf — repeatable, so the app's pre-check fetch doesn't eat it.
+
+EXPORT_KEY = "day2_vcf_export:{user_id}"
+MAX_BATCHES = 10
+
+
+async def _load_exports(session: AsyncSession, user_id: int) -> tuple[AppSetting | None, dict]:
+    row = await session.get(AppSetting, EXPORT_KEY.format(user_id=user_id))
+    try:
+        data = json.loads(row.value) if row and row.value else {}
+    except ValueError:
+        data = {}
+    data.setdefault("exported", [])
+    data.setdefault("batches", {})
+    return row, data
+
+
+async def _save_exports(session: AsyncSession, user_id: int, row: AppSetting | None, data: dict) -> None:
+    value = json.dumps(data)
+    if row is None:
+        session.add(AppSetting(key=EXPORT_KEY.format(user_id=user_id), value=value))
+    else:
+        row.value = value
+    await session.commit()
+
+
+async def mark_exported(session: AsyncSession, user_id: int, lead_ids: list[int]) -> None:
+    row, data = await _load_exports(session, user_id)
+    done = set(data["exported"])
+    if set(lead_ids) <= done:
+        return
+    data["exported"] = sorted(done | set(lead_ids))
+    await _save_exports(session, user_id, row, data)
+
+
+async def new_contact_leads(session: AsyncSession, user_id: int) -> list[Lead]:
+    """Day 2 prospects this admin has not saved to the phone yet."""
+    _, data = await _load_exports(session, user_id)
+    done = set(data["exported"])
+    return [lead for lead in await day2_contact_leads(session) if lead.id not in done]
+
+
+async def create_new_export(session: AsyncSession, user_id: int) -> tuple[str | None, int]:
+    """Batch the not-yet-saved prospects; returns (token, count). Marks them saved."""
+    leads = await new_contact_leads(session, user_id)
+    if not leads:
+        return None, 0
+    row, data = await _load_exports(session, user_id)
+    token = secrets.token_urlsafe(12)
+    ids = [lead.id for lead in leads]
+    batches = data["batches"]
+    batches[token] = ids
+    for old in list(batches)[:-MAX_BATCHES]:
+        del batches[old]
+    data["exported"] = sorted(set(data["exported"]) | set(ids))
+    await _save_exports(session, user_id, row, data)
+    return token, len(ids)
+
+
+async def export_batch_leads(session: AsyncSession, user_id: int, token: str) -> list[Lead] | None:
+    _, data = await _load_exports(session, user_id)
+    ids = data["batches"].get(token)
+    if ids is None:
+        return None
+    wanted = set(ids)
+    return [lead for lead in await day2_contact_leads(session) if lead.id in wanted]

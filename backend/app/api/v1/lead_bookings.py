@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
+from app.core.person_name import person_name
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.time_ist import today_ist
 from app.models.lead_booking import BOOKING_CANCELLED, LeadBooking
@@ -107,7 +108,7 @@ async def bookings_for_day(
     items = [
         LeadBookingAdminRow(
             user_id=u.id,
-            member_name=u.name or u.username or f"Member #{u.id}",
+            member_name=person_name(u.name or u.username) or f"Member #{u.id}",
             booking_date=b.booking_date,
             requested_count=b.requested_count,
             fulfilled_count=b.fulfilled_count,

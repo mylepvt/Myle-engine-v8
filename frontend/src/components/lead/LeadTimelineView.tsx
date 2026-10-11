@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { InlineEmpty } from '@/components/ui/states'
 
 const EVENT_ICONS: Record<string, LucideIcon> = {
   created: CalendarDays,
@@ -38,7 +39,7 @@ const EVENT_VARIANTS: Record<string, string> = {
   created: 'border-info/20 bg-info/40',
   claimed: 'border-purple-200 bg-purple-50/40 dark:bg-purple-950/10',
   called: 'border-success/20 bg-success/40',
-  whatsapp_sent: 'border-sky-200 bg-sky-50/40 dark:bg-sky-950/10',
+  whatsapp_sent: 'border-primary/30 bg-primary/40',
   mindset_completed: 'border-violet-200 bg-violet-50/40 dark:bg-violet-950/10',
   day1: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
   day2: 'border-indigo-200 bg-indigo-50/40 dark:bg-indigo-950/10',
@@ -50,8 +51,8 @@ const EVENT_VARIANTS: Record<string, string> = {
   sale: 'border-success/20 bg-success/40',
   converted: 'border-success/20 bg-success/40 text-success-ink font-bold',
   dead: 'border-destructive/20 bg-destructive/40',
-  recycle: 'border-orange-200 bg-orange-50/40 dark:bg-orange-950/10',
-  note: 'border-gray-200 bg-gray-50/40 dark:bg-gray-950/10',
+  recycle: 'border-warning/30 bg-warning/40',
+  note: 'border-border bg-muted/40',
 }
 
 function TimelineEventRow({ event }: { event: TimelineEvent }) {
@@ -143,7 +144,7 @@ export function LeadTimelineView({
             <TimelineEventRow key={i} event={event} />
           ))}
           {data.events.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">No events recorded for this lead.</p>
+            <InlineEmpty>No events recorded for this lead.</InlineEmpty>
           )}
         </div>
       </CardContent>

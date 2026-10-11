@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Search, Users } from 'lucide-react'
 
-import { EmptyState } from '@/components/ui/states'
+import { EmptyState, InlineEmpty } from '@/components/ui/states'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -510,7 +510,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                 />
               </div>
             {poolItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No pool leads match your search.</p>
+              <InlineEmpty>No pool leads match your search.</InlineEmpty>
             ) : (
             <ul className="space-y-3">
               {poolItems.map((l) => {

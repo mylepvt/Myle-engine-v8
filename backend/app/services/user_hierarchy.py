@@ -6,6 +6,7 @@ from typing import Iterable, Mapping
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import person_name
 from app.models.user import User
 
 _MAX_UPLINE_WALK = 64
@@ -23,9 +24,9 @@ class UserHierarchyEntry:
     @property
     def display_name(self) -> str:
         if self.name and self.name.strip():
-            return self.name.strip()
+            return person_name(self.name)
         if self.username and self.username.strip():
-            return self.username.strip()
+            return person_name(self.username)
         local = (self.email or "").split("@", 1)[0].strip()
         return local or "User"
 

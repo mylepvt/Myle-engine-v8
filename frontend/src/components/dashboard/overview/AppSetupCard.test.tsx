@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AppSetupCard } from './AppSetupCard'
@@ -23,9 +23,16 @@ afterEach(() => cleanup())
 describe('AppSetupCard', () => {
   it("shows today's automatic notifications and who is not set up", async () => {
     render(<QueryClientProvider client={new QueryClient()}><AppSetupCard /></QueryClientProvider>)
-    expect(await screen.findByText('18 of 25 reached')).toBeTruthy()
+    // Collapsed by default: a one-line summary, no long lists.
+    expect(await screen.findByText(/failed/)).toBeTruthy()
+    expect(screen.queryByText('Amit')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /Auto notifications/ }))
+    expect(screen.getByText('18 of 25 reached')).toBeTruthy()
     expect(screen.getByText('Not run yet')).toBeTruthy()
     expect(screen.getByText('Failed')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /Show who/ }))
     expect(screen.getByText('Amit')).toBeTruthy()
   })
 })

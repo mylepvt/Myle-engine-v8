@@ -29,4 +29,15 @@ describe('design system', () => {
     })
     expect(offenders).toEqual([])
   })
+
+  it('uses theme colour tokens, not raw Tailwind palette colours, for status colours', () => {
+    // red/green/amber/blue/grey shades don't follow light/dark mode; use destructive / success /
+    // warning / primary / muted tokens. Medal colours in rank-badge and the terminal intro are exempt.
+    const RAW = /\b(?:text|bg|border|border-[lrtbxy]|ring|from|to|via|fill|stroke|divide)-(?:red|rose|green|emerald|amber|yellow|orange|blue|sky|slate|gray|zinc|neutral|stone)-\d{2,3}\b/g
+    const EXEMPT = ['rank-badge.tsx', 'TerminalBootOverlay.tsx']
+    const offenders = sourceFiles(SRC)
+      .filter((file) => file.endsWith('.tsx') && !file.endsWith('.test.tsx') && !EXEMPT.some((e) => file.endsWith(e)))
+      .flatMap((file) => (readFileSync(file, 'utf8').match(RAW) ?? []).map((hit) => `${relative(SRC, file)}: ${hit}`))
+    expect(offenders).toEqual([])
+  })
 })

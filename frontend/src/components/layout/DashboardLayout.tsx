@@ -351,9 +351,9 @@ export function DashboardLayout() {
         {enrollmentAlert.open && approverForEnroll ? (
           <div
             role="status"
-            className="flex shrink-0 items-center justify-between gap-3 border-b border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-amber-950 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-50"
+            className="flex shrink-0 items-center justify-between gap-3 border-b border-warning/35 bg-warning/10 px-3 py-2.5 text-warning-ink"
           >
-            <p className="min-w-0 text-sm text-amber-950 dark:text-amber-50">
+            <p className="min-w-0 text-sm text-warning-ink">
               <span className="font-semibold">New Min. FLP approval request</span>
               {enrollmentAlert.delta === 1
                 ? ' — 1 FLP invoice needs review.'
@@ -362,14 +362,14 @@ export function DashboardLayout() {
             <div className="flex shrink-0 items-center gap-2">
               <Link
                 to="/dashboard/team/flp-min-billing"
-                className="text-sm font-semibold text-amber-950 underline underline-offset-2 dark:text-amber-50"
+                className="text-sm font-semibold text-warning-ink underline underline-offset-2"
                 onClick={() => enrollmentAlert.dismiss()}
               >
                 Open queue
               </Link>
               <button
                 type="button"
-                className="rounded-md p-2 text-amber-950/80 transition hover:bg-amber-500/20 dark:text-amber-100/90"
+                className="rounded-md p-2 text-warning-ink transition hover:bg-warning/20"
                 aria-label="Dismiss"
                 onClick={() => enrollmentAlert.dismiss()}
               >
@@ -383,10 +383,10 @@ export function DashboardLayout() {
           <div
             role="alert"
             aria-live="assertive"
-            className="flex shrink-0 items-center gap-3 border-b border-red-600/40 bg-red-600/10 px-3 py-3 dark:border-red-500/30 dark:bg-red-500/10"
+            className="flex shrink-0 items-center gap-3 border-b border-destructive/40 bg-destructive/10 px-3 py-3"
           >
-            <AlertTriangle className="size-5 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
-            <p className="min-w-0 flex-1 text-sm text-red-900 dark:text-red-100">
+            <AlertTriangle className="size-5 shrink-0 text-destructive-ink" aria-hidden />
+            <p className="min-w-0 flex-1 text-sm text-destructive-ink">
               <span className="font-bold">Final Warning — You will be removed tomorrow.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' You have not met your daily targets for 3 days in a row. Complete today\'s calls and daily report before midnight to avoid removal.'}
             </p>
@@ -395,10 +395,10 @@ export function DashboardLayout() {
           <div
             role="alert"
             aria-live="polite"
-            className="flex shrink-0 items-center gap-3 border-b border-orange-500/40 bg-orange-500/10 px-3 py-2.5 dark:border-orange-400/30 dark:bg-orange-400/10"
+            className="flex shrink-0 items-center gap-3 border-b border-warning/40 bg-warning/10 px-3 py-2.5"
           >
-            <AlertTriangle className="size-4 shrink-0 text-orange-600 dark:text-orange-400" aria-hidden />
-            <p className="min-w-0 flex-1 text-sm text-orange-900 dark:text-orange-100">
+            <AlertTriangle className="size-4 shrink-0 text-warning-ink" aria-hidden />
+            <p className="min-w-0 flex-1 text-sm text-warning-ink">
               <span className="font-semibold">Strong Warning.</span>
               {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}
             </p>
@@ -429,10 +429,10 @@ export function DashboardLayout() {
           <div
             role="status"
             aria-live="polite"
-            className="flex shrink-0 items-center gap-2.5 border-b border-slate-500/30 bg-slate-500/10 px-3 py-2 dark:border-slate-400/20 dark:bg-slate-400/8"
+            className="flex shrink-0 items-center gap-2.5 border-b border-border/30 bg-muted/10 px-3 py-2"
           >
-            <WifiOff className="size-3.5 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
-            <p className="min-w-0 text-xs text-slate-700 dark:text-slate-300">
+            <WifiOff className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <p className="min-w-0 text-xs text-foreground">
               <span className="font-semibold">You&apos;re offline</span>
               {' — '}
               viewing cached data. Changes will sync when connected.
@@ -489,7 +489,7 @@ export function DashboardLayout() {
           />
         ) : null}
         {debugViewport && viewportDebug ? (
-          <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-amber-300/60 bg-black/80 px-2 py-1 text-ds-micro leading-tight text-amber-200 md:hidden">
+          <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-warning/60 bg-black/80 px-2 py-1 text-ds-micro leading-tight text-warning-ink md:hidden">
             <div>inner:{viewportDebug.innerH} vv:{viewportDebug.vvH} client:{viewportDebug.clientH}</div>
             <div>shell:{viewportDebug.shellH} main:{viewportDebug.mainH} nav:{viewportDebug.navH}</div>
             <div>gap:{viewportDebug.navBottomGap} safeB:{viewportDebug.safeBottom} kb:{keyboardInset}</div>
@@ -500,8 +500,8 @@ export function DashboardLayout() {
             className={cn(
               'fixed right-2 top-[60px] z-[120] rounded-md border px-2 py-1 text-ds-micro leading-tight md:hidden',
               androidShellProbe.navBottomGap > 0
-                ? 'border-rose-300/70 bg-rose-950/85 text-rose-100'
-                : 'border-emerald-300/70 bg-emerald-950/85 text-emerald-100',
+                ? 'border-destructive/70 bg-destructive/85 text-destructive-ink'
+                : 'border-success/70 bg-success/85 text-success-ink',
             )}
           >
             <div>Android shell probe</div>

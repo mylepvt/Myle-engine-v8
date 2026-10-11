@@ -164,7 +164,7 @@ function JoinFeed({ entries }: { entries: JoinEntry[] }) {
             style={{ opacity: 0.35 + 0.65 * ((i + 1) / visible.length) }}
             className="flex items-center gap-2 text-ds-caption"
           >
-            <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" />
+            <span className="size-1.5 shrink-0 rounded-full bg-success" />
             <span className="text-room-soft">
               <span className="font-semibold">{e.name}</span>
               <span className="text-room-subtle"> from {e.city} joined</span>
@@ -345,10 +345,10 @@ function LiveSection({
                 <p className="text-base font-semibold text-white">You're in, {firstName}</p>
                 <p className="mt-0.5 text-sm text-room-muted">Session is live right now — watch till the end</p>
               </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white">
+              <span className="flex items-center gap-1.5 rounded-full bg-destructive/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white">
                 <span className="relative flex size-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-destructive" />
                 </span>
                 Live
               </span>
@@ -421,19 +421,19 @@ export function Day6LivePage() {
             </div>
             <div className="flex items-center gap-3">
               {(state === 'waiting' || state === 'live') && viewerCount > 0 && (
-                <span className="flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 tabular-nums transition-all duration-700">
+                <span className="flex items-center gap-1.5 rounded-full border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive-ink tabular-nums transition-all duration-700">
                   <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-red-400" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-destructive" />
                   </span>
                   {viewerCount} watching
                 </span>
               )}
               {state === 'live' && (
-                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                <span className="flex items-center gap-1.5 rounded-full bg-destructive/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
                   <span className="relative flex size-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                    <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-destructive" />
                   </span>
                   Live
                 </span>

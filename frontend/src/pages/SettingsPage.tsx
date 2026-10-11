@@ -238,7 +238,7 @@ export default function SettingsPage() {
                       />
                     ) : (
                       <div className="flex size-full items-center justify-center text-2xl text-muted-foreground">
-                        {(userProfile.data?.username?.[0] ?? userProfile.data?.email?.[0] ?? '?').toUpperCase()}
+                        {(userProfile.data?.name?.[0] ?? userProfile.data?.username?.[0] ?? userProfile.data?.email?.[0] ?? '?').toUpperCase()}
                       </div>
                     )}
                   </div>
@@ -258,17 +258,13 @@ export default function SettingsPage() {
                       }}
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
-                      JPEG, PNG, or WebP. Max 2 MB.
+                      JPEG, PNG, or WebP. Saves automatically once selected.
                     </p>
-                    {avatarUpload.isSuccess ? (
-                      <p className="mt-1 text-xs text-success-ink" role="status">
-                        Photo saved.
-                      </p>
-                    ) : null}
                     {avatarUpload.isPending ? (
-                      <p className="mt-1 text-xs text-muted-foreground" role="status">
-                        Uploading photo...
-                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground" role="status">Uploading photo...</p>
+                    ) : null}
+                    {avatarUpload.isSuccess ? (
+                      <p className="mt-1 text-xs text-success-ink" role="status">Profile photo updated.</p>
                     ) : null}
                     {avatarUpload.isError ? (
                       <p className="mt-1 text-xs text-destructive" role="alert">

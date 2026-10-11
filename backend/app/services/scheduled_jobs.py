@@ -6,6 +6,14 @@ Jobs (all IST-aware):
 - morning_plan                    : 09:00 IST daily — "Your plan for today" push (leads to call, follow-ups, streak)
 - evening_recap                   : 20:30 IST daily — calls vs yesterday, XP rank, daily-report nudge
 - inactivity_nudge                : every 30 min 11:00–16:30 IST — attention push to idle members (max 2/day)
+- google_contacts_sync            : every 15 min — push Day 2 prospects to connected admins' Google Contacts
+- process_rewards_scan            : every 10 min — award MYLE Points for verified process steps (revoke when proof is gone)
+- jackpot_draw                    : 21:00 IST daily — ₹150 jackpot draw (50 MP = 1 ticket), wallet credit, rollover
+- power_hour_alert                : every 5 min — push "Power Hour is on" once when it starts
+- league_settle                   : Monday 00:10 IST — close last week's Team League, pay the winning team
+- season_settle                   : 1st 00:20 IST — record last month's Season winners (admin pays)
+- batch_reminders                 : 10:00 / 13:00 / 15:00 / 16:00 IST — Day 1-2 batch start + follow-up reminders to member + leader
+- star_alert                      : every 15 min 10:00–20:00 IST — "X crossed 15 calls" push to members under 15 (max 1/day)
 - tracking_report_reminder        : 21:30 IST daily — push leaders who haven't submitted tracking report
 - call_target_reminder            : 17:00 IST daily — push eligible users short on calls
 - watch_archive_maintenance       : every 30min — archive completed-watch leads > 24h + redistribute stale
@@ -25,7 +33,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.time_ist import today_ist
+from app.core.time_ist import IST, today_ist
 from app.db.session import AsyncSessionLocal
 from app.models.current_cc import CurrentCcSheet
 from app.models.activity_log import ActivityLog
@@ -38,6 +46,7 @@ from app.services.engagement_nudge import (
     in_nudge_window,
     pick_nudge,
 )
+from app.services.star_alert import in_star_alert_window, run_star_alert
 from app.services.engagement_digest import (
     build_evening_recaps,
     build_morning_plans,
@@ -291,6 +300,215 @@ async def job_inactivity_nudge() -> None:
     except Exception as exc:
         logger.error("job_inactivity_nudge failed: %s", exc)
         await record_push_run("inactivity_nudge", targeted=0, sent=0, error=str(exc))
+
+
+async def job_google_contacts_sync() -> None:
+    """Every 15 min — keep each connected admin's Google Contacts in step with Day 2 prospects."""
+    from app.services import google_contacts as gc
+
+    if not gc.configured():
+        return
+    try:
+        async with AsyncSessionLocal() as session:
+            for user_id in await gc.connected_admin_ids(session):
+                try:
+                    result = await gc.sync(session, user_id)
+                    if result["created"] or result["updated"]:
+                        logger.info("google_contacts_sync: user=%s %s", user_id, result)
+                except gc.GoogleContactsError as exc:  # recorded in the admin's status card
+                    logger.warning("google_contacts_sync: user=%s failed: %s", user_id, exc)
+    except Exception as exc:
+        logger.error("job_google_contacts_sync failed: %s", exc)
+
+
+async def job_star_alert() -> None:
+    """Every 15 min, 10:00–20:00 IST — once someone crosses 15 calls today, push
+    everyone still under 15 (max once per member per day; see star_alert)."""
+    now = datetime.now(timezone.utc)
+    if not in_star_alert_window(now):
+        return
+
+    async def _send(session: AsyncSession, user: User, title: str, body: str) -> bool:
+        return await _push_digest(session, user, title, body, url="/dashboard/work/leads?tab=today")
+
+    try:
+        async with AsyncSessionLocal() as session:
+            users = list(await _get_eligible_users(session))
+            targeted, sent = await run_star_alert(session, users, now, _send)
+            await session.commit()
+            if targeted:
+                logger.info("star_alert: users=%d sent=%d", len(users), sent)
+        if targeted:
+            await record_push_run("star_alert", targeted=targeted, sent=sent)
+    except Exception as exc:
+        logger.error("job_star_alert failed: %s", exc)
+        await record_push_run("star_alert", targeted=0, sent=0, error=str(exc))
+
+
+async def job_process_rewards_scan() -> None:
+    """Every 10 min — MYLE Points for freshly verified process steps."""
+    from app.services.process_rewards import scan
+
+    from app.services.rewards_extras import grant_scratch_cards
+
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await scan(session)
+            result["scratch_cards"] = await grant_scratch_cards(session, datetime.now(timezone.utc))
+            for uid, label in result.get("level_ups", []):
+                try:
+                    await send_push_to_user(
+                        session, uid, title="Level up! 🎉",
+                        body=f"You reached {label} level with your MYLE Points. Keep going!",
+                        url="/dashboard",
+                    )
+                except Exception as exc:
+                    logger.warning("level-up push failed user_id=%s: %s", uid, exc)
+        if any(result.values()):
+            logger.info("process_rewards_scan: %s", result)
+    except Exception as exc:
+        logger.error("job_process_rewards_scan failed: %s", exc)
+
+
+async def job_jackpot_draw() -> None:
+    """21:00 IST — last scan, then today's jackpot draw; push the winner and the players."""
+    from app.services import process_rewards as pr
+
+    now = datetime.now(timezone.utc)
+    draw_date = now.astimezone(pr.IST).date()
+    try:
+        async with AsyncSessionLocal() as session:
+            await pr.scan(session, now)
+            tickets = await pr.eligible_tickets(session, draw_date)
+            draw = await pr.run_draw(session, draw_date)
+            sent = 0
+            rupees = draw.pot_cents // 100
+            winner = await session.get(User, draw.winner_user_id) if draw.winner_user_id else None
+            for uid in tickets:
+                user = await session.get(User, uid)
+                if user is None:
+                    continue
+                if winner is not None and uid == winner.id:
+                    title, body = f"🎉 You won today's ₹{rupees} jackpot!", "It's already in your MYLE wallet. Keep the process going!"
+                elif winner is not None:
+                    title = f"🎰 {pr._name(winner)} won today's ₹{rupees} jackpot"
+                    body = "Your tickets reset now — earn MYLE Points on real steps for tomorrow's draw."
+                else:
+                    continue
+                sent += await _push_digest(session, user, title, body, url="/dashboard")
+            logger.info("jackpot_draw: date=%s winner=%s players=%d", draw_date, draw.winner_user_id, draw.players)
+        await record_push_run("jackpot_draw", targeted=len(tickets), sent=sent)
+    except Exception as exc:
+        logger.error("job_jackpot_draw failed: %s", exc)
+        await record_push_run("jackpot_draw", targeted=0, sent=0, error=str(exc))
+
+
+async def job_power_hour_alert() -> None:
+    """Every 5 min — when Power Hour starts, tell members once (points count double)."""
+    from app.models.app_setting import AppSetting
+    from app.services import process_rewards as pr
+
+    now = datetime.now(timezone.utc)
+    try:
+        async with AsyncSessionLocal() as session:
+            cfg = await pr.power_hour_config(session)
+            if not pr.in_power_hour(cfg, now):
+                return
+            today = now.astimezone(pr.IST).date().isoformat()
+            key = "rewards.power_hour_announced"
+            row = await session.get(AppSetting, key)
+            if row is not None and row.value == today:
+                return
+            if row is None:
+                session.add(AppSetting(key=key, value=today))
+            else:
+                row.value = today
+            await session.commit()
+            _, end = pr.power_hour_window(cfg, now.astimezone(pr.IST).date())
+            title = "⚡ Power Hour is on — points count double"
+            body = f"Every verified step until {end.strftime('%-I:%M %p')} counts 2× for tonight's jackpot."
+            users = await _get_eligible_users(session)
+            sent = 0
+            for user in users:
+                sent += await _push_digest(session, user, title, body, url="/dashboard")
+        await record_push_run("power_hour_alert", targeted=len(users), sent=sent)
+    except Exception as exc:
+        logger.error("job_power_hour_alert failed: %s", exc)
+        await record_push_run("power_hour_alert", targeted=0, sent=0, error=str(exc))
+
+
+async def job_league_settle() -> None:
+    """Monday 00:10 IST — close last week's Team League and pay the winners."""
+    from app.services import rewards_extras as rx
+
+    now = datetime.now(timezone.utc)
+    week = rx.week_start_for(now) - timedelta(days=7)
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await rx.settle_league(session, week)
+            sent = 0
+            for p in result.payouts or []:
+                user = await session.get(User, p["user_id"])
+                if user is not None:
+                    sent += await _push_digest(
+                        session, user, f"🏆 Your team won the Team League — ₹{p['cents'] // 100} for you",
+                        "It's in your MYLE wallet. New week, new league — go again!", url="/dashboard",
+                    )
+            logger.info("league_settle: week=%s winner=%s paid=%d", week, result.winner_leader_id, len(result.payouts or []))
+        await record_push_run("league_settle", targeted=len(result.payouts or []), sent=sent)
+    except Exception as exc:
+        logger.error("job_league_settle failed: %s", exc)
+        await record_push_run("league_settle", targeted=0, sent=0, error=str(exc))
+
+
+async def job_season_settle() -> None:
+    """1st of the month 00:20 IST — record last month's Season winners and tell them."""
+    from app.services import rewards_extras as rx
+
+    now = datetime.now(timezone.utc)
+    month = rx._prev_month(rx.month_start_for(now))
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await rx.settle_season(session, month)
+            sent = 0
+            for w in result.winners or []:
+                user = await session.get(User, w["user_id"])
+                if user is None:
+                    continue
+                what = "Most Improved" if w["kind"] == "improved" else f"#{w['rank']} in the Season"
+                sent += await _push_digest(
+                    session, user, f"🌟 You're {what} for {month.strftime('%B')}!",
+                    f"₹{w['prize_rupees']} prize — the admin will hand it over.", url="/dashboard",
+                )
+        await record_push_run("season_settle", targeted=len(result.winners or []), sent=sent)
+    except Exception as exc:
+        logger.error("job_season_settle failed: %s", exc)
+        await record_push_run("season_settle", targeted=0, sent=0, error=str(exc))
+
+
+async def job_batch_reminders() -> None:
+    """10 AM / 1 PM / 3 PM / 4 PM IST — batch start + follow-up reminders (see batch_notify)."""
+    from app.services.batch_notify import build_reminders, claim_checkpoint
+    from app.services.push_service import send_push_to_user
+
+    now = datetime.now(timezone.utc)
+    hour = now.astimezone(IST).hour
+    try:
+        async with AsyncSessionLocal() as session:
+            if not await claim_checkpoint(session, now, hour):
+                return
+            reminders = await build_reminders(session, hour)
+            sent = 0
+            for uid, (title, body) in reminders.items():
+                try:
+                    sent += bool(await send_push_to_user(session, uid, title=title, body=body, url="/dashboard/work/workboard"))
+                except Exception as exc:  # noqa: BLE001 — one bad subscription must not stop the batch
+                    logger.warning("batch reminder push failed for user_id=%s: %s", uid, exc)
+            logger.info("batch_reminders: hour=%s targeted=%d sent=%d", hour, len(reminders), sent)
+        await record_push_run("batch_reminders", targeted=len(reminders), sent=sent)
+    except Exception as exc:
+        logger.error("job_batch_reminders failed: %s", exc)
+        await record_push_run("batch_reminders", targeted=0, sent=0, error=str(exc))
 
 
 # ---------------------------------------------------------------------------

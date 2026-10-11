@@ -27,6 +27,7 @@ import {
   formatMemberDate,
   formatMemberTimestamp,
 } from '@/components/team/member-utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 export function MemberProfileModal({
   member,
@@ -417,7 +418,7 @@ export function MemberProfileModal({
                 ))}
               </div>
             ) : !data?.items.length ? (
-              <p className="text-ds-caption text-muted-foreground">No leads yet.</p>
+              <InlineEmpty>No leads yet.</InlineEmpty>
             ) : (
               <ul className="max-h-64 space-y-1 overflow-y-auto">
                 {data.items.map((lead) => (
@@ -452,7 +453,7 @@ export function MemberProfileModal({
                 ))}
               </div>
             ) : !invQuery.data?.items.length ? (
-              <p className="text-ds-caption text-muted-foreground">No invoices yet.</p>
+              <InlineEmpty>No invoices yet.</InlineEmpty>
             ) : (
               <ul className="max-h-48 space-y-1 overflow-y-auto text-ds-caption">
                 {invQuery.data.items.map((inv) => (
@@ -463,7 +464,7 @@ export function MemberProfileModal({
                     <div className="min-w-0">
                       <span className="font-mono text-xs text-foreground">{inv.invoice_number}</span>
                       <span className="ml-2 text-muted-foreground">
-                        {inv.doc_type === 'tax_invoice' ? 'Tax Invoice' : 'Receipt'}
+                        {inv.doc_type === 'tax_invoice' ? 'Tax Invoice' : inv.doc_type === 'credit_note' ? 'Credit Note' : 'Receipt'}
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
                         {new Date(inv.issued_at).toLocaleDateString()} · ₹
@@ -472,7 +473,7 @@ export function MemberProfileModal({
                     </div>
                     <InvoiceDownloadLink
                       invoiceNumber={inv.invoice_number}
-                      kind={inv.doc_type === 'tax_invoice' ? 'tax_invoice' : 'receipt'}
+                      kind={inv.doc_type === 'payment_receipt' ? 'receipt' : inv.doc_type}
                       className="shrink-0"
                     />
                   </li>

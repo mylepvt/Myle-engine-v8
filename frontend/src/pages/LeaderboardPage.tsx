@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useShellStubQuery } from '@/hooks/use-shell-stub-query'
 import { parseLeaderboardStubItem } from '@/lib/leaderboard-row'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/states'
 
 type Props = { title: string }
 
@@ -13,7 +14,7 @@ const LEVEL_META: Record<string, { label: string; cls: string }> = {
   hustler:   { label: 'Hustler',   cls: 'bg-info/15 text-info-ink' },
   closer:    { label: 'Closer',    cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
   champion:  { label: 'Champion',  cls: 'bg-warning/15 text-warning-ink' },
-  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-warning/20 to-orange-400/20 text-warning-ink font-bold' },
+  legend:    { label: 'Legend',    cls: 'bg-gradient-to-r from-warning/20 to-warning/20 text-warning-ink font-bold' },
 }
 
 function LevelBadge({ level }: { level: string }) {
@@ -69,8 +70,8 @@ export function LeaderboardPage({ title }: Props) {
               {topThree.map((r) => {
                 const golds = [
                   'border-warning/40 bg-warning/8',
-                  'border-slate-400/30 bg-slate-500/8',
-                  'border-orange-400/30 bg-orange-500/8',
+                  'border-border/30 bg-muted/8',
+                  'border-warning/30 bg-warning/8',
                 ]
                 return (
                   <div
@@ -84,7 +85,7 @@ export function LeaderboardPage({ title }: Props) {
                     <p className="max-w-full truncate text-sm font-semibold text-foreground">{r.name}</p>
                     <LevelBadge level={r.level} />
                     <p className="tabular-nums text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{r.xp}</span> XP
+                      <span className="font-medium text-foreground">{r.mp}</span> MP
                     </p>
                   </div>
                 )
@@ -103,7 +104,7 @@ export function LeaderboardPage({ title }: Props) {
                     <th scope="col" className="px-4 py-2.5 font-medium">Member</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden sm:table-cell">Level</th>
                     <th scope="col" className="px-4 py-2.5 font-medium hidden md:table-cell">Role</th>
-                    <th scope="col" className="px-4 py-2.5 text-right font-medium hidden sm:table-cell">XP</th>
+                    <th scope="col" className="px-4 py-2.5 text-right font-medium hidden sm:table-cell">MP</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -123,7 +124,7 @@ export function LeaderboardPage({ title }: Props) {
                         <LevelBadge level={r.level} />
                       </td>
                       <td className="px-4 py-2.5 capitalize text-muted-foreground hidden md:table-cell">{r.role}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums font-medium hidden sm:table-cell">{r.xp}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums font-medium hidden sm:table-cell">{r.mp}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -132,7 +133,7 @@ export function LeaderboardPage({ title }: Props) {
           ) : null}
         </>
       ) : data && rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No leaderboard rows yet.</p>
+        <InlineEmpty>No leaderboard rows yet.</InlineEmpty>
       ) : null}
     </div>
   )

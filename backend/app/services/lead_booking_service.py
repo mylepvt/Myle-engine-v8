@@ -171,9 +171,19 @@ async def fulfill_open_bookings(session: AsyncSession, *, day: date | None = Non
         )
         if available <= 0:
             break
-        booking = await session.get(LeadBooking, booking_id)
+        # Lock this booking for the rest of its transaction: the 10-min job, a pool import and
+        # the admin "fulfil now" button can run at once — only one of them fills it.
+        booking = (
+            await session.execute(
+                select(LeadBooking)
+                .where(LeadBooking.id == booking_id)
+                .with_for_update(skip_locked=True)
+                .execution_options(populate_existing=True)
+            )
+        ).scalar_one_or_none()
         user = await session.get(User, booking.user_id) if booking else None
         if booking is None or user is None or booking.status != BOOKING_OPEN:
+            await session.rollback()  # release the lock
             continue
         remaining = booking.requested_count - booking.fulfilled_count
         if remaining <= 0:
@@ -194,18 +204,21 @@ async def fulfill_open_bookings(session: AsyncSession, *, day: date | None = Non
 
         actor = AuthUser(user_id=user.id, role=user.role, email=user.email or "")
         try:
-            claimed, _ = await service.claim_lead_pool_batch(count=count, user=actor)
+            claimed, _ = await service.claim_lead_pool_batch(
+                count=count, user=actor, source="booking", commit=False
+            )
+            # Claim + booking count commit together: a crash can't leave leads charged but the
+            # booking still "open" (which would fill it again on the next run).
+            booking.fulfilled_count += len(claimed)
+            booking.last_skip_reason = None
+            if booking.fulfilled_count >= booking.requested_count:
+                booking.status = BOOKING_FULFILLED
+            await session.commit()
         except Exception:
             await session.rollback()
             logger.exception("lead booking %s fulfilment failed", booking_id)
             continue
-
-        booking = await session.get(LeadBooking, booking_id)
-        booking.fulfilled_count += len(claimed)
-        booking.last_skip_reason = None
-        if booking.fulfilled_count >= booking.requested_count:
-            booking.status = BOOKING_FULFILLED
-        await session.commit()
+        await notify_topics("leads", "wallet")
         result["leads_assigned"] += len(claimed)
         result["members_filled"] += 1
         await _push(

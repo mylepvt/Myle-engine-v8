@@ -8,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 import app.models  # noqa: F401 — register all mappers
 from app.db.base import Base
+from app.models.lead import Lead
+from app.models.process_reward import ProcessPoint
 from app.models.user import User
+from app.services import process_rewards as pr
 from app.models.win import Win
 from app.services import push_service
 from app.services.wins import list_wins, record_win, toggle_cheer
@@ -75,11 +78,22 @@ async def test_cheer_toggles_and_pushes_winner_once(Session):
         assert await toggle_cheer(s, win_id=999, user_id=B) is None
 
 
-async def test_level_up_records_a_win(Session):
+async def test_level_up_comes_from_myle_points_not_xp(Session):
     async with Session() as s:
         user = await s.get(User, A)
         user.xp_total, user.xp_level = 290, "agent"
-        await grant_xp(s, A, "report_submitted")
+        await grant_xp(s, A, "report_submitted")  # crosses an XP level: no win any more
         await s.commit()
+        assert await list_wins(s, viewer_id=A) == []
+
+        s.add(Lead(id=1, name="P", status="day1", created_by_user_id=A, owner_user_id=A,
+                   assigned_to_user_id=A, in_pool=False, call_count=0))
+        await s.flush()
+        s.add(ProcessPoint(user_id=A, lead_id=1, step="converted", points=150))
+        s.add(ProcessPoint(user_id=A, lead_id=1, step="stage_selected", points=50))
+        s.add(ProcessPoint(user_id=A, lead_id=1, step="enrolled", points=50))
+        await s.commit()
+        assert await pr._record_level_ups(s, {A: 50}) == [(A, "Agent")]  # 200 → 250 MP
+        assert await pr._record_level_ups(s, {A: 0}) == []
         items = await list_wins(s, viewer_id=A)
-    assert [(i["kind"], i["text"], i["is_mine"]) for i in items] == [("level_up", "Priya reached Pro level", True)]
+    assert [(i["kind"], i["text"], i["is_mine"]) for i in items] == [("level_up", "Priya reached Agent level", True)]

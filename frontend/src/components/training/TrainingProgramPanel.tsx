@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TrainingDayAdmin } from '@/components/training/TrainingDayAdmin'
+import { TrainingQuizAdmin } from '@/components/training/TrainingQuizAdmin'
 import { TrainingDayView } from '@/components/training/TrainingDayView'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -16,10 +17,23 @@ import { authSyncIdentity } from '@/lib/auth-api'
 import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 import { cn } from '@/lib/utils'
 
+type OptionKey = 'a' | 'b' | 'c' | 'd'
+
 type TrainingQuestionRow = {
   id: number
   question: string
   options: Record<string, string>
+  /** Display order of the option keys — shuffled per attempt so "always pick B" doesn't work. */
+  order: OptionKey[]
+}
+
+function shuffled<T>(items: readonly T[]): T[] {
+  const out = [...items]
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
 }
 
 type TrainingTestResultRow = {
@@ -242,9 +256,10 @@ function TrainingCertificationBlock({
         const options =
           o.options && typeof o.options === 'object' ? (o.options as Record<string, string>) : {}
         if (!Number.isFinite(id) || !question) continue
-        cleaned.push({ id, question, options })
+        cleaned.push({ id, question, options, order: shuffled(['a', 'b', 'c', 'd'] as const) })
       }
-      setQuestions(cleaned)
+      setAnswers({})
+      setQuestions(shuffled(cleaned))
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not open the quiz. Please try again.')
     } finally {
@@ -254,6 +269,10 @@ function TrainingCertificationBlock({
 
   const submit = async () => {
     if (!questions?.length) return
+    if (questions.some((q) => !answers[q.id])) {
+      setErr(`Answer all ${questions.length} questions before submitting.`)
+      return
+    }
     setLoading(true)
     setErr(null)
     try {
@@ -316,7 +335,7 @@ function TrainingCertificationBlock({
                 <span className="pt-0.5">{q.question}</span>
               </legend>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {(['a', 'b', 'c', 'd'] as const).map((letter) => {
+                {q.order.map((letter, position) => {
                   const selected = answers[q.id] === letter
                   return (
                     <label
@@ -336,7 +355,7 @@ function TrainingCertificationBlock({
                         onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: letter }))}
                       />
                       <span className="min-w-0">
-                        <span className="mr-1 font-semibold text-foreground">{letter.toUpperCase()}.</span>
+                        <span className="mr-1 font-semibold text-foreground">{'ABCD'[position]}.</span>
                         {q.options[letter] ?? '-'}
                       </span>
                     </label>
@@ -373,8 +392,13 @@ function TrainingCertificationBlock({
           <p className="mt-1 text-ds-caption text-muted-foreground">
             {result.passed
               ? 'You passed. Your certificate is ready below.'
-              : `You need ${result.pass_mark_percent}% to pass. Try again when you are ready.`}
+              : `You need ${result.pass_mark_percent}% to pass. Revise the training, then try again (up to 3 tries a day).`}
           </p>
+          {!result.passed ? (
+            <Button type="button" variant="secondary" size="sm" className="mt-3" disabled={loading} onClick={() => void load()}>
+              Try again
+            </Button>
+          ) : null}
           {result.passed && result.training_completed ? (
             <div className="mt-4">
               <CertificateDownloadBlock />
@@ -449,6 +473,8 @@ export function TrainingProgramPanel({ data }: Props) {
       ) : null}
 
       {trainingComplete ? <CertificateDownloadBlock /> : null}
+
+      {canEditTrainingContent ? <TrainingQuizAdmin /> : null}
     </div>
   )
 }

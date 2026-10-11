@@ -327,10 +327,10 @@ export function WatchPage() {
             </div>
             <div className="flex items-center gap-3">
               {data?.access_granted ? (
-                <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
+                <span className="flex items-center gap-1.5 rounded-full bg-destructive/90 px-3 py-1.5 text-ds-micro font-bold uppercase tracking-widest text-white shadow-[0_0_14px_rgba(220,38,38,0.55)]">
                   <span className="relative flex size-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                    <span className="relative inline-flex size-2 rounded-full bg-red-400" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-destructive" />
                   </span>
                   Live
                 </span>
@@ -508,7 +508,7 @@ export function WatchPage() {
 
                           {completing ? <p className="mt-3 text-xs text-room-accent">Finishing up…</p> : null}
                           {playerError ? (
-                            <p className="mt-3 text-xs text-red-300" role="alert">
+                            <p className="mt-3 text-xs text-destructive-ink" role="alert">
                               {normalizeRoomError(playerError, 'Could not control secure playback.')}
                             </p>
                           ) : null}

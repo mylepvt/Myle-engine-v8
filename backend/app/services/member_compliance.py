@@ -156,11 +156,27 @@ def _user_business_start_date(user: User) -> date:
     return created_at.astimezone(IST).date()
 
 
-def _discipline_start_floor(user: User, policy_start_date: date) -> date:
+def _discipline_start_floor(
+    user: User, policy_start_date: date, reset_on: date | None = None
+) -> date:
     start_date = max(_user_business_start_date(user), policy_start_date)
-    if user.discipline_reset_on is not None:
-        start_date = max(start_date, user.discipline_reset_on)
+    reset = reset_on if reset_on is not None else user.discipline_reset_on
+    if reset is not None:
+        start_date = max(start_date, reset)
     return start_date
+
+
+def _pending_request_window(user: User) -> tuple[date, date] | None:
+    """Days covered by a grace request the admin never answered (requested day → requested end).
+
+    The member was told "awaiting admin approval" and held on those days, so they are
+    never counted as misses — not even after the requested date has passed.
+    """
+    end = user.grace_request_end_date
+    if end is None:
+        return None
+    start = _datetime_to_ist_date(user.grace_request_requested_at) or end
+    return (min(start, end), end)
 
 
 def _datetime_to_ist_date(value: datetime | None) -> date | None:
@@ -226,12 +242,16 @@ def _calls_short_streak(
     fresh_leads_by_day: dict[date, dict[int, int]],
     fresh_calls_by_day: dict[date, dict[int, int]],
     policy_start_date: date,
+    reset_on: date | None = None,
+    excused: tuple[date, date] | None = None,
 ) -> int:
     streak = 0
-    start_floor = _discipline_start_floor(user, policy_start_date)
+    start_floor = _discipline_start_floor(user, policy_start_date, reset_on)
     for day in days:
         if day < start_floor:
             break
+        if excused and excused[0] <= day <= excused[1]:
+            continue
         fresh_leads = int(fresh_leads_by_day.get(day, {}).get(user.id, 0))
         calls = int(fresh_calls_by_day.get(day, {}).get(user.id, 0))
         if fresh_leads > 0 and calls < call_target:
@@ -247,12 +267,16 @@ def _missing_report_streak(
     days: list[date],
     submitted_reports: set[tuple[int, date]],
     policy_start_date: date,
+    reset_on: date | None = None,
+    excused: tuple[date, date] | None = None,
 ) -> int:
     streak = 0
-    start_floor = _discipline_start_floor(user, policy_start_date)
+    start_floor = _discipline_start_floor(user, policy_start_date, reset_on)
     for day in days:
         if day < start_floor:
             break
+        if excused and excused[0] <= day <= excused[1]:
+            continue
         if (user.id, day) not in submitted_reports:
             streak += 1
             continue
@@ -455,73 +479,28 @@ async def build_compliance_snapshots(
             snapshots[user.id] = snapshot
             continue
 
+        resume_on: date | None = None
         if not ignore_grace_for_rollout and _has_expired_grace(user, today_date):
-            # One-day buffer: warn on grace_end_date+1, remove on grace_end_date+2.
-            # If member meets compliance (calls >= target AND report submitted) on the
-            # day being evaluated, grace is cleared and access is auto-restored instead.
-            yesterday = today_date - timedelta(days=1)
-            calls_yesterday = int(fresh_calls_by_day.get(yesterday, {}).get(user.id, 0))
-            report_yesterday = (user.id, yesterday) in submitted_reports
-            met_compliance = calls_yesterday >= call_target and report_yesterday
-
-            if met_compliance:
-                # Member proved compliance during the expiry buffer — auto-restore.
-                if apply_actions:
-                    from app.services.grace_intelligence import record_grace_outcome
-                    record_grace_outcome(
-                        session=session,
-                        user=user,
-                        outcome="auto_restored",
-                        outcome_at=now,
-                        final_end_date=user.grace_end_date,
-                    )
-                    _clear_grace_auto_restore(user, reset_on=today_date)
-                    changed = True
-                snapshot.discipline_status = "active"
-                snapshot.grace_end_date = None
-                snapshot.grace_reason = None
-                snapshot.grace_active = False
-                snapshot.compliance_level = "clear"
-                snapshot.compliance_title = "Grace lifted — compliance met"
-                snapshot.compliance_summary = (
-                    f"{calls_yesterday} fresh calls and daily report submitted on "
-                    f"{yesterday.isoformat()} — grace cleared, access restored."
-                )
-                snapshots[user.id] = snapshot
-                continue
-
-            if user.grace_end_date == today_date - timedelta(days=1):
-                snapshot.compliance_level = "grace_expired_warning"
-                snapshot.compliance_title = "Grace ended — removal tomorrow"
-                detail = f"Grace ended on {user.grace_end_date.isoformat()}. Account will be removed tomorrow."
-                if snapshot.grace_reason:
-                    detail = f"{detail} | {snapshot.grace_reason}"
-                snapshot.compliance_summary = detail
-                snapshots[user.id] = snapshot
-                continue
-            reason = (
-                f"Grace ended on {user.grace_end_date.isoformat()} and the system removed this member."
-            )
+            # Grace "till X" means X is the last day off: the member is back at work on
+            # X+1. Grace ends quietly and normal rules restart from X+1 — the usual
+            # warning ladder, no instant removal for the first day back.
+            resume_on = user.grace_end_date + timedelta(days=1)
             if apply_actions:
                 from app.services.grace_intelligence import record_grace_outcome
                 record_grace_outcome(
                     session=session,
                     user=user,
-                    outcome="auto_removed",
+                    outcome="auto_restored",
                     outcome_at=now,
                     final_end_date=user.grace_end_date,
                 )
-                _mark_removed(user, reason=reason, removed_by_user_id=None, now=now)
+                _clear_grace_auto_restore(user, reset_on=resume_on)
                 changed = True
-            snapshot.access_blocked = True
-            snapshot.discipline_status = "removed"
-            snapshot.removed_at = now
-            snapshot.removal_reason = reason
-            snapshot.compliance_level = "removed"
-            snapshot.compliance_title = "Removed after grace"
-            snapshot.compliance_summary = reason
-            snapshots[user.id] = snapshot
-            continue
+            status = "active"
+            snapshot.discipline_status = status
+            snapshot.grace_end_date = None
+            snapshot.grace_reason = None
+            snapshot.grace_active = False
 
         if not ignore_grace_for_rollout and _is_active_grace(user, today_date):
             snapshot.grace_active = True
@@ -535,8 +514,8 @@ async def build_compliance_snapshots(
             detail = f"Grace active until {user.grace_end_date.isoformat()}"
             if snapshot.grace_reason:
                 detail = f"{detail} | {snapshot.grace_reason}"
-            if snapshot.grace_ending_tomorrow:
-                detail = f"{detail} | 1 day left before auto-removal."
+            back_on = user.grace_end_date + timedelta(days=1)
+            detail = f"{detail} | Work restarts on {back_on.isoformat()}."
             snapshot.compliance_summary = detail
             snapshots[user.id] = snapshot
             continue
@@ -548,12 +527,16 @@ async def build_compliance_snapshots(
             fresh_leads_by_day=fresh_leads_by_day,
             fresh_calls_by_day=fresh_calls_by_day,
             policy_start_date=policy_start_date,
+            reset_on=resume_on,
+            excused=_pending_request_window(user),
         )
         snapshot.missing_report_streak = _missing_report_streak(
             user=user,
             days=completed_days,
             submitted_reports=submitted_reports,
             policy_start_date=policy_start_date,
+            reset_on=resume_on,
+            excused=_pending_request_window(user),
         )
 
         call_level = _stage_for_streak(snapshot.calls_short_streak)

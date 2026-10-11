@@ -13,12 +13,13 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.invoice import Invoice
+from app.services.invoice_alloc import INVOICE_NUMBER_PATTERN
 from app.services.invoice_html import render_invoice_html
 from app.services.invoice_records import load_member_for_invoice
 
 router = APIRouter()
 
-_INV_NUM_RE = re.compile(r"^MYL-\d{4}-\d{4,}$")
+_INV_NUM_RE = re.compile(INVOICE_NUMBER_PATTERN)
 
 
 @router.get("/invoice/{invoice_number}/download", response_class=HTMLResponse, include_in_schema=False)

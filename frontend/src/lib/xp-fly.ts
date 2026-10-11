@@ -1,5 +1,5 @@
 /**
- * Tiny pub/sub for the XP reward burst. The XP query notices a gain and emits;
+ * Tiny pub/sub for the reward burst. useRewardSound notices new MYLE Points and emits;
  * <XpFlyLayer> (mounted once, app-wide) draws icons rising from the last tap.
  */
 /** ``streak`` set = the call that just extended the work streak (flame burst). */

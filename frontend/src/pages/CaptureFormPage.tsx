@@ -75,30 +75,30 @@ export function CaptureFormPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 p-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-muted p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
         {loading ? (
-          <p className="text-center text-sm text-slate-500">Loading…</p>
+          <p className="text-center text-sm text-muted-foreground">Loading…</p>
         ) : loadError ? (
           <div className="text-center">
-            <p className="text-lg font-semibold text-slate-800">Link not available</p>
-            <p className="mt-1 text-sm text-slate-500">{loadError}</p>
+            <p className="text-lg font-semibold text-foreground">Link not available</p>
+            <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
           </div>
         ) : done ? (
           <div className="py-6 text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-3xl">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-3xl">
               ✓
             </div>
-            <p className="text-lg font-semibold text-slate-800">Thank you!</p>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="text-lg font-semibold text-foreground">Thank you!</p>
+            <p className="mt-1 text-sm text-muted-foreground">
               {info?.owner_name} will reach out to you soon.
             </p>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div className="text-center">
-              <p className="text-sm text-slate-500">Connect with</p>
-              <p className="text-xl font-semibold text-slate-800">{info?.owner_name}</p>
+              <p className="text-sm text-muted-foreground">Connect with</p>
+              <p className="text-xl font-semibold text-foreground">{info?.owner_name}</p>
             </div>
 
             <Field label="Your name *">
@@ -154,17 +154,17 @@ export function CaptureFormPage() {
             </Field>
 
             {submitError ? (
-              <p className="text-sm text-red-600">{submitError}</p>
+              <p className="text-sm text-destructive-ink">{submitError}</p>
             ) : null}
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-lg bg-slate-900 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="w-full rounded-lg bg-card py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {submitting ? 'Sending…' : 'Submit'}
             </button>
-            <p className="text-center text-xs text-slate-400">
+            <p className="text-center text-xs text-muted-foreground">
               Your details are shared only with {info?.owner_name}.
             </p>
           </form>
@@ -178,7 +178,7 @@ export function CaptureFormPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
   )

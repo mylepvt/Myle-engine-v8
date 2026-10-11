@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.person_name import person_name
 from app.models.push_subscription import PushSubscription
 from app.models.user import User
 from app.models.user_device_status import UserDeviceStatus
@@ -85,7 +86,7 @@ async def build_app_setup(session: AsyncSession) -> dict:
         members.append(
             {
                 "user_id": u.id,
-                "name": u.name or u.username or u.fbo_id,
+                "name": person_name(u.name or u.username or u.fbo_id),
                 "role": u.role,
                 "app": app,
                 "platform": st.platform if st else None,

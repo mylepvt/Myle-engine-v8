@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states'
+import { EmptyState, ErrorState, LoadingState, InlineEmpty } from '@/components/ui/states'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
   skillDayEmbedUrl,
@@ -143,7 +143,7 @@ function ProgressTable({ enabled }: { enabled: boolean }) {
       </div>
       {isPending ? <LoadingState label="Loading progress..." /> : null}
       {isError ? <p className="text-sm text-destructive">{error instanceof Error ? error.message : 'Failed to load'}</p> : null}
-      {data && data.members.length === 0 ? <p className="text-sm text-muted-foreground">No members yet.</p> : null}
+      {data && data.members.length === 0 ? <InlineEmpty>No members yet.</InlineEmpty> : null}
       {data && data.members.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

@@ -33,7 +33,7 @@ from app.models.activity_log import ActivityLog
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
-from app.models.wallet_ledger import WalletLedgerEntry
+from app.models.invoice import Invoice
 from app.repositories.leads_repository import SqlAlchemyLeadsRepository
 from app.schemas.call_events import CallEventCreate, CallEventListResponse, CallEventPublic
 from app.schemas.leads import (
@@ -60,6 +60,7 @@ from app.services.observation_logger import (
     should_sample_observation,
 )
 from app.services.invoice_records import create_tax_invoice_for_pool_claim, create_tax_invoice_for_pool_claims
+from app.services.wallet_guard import ensure_not_negative, lock_wallet
 from app.services.ctcs_heat import bump_heat_on_entering_contacted, clamp_ctcs_heat
 from app.services.ctcs_status_chain import advance_lead_status_toward
 from app.services.lead_payloads import build_lead_public_payloads
@@ -552,6 +553,7 @@ class LeadsService:
             )
         price = lead.pool_price_cents or 0
         if price > 0:
+            await lock_wallet(self._session, user.user_id)
             balance = await self._repository.wallet_balance_cents(user.user_id)
             if balance < price:
                 raise HTTPException(
@@ -561,27 +563,21 @@ class LeadsService:
                         f"Need {_format_rupees_exact(price)}, have {_format_rupees_exact(balance)}."
                     ),
                 )
-            await self._repository.add_wallet_debit_for_claim(
+            entry = await self._repository.add_wallet_debit_for_claim(
                 user_id=user.user_id,
                 lead_id=lead_id,
                 lead_name=lead.name,
                 price_cents=price,
             )
-            await self._session.flush()
-            idem_key = f"pool_claim_{lead_id}_{user.user_id}"
-            entry_row = await self._session.execute(
-                select(WalletLedgerEntry).where(WalletLedgerEntry.idempotency_key == idem_key)
+            await ensure_not_negative(self._session, user.user_id)
+            await create_tax_invoice_for_pool_claim(
+                self._session,
+                user_id=user.user_id,
+                total_cents=price,
+                wallet_ledger_entry_id=entry.id,
+                crm_claim_idempotency_key=None,
+                lead_ref=f"Lead #{lead_id}",
             )
-            entry = entry_row.scalar_one_or_none()
-            if entry is not None:
-                await create_tax_invoice_for_pool_claim(
-                    self._session,
-                    user_id=user.user_id,
-                    total_cents=price,
-                    wallet_ledger_entry_id=entry.id,
-                    crm_claim_idempotency_key=None,
-                    lead_index=1,
-                )
         await self._repository.mark_lead_claimed(lead, user.user_id)
         await self._repository.add_lead_activity(
             user_id=user.user_id,
@@ -628,10 +624,30 @@ class LeadsService:
         *,
         count: int,
         user: AuthUser,
+        source: str | None = None,
+        client_key: str | None = None,
+        commit: bool = True,
     ) -> tuple[list[Lead], int]:
+        """Claim up to ``count`` pool leads. ``client_key`` (one per tap on "Claim") makes a
+        double-tap or a retry a no-op instead of a second charge. ``commit=False`` lets the
+        caller (booking fulfilment) commit its own bookkeeping in the same transaction."""
         if user.role not in _POOL_CLAIM_ROLES:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
         await ensure_claim_allowed(self._session, user.user_id)
+        # One claim at a time per member: the balance check below can't race a second tab.
+        await lock_wallet(self._session, user.user_id)
+        batch_key = (
+            hashlib.sha256(f"batch:{user.user_id}:{client_key}".encode()).hexdigest()
+            if client_key
+            else None
+        )
+        if batch_key and (
+            await self._session.execute(select(Invoice.id).where(Invoice.crm_claim_idempotency_key == batch_key))
+        ).first():
+            raise HTTPException(
+                status_code=http_status.HTTP_409_CONFLICT,
+                detail="This claim was already done.",
+            )
 
         cap = max(1, min(int(count), 50))
         stmt = (
@@ -639,7 +655,8 @@ class LeadsService:
             .where(_lead_pool_available_clause())
             .order_by(Lead.created_at.asc(), Lead.id.asc())
             .limit(cap)
-            .with_for_update()
+            # Concurrent claimers take different leads instead of queueing on the same rows.
+            .with_for_update(skip_locked=True)
         )
         leads = list((await self._session.execute(stmt)).scalars().all())
         if not leads:
@@ -667,19 +684,13 @@ class LeadsService:
         for lead in leads:
             price = int(lead.pool_price_cents or 0)
             if price > 0:
-                await self._repository.add_wallet_debit_for_claim(
+                entry = await self._repository.add_wallet_debit_for_claim(
                     user_id=user.user_id,
                     lead_id=lead.id,
                     lead_name=lead.name,
                     price_cents=price,
                 )
-                await self._session.flush()
-                idem_key = f"pool_claim_{lead.id}_{user.user_id}"
-                entry_row = await self._session.execute(
-                    select(WalletLedgerEntry).where(WalletLedgerEntry.idempotency_key == idem_key)
-                )
-                entry = entry_row.scalar_one_or_none()
-                if entry is not None and batch_invoice_wallet_entry_id is None:
+                if batch_invoice_wallet_entry_id is None:
                     batch_invoice_wallet_entry_id = entry.id
                 invoice_claims.append({"lead_ref": f"Lead #{lead.id}", "total_cents": price})
 
@@ -688,15 +699,17 @@ class LeadsService:
                 user_id=user.user_id,
                 action="lead.claimed",
                 lead_id=lead.id,
-                meta={"price_cents": price, "batch_claim_count": len(leads)},
+                meta={"price_cents": price, "batch_claim_count": len(leads), **({"source": source} if source else {})},
             )
             await self._session.flush()
             enqueue_lead_shadow_upsert(self._session, lead)
             claimed.append(lead)
 
+        if total_price_cents > 0:
+            await ensure_not_negative(self._session, user.user_id)
         if invoice_claims:
-            batch_invoice_key = hashlib.sha256(
-                f"{user.user_id}:{','.join(str(lead.id) for lead in claimed)}".encode()
+            batch_invoice_key = batch_key or hashlib.sha256(
+                f"{user.user_id}:{','.join(str(lead.id) for lead in claimed)}:{len(claimed)}:{datetime.now(timezone.utc).isoformat()}".encode()
             ).hexdigest()[:120]
             await create_tax_invoice_for_pool_claims(
                 self._session,
@@ -706,6 +719,8 @@ class LeadsService:
                 crm_claim_idempotency_key=batch_invoice_key,
             )
 
+        if not commit:
+            return claimed, total_price_cents
         await self._repository.commit()
         for lead in claimed:
             await self._session.refresh(lead)
@@ -1190,6 +1205,13 @@ class LeadsService:
             lead.next_followup_at = body.next_followup_at
         if body.call_status is not None:
             lead.call_status = body.call_status
+            # When + who wrote down a call's result (process rewards: fast first call, connected call).
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="lead.call_result",
+                lead_id=lead.id,
+                meta={"call_status": body.call_status},
+            )
         if body.whatsapp_sent is True:
             lead.whatsapp_sent_at = now
             if lead.status in {"contacted", "invited"}:
@@ -1240,6 +1262,13 @@ class LeadsService:
             lead.stage_price_cents = stage_price_cents(body.stage_selected)
             lead.seat_hold_amount_cents = stage_seat_hold_cents(body.stage_selected)
             _toggle_process_task(lead, stage="day3", task="day3_stage_selection", done=True)
+            # Who picked the stage, and when (process rewards: someone other than the owner).
+            await self._repository.add_lead_activity(
+                user_id=user.user_id,
+                action="process.task_done",
+                lead_id=lead.id,
+                meta={"stage": "day3", "task": "day3_stage_selection", "stage_selected": body.stage_selected},
+            )
         if body.collect_seat_hold is not None:
             if user.role not in ("leader", "admin"):
                 raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -1254,6 +1283,26 @@ class LeadsService:
             else:
                 lead.seat_hold_expiry = None
                 _toggle_process_task(lead, stage="day3", task="day3_seat_hold", done=False)
+        if body.slot_deadline_at is not None or body.clear_slot_deadline:
+            if user.role not in ("leader", "admin"):
+                raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            if body.clear_slot_deadline:
+                lead.slot_deadline_at = None
+            else:
+                deadline = body.slot_deadline_at
+                if deadline.tzinfo is None:
+                    deadline = deadline.replace(tzinfo=timezone.utc)
+                if deadline <= now:
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST, detail="Pick a time in the future."
+                    )
+                if deadline > now + timedelta(days=7):
+                    raise HTTPException(
+                        status_code=http_status.HTTP_400_BAD_REQUEST, detail="Pick a time within the next 7 days."
+                    )
+                lead.slot_deadline_at = deadline
+        batch_slots = ("d1_morning", "d1_afternoon", "d1_evening", "d2_morning", "d2_afternoon", "d2_evening")
+        ticked_before = {slot: bool(getattr(lead, slot)) for slot in batch_slots}
         explicit_d1 = (body.d1_morning, body.d1_afternoon, body.d1_evening)
         if any(x is not None for x in explicit_d1):
             if body.d1_morning is not None:
@@ -1286,6 +1335,12 @@ class LeadsService:
             lead.d2_morning = False
             lead.d2_afternoon = False
             lead.d2_evening = False
+        for slot in batch_slots:
+            if bool(getattr(lead, slot)) and not ticked_before[slot]:
+                # Who ticked a batch (process rewards: never the lead's own owner).
+                await self._repository.add_lead_activity(
+                    user_id=user.user_id, action="lead.batch_ticked", lead_id=lead.id, meta={"slot": slot}
+                )
         if body.day3_completed is True:
             lead.day3_completed_at = now
         elif body.day3_completed is False:

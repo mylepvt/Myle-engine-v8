@@ -4,7 +4,7 @@ import { CtcsLeadCard } from '@/components/leads/CtcsLeadCard'
 import { StaggerContainer } from '@/components/ui/motion'
 import { CtcsOutcomeModal } from '@/components/leads/CtcsOutcomeModal'
 import { LeaderReassignSheet } from '@/components/leads/LeaderReassignSheet'
-import { LEAD_SLA_SMOOTH_REFRESH_MS } from '@/lib/lead-sla'
+import { LEAD_SLA_BOARD_REFRESH_MS } from '@/lib/lead-sla'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -119,7 +119,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     return { ctcsFilter: tab, ctcsPrioritySort: true as const, preEnrollmentOnly: true as const }
   }, [searchMode, generated, tab, surfaceRole])
   useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_SMOOTH_REFRESH_MS)
+    const id = window.setInterval(() => setNowMs(Date.now()), LEAD_SLA_BOARD_REFRESH_MS)
     return () => window.clearInterval(id)
   }, [])
 
@@ -372,7 +372,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
                   <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
                 ) : null}
                 {showReassignedBadge ? (
-                  <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-ds-caption font-semibold text-orange-500">{reassignedCount}</span>
+                  <span className="rounded bg-warning/20 px-1.5 py-0.5 text-ds-caption font-semibold text-warning-ink">{reassignedCount}</span>
                 ) : null}
               </button>
             )

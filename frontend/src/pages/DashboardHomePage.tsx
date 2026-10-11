@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Circle } from 'lucide-react'
 
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
-import { TodayLeaderboardCard } from '@/components/xp/TodayLeaderboardCard'
+import { PointsLeaderboardCard } from '@/components/rewards/PointsLeaderboardCard'
 import { WinsFeedCard } from '@/components/wins/WinsFeedCard'
+import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
+import { RewardsCard } from '@/components/rewards/RewardsCard'
 import { ClosingReadyCard } from '@/components/closing/ClosingReadyCard'
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
-import { XpBadge } from '@/components/xp/XpBadge'
+import { LevelCard } from '@/components/rewards/LevelCard'
 import { GateAssistantCard } from '@/components/dashboard/GateAssistantCard'
 import { AdminCommandCenter } from '@/components/dashboard/AdminCommandCenter'
 import { CcSummaryCard } from '@/components/dashboard/CcSummaryCard'
@@ -37,7 +39,7 @@ import { usePingLoginMutation } from '@/hooks/use-xp-query'
 import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePanel'
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
-import { cn } from '@/lib/utils'
+import { cn, firstNameOf } from '@/lib/utils'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -183,7 +185,7 @@ export function DashboardHomePage() {
   }, [sessionReady])
 
   const firstName =
-    (me?.username?.trim() && me.username.split(/\s+/)[0]) ||
+    (me?.username?.trim() && firstNameOf(me.username)) ||
     me?.fbo_id ||
     me?.email?.split('@')[0]?.split(/[._-]/)[0] ||
     'there'
@@ -221,7 +223,7 @@ export function DashboardHomePage() {
   return (
     <div className={cn('mx-auto space-y-4 md:space-y-6', role === 'leader' ? 'max-w-7xl' : 'max-w-6xl')}>
       <div className="flex items-center gap-2 px-0.5">
-        <h1 className="text-ds-h2 font-semibold capitalize tracking-tight text-foreground">
+        <h1 className="text-ds-h2 font-semibold tracking-tight text-foreground">
           Welcome back, {firstName}
         </h1>
       </div>
@@ -287,10 +289,12 @@ export function DashboardHomePage() {
         </CardContent>
       </Card>
 
-      <XpBadge />
+      <LevelCard />
 
+      <RewardsCard />
+      <CommunityLiveCard />
       <WinsFeedCard />
-      <TodayLeaderboardCard />
+      <PointsLeaderboardCard />
 
       <CollapsibleSection title="Today's Leads" defaultOpen={false}>
         <Card>

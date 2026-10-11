@@ -59,8 +59,8 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
   }
 
   const barColors = [
-    'bg-destructive', 'bg-orange-500', 'bg-warning',
-    'bg-info', 'bg-purple-500', 'bg-gray-500',
+    'bg-destructive', 'bg-warning', 'bg-warning',
+    'bg-info', 'bg-purple-500', 'bg-muted',
   ]
 
   return (

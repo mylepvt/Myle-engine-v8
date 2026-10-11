@@ -255,6 +255,8 @@ class Lead(Base):
     seat_hold_expiry: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    # Day 3: time the leader gave the prospect to arrange payment ("slot reserved till").
+    slot_deadline_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     no_response_attempt_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,

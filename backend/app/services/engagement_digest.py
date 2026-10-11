@@ -17,7 +17,6 @@ from app.models.daily_report import DailyReport
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
-from app.models.xp_event import XpEvent
 from app.services.live_metrics import ist_day_bounds
 from app.services.work_streak import current_work_streak
 
@@ -33,8 +32,8 @@ class MorningPlan:
 class EveningRecap:
     calls_today: int
     calls_yesterday: int
-    xp_today: int
-    rank_today: int | None  # by today's XP among everyone eligible; None if no XP yet
+    mp_today: int
+    rank_today: int | None  # by today's MYLE Points among everyone eligible; None if none yet
     ranked_total: int
     report_submitted: bool
 
@@ -74,8 +73,8 @@ def evening_recap_message(recap: EveningRecap) -> tuple[str, str]:
         calls_line = f"{_plural(recap.calls_today, 'call')} today, same as yesterday."
 
     rank_line = ""
-    if recap.rank_today is not None and recap.xp_today > 0:
-        rank_line = f" You earned {recap.xp_today} XP — #{recap.rank_today} of {recap.ranked_total} today."
+    if recap.rank_today is not None and recap.mp_today > 0:
+        rank_line = f" You earned {recap.mp_today} MYLE Points — #{recap.rank_today} of {recap.ranked_total} today."
 
     if not recap.report_submitted:
         return "Your day so far", f"{calls_line}{rank_line} Submit your daily report before midnight."
@@ -151,16 +150,10 @@ async def build_evening_recaps(
     start, end = ist_day_bounds(today)
     calls_today = await _calls_by_user(session, ids, today)
     calls_yesterday = await _calls_by_user(session, ids, today - timedelta(days=1))
-    xp_today = {
-        int(uid): int(xp or 0)
-        for uid, xp in (
-            await session.execute(
-                select(XpEvent.user_id, func.sum(XpEvent.xp))
-                .where(XpEvent.user_id.in_(ids), XpEvent.created_at >= start, XpEvent.created_at < end)
-                .group_by(XpEvent.user_id)
-            )
-        ).all()
-    }
+    from app.services.process_rewards import points_in_window
+
+    id_set = set(ids)
+    mp_today = {uid: p for uid, p in (await points_in_window(session, start, end)).items() if uid in id_set}
     reported = {
         int(uid)
         for (uid,) in (
@@ -171,13 +164,13 @@ async def build_evening_recaps(
             )
         ).all()
     }
-    earners = sorted((uid for uid, xp in xp_today.items() if xp > 0), key=lambda uid: -xp_today[uid])
+    earners = sorted((uid for uid, mp in mp_today.items() if mp > 0), key=lambda uid: -mp_today[uid])
     rank = {uid: i + 1 for i, uid in enumerate(earners)}
     return {
         uid: EveningRecap(
             calls_today=calls_today.get(uid, 0),
             calls_yesterday=calls_yesterday.get(uid, 0),
-            xp_today=xp_today.get(uid, 0),
+            mp_today=mp_today.get(uid, 0),
             rank_today=rank.get(uid),
             ranked_total=len(earners),
             report_submitted=uid in reported,

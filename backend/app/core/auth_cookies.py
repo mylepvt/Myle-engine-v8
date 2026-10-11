@@ -39,6 +39,10 @@ def issue_session_cookies(
     refresh_days = (
         settings.jwt_refresh_days_remember if remember_me else settings.jwt_refresh_days
     )
+    if (user.role or "").strip().lower() == "admin":
+        # Admins stay signed in until they log out themselves.
+        remember_me = True
+        refresh_days = max(refresh_days, settings.jwt_refresh_days_admin)
     access = create_access_token(
         sub=str(user.id),
         role=user.role,
