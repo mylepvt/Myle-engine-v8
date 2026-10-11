@@ -27,3 +27,6 @@ dist-ssr
 /playwright-report/
 /test-results/
 /blob-report/
+
+# Generated tutorial video (npm run record:tutorial)
+tutorial-video/
