@@ -464,7 +464,7 @@ export function MemberProfileModal({
                     <div className="min-w-0">
                       <span className="font-mono text-xs text-foreground">{inv.invoice_number}</span>
                       <span className="ml-2 text-muted-foreground">
-                        {inv.doc_type === 'tax_invoice' ? 'Tax Invoice' : 'Receipt'}
+                        {inv.doc_type === 'tax_invoice' ? 'Tax Invoice' : inv.doc_type === 'credit_note' ? 'Credit Note' : 'Receipt'}
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
                         {new Date(inv.issued_at).toLocaleDateString()} · ₹
@@ -473,7 +473,7 @@ export function MemberProfileModal({
                     </div>
                     <InvoiceDownloadLink
                       invoiceNumber={inv.invoice_number}
-                      kind={inv.doc_type === 'tax_invoice' ? 'tax_invoice' : 'receipt'}
+                      kind={inv.doc_type === 'payment_receipt' ? 'receipt' : inv.doc_type}
                       className="shrink-0"
                     />
                   </li>

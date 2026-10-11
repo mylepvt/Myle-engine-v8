@@ -608,6 +608,8 @@ class LeadPoolDefaultsUpdateRequest(BaseModel):
 
 class LeadPoolClaimBatchRequest(BaseModel):
     count: int = Field(ge=1, le=50)
+    # One per tap on "Claim": a double-tap / retry with the same key is refused, never charged twice.
+    client_key: str | None = Field(default=None, max_length=64)
 
 
 class LeadPoolBatchPreviewResponse(BaseModel):

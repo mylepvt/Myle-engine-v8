@@ -16,8 +16,18 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.time_ist import IST
 from app.models.invoice import Invoice
 from app.models.user import User
-from app.schemas.invoices import InvoiceBulkDownloadBody, InvoiceListItem, InvoiceListResponse
+from app.core.realtime_hub import notify_topics
+from app.schemas.invoices import (
+    InvoiceBulkDownloadBody,
+    InvoiceListItem,
+    InvoiceListResponse,
+    InvoiceRefundable,
+    InvoiceRefundableLine,
+    InvoiceRefundBody,
+    InvoiceRefundResult,
+)
 from app.services.invoice_html import render_invoice_html
+from app.services.lead_refunds import invoice_lead_ids, refund_invoice_leads, refunded_lead_ids
 
 router = APIRouter()
 
@@ -108,7 +118,7 @@ async def list_invoices(
     user_id: Optional[int] = Query(default=None, ge=1, description="Admin: filter member"),
     date_from: Optional[str] = Query(default=None),
     date_to: Optional[str] = Query(default=None),
-    doc_type: Optional[str] = Query(default=None, description="all | tax_invoice | payment_receipt"),
+    doc_type: Optional[str] = Query(default=None, description="all | tax_invoice | payment_receipt | credit_note"),
     q: Optional[str] = Query(default=None, max_length=120, description="Search username / email / fbo"),
 ) -> InvoiceListResponse:
     uid: Optional[int] = user.user_id
@@ -175,7 +185,7 @@ async def bulk_download_invoices(
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for inv, mem in rows:
             html_doc = render_invoice_html(invoice=inv, member=mem)
-            suffix = "invoice" if inv.doc_type == "tax_invoice" else "receipt"
+            suffix = {"tax_invoice": "invoice", "credit_note": "credit-note"}.get(inv.doc_type, "receipt")
             fname = f"{inv.invoice_number}-{suffix}.html"
             zf.writestr(fname, html_doc.encode("utf-8"))
             combined_parts.append(
@@ -198,3 +208,49 @@ async def bulk_download_invoices(
             "Content-Disposition": 'attachment; filename="myle-invoices.zip"',
         },
     )
+
+
+@router.get("/invoices/{invoice_number}/refundable", response_model=InvoiceRefundable)
+async def invoice_refundable(
+    invoice_number: str,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> InvoiceRefundable:
+    """Admin: the leads on a tax invoice and which are already refunded."""
+    _require_admin(user)
+    inv = (
+        await session.execute(select(Invoice).where(Invoice.invoice_number == invoice_number))
+    ).scalar_one_or_none()
+    if inv is None or inv.doc_type != "tax_invoice":
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Tax invoice not found")
+    done = await refunded_lead_ids(session, inv)
+    return InvoiceRefundable(
+        invoice_number=inv.invoice_number,
+        total_cents=inv.total_cents,
+        lines=[
+            InvoiceRefundableLine(lead_id=i, lead_ref=f"Lead #{i}", refunded=i in done)
+            for i in invoice_lead_ids(inv)
+        ],
+    )
+
+
+@router.post("/invoices/{invoice_number}/refund", response_model=InvoiceRefundResult)
+async def refund_invoice(
+    invoice_number: str,
+    body: InvoiceRefundBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> InvoiceRefundResult:
+    """Admin: refund leads on a tax invoice → wallet credit + GST credit note (+ back to pool)."""
+    _require_admin(user)
+    note = await refund_invoice_leads(
+        session,
+        invoice_number=invoice_number,
+        lead_ids=body.lead_ids,
+        reason=body.reason,
+        return_to_pool=body.return_to_pool,
+        admin_user_id=user.user_id,
+    )
+    await session.commit()
+    await notify_topics("wallet", "leads")
+    return InvoiceRefundResult(credit_note_number=note.invoice_number, amount_cents=note.total_cents)

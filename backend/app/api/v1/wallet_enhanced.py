@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import Annotated, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from starlette import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.schemas.wallet_enhanced import (
-    LeadClaimRequest,
-    LeadClaimResponse,
     WalletAdjustmentRequest,
     WalletAdjustmentResponse,
     WalletOverviewResponse,
@@ -77,57 +75,6 @@ async def get_wallet_overview(
         )
 
 
-@router.post("/enhanced/lead-claim", response_model=LeadClaimResponse)
-async def claim_lead_with_wallet(
-    request: LeadClaimRequest,
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> LeadClaimResponse:
-    """Claim a lead and deduct cost from wallet."""
-    service = WalletService(session)
-    try:
-        # Check if user can afford the lead
-        can_afford, message = await service.can_afford_lead_claim(
-            user.user_id, request.lead_price_cents
-        )
-        if not can_afford:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail=message,
-            )
-        
-        # Deduct from wallet
-        success, message = await service.deduct_for_lead_claim(
-            user.user_id, request.lead_id, request.lead_price_cents
-        )
-        
-        if not success:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail=message,
-            )
-        
-        # Get new balance
-        new_balance, currency = await service.get_balance(user.user_id)
-        
-        return LeadClaimResponse(
-            success=True,
-            message=message,
-            lead_id=request.lead_id,
-            amount_deducted_cents=request.lead_price_cents,
-            new_balance_cents=new_balance,
-            currency=currency,
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to claim lead: {str(e)}",
-        )
-
-
 @router.post("/enhanced/manual-adjustment", response_model=WalletAdjustmentResponse)
 async def create_manual_adjustment(
     request: WalletAdjustmentRequest,
@@ -174,44 +121,6 @@ async def create_manual_adjustment(
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create adjustment: {str(e)}",
-        )
-
-
-@router.post("/enhanced/lead-refund")
-async def refund_lead_to_pool(
-    lead_id: int,
-    refund_amount_cents: int,
-    reason: str,
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-) -> Dict[str, str]:
-    """Refund wallet when lead is returned to pool (admin/leader only)."""
-    if user.role not in ["admin", "leader"]:
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN,
-            detail="Only admin and leader can refund leads",
-        )
-    
-    service = WalletService(session)
-    try:
-        success, message = await service.refund_for_lead_return(
-            user.user_id, lead_id, refund_amount_cents, reason
-        )
-        
-        if not success:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail=message,
-            )
-        
-        return {"success": "true", "message": message}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to refund lead: {str(e)}",
         )
 
 

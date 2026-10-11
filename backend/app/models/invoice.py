@@ -23,7 +23,7 @@ class Invoice(Base):
     doc_type: Mapped[str] = mapped_column(
         String(24),
         nullable=False,
-        comment="tax_invoice | payment_receipt",
+        comment="tax_invoice | payment_receipt | credit_note",
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     total_cents: Mapped[int] = mapped_column(Integer, nullable=False)

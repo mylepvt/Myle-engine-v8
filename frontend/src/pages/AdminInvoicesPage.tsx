@@ -5,6 +5,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
+import { RefundInvoiceDialog } from '@/components/wallet/RefundInvoiceDialog'
 import { useInvoicesQuery, postInvoicesBulkDownload } from '@/hooks/use-invoices-query'
 
 type Props = { title: string }
@@ -15,7 +16,7 @@ function formatMoney(cents: number, currency: string) {
 }
 
 function typeLabel(t: string) {
-  return t === 'tax_invoice' ? 'Tax Invoice' : 'Payment Receipt'
+  return t === 'tax_invoice' ? 'Tax Invoice' : t === 'credit_note' ? 'Credit Note' : 'Payment Receipt'
 }
 
 export function AdminInvoicesPage({ title }: Props) {
@@ -27,7 +28,8 @@ export function AdminInvoicesPage({ title }: Props) {
   const [bulkOpen, setBulkOpen] = useState(false)
   const [bulkFrom, setBulkFrom] = useState('')
   const [bulkTo, setBulkTo] = useState('')
-  const [bulkType, setBulkType] = useState<'all' | 'tax_invoice' | 'payment_receipt'>('all')
+  const [bulkType, setBulkType] = useState<'all' | 'tax_invoice' | 'payment_receipt' | 'credit_note'>('all')
+  const [refundFor, setRefundFor] = useState<string | null>(null)
   const [bulkUser, setBulkUser] = useState('')
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkErr, setBulkErr] = useState<string | null>(null)
@@ -109,6 +111,7 @@ export function AdminInvoicesPage({ title }: Props) {
                 <option value="all">All</option>
                 <option value="payment_receipt">Receipts only</option>
                 <option value="tax_invoice">Invoices only</option>
+                <option value="credit_note">Credit notes only</option>
               </NativeSelect>
             </label>
             <label className="block min-w-[10rem] flex-1">
@@ -164,6 +167,7 @@ export function AdminInvoicesPage({ title }: Props) {
             <option value="all">All</option>
             <option value="payment_receipt">Receipt</option>
             <option value="tax_invoice">Tax invoice</option>
+            <option value="credit_note">Credit note</option>
           </NativeSelect>
         </label>
         <Button type="button" size="sm" onClick={() => setAppliedQ(q)}>
@@ -216,9 +220,18 @@ export function AdminInvoicesPage({ title }: Props) {
                     <td className="max-w-[12rem] px-3 py-2 align-top">
                       <InvoiceDownloadLink
                         invoiceNumber={row.invoice_number}
-                        kind={row.doc_type === 'tax_invoice' ? 'tax_invoice' : 'receipt'}
+                        kind={row.doc_type === 'payment_receipt' ? 'receipt' : row.doc_type}
                         className="w-full whitespace-normal"
                       />
+                      {row.doc_type === 'tax_invoice' ? (
+                        <button
+                          type="button"
+                          onClick={() => setRefundFor(row.invoice_number)}
+                          className="mt-1 text-ds-caption font-semibold text-destructive-ink hover:underline"
+                        >
+                          Refund…
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))
@@ -230,6 +243,7 @@ export function AdminInvoicesPage({ title }: Props) {
           </p>
         </div>
       ) : null}
+      <RefundInvoiceDialog invoiceNumber={refundFor} onClose={() => setRefundFor(null)} />
     </div>
   )
 }
