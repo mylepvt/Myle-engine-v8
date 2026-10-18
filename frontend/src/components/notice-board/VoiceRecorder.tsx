@@ -22,6 +22,26 @@ function pickMimeType(): string | undefined {
   return MIME_CANDIDATES.find((t) => MediaRecorder.isTypeSupported(t))
 }
 
+// DOMException isn't an Error subclass in every browser, so read the fields directly.
+function errorName(err: unknown): string {
+  const name = (err as { name?: unknown } | null)?.name
+  return typeof name === 'string' ? name : ''
+}
+
+function recordingErrorMessage(err: unknown): string {
+  const name = errorName(err)
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return 'Microphone permission is blocked. Allow the microphone for this app (iPhone: Settings → Safari → Microphone → Allow), then try again.'
+  }
+  if (name === 'NotFoundError') return 'No microphone found on this device.'
+  if (name === 'NotReadableError' || name === 'AbortError') {
+    return 'The microphone is busy. End any call or app using the mic, then try again.'
+  }
+  const message = (err as { message?: unknown } | null)?.message
+  const detail = name || (typeof message === 'string' ? message : '')
+  return `Could not start recording${detail ? ` (${detail})` : ''}. Please try again.`
+}
+
 export type VoiceRecording = { blob: Blob; durationSec: number; url: string }
 
 type Phase = 'idle' | 'starting' | 'recording' | 'done'
@@ -102,23 +122,60 @@ export function VoiceRecorder({
     }
   }
 
+  async function openMic(): Promise<MediaStream> {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      })
+    } catch (err) {
+      // Some phones reject the processing hints; plain audio still works there.
+      const name = errorName(err)
+      if (name === 'OverconstrainedError' || name === 'TypeError' || name === 'NotSupportedError') {
+        return navigator.mediaDevices.getUserMedia({ audio: true })
+      }
+      throw err
+    }
+  }
+
+  /**
+   * iPhone Safari can report a format as supported and still refuse it (or the bitrate),
+   * so try the preferred setup first and fall back to the browser's own defaults.
+   */
+  function startRecorder(stream: MediaStream, onStop: (recorder: MediaRecorder) => void): MediaRecorder {
+    const mimeType = pickMimeType()
+    const attempts: (MediaRecorderOptions | undefined)[] = mimeType
+      ? [{ mimeType, audioBitsPerSecond: 64_000 }, { mimeType }, undefined]
+      : [undefined]
+    let lastError: unknown = null
+    for (const options of attempts) {
+      for (const timeslice of [1000, undefined]) {
+        try {
+          const recorder = new MediaRecorder(stream, options)
+          chunksRef.current = []
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
+          }
+          recorder.onstop = () => onStop(recorder)
+          if (timeslice) recorder.start(timeslice)
+          else recorder.start()
+          return recorder
+        } catch (err) {
+          lastError = err
+        }
+      }
+    }
+    throw lastError ?? new Error('MediaRecorder could not start')
+  }
+
   async function start() {
     setError(null)
     setPhase('starting')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      })
+      const stream = await openMic()
       streamRef.current = stream
-      const mimeType = pickMimeType()
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 64_000 } : undefined)
-      chunksRef.current = []
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
-      }
-      recorder.onstop = () => {
+      const recorder = startRecorder(stream, (rec) => {
         const durationSec = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
-        const type = recorder.mimeType || mimeType || 'audio/webm'
+        const type = rec.mimeType || chunksRef.current[0]?.type || 'audio/mp4'
         const blob = new Blob(chunksRef.current, { type })
         stopHardware()
         if (blob.size === 0) {
@@ -130,9 +187,8 @@ export function VoiceRecorder({
         setRecording(next)
         setPhase('done')
         onChange(next)
-      }
+      })
       recorderRef.current = recorder
-      recorder.start(1000)
       startedAtRef.current = Date.now()
       setSeconds(0)
       setPhase('recording')
@@ -145,14 +201,7 @@ export function VoiceRecorder({
     } catch (err) {
       stopHardware()
       setPhase('idle')
-      const name = err instanceof DOMException ? err.name : ''
-      setError(
-        name === 'NotAllowedError' || name === 'SecurityError'
-          ? 'Microphone permission is blocked. Allow the microphone for this app in your browser settings.'
-          : name === 'NotFoundError'
-            ? 'No microphone found on this device.'
-            : 'Could not start recording. Please try again.',
-      )
+      setError(recordingErrorMessage(err))
     }
   }
 
