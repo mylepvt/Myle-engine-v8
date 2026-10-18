@@ -156,6 +156,21 @@ describe('NoticeBoardPage voice notices', () => {
     expect(JSON.parse(calls('POST', '/notice-board/7/played')[1][1].body)).toEqual({ completed: true })
   })
 
+  it('plays voice notes in the playback audio session so the iPhone silent switch does not mute them', async () => {
+    const session = { type: 'ambient' }
+    Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+    try {
+      mockMe.mockReturnValue({ data: { authenticated: true, role: 'team' } })
+      renderPage()
+      fireEvent.click(await screen.findByRole('button', { name: 'Play voice note' }))
+      expect(session.type).toBe('playback')
+      fireEvent.pause(document.querySelector('audio')!)
+      expect(session.type).toBe('ambient')
+    } finally {
+      delete (navigator as Navigator & { audioSession?: unknown }).audioSession
+    }
+  })
+
   it('member reads and posts replies', async () => {
     mockMe.mockReturnValue({ data: { authenticated: true, role: 'team' } })
     renderPage()

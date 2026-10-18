@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2, Pause, Play } from 'lucide-react'
 
 import { apiUrl } from '@/lib/api'
+import { switchAudioSession } from '@/lib/audio-session'
 import { formatClock } from '@/lib/format-clock'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +35,7 @@ export function VoiceNotePlayer({
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const startedRef = useRef(false)
+  const restoreSessionRef = useRef<(() => void) | null>(null)
   const [playing, setPlaying] = useState(false)
   const [loading, setLoading] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -48,6 +50,14 @@ export function VoiceNotePlayer({
         ? fallbackDuration
         : 0
   const progress = duration > 0 ? Math.min(100, (current / duration) * 100) : 0
+
+  function releaseSession() {
+    restoreSessionRef.current?.()
+    restoreSessionRef.current = null
+  }
+
+  // Leave the page's audio session as we found it.
+  useEffect(() => releaseSession, [])
 
   // Pause when another voice note on the page starts.
   useEffect(() => {
@@ -68,10 +78,14 @@ export function VoiceNotePlayer({
     }
     window.dispatchEvent(new CustomEvent(PLAY_EVENT, { detail: id }))
     audio.playbackRate = SPEEDS[speedIndex]
+    // iPhone: the app's 'ambient' session obeys the silent switch, so a voice note would play
+    // muted. Use the media-playback session while it plays.
+    if (!restoreSessionRef.current) restoreSessionRef.current = switchAudioSession('playback')
     setLoading(true)
     try {
       await audio.play()
     } catch {
+      releaseSession()
       setError('Could not play this voice note. Check your connection and try again.')
     } finally {
       setLoading(false)
@@ -161,9 +175,13 @@ export function VoiceNotePlayer({
             onStart?.()
           }
         }}
-        onPause={() => setPlaying(false)}
+        onPause={() => {
+          setPlaying(false)
+          releaseSession()
+        }}
         onEnded={(e) => {
           setPlaying(false)
+          releaseSession()
           setCurrent(0)
           e.currentTarget.currentTime = 0
           onFinish?.()
