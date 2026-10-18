@@ -3,6 +3,7 @@ import { Mic, RotateCcw, Square, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { formatClock } from '@/lib/format-clock'
+import { encodeWav, resampleChunks, WAV_SAMPLE_RATE } from '@/lib/wav-encoder'
 
 export const MAX_VOICE_SECONDS = 10 * 60
 
@@ -44,6 +45,24 @@ function recordingErrorMessage(err: unknown): string {
 
 export type VoiceRecording = { blob: Blob; durationSec: number; url: string }
 
+/** A running capture; `stop` finishes it and hands the audio to the `onDone` it was started with. */
+type CaptureEngine = { stop: () => void; isRecording: () => boolean }
+
+function createAudioContext(): AudioContext | null {
+  try {
+    const Ctx =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    return Ctx ? new Ctx() : null
+  } catch {
+    return null
+  }
+}
+
+function hasLiveAudio(stream: MediaStream): boolean {
+  const tracks = typeof stream.getAudioTracks === 'function' ? stream.getAudioTracks() : []
+  return tracks.length === 0 || tracks.some((t) => t.readyState !== 'ended')
+}
+
 type Phase = 'idle' | 'starting' | 'recording' | 'done'
 
 /**
@@ -63,35 +82,37 @@ export function VoiceRecorder({
   const [recording, setRecording] = useState<VoiceRecording | null>(null)
   const [level, setLevel] = useState(0)
 
-  const recorderRef = useRef<MediaRecorder | null>(null)
+  const engineRef = useRef<CaptureEngine | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const ctxRef = useRef<AudioContext | null>(null)
   const startedAtRef = useRef(0)
   const timerRef = useRef<number | null>(null)
-  const meterRef = useRef<{ ctx: AudioContext; raf: number } | null>(null)
+  const meterRafRef = useRef<number | null>(null)
 
   const supported =
     typeof navigator !== 'undefined' &&
     !!navigator.mediaDevices?.getUserMedia &&
-    typeof MediaRecorder !== 'undefined'
+    (typeof MediaRecorder !== 'undefined' ||
+      typeof window.AudioContext !== 'undefined' ||
+      'webkitAudioContext' in window)
 
   function stopHardware() {
     if (timerRef.current != null) window.clearInterval(timerRef.current)
     timerRef.current = null
-    if (meterRef.current) {
-      cancelAnimationFrame(meterRef.current.raf)
-      void meterRef.current.ctx.close().catch(() => undefined)
-      meterRef.current = null
-    }
+    if (meterRafRef.current != null) cancelAnimationFrame(meterRafRef.current)
+    meterRafRef.current = null
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
+    if (ctxRef.current) void ctxRef.current.close().catch(() => undefined)
+    ctxRef.current = null
+    engineRef.current = null
     setLevel(0)
   }
 
   // Release the microphone and preview URL when leaving the page.
   useEffect(
     () => () => {
-      if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+      if (engineRef.current?.isRecording()) engineRef.current.stop()
       stopHardware()
     },
     [],
@@ -100,11 +121,9 @@ export function VoiceRecorder({
     if (recording) URL.revokeObjectURL(recording.url)
   }, [recording])
 
-  function startMeter(stream: MediaStream) {
+  function startMeter(ctx: AudioContext | null, stream: MediaStream) {
+    if (!ctx) return
     try {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      if (!Ctx) return
-      const ctx = new Ctx()
       const analyser = ctx.createAnalyser()
       analyser.fftSize = 256
       ctx.createMediaStreamSource(stream).connect(analyser)
@@ -114,9 +133,9 @@ export function VoiceRecorder({
         let peak = 0
         for (const v of data) peak = Math.max(peak, Math.abs(v - 128))
         setLevel(Math.min(1, peak / 64))
-        if (meterRef.current) meterRef.current.raf = requestAnimationFrame(tick)
+        meterRafRef.current = requestAnimationFrame(tick)
       }
-      meterRef.current = { ctx, raf: requestAnimationFrame(tick) }
+      meterRafRef.current = requestAnimationFrame(tick)
     } catch {
       /* the level meter is cosmetic */
     }
@@ -138,65 +157,120 @@ export function VoiceRecorder({
   }
 
   /**
-   * iPhone Safari can report a format as supported and still refuse it (or the bitrate),
-   * so try the preferred setup first and fall back to the browser's own defaults.
+   * Browser recorder (compressed MP4/WebM). iPhone Safari can report a format as supported and
+   * still refuse it, so try the preferred setup first and fall back to the browser's defaults.
    */
-  function startRecorder(stream: MediaStream, onStop: (recorder: MediaRecorder) => void): MediaRecorder {
+  function startMediaRecorder(stream: MediaStream, onDone: (blob: Blob) => void): CaptureEngine {
+    if (typeof MediaRecorder === 'undefined') throw new DOMException('MediaRecorder missing', 'NotSupportedError')
     const mimeType = pickMimeType()
     const attempts: (MediaRecorderOptions | undefined)[] = mimeType
       ? [{ mimeType, audioBitsPerSecond: 64_000 }, { mimeType }, undefined]
       : [undefined]
-    let lastError: unknown = null
+    let firstError: unknown = null
     for (const options of attempts) {
       for (const timeslice of [1000, undefined]) {
         try {
+          const chunks: Blob[] = []
           const recorder = new MediaRecorder(stream, options)
-          chunksRef.current = []
           recorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
+            if (e.data && e.data.size > 0) chunks.push(e.data)
           }
-          recorder.onstop = () => onStop(recorder)
+          recorder.onstop = () =>
+            onDone(new Blob(chunks, { type: recorder.mimeType || chunks[0]?.type || 'audio/mp4' }))
           if (timeslice) recorder.start(timeslice)
           else recorder.start()
-          return recorder
+          return {
+            stop: () => {
+              if (recorder.state !== 'inactive') recorder.stop()
+            },
+            isRecording: () => recorder.state === 'recording',
+          }
         } catch (err) {
-          lastError = err
+          firstError ??= err
         }
       }
     }
-    throw lastError ?? new Error('MediaRecorder could not start')
+    throw firstError ?? new Error('MediaRecorder could not start')
+  }
+
+  /** Fallback that works where MediaRecorder doesn't: raw samples via Web Audio, saved as WAV. */
+  function startWavCapture(ctx: AudioContext, stream: MediaStream, onDone: (blob: Blob) => void): CaptureEngine {
+    const source = ctx.createMediaStreamSource(stream)
+    const processor = ctx.createScriptProcessor(4096, 1, 1)
+    const mute = ctx.createGain()
+    mute.gain.value = 0
+    const chunks: Float32Array[] = []
+    let active = true
+    processor.onaudioprocess = (e) => {
+      if (active) chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)))
+    }
+    source.connect(processor)
+    processor.connect(mute)
+    mute.connect(ctx.destination)
+    return {
+      stop: () => {
+        if (!active) return
+        active = false
+        processor.onaudioprocess = null
+        source.disconnect()
+        processor.disconnect()
+        mute.disconnect()
+        const samples = resampleChunks(chunks, ctx.sampleRate, WAV_SAMPLE_RATE)
+        onDone(encodeWav(samples, WAV_SAMPLE_RATE))
+      },
+      isRecording: () => active,
+    }
   }
 
   async function start() {
     setError(null)
     setPhase('starting')
+    // iPhone only lets audio start inside the tap itself, so open the audio engine before any await.
+    const ctx = createAudioContext()
+    ctxRef.current = ctx
+    if (ctx && ctx.state === 'suspended') void ctx.resume().catch(() => undefined)
+
+    const finish = (blob: Blob) => {
+      const durationSec = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
+      stopHardware()
+      // A WAV with only its 44-byte header captured no audio.
+      if (blob.size === 0 || (blob.type === 'audio/wav' && blob.size <= 44)) {
+        setError('Nothing was recorded. Please try again.')
+        setPhase('idle')
+        return
+      }
+      const next = { blob, durationSec, url: URL.createObjectURL(blob) }
+      setRecording(next)
+      setPhase('done')
+      onChange(next)
+    }
+
     try {
-      const stream = await openMic()
+      let stream = await openMic()
       streamRef.current = stream
-      const recorder = startRecorder(stream, (rec) => {
-        const durationSec = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
-        const type = rec.mimeType || chunksRef.current[0]?.type || 'audio/mp4'
-        const blob = new Blob(chunksRef.current, { type })
-        stopHardware()
-        if (blob.size === 0) {
-          setError('Nothing was recorded. Please try again.')
-          setPhase('idle')
-          return
+      let engine: CaptureEngine
+      try {
+        engine = startMediaRecorder(stream, finish)
+      } catch (recorderError) {
+        if (!ctx) throw recorderError
+        // The failed recorder may have left the mic track unusable; reopen it if so.
+        if (!hasLiveAudio(stream)) {
+          stream.getTracks().forEach((t) => t.stop())
+          stream = await openMic()
+          streamRef.current = stream
         }
-        const next = { blob, durationSec, url: URL.createObjectURL(blob) }
-        setRecording(next)
-        setPhase('done')
-        onChange(next)
-      })
-      recorderRef.current = recorder
+        if (ctx.state === 'suspended') await ctx.resume().catch(() => undefined)
+        engine = startWavCapture(ctx, stream, finish)
+      }
+      engineRef.current = engine
       startedAtRef.current = Date.now()
       setSeconds(0)
       setPhase('recording')
-      startMeter(stream)
+      startMeter(ctx, stream)
       timerRef.current = window.setInterval(() => {
         const elapsed = Math.floor((Date.now() - startedAtRef.current) / 1000)
         setSeconds(elapsed)
-        if (elapsed >= MAX_VOICE_SECONDS && recorder.state === 'recording') recorder.stop()
+        if (elapsed >= MAX_VOICE_SECONDS && engine.isRecording()) engine.stop()
       }, 250)
     } catch (err) {
       stopHardware()
@@ -206,7 +280,7 @@ export function VoiceRecorder({
   }
 
   function stop() {
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+    if (engineRef.current?.isRecording()) engineRef.current.stop()
   }
 
   function discard() {

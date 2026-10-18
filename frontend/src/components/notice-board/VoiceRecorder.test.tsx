@@ -30,7 +30,40 @@ class FakeRecorder {
   }
 }
 
-const track = { stop: vi.fn() }
+const track = { stop: vi.fn(), readyState: 'live' }
+
+class FakeAudioContext {
+  static instances: FakeAudioContext[] = []
+  state = 'running'
+  sampleRate = 48_000
+  destination = {}
+  processor: { onaudioprocess: ((e: unknown) => void) | null } | null = null
+  constructor() {
+    FakeAudioContext.instances.push(this)
+  }
+  resume() {
+    return Promise.resolve()
+  }
+  close() {
+    return Promise.resolve()
+  }
+  private node() {
+    return { connect: vi.fn(), disconnect: vi.fn() }
+  }
+  createMediaStreamSource() {
+    return this.node()
+  }
+  createAnalyser() {
+    return { ...this.node(), fftSize: 0, frequencyBinCount: 4, getByteTimeDomainData: vi.fn() }
+  }
+  createGain() {
+    return { ...this.node(), gain: { value: 1 } }
+  }
+  createScriptProcessor() {
+    this.processor = { ...this.node(), onaudioprocess: null }
+    return this.processor
+  }
+}
 const getUserMedia = vi.fn()
 
 describe('VoiceRecorder', () => {
@@ -38,7 +71,11 @@ describe('VoiceRecorder', () => {
     FakeRecorder.instances = []
     FakeRecorder.reject = () => false
     vi.stubGlobal('MediaRecorder', FakeRecorder)
-    getUserMedia.mockResolvedValue({ getTracks: () => [track] })
+    FakeAudioContext.instances = []
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+    vi.stubGlobal('requestAnimationFrame', () => 0)
+    vi.stubGlobal('cancelAnimationFrame', () => undefined)
+    getUserMedia.mockResolvedValue({ getTracks: () => [track], getAudioTracks: () => [track] })
     Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia }, configurable: true })
     vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:voice', revokeObjectURL: () => undefined })
   })
@@ -74,6 +111,40 @@ describe('VoiceRecorder', () => {
     fireEvent.click(screen.getByRole('button', { name: /Tap to record/ }))
     await screen.findByRole('button', { name: /Stop/ })
     expect(FakeRecorder.instances[0].options).toBeUndefined()
+  })
+
+  it('records as WAV through Web Audio when MediaRecorder cannot start (iPhone InvalidStateError)', async () => {
+    vi.stubGlobal(
+      'MediaRecorder',
+      class extends FakeRecorder {
+        constructor(stream: MediaStream, options?: MediaRecorderOptions) {
+          super(stream, options)
+        }
+        start() {
+          throw new DOMException('bad state', 'InvalidStateError')
+        }
+      },
+    )
+    const onChange = vi.fn()
+    render(<VoiceRecorder onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Tap to record/ }))
+    const stop = await screen.findByRole('button', { name: /Stop/ })
+    const ctx = FakeAudioContext.instances[0]
+    expect(ctx.processor).not.toBeNull()
+    // Two buffers of captured mic audio.
+    const buffer = { inputBuffer: { getChannelData: () => new Float32Array(4800).fill(0.25) } }
+    ctx.processor!.onaudioprocess!(buffer)
+    ctx.processor!.onaudioprocess!(buffer)
+
+    await act(async () => {
+      fireEvent.click(stop)
+    })
+    expect(onChange).toHaveBeenCalledTimes(1)
+    const { blob } = onChange.mock.calls[0][0]
+    expect(blob.type).toBe('audio/wav')
+    expect(blob.size).toBe(44 + 3200 * 2) // 9600 samples at 48 kHz → 3200 at 16 kHz
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('explains a busy microphone', async () => {
