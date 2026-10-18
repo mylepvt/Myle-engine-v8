@@ -32,8 +32,126 @@ def normalize_phone_digits(raw: str) -> str | None:
     return None
 
 
+# Indian mobile written as one block or split 5+5 ("95178 18551", "95178-18551"), optional +91.
+_SPLIT_PHONE_RE = re.compile(r"(?<!\d)(?:(?:\+|0{0,2})91[-\s]?)?([6-9]\d{4})[\s-]?(\d{5})(?!\d)")
+# Lead-sheet line pieces after the phone ("WA 19 to 21 Female Delhi 18 Oct, 11:55 am G5/J/PM-3").
+_WA_MARK_RE = re.compile(r"^(?:WA|WhatsApp)\b\s*", re.IGNORECASE)
+_AGE_RE = re.compile(r"^(\d{1,2}\s*(?:to|-)\s*\d{1,2}|\d{1,2}\+?)(?=\s|$)\s*", re.IGNORECASE)
+_GENDER_RE = re.compile(r"^(female|male|other)\b\s*", re.IGNORECASE)
+_RECEIVED_RE = re.compile(
+    r"\b(\d{1,2}\s+[A-Za-z]{3,9},?(?:\s+\d{4})?,?\s+\d{1,2}:\d{2}\s*(?:[ap]\.?m\.?)?)",
+    re.IGNORECASE,
+)
+_ROW_NUMBER_RE = re.compile(r"^\d{1,4}[.)]?\s+")
+
+
+def _clean_cut(text: str) -> str:
+    """Trim separators and the ellipsis PDFs add to clipped cells ("anshika mishra mis…")."""
+    return text.strip().rstrip("…").rstrip(".").strip(" -|,;:\t")
+
+
+def _parse_pdf_text_line(line: str) -> dict[str, str | None] | None:
+    """One lead per text line: ``[#] name phone [WA] [age] [gender] [city] [received] [ad]``.
+
+    Works for plain "Name 9876543210" lines and for the Myle lead-sheet PDFs, whose numbers are
+    printed split ("95178 18551") and which carry age / gender / city / received time / ad code.
+    """
+    m = _SPLIT_PHONE_RE.search(line)
+    if not m:
+        return None
+    phone = m.group(1) + m.group(2)
+    before = _ROW_NUMBER_RE.sub("", line[: m.start()].strip(), count=1)
+    name = _clean_cut(before)
+
+    rest = _WA_MARK_RE.sub("", line[m.end() :].strip(), count=1)
+    age = gender = city = received = ad = None
+    am = _AGE_RE.match(rest)
+    if am:
+        age = am.group(1)
+        rest = rest[am.end() :]
+    gm = _GENDER_RE.match(rest)
+    if gm:
+        gender = gm.group(1).capitalize()
+        rest = rest[gm.end() :]
+    if age or gender:
+        rm = _RECEIVED_RE.search(rest)
+        if rm:
+            city = _clean_cut(rest[: rm.start()]) or None
+            received = rm.group(1).strip()
+            ad = _clean_cut(rest[rm.end() :]) or None
+        else:
+            city = _clean_cut(rest) or None
+
+    details = [
+        f"{label}: {value}"
+        for label, value in (("Age", age), ("Gender", gender), ("Received", received), ("Ad", ad))
+        if value
+    ]
+    return {
+        "name": name,
+        "phone": phone,
+        "email": None,
+        "city": city[:100] if city else None,
+        "source": None,
+        "extra_notes": " · ".join(details) or None,
+    }
+
+
+def _leads_from_pdf_table(table: list[list[object]]) -> list[dict[str, str | None]]:
+    """Rows from a real table with a Name / Phone header; [] when the table isn't one."""
+    if not table:
+        return []
+    header_row = [str(c or "").lower().strip() for c in table[0]]
+    name_col = next((i for i, h in enumerate(header_row) if "name" in h), None)
+    phone_col = next(
+        (
+            i
+            for i, h in enumerate(header_row)
+            if any(k in h for k in ("phone", "mobile", "contact", "number"))
+        ),
+        None,
+    )
+    if name_col is None and phone_col is None:
+        return []
+    email_col = next((i for i, h in enumerate(header_row) if "email" in h or "mail" in h), None)
+    city_col = next((i for i, h in enumerate(header_row) if "city" in h or "location" in h), None)
+
+    leads: list[dict[str, str | None]] = []
+    for row in table[1:]:
+        if not row:
+            continue
+        cells = [str(c or "").strip() for c in row]
+
+        def safe(i: int | None) -> str:
+            if i is None or i >= len(cells):
+                return ""
+            return cells[i]
+
+        name = safe(name_col)
+        phone = safe(phone_col)
+        m = _SPLIT_PHONE_RE.search(phone)
+        if m:
+            phone = m.group(1) + m.group(2)
+        if name or phone:
+            leads.append(
+                {
+                    "name": name,
+                    "phone": phone,
+                    "email": safe(email_col) or None,
+                    "city": safe(city_col) or None,
+                    "source": None,
+                    "extra_notes": None,
+                }
+            )
+    return leads
+
+
 def extract_leads_from_pdf_bytes(content: bytes) -> tuple[list[dict[str, str | None]], str | None]:
-    """Return (rows, error_message). Each row: name, phone, email, city, source=None, extra_notes=None."""
+    """Return (rows, error_message). Each row: name, phone, email, city, source=None, extra_notes.
+
+    Uses a page's table when it has a Name/Phone header; otherwise (no table, or a decorative /
+    empty one like the Myle lead sheets have) reads the page line by line.
+    """
     try:
         import pdfplumber
     except ImportError:
@@ -43,76 +161,15 @@ def extract_leads_from_pdf_bytes(content: bytes) -> tuple[list[dict[str, str | N
     try:
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             for page in pdf.pages:
-                tables = page.extract_tables()
-                if tables:
-                    for table in tables:
-                        if not table:
-                            continue
-                        header_row = [str(c or "").lower().strip() for c in table[0]]
-                        name_col = next((i for i, h in enumerate(header_row) if "name" in h), None)
-                        phone_col = next(
-                            (
-                                i
-                                for i, h in enumerate(header_row)
-                                if any(k in h for k in ("phone", "mobile", "contact", "number"))
-                            ),
-                            None,
-                        )
-                        email_col = next(
-                            (i for i, h in enumerate(header_row) if "email" in h or "mail" in h),
-                            None,
-                        )
-                        city_col = next(
-                            (i for i, h in enumerate(header_row) if "city" in h or "location" in h),
-                            None,
-                        )
-                        start = 1 if (name_col is not None or phone_col is not None) else 0
-                        for row in table[start:]:
-                            if not row:
-                                continue
-                            cells = [str(c or "").strip() for c in row]
-
-                            def safe(i: int | None) -> str:
-                                if i is None or i >= len(cells):
-                                    return ""
-                                return cells[i]
-
-                            name = safe(name_col)
-                            phone = safe(phone_col)
-                            email = safe(email_col) or None
-                            city = safe(city_col) or None
-                            m = _PHONE_RE.search(phone)
-                            if m:
-                                phone = m.group(1)
-                            if name or phone:
-                                leads.append(
-                                    {
-                                        "name": name,
-                                        "phone": phone,
-                                        "email": email,
-                                        "city": city,
-                                        "source": None,
-                                        "extra_notes": None,
-                                    }
-                                )
-                else:
-                    text = page.extract_text() or ""
-                    for line in text.split("\n"):
-                        m = _PHONE_RE.search(line)
-                        if not m:
-                            continue
-                        phone = m.group(1)
-                        name = _PHONE_RE.sub("", line).strip(" -|,;:\t")
-                        leads.append(
-                            {
-                                "name": name,
-                                "phone": phone,
-                                "email": None,
-                                "city": None,
-                                "source": None,
-                                "extra_notes": None,
-                            }
-                        )
+                page_leads: list[dict[str, str | None]] = []
+                for table in page.extract_tables() or []:
+                    page_leads.extend(_leads_from_pdf_table(table))
+                if not page_leads:
+                    for line in (page.extract_text() or "").split("\n"):
+                        row = _parse_pdf_text_line(line)
+                        if row:
+                            page_leads.append(row)
+                leads.extend(page_leads)
     except Exception as exc:
         return [], f"Could not parse PDF: {exc}"
 
