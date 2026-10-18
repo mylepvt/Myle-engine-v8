@@ -74,3 +74,16 @@ async def test_import_skips_duplicates_and_counts_fresh(Session):
         await s.commit()
         fresh = await fresh_call_counts_by_user(s, [MEMBER], today_ist())
     assert fresh.get(MEMBER) == 1
+
+
+async def test_lead_sheet_pdf_imports_to_calling_board(Session):
+    from tests.test_lead_pdf_sheet_import import _lead_sheet_pdf
+
+    async with Session() as s:
+        r = await run_personal_lead_import(
+            s, user_id=MEMBER, file_bytes=_lead_sheet_pdf(), filename="15 LEADS-1.pdf", source_tag="Import"
+        )
+        assert (r.imported, r.duplicates, r.invalid) == (4, 0, 0)
+        riya = (await s.execute(select(Lead).where(Lead.phone == "9876512345"))).scalar_one()
+        assert (riya.name, riya.city, riya.assigned_to_user_id, riya.status) == ("Riya Sharma", "Delhi", MEMBER, "new_lead")
+        assert "Age: 19 to 21 · Gender: Female · Received: 18 Oct, 11:55 am · Ad: G5/J/PM-3" in riya.notes
