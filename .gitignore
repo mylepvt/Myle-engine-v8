@@ -13,7 +13,8 @@ venv/
 backend/venv/
 
 # Local Claude / IDE agent tooling (not app source)
-.claude/
+.claude/*
+!.claude/skills/
 
 # Secrets / session exports (never commit)
 cookies.txt
