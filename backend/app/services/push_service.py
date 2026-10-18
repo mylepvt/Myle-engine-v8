@@ -342,6 +342,40 @@ async def broadcast_push(
         return 0
 
 
+async def send_push_to_user_ids(
+    session: AsyncSession,
+    user_ids: list[int],
+    *,
+    title: str,
+    body: str,
+    url: str = "/dashboard",
+) -> int:
+    """Send push to the given users (caller decides the audience); skips push-disabled users."""
+    if not _PUSH_AVAILABLE or not user_ids:
+        return 0
+    try:
+        private_pem, _ = await _get_or_create_vapid_keys(session)
+        enabled_ids = (
+            await session.execute(
+                select(User.id).where(User.id.in_(list(user_ids)), User.push_notifications_enabled.is_(True))
+            )
+        ).scalars().all()
+        if not enabled_ids:
+            return 0
+        subs = (
+            await session.execute(
+                select(PushSubscription).where(PushSubscription.user_id.in_(list(enabled_ids)))
+            )
+        ).scalars().all()
+        if not subs:
+            return 0
+        data = json.dumps({"title": title, "body": body, "url": url})
+        return await _send_and_cleanup(session, list(subs), data, private_pem)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("send_push_to_user_ids failed: %s", exc)
+        return 0
+
+
 # ---------------------------------------------------------------------------
 # Background task helpers (open their own session)
 # ---------------------------------------------------------------------------

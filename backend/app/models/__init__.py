@@ -1,7 +1,9 @@
 from app.models.lead_booking import LeadBooking
 from app.models.admin_activity_feed import AdminActivityFeed
 from app.models.announcement import Announcement
+from app.models.announcement_play import AnnouncementPlay
 from app.models.announcement_reaction import AnnouncementReaction
+from app.models.announcement_reply import AnnouncementReply
 from app.models.activity_log import ActivityLog
 from app.models.call_event import CallEvent
 from app.models.batch_share_link import BatchShareLink
@@ -46,7 +48,9 @@ from app.models.automation import AutomationRule, AutomationActionLog
 __all__ = [
     "AdminActivityFeed",
     "Announcement",
+    "AnnouncementPlay",
     "AnnouncementReaction",
+    "AnnouncementReply",
     "ActivityLog",
     "CallEvent",
     "BatchShareLink",

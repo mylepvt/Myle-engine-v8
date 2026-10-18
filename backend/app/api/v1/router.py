@@ -45,6 +45,7 @@ from app.api.v1 import (
     meta,
     notifications,
     org,
+    notice_board_voice,
     other_pages,
     payments,
     pending_as,
@@ -90,6 +91,7 @@ api_router.include_router(execution.router, prefix="/execution", tags=["executio
 api_router.include_router(org.router, prefix="/org", tags=["org"])
 api_router.include_router(finance_surfaces.router, prefix="/finance", tags=["finance"])
 api_router.include_router(other_pages.router, prefix="/other", tags=["other"])
+api_router.include_router(notice_board_voice.router, prefix="/other", tags=["other"])
 api_router.include_router(settings_pages.router, prefix="/settings", tags=["settings"])
 api_router.include_router(
     settings_enhanced.router,

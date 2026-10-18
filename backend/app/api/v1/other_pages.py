@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,9 @@ from app.models.training_progress import TrainingProgress
 from app.models.training_video import TrainingVideo
 from app.schemas.notice_board import AnnouncementCreate, AnnouncementOut, NoticeBoardResponse, ReactionSummary, ReactionToggle
 from app.schemas.system_surface import SystemStubResponse, TrainingSurfaceResponse
+from app.db.session import AsyncSessionLocal
+from app.services.db_media_storage import delete_media
+from app.services.notice_board import NOTICE_AUDIO_KIND, attach_notice_extras, notify_notice_audience_bg
 from app.services.team_reports_metrics import IST
 from app.services.training_surface import build_training_surface
 from app.services.training_uploads import save_training_notes_image
@@ -185,6 +188,7 @@ async def other_notice_board_list(
     rows = (await session.execute(stmt)).scalars().all()
     items = [AnnouncementOut.model_validate(r) for r in rows]
     await _attach_reactions(items, session, user.user_id)
+    await attach_notice_extras(items, list(rows), session, user_id=user.user_id, is_admin=user.role == "admin")
     return NoticeBoardResponse(items=items, total=total, note=None)
 
 
@@ -195,6 +199,7 @@ async def other_notice_board_list(
 )
 async def other_notice_board_create(
     body: AnnouncementCreate,
+    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AnnouncementOut:
@@ -209,7 +214,18 @@ async def other_notice_board_create(
     await session.refresh(row)
     item = AnnouncementOut.model_validate(row)
     await _attach_reactions([item], session, user.user_id)
+    background_tasks.add_task(
+        notify_notice_audience_bg,
+        AsyncSessionLocal,
+        title="New notice",
+        body=_push_preview(row.message),
+    )
     return item
+
+
+def _push_preview(text: str, limit: int = 120) -> str:
+    one_line = " ".join((text or "").split())
+    return one_line if len(one_line) <= limit else one_line[: limit - 1].rstrip() + "…"
 
 
 @router.delete("/notice-board/{announcement_id}", status_code=http_status.HTTP_204_NO_CONTENT)
@@ -222,6 +238,8 @@ async def other_notice_board_delete(
     row = await session.get(Announcement, announcement_id)
     if row is None:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Not found")
+    if row.audio_name:
+        await delete_media(session, kind=NOTICE_AUDIO_KIND, name=row.audio_name)
     await session.delete(row)
     await session.commit()
 
@@ -244,6 +262,7 @@ async def other_notice_board_toggle_pin(
     await session.refresh(row)
     item = AnnouncementOut.model_validate(row)
     await _attach_reactions([item], session, user.user_id)
+    await attach_notice_extras([item], [row], session, user_id=user.user_id, is_admin=True)
     return item
 
 
@@ -286,6 +305,7 @@ async def other_notice_board_react(
 
     item = AnnouncementOut.model_validate(row)
     await _attach_reactions([item], session, user.user_id)
+    await attach_notice_extras([item], [row], session, user_id=user.user_id, is_admin=user.role == "admin")
     return item
 
 
