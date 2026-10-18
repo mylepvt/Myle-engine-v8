@@ -122,7 +122,8 @@ export async function createVoiceNotice(body: {
   pin: boolean
   durationSec: number
 }): Promise<NoticeBoardItem> {
-  const ext = body.audio.type.includes('mp4') ? 'm4a' : body.audio.type.includes('ogg') ? 'ogg' : 'webm'
+  const type = body.audio.type
+  const ext = type.includes('wav') ? 'wav' : type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm'
   const form = new FormData()
   form.append('file', body.audio, `voice-notice.${ext}`)
   form.append('message', body.message)

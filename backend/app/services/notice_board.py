@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 NOTICE_AUDIO_KIND = "notice-audio"
 NOTICE_BOARD_URL = "/dashboard/other/notice-board"
-# ~10 minutes of Opus/AAC voice comfortably fits; keeps a single blob small enough for Postgres.
-MAX_NOTICE_AUDIO_BYTES = 15 * 1024 * 1024
+# 10 minutes of the iPhone fallback (16 kHz mono WAV) is ~19 MB; compressed recordings are far smaller.
+MAX_NOTICE_AUDIO_BYTES = 25 * 1024 * 1024
 MAX_NOTICE_AUDIO_SECONDS = 10 * 60
 
 # Recorder MIME (without codec params) → stored file extension.

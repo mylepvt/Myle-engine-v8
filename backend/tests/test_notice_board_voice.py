@@ -263,3 +263,18 @@ async def test_deleting_voice_notice_removes_recording(engine, admin_client, pus
         from sqlalchemy import select
 
         assert (await s.execute(select(MediaBlob).where(MediaBlob.kind == "notice-audio"))).first() is None
+
+
+@pytest.mark.asyncio
+async def test_iphone_wav_fallback_upload_is_accepted(engine, admin_client, pushes):
+    await _reset(engine)
+    wav = b"RIFF" + b"\x00" * 40 + b"\x01\x00" * 1000
+    r = await admin_client.post(
+        f"{BASE}/voice",
+        files={"file": ("voice-notice.wav", wav, "audio/wav")},
+        data={"message": "", "duration_sec": "3"},
+    )
+    assert r.status_code == 201, r.text
+    audio = await admin_client.get(r.json()["audio_url"])
+    assert audio.headers["content-type"] == "audio/wav"
+    assert audio.content == wav
