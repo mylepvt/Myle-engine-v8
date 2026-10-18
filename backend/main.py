@@ -30,18 +30,20 @@ from app.middleware.auth_rate_limit import AuthRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 import app.services.admin_alerts  # noqa: F401 — registers the live admin alert hooks
+from app.services.sheet_sync import run_scheduled_delivery as job_sheet_sync_delivery  # also registers its hooks
 
 import logging as _logging
 
 # Scheduled jobs log one INFO line per run ("morning_plan: targeted=… sent=…"). With no
 # handler on the root logger those were dropped, so they never reached Render's logs.
-_jobs_logger = _logging.getLogger("app.services.scheduled_jobs")
-if not _jobs_logger.handlers:
-    _h = _logging.StreamHandler()
-    _h.setFormatter(_logging.Formatter("%(levelname)s: %(name)s: %(message)s"))
-    _jobs_logger.addHandler(_h)
-    _jobs_logger.setLevel(_logging.INFO)
-    _jobs_logger.propagate = False
+for _jobs_logger_name in ("app.services.scheduled_jobs", "app.services.sheet_sync"):
+    _jobs_logger = _logging.getLogger(_jobs_logger_name)
+    if not _jobs_logger.handlers:
+        _h = _logging.StreamHandler()
+        _h.setFormatter(_logging.Formatter("%(levelname)s: %(name)s: %(message)s"))
+        _jobs_logger.addHandler(_h)
+        _jobs_logger.setLevel(_logging.INFO)
+        _jobs_logger.propagate = False
 from app.services.scheduled_jobs import (
     job_call_target_reminder,
     job_closing_pipeline_maintenance,
@@ -259,6 +261,14 @@ async def lifespan(_app: FastAPI):
             id="integrity_audit",
             replace_existing=True,
             misfire_grace_time=1800,
+        )
+        _scheduler.add_job(
+            job_sheet_sync_delivery,
+            CronTrigger(minute="*", timezone="Asia/Kolkata"),
+            id="sheet_sync_delivery",
+            replace_existing=True,
+            misfire_grace_time=60,
+            max_instances=1,
         )
         _scheduler.start()
     yield

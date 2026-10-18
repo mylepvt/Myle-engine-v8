@@ -255,6 +255,18 @@ class Settings(BaseSettings):
         validation_alias="CRM_OUTBOX_PROCESSING_TIMEOUT_SECONDS",
     )
 
+    # --- Google Sheet lead-status sync ("Shack Leads" ad-quality report; app.services.sheet_sync) ---
+    crm_sheet_webhook_url: str = Field(
+        default="",
+        validation_alias="CRM_SHEET_WEBHOOK_URL",
+        description="Apps Script web-app URL that receives phone + status. Empty = sync switched off.",
+    )
+    crm_sheet_webhook_secret: str = Field(
+        default="",
+        validation_alias="CRM_SHEET_WEBHOOK_SECRET",
+        description="Shared secret sent in the webhook body. Server-side only.",
+    )
+
     # --- Google Contacts sync (admin: Day 2 prospects → admin's Google / iPhone contacts) ---
     google_contacts_client_id: str = Field(
         default="",

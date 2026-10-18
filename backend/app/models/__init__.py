@@ -10,6 +10,7 @@ from app.models.batch_share_link import BatchShareLink
 from app.models.day2_test_session import Day2TestSession
 from app.models.follow_up import FollowUp
 from app.models.crm_outbox import CrmOutbox
+from app.models.sheet_sync_outbox import SheetSyncOutbox
 from app.models.daily_member_stat import DailyMemberStat
 from app.models.enrollment_share_link import EnrollmentShareLink
 from app.models.flp_min_billing_share_link import FlpMinBillingShareLink
@@ -58,6 +59,7 @@ __all__ = [
     "EnrollmentShareLink",
     "FollowUp",
     "CrmOutbox",
+    "SheetSyncOutbox",
     "DailyMemberStat",
     "FlpMinBillingShareLink",
     "Invoice",

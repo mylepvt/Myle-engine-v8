@@ -72,6 +72,10 @@ services:
           name: myle-crm-api
           type: web
           envVarKey: CRM_INTERNAL_SECRET
+      - key: CRM_SHEET_WEBHOOK_URL
+        sync: false              # Apps Script web-app URL for the Shack Leads sheet; empty = sheet sync off
+      - key: CRM_SHEET_WEBHOOK_SECRET
+        sync: false              # must match the secret in the Apps Script
       - key: WEB_CONCURRENCY
         value: "1"
       - key: RENDER
