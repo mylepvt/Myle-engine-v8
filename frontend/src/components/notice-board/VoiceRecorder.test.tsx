@@ -147,6 +147,31 @@ describe('VoiceRecorder', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('switches the iPhone audio session to recording mode, then back to ambient', async () => {
+    const session = { type: 'ambient' }
+    Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true })
+    let typeWhenMicOpened = ''
+    getUserMedia.mockImplementation(() => {
+      typeWhenMicOpened = session.type
+      return Promise.resolve({ getTracks: () => [track], getAudioTracks: () => [track] })
+    })
+    try {
+      render(<VoiceRecorder onChange={vi.fn()} />)
+      fireEvent.click(screen.getByRole('button', { name: /Tap to record/ }))
+      const stop = await screen.findByRole('button', { name: /Stop/ })
+      // In 'ambient' Safari refuses the mic with InvalidStateError.
+      expect(typeWhenMicOpened).toBe('play-and-record')
+      expect(session.type).toBe('play-and-record')
+
+      await act(async () => {
+        fireEvent.click(stop)
+      })
+      expect(session.type).toBe('ambient')
+    } finally {
+      delete (navigator as Navigator & { audioSession?: unknown }).audioSession
+    }
+  })
+
   it('explains a busy microphone', async () => {
     getUserMedia.mockRejectedValue(new DOMException('busy', 'NotReadableError'))
     render(<VoiceRecorder onChange={vi.fn()} />)

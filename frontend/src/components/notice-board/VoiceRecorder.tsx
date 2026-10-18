@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Mic, RotateCcw, Square, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { switchAudioSession } from '@/lib/audio-session'
 import { formatClock } from '@/lib/format-clock'
 import { encodeWav, resampleChunks, WAV_SAMPLE_RATE } from '@/lib/wav-encoder'
 
@@ -88,6 +89,7 @@ export function VoiceRecorder({
   const startedAtRef = useRef(0)
   const timerRef = useRef<number | null>(null)
   const meterRafRef = useRef<number | null>(null)
+  const restoreSessionRef = useRef<(() => void) | null>(null)
 
   const supported =
     typeof navigator !== 'undefined' &&
@@ -106,6 +108,8 @@ export function VoiceRecorder({
     if (ctxRef.current) void ctxRef.current.close().catch(() => undefined)
     ctxRef.current = null
     engineRef.current = null
+    restoreSessionRef.current?.()
+    restoreSessionRef.current = null
     setLevel(0)
   }
 
@@ -225,6 +229,10 @@ export function VoiceRecorder({
   async function start() {
     setError(null)
     setPhase('starting')
+    // The app's UI sounds keep iOS in the 'ambient' audio session, where Safari refuses the mic
+    // (InvalidStateError). Switch to recording mode first; stopHardware() switches back.
+    restoreSessionRef.current?.()
+    restoreSessionRef.current = switchAudioSession('play-and-record')
     // iPhone only lets audio start inside the tap itself, so open the audio engine before any await.
     const ctx = createAudioContext()
     ctxRef.current = ctx

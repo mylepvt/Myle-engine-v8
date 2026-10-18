@@ -110,7 +110,8 @@ function ensureAudioGraph(): AudioGraph | null {
   // screen / Dynamic Island) and pauses whatever else is playing.
   try {
     const nav = navigator as Navigator & { audioSession?: { type: string } }
-    if (nav.audioSession) nav.audioSession.type = 'ambient'
+    // Only from the default: a voice note may be recording ('play-and-record') or playing right now.
+    if (nav.audioSession && nav.audioSession.type === 'auto') nav.audioSession.type = 'ambient'
   } catch { /* not supported */ }
 
   const ctx = new Ctor()
