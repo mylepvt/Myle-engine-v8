@@ -69,8 +69,8 @@ function ScratchTile({ card }: { card: ScratchCardInfo }) {
       {result ? (
         <div
           className={cn(
-            'flex h-16 flex-col items-center justify-center rounded-lg border px-2 text-center',
-            result.amount ? 'border-success/40 bg-success/10' : 'border-border/60 bg-muted/30',
+            'flex h-16 flex-col items-center justify-center rounded-2xl px-2 text-center',
+            result.amount ? 'bg-success/10' : 'bg-muted',
           )}
         >
           <span className={cn('font-bold tabular-nums', result.amount ? 'text-success-ink' : 'text-muted-foreground')}>
@@ -83,7 +83,7 @@ function ScratchTile({ card }: { card: ScratchCardInfo }) {
           type="button"
           onClick={onScratch}
           disabled={scratch.isPending}
-          className="flex h-16 w-full flex-col items-center justify-center rounded-lg border border-warning/40 bg-warning/20 px-2 text-center text-warning-ink transition active:scale-95 disabled:opacity-60"
+          className="flex h-16 w-full flex-col items-center justify-center rounded-2xl bg-warning/20 px-2 text-center text-warning-ink transition active:scale-95 disabled:opacity-60"
         >
           <Gift className="size-4" aria-hidden />
           <span className="text-ds-micro font-semibold">{scratch.isPending ? 'Scratching…' : 'Tap to scratch'}</span>
@@ -119,7 +119,7 @@ export function RewardsExtras({ data }: { data: MyRewards }) {
       ) : null}
 
       {league ? (
-        <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5">
+        <div className="rounded-2xl bg-primary/10 px-3 py-2.5">
           <p className="flex items-center gap-1.5 text-ds-caption font-semibold text-foreground">
             <Users className="size-3.5 text-primary" aria-hidden />
             Team League · {rupees(league.pot_rupees)} this week
@@ -148,7 +148,7 @@ export function RewardsExtras({ data }: { data: MyRewards }) {
       ) : null}
 
       {season ? (
-        <div className="rounded-lg border border-warning/25 bg-warning/5 px-3 py-2.5">
+        <div className="rounded-2xl bg-warning/10 px-3 py-2.5">
           <p className="flex items-center gap-1.5 text-ds-caption font-semibold text-foreground">
             <Medal className="size-3.5 text-warning-ink" aria-hidden />
             {monthName(season.month)} Season

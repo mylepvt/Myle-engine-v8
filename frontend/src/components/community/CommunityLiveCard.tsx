@@ -39,7 +39,7 @@ const KIND_ICON: Record<CommunityFeedKind, { icon: LucideIcon; tone: string }> =
 
 function Stat({ value, label }: { value: number; label: string }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/30 px-2 py-2 text-center">
+    <div className="rounded-2xl bg-muted px-2 py-2 text-center">
       <p className="text-lg font-bold tabular-nums text-foreground">{value.toLocaleString('en-IN')}</p>
       <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
@@ -101,7 +101,7 @@ export function CommunityLiveCard() {
               </div>
             ) : null}
             {data.call_stars.length ? (
-              <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
+              <div className="rounded-2xl bg-warning/10 px-3 py-2">
                 <p className="flex items-center gap-1.5 text-ds-caption font-semibold text-warning-ink">
                   <Flame className="size-3.5" aria-hidden />
                   {data.star_calls}+ calls today

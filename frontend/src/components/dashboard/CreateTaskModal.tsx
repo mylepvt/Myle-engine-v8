@@ -227,10 +227,10 @@ export function CreateTaskModal({ open, onClose }: Props) {
                     type="button"
                     onClick={() => applyTemplate(t)}
                     className={cn(
-                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition',
+                      'press inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium',
                       active
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border bg-background text-foreground hover:border-primary/50',
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-foreground hover:bg-primary/10',
                     )}
                   >
                     <Icon className="size-3.5" /> {t.label}
@@ -254,7 +254,7 @@ export function CreateTaskModal({ open, onClose }: Props) {
           </div>
 
           {/* Optional details */}
-          <details className="group rounded-lg border border-border/60 bg-background/40">
+          <details className="group rounded-2xl bg-muted">
             <summary className="cursor-pointer list-none px-3 py-2 text-sm text-muted-foreground transition hover:text-foreground">
               Details (optional)
             </summary>
@@ -286,10 +286,10 @@ export function CreateTaskModal({ open, onClose }: Props) {
                   type="button"
                   onClick={() => setTarget(t.key)}
                   className={cn(
-                    'flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition',
+                    'press flex-1 rounded-2xl px-3 py-2.5 text-sm font-medium',
                     target === t.key
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-foreground hover:border-primary/40',
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-foreground hover:bg-primary/10',
                   )}
                 >
                   {t.label}
@@ -309,7 +309,7 @@ export function CreateTaskModal({ open, onClose }: Props) {
                     placeholder="Search members…"
                   />
                 </div>
-                <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
+                <div className="max-h-44 space-y-1 overflow-y-auto rounded-2xl p-1 bg-muted">
                   {filtered.length === 0 && (
                     <p className="py-3 text-center text-sm text-muted-foreground">No members found</p>
                   )}
@@ -344,7 +344,7 @@ export function CreateTaskModal({ open, onClose }: Props) {
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+              className="rounded-2xl bg-muted px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
             >
               Cancel
             </button>

@@ -21,13 +21,13 @@ export function PointsLeaderboardCard() {
   const meOutsideTop = data?.me && !data.items.some((r) => r.user_id === data.me?.user_id)
 
   return (
-    <Card className="border-primary/20">
+    <Card>
       <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-ds-h3">
           <Trophy className="size-4 text-primary" aria-hidden />
           Leaderboard
         </CardTitle>
-        <div className="flex rounded-full border border-border bg-muted/40 p-0.5" role="tablist" aria-label="Leaderboard period">
+        <div className="flex rounded-full bg-muted p-0.5" role="tablist" aria-label="Leaderboard period">
           {(Object.keys(PERIOD_LABELS) as MpPeriod[]).map((p) => (
             <button
               key={p}

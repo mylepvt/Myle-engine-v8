@@ -75,7 +75,7 @@ export function PipelineByStageChart({
                 </span>
               </div>
               <div
-                className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-muted/70 ring-1 ring-inset ring-border/40"
+                className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted"
                 aria-hidden
               >
                 <div

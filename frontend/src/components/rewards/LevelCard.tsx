@@ -13,7 +13,7 @@ export function LevelCard() {
 
   if (rewards.isPending) {
     return (
-      <Card className="border-primary/20">
+      <Card>
         <CardContent className="pt-5 pb-5">
           <Skeleton className="mb-2 h-5 w-24" />
           <Skeleton className="mb-2 h-2 w-full" />
@@ -34,12 +34,12 @@ export function LevelCard() {
   const streakSaved = Boolean(work.data?.streak_done_today)
 
   return (
-    <Card className="border-primary/20">
+    <Card>
       <CardContent className="space-y-3 pt-5 pb-5">
         <div className="flex items-center justify-between gap-3">
           <span
             className={cn(
-              'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-ds-label font-semibold',
+              'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-ds-label font-semibold',
               colors.bg, colors.text, colors.border,
             )}
           >
@@ -59,7 +59,7 @@ export function LevelCard() {
             </span>
             <span className="tabular-nums">{progressPct}%</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-warning transition-all duration-500"
               style={{ width: `${progressPct}%` }}
@@ -73,7 +73,7 @@ export function LevelCard() {
         </div>
 
         {target > 0 ? (
-          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
+          <div className="rounded-2xl bg-warning/10 px-3 py-2">
             <div className="flex items-center justify-between gap-2 text-ds-body">
               <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
                 <Flame

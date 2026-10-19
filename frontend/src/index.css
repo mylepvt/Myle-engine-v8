@@ -538,6 +538,15 @@
      whole page every frame; now it leaves the flow when closed, and
      DashboardLayout glides the content column across with a FLIP. */
   @media (min-width: 768px) {
+    /* Nothing scrolls behind the desktop sidebar, so a live backdrop blur buys
+       nothing there but still costs a second blur layer next to the header on
+       every scroll frame (measured: about 4ms a frame with the CPU throttled 4x).
+       The denser glass fill alone reads the same over the static backdrop. */
+    .dashboard-sidebar-panel.glass {
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
     .dashboard-sidebar-panel {
       transition:
         transform var(--spring-default-duration) var(--spring-default),
@@ -772,6 +781,10 @@
     color: var(--foreground);
     background: var(--control-bg);
     box-shadow: 0 1px 3px rgba(17, 17, 40, 0.12);
+  }
+  /* Beats the icon's own muted / group-hover colour utilities. */
+  .nav-link.nav-link--active > svg:first-child {
+    color: var(--primary);
   }
 
   /* Respond on press, not release: shrink the instant a finger lands

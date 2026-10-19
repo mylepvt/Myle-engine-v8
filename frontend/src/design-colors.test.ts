@@ -23,7 +23,6 @@ const OPACITY = /(?<![\w-])(?:[a-z]+:)*(?:bg|text|border(?:-[trblxy])?|from|to|v
 const PALE_TEXT = /(?<![\w:/[-])text-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300)\b/g
 /** Files whose pale text sits on a fixed dark surface (prospect rooms, dark hero, debug overlays). */
 const ALWAYS_DARK = new Set([
-  'components/dashboard/TeamDashboardHomeModern.tsx',
   'components/layout/DashboardLayout.tsx',
   'components/watch/InAppVideoPlayer.tsx',
   'pages/BatchWatchPage.tsx',

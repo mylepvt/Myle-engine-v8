@@ -113,7 +113,7 @@ function LeaderGroups({ members, target }: { members: ControlRoomMember[]; targe
       return next
     })
   return (
-    <ul className="divide-y divide-border/60 rounded-xl border border-border/60">
+    <ul className="surface-inset divide-y divide-border/60 overflow-hidden rounded-2xl">
       {groups.map((g) => {
         const isOpen = open.has(g.key)
         return (
@@ -258,10 +258,10 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
                   aria-pressed={filter === s}
                   onClick={() => toggle(s)}
                   className={cn(
-                    'flex h-8 items-center gap-1.5 rounded-full border px-3 text-ds-caption font-medium transition-colors',
+                    'press flex h-8 items-center gap-1.5 rounded-full px-3 text-ds-caption font-medium',
                     filter === s
-                      ? 'border-foreground/30 bg-foreground/10 text-foreground'
-                      : 'border-border text-muted-foreground hover:text-foreground',
+                      ? 'control-pill'
+                      : 'bg-muted text-muted-foreground hover:text-foreground',
                   )}
                 >
                   <span className={cn('size-1.5 rounded-full', STATUS[s].dot)} aria-hidden />
@@ -274,10 +274,10 @@ export function ControlRoomCard({ groupByLeader = false }: { groupByLeader?: boo
                 aria-pressed={filter === 'no_leads'}
                 onClick={() => toggle('no_leads')}
                 className={cn(
-                  'flex h-8 items-center gap-1.5 rounded-full border px-3 text-ds-caption font-medium transition-colors',
+                  'press flex h-8 items-center gap-1.5 rounded-full px-3 text-ds-caption font-medium',
                   filter === 'no_leads'
-                    ? 'border-foreground/30 bg-foreground/10 text-foreground'
-                    : 'border-border text-muted-foreground hover:text-foreground',
+                    ? 'control-pill'
+                    : 'bg-muted text-muted-foreground hover:text-foreground',
                 )}
               >
                 No leads <span className="tabular-nums text-foreground">{data.no_leads}</span>

@@ -22,7 +22,7 @@ export function SaveContactButton({ leadId, hasPhone }: { leadId: number; hasPho
             .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Could not open the contact'))
             .finally(() => setBusy(false))
         }}
-        className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 text-ds-caption font-semibold text-foreground transition hover:bg-muted/60 disabled:opacity-50"
+        className="flex h-8 w-full items-center justify-center gap-1.5 rounded-2xl bg-muted text-ds-caption font-semibold text-foreground transition hover:bg-muted/60 disabled:opacity-50"
       >
         <ContactRound className="h-3.5 w-3.5" aria-hidden />
         {busy ? 'Opening…' : 'Save contact to phone'}

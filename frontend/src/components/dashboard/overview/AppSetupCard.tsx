@@ -44,7 +44,7 @@ function PushRunsToday() {
   const ran = data.jobs.filter((j) => j.ran).length
   const failed = data.jobs.filter((j) => j.error).length
   return (
-    <div className="rounded-xl border border-border/60">
+    <div className="rounded-2xl bg-muted">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

@@ -39,6 +39,7 @@ import { usePingLoginMutation } from '@/hooks/use-xp-query'
 import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePanel'
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 import { cn, firstNameOf } from '@/lib/utils'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
@@ -130,10 +131,10 @@ function Day1PipelineRow({
                   disabled={patching}
                   onClick={() => onPatch(lead.id, { [slot]: !checked })}
                   className={cn(
-                    'flex items-center gap-1 rounded-full border px-2 py-0.5 text-ds-micro font-medium transition disabled:opacity-50',
+                    'flex items-center gap-1 rounded-full px-2 py-0.5 text-ds-micro font-medium transition disabled:opacity-50',
                     checked
-                      ? 'border-success/40 bg-success/12 text-success-ink dark:border-success/40 dark:bg-success/12'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                      ? 'bg-success/12 text-success-ink'
+                      : 'bg-muted text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {checked ? <CheckCircle2 className="size-3" /> : <Circle className="size-3" />}
@@ -222,11 +223,7 @@ export function DashboardHomePage() {
 
   return (
     <div className={cn('mx-auto space-y-4 md:space-y-6', role === 'leader' ? 'max-w-7xl' : 'max-w-6xl')}>
-      <div className="flex items-center gap-2 px-0.5">
-        <h1 className="text-ds-h2 font-semibold tracking-tight text-foreground">
-          Welcome back, {firstName}
-        </h1>
-      </div>
+      <DashboardGreeting firstName={firstName} />
 
       {role === 'leader' ? <ClosingReadyCard /> : null}
       {role === 'leader' ? <ControlRoomCard /> : null}

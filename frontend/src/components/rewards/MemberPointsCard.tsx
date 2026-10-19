@@ -110,10 +110,10 @@ export function MemberPointsCard() {
               aria-pressed={period === p.key}
               onClick={() => setPeriod(p.key)}
               className={cn(
-                'h-8 rounded-full border px-3 text-ds-caption font-medium transition-colors',
+                'press h-8 rounded-full px-3 text-ds-caption font-medium',
                 period === p.key
-                  ? 'border-foreground/30 bg-foreground/10 text-foreground'
-                  : 'border-border text-muted-foreground hover:text-foreground',
+                  ? 'control-pill'
+                  : 'bg-muted text-muted-foreground hover:text-foreground',
               )}
             >
               {p.label}

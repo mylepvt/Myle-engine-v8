@@ -35,7 +35,7 @@ function LeaderCard({ leader, rank }: { leader: LeaderHealthItem; rank: number }
   const color = avatarColor(leader.leader_name)
   const isOnline = leader.presence_status === 'online'
   return (
-    <div className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03] p-3 text-center">
+    <div className="flex min-w-[100px] flex-1 flex-col items-center gap-2 overflow-hidden rounded-2xl bg-muted p-3 text-center">
       {/* Rank badge */}
       <div
         className="flex size-5 items-center justify-center rounded-full text-ds-micro font-bold text-white shadow"
@@ -226,7 +226,7 @@ export function PeopleOpsPanel() {
   const topLeaders = leaders.slice(0, 5)
 
   return (
-    <div className="flex flex-col gap-0 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-card">
+    <div className="card flex flex-col gap-0 overflow-hidden">
       {/* Section header */}
       <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] px-4 py-3">
         <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -245,7 +245,7 @@ export function PeopleOpsPanel() {
         <div className="flex gap-2 overflow-x-auto scroll-px-1 pb-1">
           {topLeaders.length === 0 &&
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded border border-border dark:border-white/[0.06] bg-foreground/10 py-12" />
+              <div key={i} className="min-w-[100px] flex-1 animate-pulse rounded-2xl bg-muted py-12" />
             ))}
           {topLeaders.map((leader, i) => (
             <LeaderCard key={leader.leader_id} leader={leader} rank={i + 1} />

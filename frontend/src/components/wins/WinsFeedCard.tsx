@@ -33,10 +33,10 @@ function WinRow({ win }: { win: TeamWin }) {
         aria-pressed={win.cheered_by_me}
         aria-label={win.cheered_by_me ? 'Remove cheer' : 'Cheer this win'}
         className={cn(
-          'flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-ds-caption font-semibold transition-all active:scale-90',
+          'flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-ds-caption font-semibold transition-all active:scale-90',
           win.cheered_by_me
-            ? 'border-primary/40 bg-primary/15 text-primary'
-            : 'border-border text-muted-foreground hover:text-foreground',
+            ? 'bg-primary/15 text-primary'
+            : 'bg-muted text-muted-foreground hover:text-foreground',
         )}
       >
         <HandHeart className={cn('size-3.5', win.cheered_by_me && 'fill-current')} aria-hidden />
@@ -51,7 +51,7 @@ export function WinsFeedCard() {
   const { data, isPending, isError } = useWinsQuery()
   const items = data?.items.slice(0, 8) ?? []
   return (
-    <Card className="border-primary/20">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-ds-h3">
           <PartyPopper className="size-4 text-primary" aria-hidden />

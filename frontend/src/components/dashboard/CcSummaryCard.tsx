@@ -36,7 +36,7 @@ function inr2(cents: number): string {
 /** One KPI tile. */
 function Kpi({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
+    <div className="rounded-2xl bg-muted px-3 py-2">
       <p className={cn('text-lg font-bold', accent ? 'text-success-ink' : 'text-foreground')}>{value}</p>
       <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>
@@ -46,9 +46,9 @@ function Kpi({ value, label, accent }: { value: string; label: string; accent?: 
 /** Approx-cheque hero block (personal, 25% of net). */
 function ChequeHero({ cents, subtitle }: { cents: number; subtitle: string }) {
   return (
-    <div className="rounded-xl border border-success/25 bg-success/[0.06] px-4 py-3">
+    <div className="rounded-2xl bg-success/10 px-4 py-3">
       <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Your cheque (approx)</p>
-      <p className="bg-gradient-to-r from-success to-success dark:from-success/30 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
+      <p className="text-3xl font-semibold tracking-tight tabular-nums text-success-ink">
         {inr2(cents)}
       </p>
       <p className="text-ds-micro text-muted-foreground">{subtitle}</p>
@@ -82,7 +82,7 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
               aria-expanded={open}
             >
               <span className="w-20 shrink-0 truncate text-xs text-foreground">{name}</span>
-              <span className="relative h-3.5 flex-1 overflow-hidden rounded border border-border/60 bg-background/60">
+              <span className="relative h-3.5 flex-1 overflow-hidden rounded-full bg-muted">
                 <span
                   className="absolute inset-y-0 left-0 rounded bg-gradient-to-r from-success to-success"
                   style={{ width: `${pct}%` }}
@@ -93,7 +93,7 @@ function TopEarners({ rows }: { rows: SaleDashboardRow[] }) {
               </span>
             </button>
             {open ? (
-              <div className="ml-0 sm:ml-[5.5rem] mb-1 grid grid-cols-3 gap-2 rounded-md border border-border/50 bg-background/50 px-3 py-2 text-xs">
+              <div className="ml-0 sm:ml-[5.5rem] mb-1 grid grid-cols-3 gap-2 rounded-2xl bg-muted px-3 py-2 text-xs">
                 <div>
                   <p className="font-semibold text-success-ink">{cc.toFixed(3)}</p>
                   <p className="text-ds-micro text-muted-foreground">CC</p>
@@ -130,7 +130,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
     <div className={cn('surface-elevated space-y-3 p-4', className)}>
       <div className="flex items-center justify-between">
         <p className="text-ds-label uppercase text-muted-foreground">Case Credits &amp; Cheque</p>
-        <div className="flex rounded-full border border-border bg-muted/40 p-0.5" role="tablist" aria-label="CC period">
+        <div className="flex rounded-full bg-muted p-0.5" role="tablist" aria-label="CC period">
           {(['today', 'all'] as const).map((p) => (
             <button
               key={p}
@@ -164,7 +164,7 @@ export function CcSummaryCard({ enabled = true, className }: Props) {
           />
 
           {isTeamView ? (
-            <div className="flex items-baseline justify-between rounded-lg border border-border/50 bg-background/40 px-3 py-2">
+            <div className="flex items-baseline justify-between rounded-2xl bg-muted px-3 py-2">
               <span className="text-ds-micro uppercase tracking-wide text-muted-foreground">
                 {data.scope === 'all' ? 'All-teams cheque total' : 'Team cheque total'}
               </span>

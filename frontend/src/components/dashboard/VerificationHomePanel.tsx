@@ -50,7 +50,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
   const badge = STATUS_BADGE[task.status] ?? { label: task.status, className: '' }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-3">
+    <div className="flex flex-col gap-2 rounded-2xl bg-muted p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium leading-tight">{task.task_title ?? `Task #${task.verification_task_id}`}</p>
@@ -118,7 +118,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
       {showSubmit && (
         <div className="flex flex-col gap-2">
           <textarea
-            className="min-h-[60px] w-full resize-none rounded border p-2 text-xs"
+            className="input-base min-h-[60px] w-full resize-none p-2 text-xs"
             placeholder="Enter your evidence..."
             value={evidenceText}
             onChange={e => setEvidenceText(e.target.value)}
@@ -140,7 +140,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
       {showBlock && (
         <div className="flex flex-col gap-2">
           <NativeSelect
-            className="rounded border p-2 text-xs"
+            className="input-base p-2 text-xs"
             value={blockerReason}
             onChange={e => setBlockerReason(e.target.value)}
           >
@@ -150,7 +150,7 @@ function TaskCard({ task }: { task: TaskAssignmentPublic }) {
             ))}
           </NativeSelect>
           <textarea
-            className="min-h-[50px] w-full resize-none rounded border p-2 text-xs"
+            className="input-base min-h-[50px] w-full resize-none p-2 text-xs"
             placeholder="Additional notes..."
             value={blockerNotes}
             onChange={e => setBlockerNotes(e.target.value)}
