@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { m } from 'motion/react'
@@ -39,10 +38,6 @@ export function DashboardSidebar({
   const envLabel = meta?.environment
   const location = useLocation()
   const navigate = useNavigate()
-  // The row a click is heading to. The route only commits once the next page has
-  // rendered, so the pill moves on the click instead of waiting for it.
-  const [pending, setPending] = useState<{ to: string; fromPath: string } | null>(null)
-  const pendingTo = pending && pending.fromPath === location.pathname ? pending.to : null
   const { panelRef: drawerRef, x: drawerX, scrimOpacity, handlers: drawerHandlers } = useDrawerGesture({
     enabled: isMobile,
     open: mobileMenuOpen,
@@ -129,7 +124,6 @@ export function DashboardSidebar({
                             if (isMobile) setMobileMenuOpen(false)
                             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
                             e.preventDefault()
-                            setPending({ to, fromPath: location.pathname })
                             if (isMobile) {
                               // The open drawer owns a Back placeholder entry, which closing it
                               // drops with history.back() a tick later. Navigate now, replacing
@@ -141,28 +135,31 @@ export function DashboardSidebar({
                               navigate(to, { replace: onPlaceholder || to === location.pathname })
                               return
                             }
-                            // Desktop: paint the row's answer first, then render the next page.
+                            // Desktop: move the pill on the click, then render the next page after
+                            // that paints. The pill moves by swapping one class on two rows, not
+                            // through React state: re-rendering every row on the click cost a
+                            // long task (~60ms on a slow CPU) that held back that very paint.
+                            // React sets the same class itself once the route commits.
+                            const row = e.currentTarget
+                            for (const el of row.closest('nav')?.querySelectorAll('.nav-link--active') ?? []) {
+                              el.classList.remove('nav-link--active')
+                            }
+                            row.classList.add('nav-link--active')
                             // Same page: replace, as <Link> does, so history gains no duplicate.
                             afterNextPaint(() => navigate(to, { replace: to === location.pathname }))
                           }}
                           className={({ isActive }) =>
                             cn(
                               'nav-link group flex min-h-10 items-center gap-2.5 px-3 py-2 text-sm',
-                              (pendingTo ? pendingTo === to : isActive) && 'nav-link--active',
+                              isActive && 'nav-link--active',
                             )
                           }
                         >
-                          {({ isActive: routeActive }) => {
-                            const isActive = pendingTo ? pendingTo === to : routeActive
-                            return (
-                            <>
+                          {/* The active row's icon turns primary via .nav-link--active in CSS,
+                              so the click-time class swap recolours it too. */}
+                          <>
                               <Icon
-                                className={cn(
-                                  'size-4 shrink-0 transition-colors duration-100',
-                                  isActive
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground group-hover:text-foreground',
-                                )}
+                                className="size-4 shrink-0 text-muted-foreground transition-colors duration-100 group-hover:text-foreground"
                                 aria-hidden
                               />
                               <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -176,9 +173,7 @@ export function DashboardSidebar({
                                   {pendingEnrollCount > 99 ? '99+' : pendingEnrollCount}
                                 </span>
                               ) : null}
-                            </>
-                            )
-                          }}
+                          </>
                         </NavLink>
                       </li>
                     )

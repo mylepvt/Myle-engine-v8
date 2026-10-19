@@ -782,6 +782,10 @@
     background: var(--control-bg);
     box-shadow: 0 1px 3px rgba(17, 17, 40, 0.12);
   }
+  /* Beats the icon's own muted / group-hover colour utilities. */
+  .nav-link.nav-link--active > svg:first-child {
+    color: var(--primary);
+  }
 
   /* Respond on press, not release: shrink the instant a finger lands
      (100ms), then spring back on release. */
