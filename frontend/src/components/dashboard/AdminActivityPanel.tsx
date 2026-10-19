@@ -191,7 +191,7 @@ function ActivityItem({ entry }: { entry: AdminActivityEntry }) {
   return (
     <Link
       to={activityLink(entry)}
-      className={`flex items-start gap-2.5 rounded-lg border-l-[3px] px-3 py-2.5 no-underline transition-all animate-in fade-in slide-in-from-left-2 duration-300 hover:brightness-110 active:brightness-125 cursor-pointer ${c.bg} ${c.border}`}
+      className={`press flex items-start gap-2.5 rounded-2xl px-3 py-2.5 no-underline animate-in fade-in slide-in-from-left-2 duration-300 cursor-pointer ${c.bg}`}
     >
       {/* colored icon pill */}
       <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-ds-micro font-bold ${c.pill} ${c.pillText}`}>
@@ -293,7 +293,7 @@ export function AdminActivityPanel() {
             placeholder="Search activity..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-input/60 bg-muted/20 pl-7 pr-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground focus:border-primary/40 focus:bg-muted/30"
+            className="input-base w-full rounded-full py-1.5 pl-7 pr-2 text-xs"
           />
           {search && (
             <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">

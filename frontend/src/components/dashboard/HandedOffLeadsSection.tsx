@@ -29,7 +29,7 @@ function LeadProgressCard({ lead }: { lead: LeadPublic }) {
   const isConverted = lead.status === 'converted'
 
   return (
-    <Card className="border-border/70 bg-card/95">
+    <Card>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -92,7 +92,7 @@ export function HandedOffLeadsSection({ leads, pending }: Props) {
         </p>
       </div>
       {pending && leads.length === 0 ? (
-        <Card className="border-border/70 bg-card/95">
+        <Card>
           <CardContent className="text-sm text-muted-foreground">Loading…</CardContent>
         </Card>
       ) : (

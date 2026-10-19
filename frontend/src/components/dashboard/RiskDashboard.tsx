@@ -32,7 +32,7 @@ function SignalPill({ signal: s }: { signal: { label: string; value: number } })
                s.value >= 40 ? 'text-warning-ink bg-warning/10 border-warning/20' :
                'text-success-ink bg-success/10 border-success/20'
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-ds-caption font-medium', color)}>
+    <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-ds-caption font-medium', color)}>
       {s.label}
     </span>
   )
@@ -40,7 +40,7 @@ function SignalPill({ signal: s }: { signal: { label: string; value: number } })
 
 function StatCard({ label, value, icon, color }: { label: string; value: number | string; icon: React.ReactNode; color: string }) {
   return (
-    <div className={cn('flex items-center gap-3 rounded-xl border p-3', color)}>
+    <div className={cn('flex items-center gap-3 rounded-2xl p-3', color)}>
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background/80">
         {icon}
       </div>

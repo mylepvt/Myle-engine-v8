@@ -11,7 +11,7 @@ import { useEosHealth } from '@/hooks/use-eos-health-query'
 
 function MetricBox({ label, value, icon, color, suffix }: { label: string; value: string | number; icon: React.ReactNode; color: string; suffix?: string }) {
   return (
-    <div className={cn('flex items-center gap-3 rounded-xl border p-3', color)}>
+    <div className={cn('flex items-center gap-3 rounded-2xl p-3', color)}>
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background/70">{icon}</div>
       <div>
         <p className="text-2xl font-bold leading-none tabular-nums">{value}{suffix}</p>
@@ -85,11 +85,11 @@ export function ExecutiveDashboard() {
       {/* ── EOS HEALTH BANNER ─────────────────────────────────────────── */}
       {eos.data && (
         <div className={cn(
-          'rounded-xl border-2 p-4 flex items-center gap-5',
-          eos.data.band === 'excellent' ? 'border-success/30 bg-success/50' :
-          eos.data.band === 'good' ? 'border-info/30 bg-info/50' :
-          eos.data.band === 'fair' ? 'border-warning/30 bg-warning/50' :
-          'border-destructive/30 bg-destructive/50'
+          'rounded-card p-4 flex items-center gap-5',
+          eos.data.band === 'excellent' ? 'bg-success/15' :
+          eos.data.band === 'good' ? 'bg-info/15' :
+          eos.data.band === 'fair' ? 'bg-warning/15' :
+          'bg-destructive/15'
         )}>
           <Gauge value={Math.round(eos.data.health_score)} label="EOS Health" size={100} />
           <div className="flex-1 min-w-0">

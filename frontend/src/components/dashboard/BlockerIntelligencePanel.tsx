@@ -13,7 +13,7 @@ function BlockerBar({ label, pct, count, color }: { label: string; pct: number; 
         <span className="font-medium text-foreground">{label}</span>
         <span className="text-muted-foreground">{count} ({pct}%)</span>
       </div>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -98,7 +98,7 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
 
         {/* Suggestion */}
         {data.biggest_blocker && (
-          <div className="mt-4 rounded-lg border border-warning/20 bg-warning/60 p-3">
+          <div className="mt-4 rounded-2xl bg-warning/60 p-3">
             <div className="flex items-start gap-2">
               <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning-ink" />
               <div>

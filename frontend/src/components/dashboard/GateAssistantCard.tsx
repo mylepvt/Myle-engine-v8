@@ -18,17 +18,6 @@ type Props = {
   sessionReady: boolean
 }
 
-function riskStyles(level: 'green' | 'yellow' | 'red') {
-  switch (level) {
-    case 'red':
-      return 'border-l-destructive bg-destructive/[0.06]'
-    case 'yellow':
-      return 'border-l-warning bg-warning/[0.06]'
-    default:
-      return 'border-l-success bg-success/[0.05]'
-  }
-}
-
 function riskLabel(level: 'green' | 'yellow' | 'red') {
   switch (level) {
     case 'red':
@@ -85,7 +74,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
 
   if (isPending) {
     return (
-      <Card className="border-primary/20">
+      <Card>
         <CardHeader>
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-3 w-full max-w-md" />
@@ -99,7 +88,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
 
   if (isError || !data) {
     return (
-      <Card className="border-destructive/30">
+      <Card>
         <CardHeader>
           <CardTitle className="text-ds-h3">Gate Assistant</CardTitle>
           <CardDescription className="text-destructive" role="alert">
@@ -208,12 +197,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
   }
 
   return (
-    <Card
-      className={cn(
-        'overflow-hidden border border-border/80 border-l-4 shadow-sm',
-        riskStyles(data.risk_level),
-      )}
-    >
+    <Card className="overflow-hidden">
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -222,10 +206,11 @@ export function GateAssistantCard({ sessionReady }: Props) {
           </div>
           <span
             className={cn(
-              'rounded-full border px-2.5 py-0.5 text-ds-caption font-semibold',
-              data.risk_level === 'red' && 'border-destructive/40 text-destructive',
-              data.risk_level === 'yellow' && 'border-warning/50 text-warning',
-              data.risk_level === 'green' && 'border-success/40 text-success',
+              // The risk reads from this pill; Myle cards carry no accent border.
+              'rounded-full px-2.5 py-0.5 text-ds-caption font-semibold',
+              data.risk_level === 'red' && 'bg-destructive/15 text-destructive-ink',
+              data.risk_level === 'yellow' && 'bg-warning/15 text-warning-ink',
+              data.risk_level === 'green' && 'bg-success/15 text-success-ink',
             )}
           >
             {riskLabel(data.risk_level)}
@@ -246,7 +231,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
                 {data.progress_done} / {data.progress_total}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted/60">
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-primary transition-[width]"
                 style={{ width: `${pct}%` }}
@@ -287,7 +272,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
           data.calls_short_streak > 0 ||
           data.missing_report_streak > 0 ||
           disciplineDate) ? (
-          <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm">
+          <div className="rounded-2xl bg-muted px-3 py-2 text-sm">
             <p className="font-medium text-foreground">
               {data.compliance_title ?? 'Discipline status'}
             </p>
@@ -304,7 +289,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
         ) : null}
 
         {showEarlyEndPrompt ? (
-          <div className="rounded-lg border border-warning/40 bg-warning/60 px-3 py-3 text-sm">
+          <div className="rounded-2xl bg-warning/60 px-3 py-3 text-sm">
             <p className="font-semibold text-warning-ink">
               You're working during grace
             </p>
@@ -342,7 +327,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
         ) : null}
 
         {data.role !== 'admin' ? (
-          <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm">
+          <div className="rounded-2xl bg-muted px-3 py-2 text-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="font-medium text-foreground">
@@ -482,7 +467,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
           ) : null}
         </div>
 
-        <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm">
+        <div className="rounded-2xl bg-muted px-3 py-2 text-sm">
           <p className="font-medium text-foreground">{data.next_action}</p>
           {summaryBits.length > 0 ? (
             <p className="mt-1 text-ds-caption text-muted-foreground">{summaryBits.join(' · ')}</p>

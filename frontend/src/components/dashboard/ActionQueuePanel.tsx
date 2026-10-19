@@ -45,7 +45,7 @@ function QueueRow({ item }: { item: ActionQueueItem }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 rounded-2xl bg-muted p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className={cn('rounded-full px-2 py-0.5 text-ds-micro font-bold', severityClasses(item.severity))}>
@@ -97,7 +97,7 @@ function SummaryView({ items }: { items: ActionQueueItem[] }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {Object.entries(groups).map(([type, g]) => (
-        <div key={type} className="rounded-lg border border-border/60 bg-card/50 p-3 text-center">
+        <div key={type} className="rounded-2xl bg-muted p-3 text-center">
           <p className={cn('text-lg font-bold', severityClasses(g.avgSeverity))}>{g.count}</p>
           <p className="mt-0.5 text-ds-micro text-muted-foreground">{TYPE_LABEL[type as ActionQueueItem['item_type']] ?? type}</p>
         </div>

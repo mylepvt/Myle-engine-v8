@@ -22,7 +22,7 @@ function PowerHourForm({ initial }: { initial: { enabled: boolean; start: string
   const dirty = cfg.enabled !== initial.enabled || cfg.start !== initial.start || cfg.end !== initial.end
 
   return (
-    <div className="rounded-xl border border-border/60 p-3">
+    <div className="rounded-2xl p-3 bg-muted">
       <div className="flex items-center gap-2">
         <Zap className="size-3.5 text-primary" aria-hidden />
         <span className="text-ds-body font-medium">Power Hour (2× points)</span>
@@ -143,7 +143,7 @@ export function AdminRewardsSettings() {
       </div>
 
       {lastSeason ? (
-        <div className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+        <div className="rounded-2xl bg-warning/10 px-3 py-2.5">
           <p className="mb-1 text-ds-caption font-semibold">
             {monthName(lastSeason.month)} winners — hand over the prizes
           </p>

@@ -62,7 +62,7 @@ export function RewardsCard() {
               winner gets it in the wallet
             </p>
 
-            <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
+            <div className="rounded-2xl bg-muted px-3 py-2.5">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-ds-caption font-semibold text-foreground">
                   <span className="text-lg font-bold tabular-nums">{data.points_today}</span> MP today
@@ -98,7 +98,7 @@ export function RewardsCard() {
             ) : null}
 
             {data.pipeline.active ? (
-              <div className="rounded-lg border border-success/30 bg-success/10 px-3 py-2.5">
+              <div className="rounded-2xl bg-success/10 px-3 py-2.5">
                 <p className="flex items-center gap-1.5 text-ds-caption font-semibold text-success-ink">
                   <TrendingUp className="size-3.5" aria-hidden />
                   Your pipeline: {rupees(data.pipeline.total_rupees)}

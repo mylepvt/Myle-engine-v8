@@ -37,7 +37,7 @@ function MissionItemRow({
 
   if (item.done) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 p-2.5">
+      <div className="flex items-center gap-2 rounded-2xl bg-success/10 p-2.5">
         <CheckCircle2 className="size-4 shrink-0 text-success" />
         <div className="min-w-0 flex-1">
           <p className="text-ds-caption font-medium text-foreground">{item.label}</p>
@@ -50,7 +50,7 @@ function MissionItemRow({
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-border/60 p-2.5">
+    <div className="space-y-2 rounded-2xl p-2.5 bg-muted">
       <div className="flex items-center justify-between gap-2">
         <p className="text-ds-caption font-medium text-foreground">{item.label}</p>
         <Badge variant="outline">{item.achieved}/{item.target}</Badge>
@@ -73,13 +73,13 @@ function MissionItemRow({
             max={item.target}
             value={achieved}
             onChange={e => setAchieved(Number(e.target.value))}
-            className="w-16 rounded border px-2 py-1 text-xs"
+            className="input-base w-16 px-2 py-1 text-xs"
           />
           <input
             placeholder="Evidence (optional)"
             value={evidence}
             onChange={e => setEvidence(e.target.value)}
-            className="min-w-0 flex-1 rounded border px-2 py-1 text-xs"
+            className="input-base min-w-0 flex-1 px-2 py-1 text-xs"
           />
           <Button
             size="sm"
@@ -137,7 +137,7 @@ export function MissionHomePanel() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-ds-caption">{completion_pct}%</span>
-          <div className="h-2 w-16 overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary transition-all"
               style={{ width: `${completion_pct}%` }}
@@ -190,9 +190,9 @@ export function MissionHomePanel() {
         </div>
 
         {showBlocker && (
-          <div className="flex flex-col gap-2 rounded-md border border-warning/30 bg-warning/5 p-3">
+          <div className="flex flex-col gap-2 rounded-2xl bg-warning/10 p-3">
             <NativeSelect
-              className="rounded border p-2 text-xs"
+              className="input-base p-2 text-xs"
               value={blockerReason}
               onChange={e => setBlockerReason(e.target.value)}
             >
@@ -202,7 +202,7 @@ export function MissionHomePanel() {
               ))}
             </NativeSelect>
             <textarea
-              className="min-h-[50px] w-full resize-none rounded border p-2 text-xs"
+              className="input-base min-h-[50px] w-full resize-none p-2 text-xs"
               placeholder="Additional notes..."
               value={blockerNotes}
               onChange={e => setBlockerNotes(e.target.value)}

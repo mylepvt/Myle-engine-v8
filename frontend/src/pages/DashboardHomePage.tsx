@@ -131,10 +131,10 @@ function Day1PipelineRow({
                   disabled={patching}
                   onClick={() => onPatch(lead.id, { [slot]: !checked })}
                   className={cn(
-                    'flex items-center gap-1 rounded-full border px-2 py-0.5 text-ds-micro font-medium transition disabled:opacity-50',
+                    'flex items-center gap-1 rounded-full px-2 py-0.5 text-ds-micro font-medium transition disabled:opacity-50',
                     checked
-                      ? 'border-success/40 bg-success/12 text-success-ink dark:border-success/40 dark:bg-success/12'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                      ? 'bg-success/12 text-success-ink'
+                      : 'bg-muted text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {checked ? <CheckCircle2 className="size-3" /> : <Circle className="size-3" />}

@@ -30,7 +30,7 @@ export function TeamHomeExecutionStrip({
   onRetry,
 }: Props) {
   return (
-    <Card className="border-primary/20">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-ds-h3">Your Min. FLP Billing funnel</CardTitle>
         <CardDescription>
@@ -60,15 +60,15 @@ export function TeamHomeExecutionStrip({
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={`today-${i}`} className="h-16 rounded" />)
               ) : (
                 <>
-                  <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-3">
+                  <div className="rounded-2xl bg-primary/10 px-3 py-3">
                     <p className="text-ds-caption text-muted-foreground">Fresh leads today</p>
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.claimed_today ?? 0}</p>
                   </div>
-                  <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-3">
+                  <div className="rounded-2xl bg-primary/10 px-3 py-3">
                     <p className="text-ds-caption text-muted-foreground">Calls today</p>
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.calls_today ?? 0}</p>
                   </div>
-                  <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-3">
+                  <div className="rounded-2xl bg-primary/10 px-3 py-3">
                     <p className="text-ds-caption text-muted-foreground">Min. FLP Billed today</p>
                     <p className="mt-1 font-heading text-xl font-semibold tabular-nums">{todayStats?.flp_min_billing_today ?? 0}</p>
                   </div>
@@ -76,21 +76,21 @@ export function TeamHomeExecutionStrip({
               )}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded border border-border dark:border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded-2xl bg-muted px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Claimed (active)</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.claimed}</p>
               </div>
-              <div className="rounded border border-border dark:border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded-2xl bg-muted px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Video reached</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.video_reached}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_video_vs_claimed)} of claimed</p>
               </div>
-              <div className="rounded border border-border dark:border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded-2xl bg-muted px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Proof pending</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.proof_pending}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_proof_vs_video)} of video</p>
               </div>
-              <div className="rounded border border-border dark:border-white/10 bg-muted/40 px-3 py-3">
+              <div className="rounded-2xl bg-muted px-3 py-3">
                 <p className="text-ds-caption text-muted-foreground">Min. FLP Billing</p>
                 <p className="mt-1 font-heading text-2xl font-semibold tabular-nums">{data.paid_flp}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{pct(data.pct_flp_min_billing_vs_claimed)} of claimed</p>

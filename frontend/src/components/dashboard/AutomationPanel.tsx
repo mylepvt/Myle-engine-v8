@@ -55,7 +55,7 @@ export function AutomationPanel({ className }: { className?: string }) {
       </div>
 
       {evaluate.data && (
-        <div className="rounded-lg border border-success/20 bg-success/60 p-3">
+        <div className="rounded-2xl bg-success/60 p-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="size-4 text-success-ink" />
             <p className="text-xs font-semibold text-success-ink">
@@ -92,8 +92,8 @@ export function AutomationPanel({ className }: { className?: string }) {
                 <div
                   key={rule.id}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg border px-3 py-2.5 transition',
-                    rule.is_active ? 'border-border/60' : 'border-border/30 opacity-60',
+                    'flex items-center gap-3 rounded-2xl px-3 py-2.5 transition',
+                    rule.is_active ? 'bg-muted' : 'bg-muted opacity-60',
                   )}
                 >
                   <div className="flex-1 min-w-0">

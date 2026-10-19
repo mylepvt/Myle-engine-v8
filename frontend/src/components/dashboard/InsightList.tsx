@@ -13,14 +13,14 @@ export function InsightList({ items }: { items: Record<string, unknown>[] }) {
       {items.map((row, i) => (
         <li
           key={i}
-          className="rounded border border-border/70 bg-muted/15 px-4 py-3 text-sm"
+          className="rounded-2xl bg-muted px-4 py-3 text-sm"
         >
           {typeof row.title === 'string' ? (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium text-foreground">{row.title}</p>
                 {typeof row.severity === 'string' ? (
-                  <span className="rounded border border-border px-1.5 py-0.5 text-ds-caption uppercase text-muted-foreground">
+                  <span className="rounded-full px-1.5 py-0.5 text-ds-caption uppercase text-muted-foreground bg-muted">
                     {row.severity}
                   </span>
                 ) : null}

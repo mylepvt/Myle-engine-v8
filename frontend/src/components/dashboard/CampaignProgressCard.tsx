@@ -21,7 +21,7 @@ function CampaignProgressRow({
 
   if (isDone) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/5 p-2">
+      <div className="flex items-center gap-2 rounded-2xl bg-success/10 p-2">
         <CheckCircle2 className="size-3.5 shrink-0 text-success" />
         <span className="text-ds-caption font-medium">{item.label}</span>
         <Badge className="ml-auto text-ds-micro" variant="success">Done</Badge>
@@ -30,7 +30,7 @@ function CampaignProgressRow({
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border border-border/40 p-2">
+    <div className="flex items-center justify-between gap-2 rounded-2xl p-2 bg-muted">
       <div className="min-w-0 flex-1">
         <p className="text-ds-caption font-medium">{item.label}</p>
         <p className="text-ds-micro text-muted-foreground">{item.achieved}/{item.target}</p>

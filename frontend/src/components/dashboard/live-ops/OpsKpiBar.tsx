@@ -25,9 +25,9 @@ function KpiCard({
   clickable?: boolean
 }) {
   const base = cn(
-    'flex flex-col gap-2 rounded border px-4 py-3 transition-all duration-150',
-    urgent ? 'border-warning/20 bg-warning/[0.06]' : 'border-border dark:border-white/[0.06] bg-muted/20 dark:bg-white/[0.03]',
-    clickable && 'cursor-pointer hover:border-foreground/10 dark:hover:border-white/20 hover:brightness-110 active:brightness-125',
+    'flex flex-col gap-2 rounded-2xl px-4 py-3 transition-colors duration-150',
+    urgent ? 'bg-warning/10' : 'bg-muted',
+    clickable && 'press cursor-pointer',
   )
   const inner = (
     <>
@@ -130,7 +130,7 @@ function PopoverCard({
     <div ref={ref} className="relative">
       <KpiCard label={label} value={value} sub={sub} icon={icon} urgent={urgent} clickable onClick={() => setOpen((v) => !v)} />
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-72 rounded border border-border/60 bg-card shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-72 glass-pop pop-enter rounded-2xl">
           {children}
         </div>
       )}
@@ -212,7 +212,7 @@ function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded border border-warning/20 bg-warning/[0.05] px-3 py-1.5 text-ds-micro font-semibold text-warning-ink transition-colors hover:bg-warning/[0.1]"
+        className="flex items-center gap-1.5 rounded-2xl bg-warning/10 px-3 py-1.5 text-ds-micro font-semibold text-warning-ink transition-colors hover:bg-warning/[0.1]"
       >
         <span className="relative flex size-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning dark:bg-warning opacity-60" />
@@ -221,7 +221,7 @@ function ZeroActivityInline({ users }: { users: ZeroActivityItem[] }) {
         {users.length} online · no work today
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded border border-border/60 bg-card shadow-xl">
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-64 glass-pop pop-enter rounded-2xl">
           <div className="max-h-56 overflow-y-auto">
             <p className="px-3 pb-1 pt-2 text-ds-micro font-semibold uppercase tracking-wide text-warning-ink">
               Online · 0 activity today

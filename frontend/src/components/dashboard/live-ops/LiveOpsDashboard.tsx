@@ -9,7 +9,7 @@ export function LiveOpsDashboard() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
 
         {/* LEFT — Live Pipeline Funnel — 50% */}
-        <div className="min-w-0 flex-1 overflow-hidden rounded border border-border dark:border-white/[0.06] bg-card dark:bg-card">
+        <div className="card min-w-0 flex-1 overflow-hidden">
           <div className="flex items-center gap-2 border-b border-border dark:border-white/[0.04] px-4 py-3">
             <span className="relative flex size-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success dark:bg-success opacity-60" />

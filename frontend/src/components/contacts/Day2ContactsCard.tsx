@@ -106,7 +106,7 @@ function GoogleSyncSection() {
           ) : null}
 
           {g?.connected ? (
-            <div className="space-y-1 rounded-lg border border-success/30 bg-success/5 p-3 text-ds-caption">
+            <div className="space-y-1 rounded-2xl bg-success/10 p-3 text-ds-caption">
               <p className="flex items-center gap-1.5 font-semibold text-foreground">
                 <CheckCircle2 className="size-3.5 text-success-ink" aria-hidden />
                 {g.email ?? 'Google account'}
@@ -202,7 +202,7 @@ export function Day2ContactsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2">
           <ContactRound className="size-4 text-primary" aria-hidden />
           Day 2 contacts → iPhone
         </CardTitle>
