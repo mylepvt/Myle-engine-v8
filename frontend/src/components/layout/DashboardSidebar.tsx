@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
+import { m } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -7,6 +8,7 @@ import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
 import { resolveItemLabel } from '@/config/dashboard-nav'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { useDrawerGesture } from '@/hooks/use-drawer-gesture'
 import { useMetaQuery } from '@/hooks/use-meta-query'
 import type { DashboardNavSection } from '@/config/dashboard-nav'
 import { cn } from '@/lib/utils'
@@ -33,18 +35,37 @@ export function DashboardSidebar({
   const { role: shellRole, isPending: rolePending } = useDashboardShellRole()
   const { data: meta } = useMetaQuery()
   const envLabel = meta?.environment
+  const { panelRef: drawerRef, x: drawerX, scrimOpacity, handlers: drawerHandlers } = useDrawerGesture({
+    enabled: isMobile,
+    open: mobileMenuOpen,
+    onClose: () => setMobileMenuOpen(false),
+  })
 
   return (
-    <aside
+    <>
+    {isMobile ? (
+      // Dims with the drawer's position, so it fades in step with a drag.
+      <m.button
+        type="button"
+        aria-label="Close menu"
+        tabIndex={mobileMenuOpen ? 0 : -1}
+        className={cn('fixed inset-0 z-40 md:hidden', !mobileMenuOpen && 'pointer-events-none')}
+        style={{ opacity: scrimOpacity, background: 'var(--scrim)' }}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+    ) : null}
+    <m.aside
+      ref={drawerRef}
+      {...(isMobile ? drawerHandlers : {})}
+      style={isMobile ? { x: drawerX } : undefined}
+      aria-hidden={isMobile && !mobileMenuOpen ? true : undefined}
       className={cn(
         'flex h-full shrink-0 flex-col border-r border-border dashboard-sidebar overflow-y-auto',
-        'transition-[transform,width] duration-200 ease-out',
+        'transition-[width] duration-200 ease-out',
         sidebarOpen ? 'md:w-[240px]' : 'md:w-0 md:overflow-hidden md:border-0',
-        'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(240px,85vw)] max-md:pt-[env(safe-area-inset-top)]',
-        'max-md:shadow-[4px_0_24px_rgba(0,0,0,0.5)]',
-        mobileMenuOpen
-          ? 'max-md:translate-x-0'
-          : 'max-md:pointer-events-none max-md:-translate-x-full',
+        'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(240px,85vw)] max-md:touch-pan-y max-md:pt-[env(safe-area-inset-top)]',
+        'max-md:shadow-sheet',
+        !mobileMenuOpen && 'max-md:pointer-events-none',
       )}
     >
       {/* Header */}
@@ -60,7 +81,9 @@ export function DashboardSidebar({
       </div>
 
       {/* Nav */}
-      <nav aria-label="Sidebar navigation" className="scroll-ios flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 py-2">
+      {/* touch-pan-y here too: touch-action stops at the nearest scroller, so the
+          drawer's own pan-y would not stop the browser claiming a sideways drag. */}
+      <nav aria-label="Sidebar navigation" className="scroll-ios max-md:touch-pan-y flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 py-2">
         {rolePending && shellRole == null ? (
           <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -157,6 +180,7 @@ export function DashboardSidebar({
           Log out
         </Button>
       </div>
-    </aside>
+    </m.aside>
+    </>
   )
 }

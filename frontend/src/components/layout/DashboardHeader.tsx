@@ -17,7 +17,6 @@ import { roleShortLabel, type Role } from '@/types/role'
 
 type Props = {
   isMobile: boolean
-  isMainScrolled: boolean
   sidebarOpen: boolean
   mobileMenuOpen: boolean
   toggleSidebar: () => void
@@ -32,7 +31,6 @@ type Props = {
 
 export function DashboardHeader({
   isMobile,
-  isMainScrolled,
   sidebarOpen,
   mobileMenuOpen,
   toggleSidebar,
@@ -55,9 +53,7 @@ export function DashboardHeader({
   return (
     <header
       className={cn(
-        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-1 border-b border-border bg-background/96 px-2 min-[400px]:gap-2 min-[400px]:px-3 md:px-4',
-        'supports-[backdrop-filter]:bg-background/90 supports-[backdrop-filter]:backdrop-blur-sm',
-        isMainScrolled && 'dashboard-shell-header--scrolled',
+        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-1 px-2 min-[400px]:gap-2 min-[400px]:px-3 md:px-4',
       )}
     >
       {/* Left: toggle + role picker */}
