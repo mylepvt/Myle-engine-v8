@@ -83,7 +83,7 @@ export function RefundInvoiceDialog({ invoiceNumber, onClose }: { invoiceNumber:
               </button>
             ) : null}
           </div>
-          <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded border border-border p-2">
+          <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-2xl p-2 bg-muted">
             {data.lines.map((l) => (
               <li key={l.lead_id}>
                 <label className="flex min-h-9 items-center gap-2">

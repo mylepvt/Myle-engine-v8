@@ -178,7 +178,7 @@ function RechargeRow({
             value={rejectNote}
             onChange={(e) => setRejectNote(e.target.value)}
             placeholder="Reason…"
-            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full input-base px-3 py-2 text-sm"
           />
           <div className="flex gap-2">
             <Button
@@ -243,7 +243,7 @@ export function WalletRechargeAdminPage({ title }: Props) {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-2">
         {FILTER_TABS.map((tab) => {
           const count =
             tab.value === 'all'
@@ -255,10 +255,8 @@ export function WalletRechargeAdminPage({ title }: Props) {
               key={tab.value}
               type="button"
               onClick={() => setActiveTab(tab.value)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted/60 dark:hover:bg-white/[0.08] hover:text-foreground'
+              className={`press rounded-full px-3.5 py-1.5 text-sm font-medium ${
+                isActive ? 'control-pill' : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.label}
