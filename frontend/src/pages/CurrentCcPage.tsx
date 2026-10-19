@@ -32,7 +32,7 @@ function todayIsoLocal() {
 }
 
 const inputCls =
-  'w-full min-w-0 rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-2.5 py-2 text-sm text-foreground disabled:opacity-50'
+  'w-full min-w-0 input-base px-2.5 py-2 text-sm text-foreground disabled:opacity-50'
 
 const emptyPerson = (): PersonRow => ({ name: '', ccs: 0, current_state: '', next_task: '' })
 const emptyEnroll = (): EnrollmentRow => ({ name: '', fresh_lead: 0, old_lead: 0 })
@@ -311,7 +311,7 @@ export function CurrentCcPage({ title }: Props) {
             className={cn(inputCls, 'w-28 tabular-nums')}
           />
         </label>
-        <span className="rounded-lg border border-success/25 bg-success/[0.06] px-3 py-2 text-sm">
+        <span className="rounded-2xl bg-success/10 px-3 py-2 text-sm">
           Current CCs: <span className="font-bold tabular-nums text-success-ink">{closedTotalCcs.toFixed(3)}</span>
         </span>
       </div>
@@ -332,7 +332,7 @@ export function CurrentCcPage({ title }: Props) {
         </details>
       ) : null}
 
-      {sheetQ.isPending && subjectId != null ? <Skeleton className="h-40 w-full rounded" /> : null}
+      {sheetQ.isPending && subjectId != null ? <Skeleton className="h-40 w-full rounded-card" /> : null}
       {sheetQ.isError ? (
         <p className="text-sm text-destructive" role="alert">
           {sheetQ.error instanceof Error ? sheetQ.error.message : 'Failed to load'}
@@ -458,7 +458,7 @@ export function CurrentCcPage({ title }: Props) {
         {/* Save */}
         <div className="flex items-center gap-3">
           <button type="submit" disabled={disabled || subjectId == null}
-            className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]">
+            className="rounded-full bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]">
             {mut.isPending ? 'Saving…' : 'Save sheet'}
           </button>
           {mut.isSuccess ? <span className="text-sm text-success-ink">Saved.</span> : null}
@@ -471,7 +471,7 @@ export function CurrentCcPage({ title }: Props) {
       </form>
 
       {compareQ.data ? <ComparePills week={compareQ.data.week} month={compareQ.data.month} /> : null}
-      {trendsQ.isPending ? <Skeleton className="h-64 w-full rounded" /> : <GrowthTrio points={trendsQ.data?.points ?? []} />}
+      {trendsQ.isPending ? <Skeleton className="h-64 w-full rounded-card" /> : <GrowthTrio points={trendsQ.data?.points ?? []} />}
     </div>
   )
 }
@@ -608,7 +608,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
         })}
       </div>
       {match.flagged ? (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/[0.06] px-3 py-2 text-xs text-destructive-ink">
+        <p className="rounded-2xl bg-destructive/10 px-3 py-2 text-xs text-destructive-ink">
           Flagged: what you wrote is more than the system shows. Admin can see this.
         </p>
       ) : null}
@@ -618,7 +618,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
+    <div className="rounded-2xl bg-muted px-3 py-2">
       <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>{value}</p>
       <p className="text-ds-micro text-muted-foreground">{label}</p>
     </div>

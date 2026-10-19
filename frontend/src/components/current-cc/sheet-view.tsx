@@ -52,7 +52,7 @@ export function SheetView({ sheet }: { sheet: SheetPublic }) {
       {/* Top totals — same chips the member sees above the form */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Chip label="Target CCs" value={sheet.target_ccs != null ? String(sheet.target_ccs) : '—'} />
-        <span className="rounded-lg border border-success/25 bg-success/[0.06] px-3 py-2">
+        <span className="rounded-2xl bg-success/10 px-3 py-2">
           Current CCs:{' '}
           <span className="font-bold tabular-nums text-success-ink">
             {closedTotal.toFixed(3)}
@@ -260,7 +260,7 @@ function TotalChip({ label, value }: { label: string; value: number }) {
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <span className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
+    <span className="rounded-2xl bg-muted px-3 py-2">
       {label}: <span className="font-semibold tabular-nums text-foreground">{value}</span>
     </span>
   )
@@ -314,7 +314,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
         </div>
       ) : null}
       {match.flagged ? (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/[0.06] px-3 py-2 text-xs text-destructive-ink">
+        <p className="rounded-2xl bg-destructive/10 px-3 py-2 text-xs text-destructive-ink">
           Flagged: member wrote more than the system shows.
         </p>
       ) : null}
@@ -324,7 +324,7 @@ function MatchPanel({ actuals, match }: { actuals: Actuals; match: MatchInfo }) 
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2">
+    <div className="rounded-2xl bg-muted px-3 py-2">
       <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
       </p>

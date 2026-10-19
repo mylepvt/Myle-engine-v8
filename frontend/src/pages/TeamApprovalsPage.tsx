@@ -106,7 +106,7 @@ export function TeamApprovalsPage({ title }: Props) {
         q.data.items.length === 0 ? (
           <InlineEmpty>No pending registrations.</InlineEmpty>
         ) : filteredRows.length === 0 ? (
-          <div className="surface-elevated rounded border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="surface-elevated px-4 py-8 text-center text-sm text-muted-foreground">
             No pending registrations match this search.
           </div>
         ) : (

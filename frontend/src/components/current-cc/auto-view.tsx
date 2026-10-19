@@ -46,7 +46,7 @@ export type ActivityBreakdown = {
  */
 export function AutoView({ auto }: { auto: AutoReport }) {
   return (
-    <div className="surface-elevated space-y-5 border-primary/20 bg-primary/[0.03] p-4">
+    <div className="surface-elevated space-y-5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-ds-label uppercase text-muted-foreground">
           System computed <span className="text-primary">· auto from data</span>
@@ -59,7 +59,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
       </div>
 
       {auto.recruitment_low ? (
-        <p className="rounded-lg border border-warning/30 bg-warning/[0.06] px-3 py-2 text-xs text-warning-ink">
+        <p className="rounded-2xl bg-warning/10 px-3 py-2 text-xs text-warning-ink">
           Direct team chhota hai ({auto.direct_count}) — front recruitment badhane ki zarurat.
         </p>
       ) : null}
@@ -175,7 +175,7 @@ export function AutoView({ auto }: { auto: AutoReport }) {
 
 function Section({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="space-y-2 rounded-lg border border-border/40 bg-background/40 p-3">
+    <section className="space-y-2 rounded-2xl bg-muted p-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-ds-micro font-medium uppercase text-muted-foreground">{title}</h3>
         {right}
@@ -263,7 +263,7 @@ function Total({ label, value }: { label: string; value: number }) {
 
 function Chip({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <span className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+    <span className="rounded-2xl bg-muted px-2.5 py-1.5">
       {label}:{' '}
       <span className={cn('font-semibold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
@@ -274,7 +274,7 @@ function Chip({ label, value, accent }: { label: string; value: string; accent?:
 
 function Metric({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 px-2.5 py-2 text-center">
+    <div className="rounded-2xl bg-muted px-2.5 py-2 text-center">
       <p className={cn('text-lg font-bold tabular-nums', accent ? 'text-success-ink' : 'text-foreground')}>
         {value}
       </p>
