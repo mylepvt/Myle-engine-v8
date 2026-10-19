@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { useBackClose } from '@/hooks/use-back-close'
+import { Sheet } from '@/components/ui/sheet'
 
 /**
  * Styled confirmation dialog for destructive / irreversible actions.
@@ -33,74 +33,53 @@ export function ConfirmDialog({
   onCancel: () => void
 }) {
   const [typed, setTyped] = useState('')
-  useBackClose({ open, onClose: onCancel })
 
   useEffect(() => {
     if (!open) setTyped('')
   }, [open])
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onCancel])
-
-  if (!open) return null
-
   const typedOk = !requireTyped || typed.trim() === requireTyped
 
   return (
-    <div
-      className="keyboard-safe-modal fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
-      <div
-        className="keyboard-safe-sheet surface-elevated w-full max-w-sm rounded p-5 text-sm shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {description ? (
-          <p className="mt-1.5 text-ds-caption text-muted-foreground">{description}</p>
-        ) : null}
+    <Sheet open={open} onClose={onCancel} label={title} size="sm" className="p-5 text-sm">
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      {description ? (
+        <p className="mt-1.5 text-ds-caption text-muted-foreground">{description}</p>
+      ) : null}
 
-        {requireTyped ? (
-          <label className="mt-3 block">
-            <span className="mb-1 block text-ds-caption text-muted-foreground">
-              Type <span className="font-mono font-semibold text-foreground">{requireTyped}</span> to
-              confirm
-            </span>
-            <input
-              autoFocus
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              className="field-input"
-              placeholder={requireTyped}
-              aria-label={`Type ${requireTyped} to confirm`}
-            />
-          </label>
-        ) : null}
+      {requireTyped ? (
+        <label className="mt-3 block">
+          <span className="mb-1 block text-ds-caption text-muted-foreground">
+            Type <span className="font-mono font-semibold text-foreground">{requireTyped}</span> to
+            confirm
+          </span>
+          <input
+            autoFocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            className="field-input"
+            placeholder={requireTyped}
+            aria-label={`Type ${requireTyped} to confirm`}
+          />
+        </label>
+      ) : null}
 
-        <div className="mt-4 flex justify-end gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-            {cancelLabel}
-          </Button>
-          <Button
-            type="button"
-            variant={destructive ? 'destructive' : 'default'}
-            size="sm"
-            onClick={onConfirm}
-            disabled={!typedOk}
-          >
-            {confirmLabel}
-          </Button>
-        </div>
+      {/* Phones: full-width 44px thumb targets, primary on top; larger screens: compact row. */}
+      <div className="mt-5 flex flex-col-reverse gap-2 sm:mt-4 sm:flex-row sm:justify-end">
+        <Button type="button" variant="outline" size="lg" className="sm:h-8 sm:min-h-[32px] sm:px-3 sm:text-ds-caption sm:font-semibold" onClick={onCancel}>
+          {cancelLabel}
+        </Button>
+        <Button
+          type="button"
+          variant={destructive ? 'destructive' : 'default'}
+          size="lg"
+          className="sm:h-8 sm:min-h-[32px] sm:px-3 sm:text-ds-caption sm:font-semibold"
+          onClick={onConfirm}
+          disabled={!typedOk}
+        >
+          {confirmLabel}
+        </Button>
       </div>
-    </div>
+    </Sheet>
   )
 }

@@ -1,5 +1,4 @@
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useGoBack } from '@/hooks/use-go-back'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
@@ -9,6 +8,7 @@ import { ArchivedLeadCard } from '@/components/leads/ArchivedLeadCard'
 import { CtcsWorkSurface } from '@/components/leads/CtcsWorkSurface'
 import { LeadsVirtualizedBody } from '@/components/leads/LeadsVirtualizedBody'
 import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_GROUPS,
@@ -28,7 +28,6 @@ import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { teamLeadStatusSelectOptions } from '@/lib/team-lead-status'
 import type { Role } from '@/types/role'
-import { useBackClose } from '@/hooks/use-back-close'
 
 type Props = {
   title: string
@@ -100,7 +99,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const [advancedTableOpen, setAdvancedTableOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  useBackClose({ open: quickAddOpen, onClose: () => setQuickAddOpen(false) })
   const [importHint, setImportHint] = useState<string | null>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const importMut = useImportLeadsFileMutation()
@@ -109,22 +107,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   useEffect(() => {
     setQInput(qParam)
   }, [qParam])
-
-  useEffect(() => {
-    if (!quickAddOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setQuickAddOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    // Lock the page behind the sheet so touch-scroll stays inside the modal
-    // instead of being stolen by the dashboard content pane.
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [quickAddOpen])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -585,202 +567,187 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         </div>
         </div>
 
-        {quickAddOpen ? createPortal(
-          <div
-          className="keyboard-safe-modal fixed inset-0 z-[60] flex items-end justify-center bg-background/80 p-0 backdrop-blur-sm sm:items-center sm:p-4 dark:bg-black/60"
-          role="presentation"
-          onClick={() => setQuickAddOpen(false)}
-        >
-          <div
-            className="keyboard-safe-sheet overscroll-contain max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl sm:rounded-md"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="quick-add-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 z-[1] flex items-center justify-between border-b border-border bg-card px-4 py-3">
-              <div className="flex items-center gap-2 text-foreground">
-                <UserPlus className="size-5 text-[var(--palette-cyan-dull)]" aria-hidden />
-                <h2 id="quick-add-title" className="text-base font-bold">
-                  Quick Add Lead
-                </h2>
-              </div>
-              <button
-                type="button"
-                className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                aria-label="Close"
-                onClick={() => setQuickAddOpen(false)}
-              >
-                <X className="size-5" />
-              </button>
+        <Sheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} labelledBy="quick-add-title">
+          <div className="sticky top-0 z-[1] flex items-center justify-between border-b border-border bg-card px-4 py-3">
+            <div className="flex items-center gap-2 text-foreground">
+              <UserPlus className="size-5 text-[var(--palette-cyan-dull)]" aria-hidden />
+              <h2 id="quick-add-title" className="text-base font-bold">
+                Quick Add Lead
+              </h2>
             </div>
-            <div className="p-4">
-              <p className="mb-3 flex items-center gap-2 text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">
-                <span className="inline-flex size-6 items-center justify-center rounded-md bg-muted text-[var(--palette-cyan-dull)]">
-                  <Phone className="size-3.5" aria-hidden />
-                </span>
-                Contact information
-              </p>
-              <form onSubmit={(e) => void handleCreate(e)} className="space-y-3">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="qa-lead-name" className="mb-1 block text-xs font-semibold text-foreground">
-                      Full name <span className="text-destructive-ink">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        <UserPlus className="size-4" aria-hidden />
-                      </span>
-                      <input
-                        id="qa-lead-name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. Rahul Sharma"
-                        required
-                        disabled={createMut.isPending}
-                        className={`${fieldInputClass} pl-10`}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="qa-lead-phone" className="mb-1 block text-xs font-semibold text-foreground">
-                      Phone <span className="text-destructive-ink">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        <Phone className="size-4" aria-hidden />
-                      </span>
-                      <input
-                        id="qa-lead-phone"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        value={newPhone}
-                        onChange={(e) => setNewPhone(e.target.value)}
-                        placeholder="10-digit number"
-                        required
-                        disabled={createMut.isPending}
-                        className={`${fieldInputClass} pl-10`}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="qa-lead-city" className="mb-1 block text-xs font-semibold text-foreground">
-                      City
-                    </label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        <MapPin className="size-4" aria-hidden />
-                      </span>
-                      <input
-                        id="qa-lead-city"
-                        value={newCity}
-                        onChange={(e) => setNewCity(e.target.value)}
-                        placeholder="Mumbai"
-                        disabled={createMut.isPending}
-                        className={`${fieldInputClass} pl-10`}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="qa-lead-email" className="mb-1 block text-xs font-semibold text-foreground">
-                      Email
-                    </label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        <Mail className="size-4" aria-hidden />
-                      </span>
-                      <input
-                        id="qa-lead-email"
-                        type="email"
-                        autoComplete="email"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder="rahul@example.com"
-                        disabled={createMut.isPending}
-                        className={`${fieldInputClass} pl-10`}
-                      />
-                    </div>
+            <button
+              type="button"
+              className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              aria-label="Close"
+              onClick={() => setQuickAddOpen(false)}
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+          <div className="p-4">
+            <p className="mb-3 flex items-center gap-2 text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="inline-flex size-6 items-center justify-center rounded-md bg-muted text-[var(--palette-cyan-dull)]">
+                <Phone className="size-3.5" aria-hidden />
+              </span>
+              Contact information
+            </p>
+            <form onSubmit={(e) => void handleCreate(e)} className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="qa-lead-name" className="mb-1 block text-xs font-semibold text-foreground">
+                    Full name <span className="text-destructive-ink">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      <UserPlus className="size-4" aria-hidden />
+                    </span>
+                    <input
+                      id="qa-lead-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Rahul Sharma"
+                      required
+                      disabled={createMut.isPending}
+                      className={`${fieldInputClass} pl-10`}
+                    />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="qa-lead-source" className="mb-1 block text-xs font-semibold text-foreground">
-                      Source
-                    </label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-muted-foreground">
-                        <Share2 className="size-4" aria-hidden />
-                      </span>
-                      <NativeSelect
-                        id="qa-lead-source"
-                        value={newSource}
-                        onChange={(e) => setNewSource(e.target.value)}
-                        disabled={createMut.isPending}
-                        className={`${fieldInputClass} appearance-none pl-10`}
-                      >
-                        {SOURCE_OPTIONS.map((o) => (
-                          <option key={o.value || 'none'} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="qa-lead-status" className="mb-1 block text-xs font-semibold text-foreground">
-                      Lead status
-                    </label>
-                    <NativeSelect
-                      id="qa-lead-status"
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
+                <div>
+                  <label htmlFor="qa-lead-phone" className="mb-1 block text-xs font-semibold text-foreground">
+                    Phone <span className="text-destructive-ink">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      <Phone className="size-4" aria-hidden />
+                    </span>
+                    <input
+                      id="qa-lead-phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                      placeholder="10-digit number"
+                      required
                       disabled={createMut.isPending}
-                      className={fieldInputClass}
+                      className={`${fieldInputClass} pl-10`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="qa-lead-city" className="mb-1 block text-xs font-semibold text-foreground">
+                    City
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      <MapPin className="size-4" aria-hidden />
+                    </span>
+                    <input
+                      id="qa-lead-city"
+                      value={newCity}
+                      onChange={(e) => setNewCity(e.target.value)}
+                      placeholder="Mumbai"
+                      disabled={createMut.isPending}
+                      className={`${fieldInputClass} pl-10`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="qa-lead-email" className="mb-1 block text-xs font-semibold text-foreground">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      <Mail className="size-4" aria-hidden />
+                    </span>
+                    <input
+                      id="qa-lead-email"
+                      type="email"
+                      autoComplete="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="rahul@example.com"
+                      disabled={createMut.isPending}
+                      className={`${fieldInputClass} pl-10`}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="qa-lead-source" className="mb-1 block text-xs font-semibold text-foreground">
+                    Source
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-muted-foreground">
+                      <Share2 className="size-4" aria-hidden />
+                    </span>
+                    <NativeSelect
+                      id="qa-lead-source"
+                      value={newSource}
+                      onChange={(e) => setNewSource(e.target.value)}
+                      disabled={createMut.isPending}
+                      className={`${fieldInputClass} appearance-none pl-10`}
                     >
-                      {addStatusOptions.map((o) => (
-                        <option key={o.value} value={o.value}>
+                      {SOURCE_OPTIONS.map((o) => (
+                        <option key={o.value || 'none'} value={o.value}>
                           {o.label}
                         </option>
                       ))}
                     </NativeSelect>
                   </div>
                 </div>
-                {createHint ? (
-                  <p className="text-xs text-warning-ink" role="status">
-                    {createHint}
-                  </p>
-                ) : null}
-                {createMut.isError ? (
-                  <p className="text-xs text-destructive" role="alert">
-                    {createMut.error instanceof Error ? createMut.error.message : 'Could not create'}
-                  </p>
-                ) : null}
-                <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-border"
+                <div>
+                  <label htmlFor="qa-lead-status" className="mb-1 block text-xs font-semibold text-foreground">
+                    Lead status
+                  </label>
+                  <NativeSelect
+                    id="qa-lead-status"
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
                     disabled={createMut.isPending}
-                    onClick={() => setQuickAddOpen(false)}
+                    className={fieldInputClass}
                   >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    data-ui-silent
-                    disabled={createMut.isPending || !name.trim() || !newPhone.trim()}
-                    className="border-0 bg-gradient-to-r from-success to-[var(--palette-cyan-dull)] font-semibold text-primary-foreground shadow-md hover:opacity-90"
-                  >
-                    {createMut.isPending ? 'Adding…' : 'Add Lead'}
-                  </Button>
+                    {addStatusOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </NativeSelect>
                 </div>
-              </form>
-            </div>
+              </div>
+              {createHint ? (
+                <p className="text-xs text-warning-ink" role="status">
+                  {createHint}
+                </p>
+              ) : null}
+              {createMut.isError ? (
+                <p className="text-xs text-destructive" role="alert">
+                  {createMut.error instanceof Error ? createMut.error.message : 'Could not create'}
+                </p>
+              ) : null}
+              <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-border"
+                  disabled={createMut.isPending}
+                  onClick={() => setQuickAddOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  data-ui-silent
+                  disabled={createMut.isPending || !name.trim() || !newPhone.trim()}
+                  className="border-0 bg-gradient-to-r from-success to-[var(--palette-cyan-dull)] font-semibold text-primary-foreground shadow-md hover:opacity-90"
+                >
+                  {createMut.isPending ? 'Adding…' : 'Add Lead'}
+                </Button>
+              </div>
+            </form>
           </div>
-          </div>,
-          document.body,
-        ) : null}
+        </Sheet>
       </div>
     </>
   )

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { ArrowRightCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import {
   ENROLLMENT_MAX_RUPEES,
@@ -10,7 +10,6 @@ import {
   type LeadPublic,
   useSendToDay1Mutation,
 } from '@/hooks/use-leads-query'
-import { useBackClose } from '@/hooks/use-back-close'
 
 /**
  * Team: after the prospect pays the enrollment (₹149–200), upload the payment
@@ -25,20 +24,23 @@ export function SendToDay1Button({ lead, className }: { lead: LeadPublic; classN
   const amount = Number.parseInt(amountStr, 10)
   const amountOk = Number.isFinite(amount) && amount >= ENROLLMENT_MIN_RUPEES && amount <= ENROLLMENT_MAX_RUPEES
 
-  const close = () => {
-    if (mut.isPending) return
-    setOpen(false)
+  const openSheet = () => {
+    // Reset on open, not close, so the form doesn't blank out while it animates away.
     setAmountStr('')
     setFile(null)
     mut.reset()
+    setOpen(true)
   }
-  useBackClose({ open, onClose: close })
+  const close = () => {
+    if (mut.isPending) return
+    setOpen(false)
+  }
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openSheet}
         className={cn(
           'flex h-8 items-center gap-1 rounded-full border border-success/50 bg-success/10 px-2.5 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 active:scale-95',
           className,
@@ -49,80 +51,72 @@ export function SendToDay1Button({ lead, className }: { lead: LeadPublic; classN
         Send to Day 1
       </button>
 
-      {/* Portal to <body>: the calling-board card uses backdrop-blur + overflow-hidden, which
-          traps a `position: fixed` child inside the card — the form was clipped out of view and
-          the app looked frozen. */}
-      {open ? createPortal(
-        <div
-          className="keyboard-safe-modal fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          onClick={close}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Send to Day 1"
-        >
-          <div
-            className="keyboard-safe-sheet surface-elevated w-full max-w-sm space-y-3 rounded p-5 text-sm shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+      {/* Sheet portals to <body>: the calling-board card uses backdrop-blur + overflow-hidden,
+          which traps a `position: fixed` child inside the card. */}
+      <Sheet
+        open={open}
+        onClose={close}
+        label="Send to Day 1"
+        size="sm"
+        dismissible={!mut.isPending}
+        className="space-y-3 p-5 text-sm"
+      >
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Send {lead.name} to Day 1</h2>
+          <p className="mt-1 text-ds-caption text-muted-foreground">
+            Upload the enrollment payment screenshot (₹{ENROLLMENT_MIN_RUPEES}–₹{ENROLLMENT_MAX_RUPEES}). The lead
+            then goes to your leader&apos;s Day 1. Your leader will check the screenshot.
+          </p>
+        </div>
+
+        <label className="block">
+          <span className="mb-1 block text-ds-caption text-muted-foreground">Amount paid (₹)</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={ENROLLMENT_MIN_RUPEES}
+            max={ENROLLMENT_MAX_RUPEES}
+            value={amountStr}
+            onChange={(e) => setAmountStr(e.target.value)}
+            placeholder={`${ENROLLMENT_MIN_RUPEES}–${ENROLLMENT_MAX_RUPEES}`}
+            className="field-input"
+          />
+        </label>
+        {amountStr !== '' && !amountOk ? (
+          <p className="text-ds-caption text-destructive">
+            Amount must be between ₹{ENROLLMENT_MIN_RUPEES} and ₹{ENROLLMENT_MAX_RUPEES}.
+          </p>
+        ) : null}
+
+        <label className="block">
+          <span className="mb-1 block text-ds-caption text-muted-foreground">Payment screenshot</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-ds-caption text-foreground"
+          />
+        </label>
+
+        {mut.error ? <p className="text-ds-caption text-destructive">{mut.error.message}</p> : null}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="outline" size="sm" disabled={mut.isPending} onClick={close}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!amountOk || !file || mut.isPending}
+            onClick={() => {
+              if (!file) return
+              mut.mutate({ leadId: lead.id, amountRupees: amount, screenshot: file }, { onSuccess: close })
+            }}
           >
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Send {lead.name} to Day 1</h2>
-              <p className="mt-1 text-ds-caption text-muted-foreground">
-                Upload the enrollment payment screenshot (₹{ENROLLMENT_MIN_RUPEES}–₹{ENROLLMENT_MAX_RUPEES}). The lead
-                then goes to your leader&apos;s Day 1. Your leader will check the screenshot.
-              </p>
-            </div>
-
-            <label className="block">
-              <span className="mb-1 block text-ds-caption text-muted-foreground">Amount paid (₹)</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={ENROLLMENT_MIN_RUPEES}
-                max={ENROLLMENT_MAX_RUPEES}
-                value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
-                placeholder={`${ENROLLMENT_MIN_RUPEES}–${ENROLLMENT_MAX_RUPEES}`}
-                className="field-input"
-              />
-            </label>
-            {amountStr !== '' && !amountOk ? (
-              <p className="text-ds-caption text-destructive">
-                Amount must be between ₹{ENROLLMENT_MIN_RUPEES} and ₹{ENROLLMENT_MAX_RUPEES}.
-              </p>
-            ) : null}
-
-            <label className="block">
-              <span className="mb-1 block text-ds-caption text-muted-foreground">Payment screenshot</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-ds-caption text-foreground"
-              />
-            </label>
-
-            {mut.error ? <p className="text-ds-caption text-destructive">{mut.error.message}</p> : null}
-
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" size="sm" disabled={mut.isPending} onClick={close}>
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!amountOk || !file || mut.isPending}
-                onClick={() => {
-                  if (!file) return
-                  mut.mutate({ leadId: lead.id, amountRupees: amount, screenshot: file }, { onSuccess: close })
-                }}
-              >
-                {mut.isPending ? 'Sending…' : 'Send to Day 1'}
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      ) : null}
+            {mut.isPending ? 'Sending…' : 'Send to Day 1'}
+          </Button>
+        </div>
+      </Sheet>
     </>
   )
 }

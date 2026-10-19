@@ -209,20 +209,16 @@ export function TeamMembersPage({ title }: Props) {
         </div>
       ) : null}
 
-      {resetTarget ? (
-        <ResetPasswordModal
-          target={resetTarget}
-          onClose={() => setResetTarget(null)}
-          onSuccess={(name) => setToastMsg(`Password reset for ${name}`)}
-        />
-      ) : null}
+      <ResetPasswordModal
+        target={resetTarget}
+        onClose={() => setResetTarget(null)}
+        onSuccess={(name) => setToastMsg(`Password reset for ${name}`)}
+      />
 
-      {profileTarget ? (
-        <MemberProfileModal
-          member={profileTarget}
-          onClose={() => setProfileTarget(null)}
-        />
-      ) : null}
+      <MemberProfileModal
+        member={profileTarget}
+        onClose={() => setProfileTarget(null)}
+      />
 
       {toastMsg ? (
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-success/35 bg-success/15 px-3 py-2 text-ds-caption font-semibold text-success-ink shadow-lg">

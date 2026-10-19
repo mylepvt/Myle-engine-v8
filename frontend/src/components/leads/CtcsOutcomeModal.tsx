@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { MessageCircle, Phone } from 'lucide-react'
 
 import type { CtcsAction } from '@/hooks/use-leads-query'
 import { telHref, whatsAppChatHref } from '@/lib/phone-links'
 import { cn } from '@/lib/utils'
-import { useBackClose } from '@/hooks/use-back-close'
+import { Sheet } from '@/components/ui/sheet'
 
 // Left column — lead INTEREST decision (drives the pipeline). Payment is not here:
 // it always goes through "Send to Day 1" with the enrollment screenshot.
@@ -44,33 +44,6 @@ type Props = {
 export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick, onCallOutcome }: Props) {
   const [step, setStep] = useState<'outcomes' | 'call_later_time'>('outcomes')
   const [localFollowup, setLocalFollowup] = useState(defaultCallLaterLocalInput)
-  const innerRef = useRef<HTMLDivElement>(null)
-  useBackClose({ open, onClose })
-
-  useEffect(() => {
-    if (!open) return
-    const el = innerRef.current
-    if (!el) return
-    const focusable = el.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    )
-    focusable[0]?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return }
-      if (e.key !== 'Tab' || !focusable.length) return
-      const first = focusable[0]!
-      const last = focusable[focusable.length - 1]!
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus() }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus() }
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose, step])
-
-  if (!open) return null
 
   const tel = telHref(phone)
   const wa = whatsAppChatHref(phone ?? '')
@@ -82,159 +55,151 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
   const minLocal = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 
   return (
-    <div
-      className="keyboard-safe-modal fixed inset-0 z-50 flex items-end justify-center bg-background/75 p-3 backdrop-blur-sm sm:items-center dark:bg-black/55"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ctcs-outcome-title"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div ref={innerRef} className="keyboard-safe-sheet w-full max-w-md overflow-y-auto rounded-md border border-border bg-card p-4 text-card-foreground shadow-xl backdrop-blur-md">
-        <h2 id="ctcs-outcome-title" className="text-lg font-semibold text-foreground">
-          Call outcome
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{leadName}</p>
+    <Sheet open={open} onClose={onClose} labelledBy="ctcs-outcome-title" dismissible={!busy} className="p-4">
+      <h2 id="ctcs-outcome-title" className="text-lg font-semibold text-foreground">
+        Call outcome
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">{leadName}</p>
 
-        {phone?.trim() ? (
-          <div className="mt-3 rounded border border-border bg-muted/40 p-3">
-            <p className="font-mono text-sm text-foreground">{phone.trim()}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {canDial ? (
-                <a
-                  href={tel}
-                  className={cn(
-                    'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
-                    'border-2 border-success/45 bg-success/15 text-success-ink shadow-[0_0_12px_rgba(52,211,153,0.28)] hover:bg-success/25',
-                    'dark:border-success/70 dark:bg-success/20 dark:text-success-ink dark:shadow-[0_0_12px_rgba(52,211,153,0.35)] dark:hover:bg-success/30',
-                  )}
-                >
-                  <Phone className="size-4 shrink-0" aria-hidden />
-                  Dial
-                </a>
-              ) : null}
-              {canWa ? (
-                <a
-                  href={wa}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
-                    'border-2 border-whatsapp-teal/55 bg-whatsapp/15 text-whatsapp-ink shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-whatsapp/20',
-                    'dark:border-whatsapp/75 dark:bg-whatsapp/20 dark:text-whatsapp-ink-dark dark:shadow-[0_0_12px_rgba(37,211,102,0.35)] dark:hover:bg-whatsapp/30',
-                  )}
-                >
-                  <MessageCircle className="size-4 shrink-0" aria-hidden />
-                  WhatsApp
-                </a>
-              ) : null}
-            </div>
+      {phone?.trim() ? (
+        <div className="mt-3 rounded border border-border bg-muted/40 p-3">
+          <p className="font-mono text-sm text-foreground">{phone.trim()}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {canDial ? (
+              <a
+                href={tel}
+                className={cn(
+                  'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
+                  'border-2 border-success/45 bg-success/15 text-success-ink shadow-[0_0_12px_rgba(52,211,153,0.28)] hover:bg-success/25',
+                  'dark:border-success/70 dark:bg-success/20 dark:text-success-ink dark:shadow-[0_0_12px_rgba(52,211,153,0.35)] dark:hover:bg-success/30',
+                )}
+              >
+                <Phone className="size-4 shrink-0" aria-hidden />
+                Dial
+              </a>
+            ) : null}
+            {canWa ? (
+              <a
+                href={wa}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded px-3 text-sm font-semibold transition',
+                  'border-2 border-whatsapp-teal/55 bg-whatsapp/15 text-whatsapp-ink shadow-[0_0_12px_rgba(37,211,102,0.28)] hover:bg-whatsapp/20',
+                  'dark:border-whatsapp/75 dark:bg-whatsapp/20 dark:text-whatsapp-ink-dark dark:shadow-[0_0_12px_rgba(37,211,102,0.35)] dark:hover:bg-whatsapp/30',
+                )}
+              >
+                <MessageCircle className="size-4 shrink-0" aria-hidden />
+                WhatsApp
+              </a>
+            ) : null}
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {step === 'outcomes' ? (
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Interest
-              </p>
-              {INTEREST_OPTIONS.map((o) => (
-                <button
-                  key={o.action}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    if (o.action === 'call_later') {
-                      setLocalFollowup(defaultCallLaterLocalInput())
-                      setStep('call_later_time')
-                      return
-                    }
-                    onPick(o.action)
-                  }}
-                  className="min-h-12 w-full rounded border border-border bg-muted/50 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-2">
-              <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Call outcome
-              </p>
-              {CALL_OUTCOME_OPTIONS.map((o) => (
-                <button
-                  key={o.slug}
-                  type="button"
-                  disabled={busy || !onCallOutcome}
-                  onClick={() => onCallOutcome?.(o.slug)}
-                  className="min-h-12 w-full rounded border border-border bg-muted/30 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
+      {step === 'outcomes' ? (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Interest
+            </p>
+            {INTEREST_OPTIONS.map((o) => (
+              <button
+                key={o.action}
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (o.action === 'call_later') {
+                    setLocalFollowup(defaultCallLaterLocalInput())
+                    setStep('call_later_time')
+                    return
+                  }
+                  onPick(o.action)
+                }}
+                className="min-h-12 w-full rounded border border-border bg-muted/50 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
+              >
+                {o.label}
+              </button>
+            ))}
           </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-muted-foreground">When should we call again?</p>
-            <input
-              type="datetime-local"
-              aria-label="Follow-up date and time"
-              title="Follow-up date and time"
-              className="field-input min-h-12 w-full rounded px-3 text-base"
-              min={minLocal}
-              value={localFollowup}
-              onChange={(e) => setLocalFollowup(e.target.value)}
-              disabled={busy}
-            />
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                const iso = new Date(localFollowup).toISOString()
-                onPick('call_later', iso)
-              }}
-              className="min-h-12 w-full rounded bg-primary px-4 text-base font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              Schedule
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onPick('call_later')}
-              className="min-h-11 w-full rounded border border-border bg-muted/30 py-2 text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-50"
-            >
-              Use default (24h)
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setStep('outcomes')}
-              className="min-h-11 w-full rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              className="mt-1 w-full min-h-11 rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
-              onClick={onClose}
-              disabled={busy}
-            >
-              Cancel
-            </button>
+          <div className="space-y-2">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Call outcome
+            </p>
+            {CALL_OUTCOME_OPTIONS.map((o) => (
+              <button
+                key={o.slug}
+                type="button"
+                disabled={busy || !onCallOutcome}
+                onClick={() => onCallOutcome?.(o.slug)}
+                className="min-h-12 w-full rounded border border-border bg-muted/30 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
+              >
+                {o.label}
+              </button>
+            ))}
           </div>
-        )}
-
-        {step === 'outcomes' ? (
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          <p className="text-sm text-muted-foreground">When should we call again?</p>
+          <input
+            type="datetime-local"
+            aria-label="Follow-up date and time"
+            title="Follow-up date and time"
+            className="field-input min-h-12 w-full rounded px-3 text-base"
+            min={minLocal}
+            value={localFollowup}
+            onChange={(e) => setLocalFollowup(e.target.value)}
+            disabled={busy}
+          />
           <button
             type="button"
-            className="mt-3 w-full min-h-11 rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
+            disabled={busy}
+            onClick={() => {
+              const iso = new Date(localFollowup).toISOString()
+              onPick('call_later', iso)
+            }}
+            className="min-h-12 w-full rounded bg-primary px-4 text-base font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            Schedule
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onPick('call_later')}
+            className="min-h-11 w-full rounded border border-border bg-muted/30 py-2 text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-50"
+          >
+            Use default (24h)
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setStep('outcomes')}
+            className="min-h-11 w-full rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            className="mt-1 w-full min-h-11 rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
             onClick={onClose}
             disabled={busy}
           >
             Cancel
           </button>
-        ) : null}
-      </div>
-    </div>
+        </div>
+      )}
+
+      {step === 'outcomes' ? (
+        <button
+          type="button"
+          className="mt-3 w-full min-h-11 rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
+          onClick={onClose}
+          disabled={busy}
+        >
+          Cancel
+        </button>
+      ) : null}
+    </Sheet>
   )
 }

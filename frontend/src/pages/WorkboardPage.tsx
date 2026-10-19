@@ -2,9 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { Day2TestSignals } from '@/components/leads/Day2TestSignals'
 import { Day3SlotTimer } from '@/components/leads/Day3SlotTimer'
 import { buildLiveSessionMessage, extractPasscode } from '@/lib/live-session-message'
-import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useBackClose } from '@/hooks/use-back-close'
+import { useLatestValue } from '@/hooks/use-latest-value'
 import { useGoBack } from '@/hooks/use-go-back'
 import {
   ArrowLeftRight,
@@ -28,6 +27,7 @@ import { LeadBillingCard } from '@/components/leads/LeadBillingCard'
 import { EnrollmentProofRow } from '@/components/leads/EnrollmentProofRow'
 import { RegisterLinkButton } from '@/components/leads/RegisterLinkButton'
 import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   LEAD_STATUS_OPTIONS,
@@ -113,7 +113,7 @@ function parseAdminTab(value: string | null): ATab {
 }
 
 /**
- * Resolve once a pending history.back() (useBackClose dropping its placeholder
+ * Resolve once a pending history.back() (the Sheet's useBackClose dropping its placeholder
  * after a modal closes) has landed, so a following page navigation is not
  * cancelled by it. Falls back after 400 ms when no back() was queued.
  */
@@ -1045,7 +1045,8 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
     if (sharingSlot != null || markingSlot != null) return
     setBatchModal(null)
   }
-  useBackClose({ open: batchModal != null, onClose: closeBatchModal })
+  // Keeps the sheet's content while it animates out after batchModal is cleared.
+  const shownBatch = useLatestValue(batchModal)
 
   const handleBatchButtonClick = async (slot: BatchSlotChip, slotKey: BatchSlotKey) => {
     setBatchError(null)
@@ -1347,18 +1348,20 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             {nextLabel ?? 'Move to next stage →'}
           </button>
         )}
-        {batchModal ? createPortal(
-          <div className="keyboard-safe-modal fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4">
-            <div
-              className="keyboard-safe-sheet w-full max-w-lg overflow-y-auto rounded border border-border bg-card p-4 shadow-2xl"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={`batch-modal-title-${lead.id}`}
-            >
+        <Sheet
+          open={batchModal != null}
+          onClose={closeBatchModal}
+          labelledBy={`batch-modal-title-${lead.id}`}
+          size="lg"
+          dismissible={sharingSlot == null && markingSlot == null}
+          className="p-4"
+        >
+          {shownBatch ? (
+            <>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 id={`batch-modal-title-${lead.id}`} className="text-base font-semibold text-foreground">
-                    Day {dayKey} - {batchModal.label}
+                    Day {dayKey} - {shownBatch.label}
                   </h3>
                   <p className="mt-1 text-sm text-muted-foreground">{lead.name}</p>
                 </div>
@@ -1374,19 +1377,19 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
               </div>
 
               <div className="mt-4 space-y-3">
-                {batchModal.loading ? (
+                {shownBatch.loading ? (
                   <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
                     Generating tokenized batch links...
                   </div>
-                ) : batchModal.error ? (
+                ) : shownBatch.error ? (
                   <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive">
-                    {batchModal.error}
+                    {shownBatch.error}
                   </div>
-                ) : batchModal.watchUrlV1 || batchModal.watchUrlV2 ? (
+                ) : shownBatch.watchUrlV1 || shownBatch.watchUrlV2 ? (
                   <>
                     {([
-                      ['v1', batchModal.watchUrlV1, 'Video 1'],
-                      ['v2', batchModal.watchUrlV2, 'Video 2'],
+                      ['v1', shownBatch.watchUrlV1, 'Video 1'],
+                      ['v2', shownBatch.watchUrlV2, 'Video 2'],
                     ] as const)
                       .filter(([, url]) => url)
                       .map(([variant, url, label]) => (
@@ -1414,7 +1417,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                                 className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground transition hover:border-primary/35 hover:text-primary"
                               >
                                 <Copy className="h-3.5 w-3.5" />
-                                {batchModal.copied === variant ? 'Copied' : 'Copy'}
+                                {shownBatch.copied === variant ? 'Copied' : 'Copy'}
                               </button>
                             </div>
                           </div>
@@ -1443,27 +1446,26 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => void markBatchDone(batchModal.slotKey)}
-                  disabled={markingSlot != null || batchModal.loading}
+                  onClick={() => void markBatchDone(shownBatch.slotKey)}
+                  disabled={markingSlot != null || shownBatch.loading}
                 >
-                  {markingSlot === batchModal.slotKey ? 'Marking...' : 'Already Sent'}
+                  {markingSlot === shownBatch.slotKey ? 'Marking...' : 'Already Sent'}
                 </Button>
                 <Button
                   type="button"
                   onClick={() => void handleSendAndMark()}
                   disabled={
                     markingSlot != null ||
-                    batchModal.loading ||
-                    (!batchModal.watchUrlV1 && !batchModal.watchUrlV2)
+                    shownBatch.loading ||
+                    (!shownBatch.watchUrlV1 && !shownBatch.watchUrlV2)
                   }
                 >
-                  {markingSlot === batchModal.slotKey ? 'Sending...' : 'Send & Mark'}
+                  {markingSlot === shownBatch.slotKey ? 'Sending...' : 'Send & Mark'}
                 </Button>
               </div>
-            </div>
-          </div>,
-          document.body
-        ) : null}
+            </>
+          ) : null}
+        </Sheet>
       </div>
     )
   }
