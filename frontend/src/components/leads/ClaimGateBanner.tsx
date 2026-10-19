@@ -9,7 +9,7 @@ export function ClaimGateBanner({ gate }: Props) {
   if (!gate.blocked) return null
   return (
     <div
-      className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm"
+      className="mb-4 rounded-2xl bg-destructive/10 p-3 text-sm"
       role="alert"
     >
       <p className="font-medium text-destructive">{gate.message}</p>

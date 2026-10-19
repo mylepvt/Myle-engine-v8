@@ -42,7 +42,7 @@ export function SendToDay1Button({ lead, className }: { lead: LeadPublic; classN
         type="button"
         onClick={openSheet}
         className={cn(
-          'flex h-8 items-center gap-1 rounded-full border border-success/50 bg-success/10 px-2.5 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 active:scale-95',
+          'flex h-8 items-center gap-1 rounded-full bg-success/10 px-2.5 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 active:scale-95',
           className,
         )}
         title="Upload enrollment screenshot and send to Day 1"

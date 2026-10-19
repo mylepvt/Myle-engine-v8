@@ -32,7 +32,7 @@ export type ArchivedLeadCardProps = {
 
 /**
  * Mobile-first card for the Archived Leads list. The virtualized table
- * (`LeadsVirtualizedBody`) is desktop-only because it needs a 1040px min-width;
+ * (`LeadsVirtualizedBody`) is desktop-only because it needs a 1060px min-width;
  * on phones we stack the same fields into a tappable card instead of forcing a
  * horizontal-scroll table.
  */

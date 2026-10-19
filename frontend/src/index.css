@@ -920,6 +920,16 @@
     box-shadow: 0 0 0 4px var(--accent);
   }
 
+  /* A bare input inside a field wrapper (search pill, icon field): the wrapper
+     draws the fill and focus ring, so the input itself stays transparent. */
+  .dashboard-shell .input-base :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
+  .dashboard-shell .input-base :is(input:not([type='checkbox']):not([type='radio']), select, textarea):focus {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
   .dashboard-shell label {
     letter-spacing: 0.01em;
   }

@@ -349,7 +349,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   id="pipeline-status"
                   value={pipelineStatus}
                   onChange={(e) => setPipelineStatus(e.target.value)}
-                  className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-2xl bg-muted px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
                   {pipelineStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -369,7 +369,7 @@ export function LeadDetailPage({ leadId }: Props) {
                   id="pipeline-call-status"
                   value={pipelineCallStatus}
                   onChange={(e) => setPipelineCallStatus(e.target.value)}
-                  className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                  className="w-full rounded-2xl bg-muted px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
                   <option value="">None</option>
                   {pipelineCallStatusOptions.map((o) => (
@@ -393,7 +393,7 @@ export function LeadDetailPage({ leadId }: Props) {
                 </p>
               ) : null}
               {surfaceRole === 'admin' ? (
-                <div className="rounded-md border border-warning/20 bg-warning/5 p-3 dark:border-warning/20 dark:bg-warning/5">
+                <div className="rounded-2xl bg-warning/10 p-3 dark:bg-warning/5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-medium text-foreground">Stage Clock Control</p>
@@ -484,7 +484,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     id="call-outcome"
                     value={callOutcome}
                     onChange={(e) => setCallOutcome(e.target.value)}
-                    className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-2xl bg-muted px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                   >
                     {CALL_OUTCOME_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -506,7 +506,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     min="0"
                     value={callDuration}
                     onChange={(e) => setCallDuration(e.target.value)}
-                    className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                    className="w-full rounded-2xl bg-muted px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                     placeholder="e.g. 120"
                   />
                 </div>
@@ -522,7 +522,7 @@ export function LeadDetailPage({ leadId }: Props) {
                     value={callNotes}
                     onChange={(e) => setCallNotes(e.target.value)}
                     rows={2}
-                    className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+                    className="w-full rounded-2xl bg-muted px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
                     placeholder="What was discussed…"
                   />
                 </div>
@@ -576,7 +576,7 @@ export function LeadDetailPage({ leadId }: Props) {
               value={notes}
               onChange={(e) => handleNotesChange(e.target.value)}
               rows={4}
-              className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
+              className="w-full rounded-2xl bg-muted px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 resize-none"
               placeholder="Add notes about this lead…"
             />
             <div className="flex items-center gap-3">

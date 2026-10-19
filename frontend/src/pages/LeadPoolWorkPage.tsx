@@ -279,7 +279,7 @@ export function LeadPoolWorkPage({ title }: Props) {
               placeholder="₹ per claim"
               value={defaultRupees}
               onChange={(e) => setDefaultRupees(e.target.value)}
-              className="w-40 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+              className="w-40 rounded-2xl bg-muted px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
             <Button
               type="button"
@@ -404,14 +404,14 @@ export function LeadPoolWorkPage({ title }: Props) {
           ) : null}
 
           {batchPreview != null ? (
-            <div className="mb-4 rounded-lg border border-border dark:border-white/10 bg-muted/30 p-3 text-xs">
+            <div className="mb-4 rounded-2xl bg-muted p-3 text-xs">
               <p className="font-medium text-foreground">Bulk claim (FIFO, max 50)</p>
               <p className="mt-1 text-muted-foreground">
                 Server picks the oldest leads in the pool first and returns the exact combined price for this request.
                 Leaders and team members can only claim in bulk from this screen.
               </p>
               {batchConfirmOpen ? (
-                <div className="mt-3 space-y-2 rounded-md border border-warning/30 bg-warning/5 p-2">
+                <div className="mt-3 space-y-2 rounded-2xl bg-warning/10 p-2">
                   <p className="text-foreground">
                     Claim up to <strong className="tabular-nums">{batchCountParsed}</strong> lead(s)? Exact
                     debit for the current FIFO slice:{' '}
@@ -447,7 +447,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                       step={1}
                       value={batchCountStr}
                       onChange={(e) => setBatchCountStr(e.target.value)}
-                      className="w-20 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                      className="w-20 rounded-2xl bg-muted px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                     />
                     <span className="ml-2 text-muted-foreground">(max {maxBatch})</span>
                   </div>
@@ -497,7 +497,7 @@ export function LeadPoolWorkPage({ title }: Props) {
 
           {canViewPoolList && data != null && data.items.length > 0 ? (
             <div className="space-y-2">
-              <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+              <div className="input-base flex h-11 items-center gap-2 rounded-full px-3.5">
                 <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 <input
                   type="text"
@@ -559,7 +559,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                           placeholder={`Override ₹ — row ${isFree ? 'free' : formatRupeesInput(price)} · saved default ₹${formatRupeesInput(poolDefaults?.default_pool_price_cents ?? 0)}`}
                           value={priceInputs[l.id] ?? ''}
                           onChange={(e) => setPriceInputs((p) => ({ ...p, [l.id]: e.target.value }))}
-                          className="w-40 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+                          className="w-40 rounded-2xl bg-muted px-2 py-1.5 text-xs text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
                         />
                         <Button
                           type="button"
@@ -585,7 +585,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                     {/* Claim flow */}
                     {canClaimPool ? (
                       isConfirming ? (
-                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-warning/10 px-3 py-2">
                           <p className="flex-1 text-xs text-foreground">
                             {isFree
                               ? 'Claim this lead for free?'

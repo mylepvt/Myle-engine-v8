@@ -349,11 +349,12 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
   return (
     <div className="space-y-4">
       {searchMode ? (
-        <div className="rounded border border-primary/20 bg-primary/[0.08] px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-2xl bg-primary/10 px-3 py-2 text-sm text-muted-foreground">
           Search is scanning all sections for this role, including workboard, retarget, and archived leads.
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-1">
+        // Myle chip row: one line that scrolls sideways, edge to edge on phones.
+        <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
           {TABS.map((t) => {
             const active = tab === t.id && !generated
             const showReassignedBadge = t.id === 'reassigned' && !active && reassignedCount > 0
@@ -366,18 +367,18 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
                   setTab(t.id)
                 }}
                 className={cn(
-                  'flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                  'press flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium',
                   active
-                    ? 'border-primary/45 bg-primary/10 text-foreground'
-                    : 'border-border/70 text-muted-foreground hover:border-border hover:text-foreground',
+                    ? 'control-pill'
+                    : 'bg-muted text-muted-foreground hover:text-foreground',
                 )}
               >
                 <span>{t.label}</span>
                 {active && total > 0 ? (
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-ds-caption tabular-nums text-muted-foreground">{total}</span>
                 ) : null}
                 {showReassignedBadge ? (
-                  <span className="rounded bg-warning/20 px-1.5 py-0.5 text-ds-caption font-semibold text-warning-ink">{reassignedCount}</span>
+                  <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-ds-caption font-semibold tabular-nums text-warning-ink">{reassignedCount}</span>
                 ) : null}
               </button>
             )
@@ -386,15 +387,15 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
             type="button"
             onClick={() => setGenerated(true)}
             className={cn(
-              'flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+              'press flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium',
               generated
-                ? 'border-primary/45 bg-primary/10 text-foreground'
-                : 'border-border/70 text-muted-foreground hover:border-border hover:text-foreground',
+                ? 'control-pill'
+                : 'bg-muted text-muted-foreground hover:text-foreground',
             )}
           >
             <span>Generated</span>
             {generated && total > 0 ? (
-              <span className="rounded bg-muted px-1.5 py-0.5 text-ds-caption text-muted-foreground">{total}</span>
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-ds-caption tabular-nums text-muted-foreground">{total}</span>
             ) : null}
           </button>
         </div>
@@ -419,8 +420,8 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
 
       {leadsQ.isPending ? (
         <div className="space-y-2">
-          <Skeleton className="h-36 w-full rounded bg-muted" />
-          <Skeleton className="h-36 w-full rounded bg-muted" />
+          <Skeleton className="h-36 w-full rounded-card" />
+          <Skeleton className="h-36 w-full rounded-card" />
         </div>
       ) : null}
       {leadsQ.isError ? (
@@ -453,7 +454,7 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
           <button
             type="button"
             disabled={leadsQ.isFetchingNextPage}
-            className="min-h-10 rounded border border-border bg-card px-4 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
+            className="rounded-full btn-secondary min-h-10 px-4 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
             onClick={() => void leadsQ.fetchNextPage()}
           >
             {leadsQ.isFetchingNextPage ? 'Loading…' : 'Load more'}

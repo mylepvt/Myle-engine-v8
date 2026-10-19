@@ -9,7 +9,7 @@ import {
 } from '@/hooks/use-lead-booking-query'
 
 const INPUT_CLASS =
-  'w-24 rounded-md border border-border dark:border-white/12 bg-muted/50 px-2 py-1.5 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35'
+  'w-24 rounded-2xl bg-muted px-2 py-1.5 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35'
 
 function TodayStatus({ booking }: { booking: LeadBooking }) {
   if (booking.status === 'fulfilled') {
@@ -40,7 +40,7 @@ export function LeadBookingCard() {
   const error = bookMut.error ?? cancelMut.error
 
   return (
-    <div className="surface-elevated mb-4 space-y-3 p-4 text-sm">
+    <div className="mb-4 space-y-3 rounded-2xl bg-muted p-4 text-sm">
       <div>
         <p className="font-medium text-foreground">Book leads for tomorrow</p>
         <p className="text-xs text-muted-foreground">

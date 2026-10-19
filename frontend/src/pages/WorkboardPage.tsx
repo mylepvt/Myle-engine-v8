@@ -223,7 +223,7 @@ function Tabs({ tabs, active, onChange }: {
 function IconBtn({ href, onClick, title, colorHover, children }: {
   href?: string; onClick?: () => void; title: string; colorHover: string; children: React.ReactNode
 }) {
-  const cls = cn('flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/30 text-foreground transition active:scale-95', colorHover)
+  const cls = cn('rounded-full flex h-10 w-10 items-center justify-center bg-muted text-foreground transition active:scale-95', colorHover)
   if (href) return <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" title={title} className={cls}>{children}</a>
   return <button type="button" title={title} onClick={onClick} className={cls}>{children}</button>
 }
@@ -309,9 +309,8 @@ const LeadCard = memo(function LeadCard({
   return (
     <article
       className={cn(
-        'relative overflow-hidden rounded-md border p-3 text-card-foreground backdrop-blur-md sm:p-3.5',
-        'bg-card dark:bg-card/80 supports-[backdrop-filter]:dark:bg-card/60',
-        slaTone.border,
+        // Solid Myle card (no per-card backdrop blur); urgency shows in the left bar and glow.
+        'card relative overflow-hidden p-3 sm:p-3.5',
         slaTone.cardGlow,
       )}
     >
@@ -335,7 +334,7 @@ const LeadCard = memo(function LeadCard({
           <span className={cn('self-start rounded-full border px-2 py-0.5 text-ds-caption font-semibold', badge)}>{STATUS_TAB_LABEL[lead.status as LeadStatus] ?? slabel(lead.status)}</span>
         </div>
         {!stageOpsCard && isWatched ? (
-          <div className="flex items-center gap-1.5 rounded-lg border border-info/25 bg-info/10 px-2 py-1 text-ds-caption font-medium text-info-ink">
+          <div className="flex items-center gap-1.5 rounded-2xl bg-info/10 px-2 py-1 text-ds-caption font-medium text-info-ink">
             <Eye className="size-3.5 shrink-0" aria-hidden />
             <span>Prospect watched the video — call now!</span>
           </div>
@@ -347,7 +346,7 @@ const LeadCard = memo(function LeadCard({
           </div>
         ) : null}
         {isReassigned ? (
-          <span className="flex w-fit items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-ds-micro font-semibold text-warning-ink">
+          <span className="flex w-fit items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-ds-micro font-semibold text-warning-ink">
             <ArrowLeftRight className="size-3 shrink-0" aria-hidden />
             Reassigned
           </span>
@@ -358,7 +357,7 @@ const LeadCard = memo(function LeadCard({
             disabled={leadPatchBusy}
             aria-label={`Call status for ${lead.name}`}
             onChange={(e) => void pm.mutateAsync({ id: lead.id, body: { call_status: e.target.value } })}
-            className="w-full min-w-0 rounded-md border border-border bg-muted/30 px-2 py-2 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
+            className="w-full min-w-0 rounded-2xl bg-muted px-2 py-2 text-ds-caption text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35"
           >
             {callOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </NativeSelect>
@@ -389,7 +388,7 @@ const LeadCard = memo(function LeadCard({
               </IconBtn>
             ) : null}
             <Link to={`/dashboard/work/leads/${lead.id}`} title="Edit"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/30 text-foreground transition active:scale-95 hover:border-primary/40 hover:text-primary">
+              className="rounded-full flex h-10 w-10 items-center justify-center bg-muted text-foreground transition active:scale-95 hover:text-primary">
               <Pencil className="h-3.5 w-3.5"/>
             </Link>
           </div>
@@ -413,7 +412,7 @@ const LeadCard = memo(function LeadCard({
               type="button"
               disabled={leadPatchBusy || lead.status === 'converted'}
               onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'converted' } })}
-              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-success/40 bg-success/10 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:cursor-default disabled:opacity-40"
+              className="rounded-full flex h-9 flex-1 items-center justify-center gap-1.5 bg-success/10 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:cursor-default disabled:opacity-40"
             >
               <Check className="size-3.5" />
               {lead.status === 'converted' ? 'Closed ✓' : 'Mark Closed'}
@@ -422,7 +421,7 @@ const LeadCard = memo(function LeadCard({
               type="button"
               disabled={leadPatchBusy || lead.status === 'lost'}
               onClick={() => void pm.mutateAsync({ id: lead.id, body: { status: 'lost' } })}
-              className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:cursor-default disabled:opacity-40"
+              className="rounded-full flex h-9 flex-1 items-center justify-center gap-1.5 bg-destructive/10 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:cursor-default disabled:opacity-40"
             >
               <X className="size-3.5" />
               {lead.status === 'lost' ? 'Lost ✓' : 'Mark Lost'}
@@ -586,7 +585,7 @@ function ProcessChecklistSection({
     : stageChecklistComplete(lead, stage)
 
   return (
-    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+    <div className="space-y-2 rounded-2xl bg-muted p-3">
       {!taskKeys && (
         <div className="space-y-0.5">
           <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">{def.title}</p>
@@ -655,7 +654,7 @@ function ProcessChecklistSection({
                     type="button"
                     disabled={leadPatchBusy || busy}
                     onClick={() => void sendLiveSessionLink(task.key)}
-                    className="shrink-0 rounded-md border border-success/30 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
+                    className="rounded-full shrink-0 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
                   >
                     {busy ? 'Opening…' : 'Send link'}
                   </button>
@@ -670,7 +669,7 @@ function ProcessChecklistSection({
                       href={contentLinks[task.settingKey]}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20"
+                      className="rounded-full shrink-0 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20"
                     >
                       Watch
                     </a>
@@ -696,7 +695,7 @@ function ProcessChecklistSection({
           type="button"
           disabled={leadPatchBusy}
           onClick={onMoveNext}
-          className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50"
+          className="rounded-full w-full bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50"
         >
           {nextLabel ?? def.nextLabel ?? 'Move to next stage'}
         </button>
@@ -758,7 +757,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
   })()
 
   return (
-    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+    <div className="space-y-2 rounded-2xl bg-muted p-3">
       <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Selection</p>
       <div className="grid grid-cols-3 gap-1.5">
         {STAGE_OPTIONS.map((s) => {
@@ -792,11 +791,11 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               Seat-hold {seatHoldCents != null ? rupees(seatHoldCents) : ''}
             </span>
             {seatHeld ? (
-              <span className="rounded-full border border-success/30 bg-success/15 px-2 py-0.5 text-ds-micro font-bold text-success-ink">
+              <span className="rounded-full bg-success/15 px-2 py-0.5 text-ds-micro font-bold text-success-ink">
                 Held · {countdown}
               </span>
             ) : seatExpired ? (
-              <span className="rounded-full border border-warning/30 bg-warning/15 px-2 py-0.5 text-ds-micro font-bold text-warning-ink">
+              <span className="rounded-full bg-warning/15 px-2 py-0.5 text-ds-micro font-bold text-warning-ink">
                 Expired
               </span>
             ) : null}
@@ -806,7 +805,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               type="button"
               disabled={leadPatchBusy || busy !== null}
               onClick={() => void patch({ collect_seat_hold: false }, 'release')}
-              className="w-full rounded-md border border-border/60 bg-muted/30 px-2 py-1 text-ds-caption font-semibold text-muted-foreground transition hover:bg-muted/50 disabled:opacity-50"
+              className="rounded-full w-full bg-muted px-2 py-1 text-ds-caption font-semibold text-muted-foreground transition hover:bg-muted/50 disabled:opacity-50"
             >
               {busy === 'release' ? 'Releasing…' : 'Release seat-hold'}
             </button>
@@ -815,7 +814,7 @@ function Day3StagePicker({ lead, pm, leadPatchBusy }: {
               type="button"
               disabled={leadPatchBusy || busy !== null}
               onClick={() => void patch({ collect_seat_hold: true }, 'collect')}
-              className="w-full rounded-md border border-success/30 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
+              className="rounded-full w-full bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
             >
               {busy === 'collect' ? 'Saving…' : seatExpired ? 'Re-collect seat-hold' : 'Collect seat-hold'}
             </button>
@@ -895,7 +894,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
   const showForm = status == null || status === 'rejected'
 
   return (
-    <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+    <div className="space-y-2 rounded-2xl bg-muted p-3">
       <div className="flex items-center justify-between">
         <p className="text-ds-caption font-bold uppercase tracking-wider text-[color-mix(in_srgb,var(--foreground)_70%,transparent)]">Stage Payment</p>
         <span className={cn('rounded-full border px-2 py-0.5 text-ds-micro font-bold', badge[1])}>{badge[0]}</span>
@@ -912,7 +911,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
       {showForm ? (
         <div className="space-y-1.5">
           <div className="flex gap-1.5">
-            <span className="flex items-center rounded-md border border-border/50 bg-card/40 px-2 text-ds-caption text-muted-foreground">₹</span>
+            <span className="flex items-center rounded-2xl bg-muted px-2 text-ds-caption text-muted-foreground">₹</span>
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -944,7 +943,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
             type="button"
             disabled={busy !== null}
             onClick={() => void review('approve')}
-            className="flex-1 rounded-md border border-success/30 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
+            className="rounded-full flex-1 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
           >
             {busy === 'approve' ? '…' : 'Approve'}
           </button>
@@ -952,7 +951,7 @@ function Day3StagePayment({ lead, leadPatchBusy }: { lead: LeadPublic; leadPatch
             type="button"
             disabled={busy !== null}
             onClick={() => void review('reject')}
-            className="flex-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:opacity-50"
+            className="rounded-full flex-1 bg-destructive/10 px-2 py-1 text-ds-caption font-semibold text-destructive transition hover:bg-destructive/20 disabled:opacity-50"
           >
             {busy === 'reject' ? '…' : 'Reject'}
           </button>
@@ -1245,7 +1244,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
             type="button"
             disabled={leadPatchBusy || !day3Done}
             onClick={onMoveNext}
-            className="w-full rounded-md border border-success/40 bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
+            className="rounded-full w-full bg-success/10 px-2 py-1 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
           >
             {nextLabel ?? 'Mark Converted'}
           </button>
@@ -1344,7 +1343,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
         ) : null}
         {allSlotsDone && onMoveNext && day2AdvanceUnlocked && (
           <button type="button" disabled={leadPatchBusy} onClick={onMoveNext}
-            className="w-full rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
+            className="rounded-full w-full bg-primary/10 px-2 py-1 text-ds-caption font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50">
             {nextLabel ?? 'Move to next stage →'}
           </button>
         )}
@@ -1369,7 +1368,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                   type="button"
                   onClick={closeBatchModal}
                   disabled={sharingSlot != null || markingSlot != null}
-                  className="rounded-md border border-border bg-muted/30 p-1 text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+                  className="rounded-full bg-muted p-1 text-muted-foreground transition hover:text-foreground disabled:opacity-50"
                   aria-label="Close batch dialog"
                 >
                   <X className="h-4 w-4" />
@@ -1378,11 +1377,11 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
 
               <div className="mt-4 space-y-3">
                 {shownBatch.loading ? (
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+                  <div className="rounded-2xl bg-muted px-3 py-4 text-sm text-muted-foreground">
                     Generating tokenized batch links...
                   </div>
                 ) : shownBatch.error ? (
-                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+                  <div className="rounded-2xl bg-destructive/10 px-3 py-3 text-sm text-destructive">
                     {shownBatch.error}
                   </div>
                 ) : shownBatch.watchUrlV1 || shownBatch.watchUrlV2 ? (
@@ -1395,7 +1394,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                       .map(([variant, url, label]) => (
                         <div
                           key={variant}
-                          className="rounded-xl border border-primary/20 bg-primary/5 p-3"
+                          className="rounded-2xl bg-primary/10 p-3"
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
@@ -1407,14 +1406,14 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                                 href={url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded-md border border-primary/25 bg-background/70 px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-background"
+                                className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-primary transition hover:bg-background"
                               >
                                 Open
                               </a>
                               <button
                                 type="button"
                                 onClick={() => void handleCopyBatchLink(variant)}
-                                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground transition hover:border-primary/35 hover:text-primary"
+                                className="rounded-full inline-flex items-center gap-1 bg-muted px-2.5 py-1 text-xs font-semibold text-foreground transition hover:text-primary"
                               >
                                 <Copy className="h-3.5 w-3.5" />
                                 {shownBatch.copied === variant ? 'Copied' : 'Copy'}
@@ -1428,7 +1427,7 @@ function StageAdvanceSection({ lead, stageKey, pm, leadPatchBusy, onMoveNext, ne
                     </p>
                   </>
                 ) : (
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
+                  <div className="rounded-2xl bg-muted px-3 py-3 text-sm text-muted-foreground">
                     Video URLs are not configured for this batch yet.
                   </div>
                 )}
@@ -1626,7 +1625,7 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
             ].map(([label, count, dot]) => (
               <span
                 key={label as string}
-                className="flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-ds-caption font-medium text-muted-foreground"
+                className="flex h-8 items-center gap-1.5 rounded-full px-3 text-ds-caption font-medium text-muted-foreground bg-muted"
               >
                 <span className={cn('size-1.5 rounded-full', dot as string)} aria-hidden />
                 {label}
