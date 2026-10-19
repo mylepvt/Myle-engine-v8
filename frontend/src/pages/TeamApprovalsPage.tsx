@@ -106,64 +106,104 @@ export function TeamApprovalsPage({ title }: Props) {
         q.data.items.length === 0 ? (
           <InlineEmpty>No pending registrations.</InlineEmpty>
         ) : filteredRows.length === 0 ? (
-          <div className="surface-elevated rounded border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="surface-elevated px-4 py-8 text-center text-sm text-muted-foreground">
             No pending registrations match this search.
           </div>
         ) : (
-          <div className="surface-elevated overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>FBO ID</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Upline</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-mono text-xs">{row.fbo_id}</TableCell>
-                    <TableCell>{row.username ?? '—'}</TableCell>
-                    <TableCell className="text-xs">
-                      {row.upline_name ? (
-                        <span className="font-medium text-foreground">{row.upline_name}</span>
-                      ) : null}
-                      {row.upline_fbo_id ? (
-                        <span className="block font-mono text-ds-micro text-muted-foreground">{row.upline_fbo_id}</span>
-                      ) : null}
-                      {!row.upline_name && !row.upline_fbo_id ? '—' : null}
-                    </TableCell>
-                    <TableCell className="text-xs">{row.email}</TableCell>
-                    <TableCell className="text-xs">{row.phone ?? '—'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          disabled={decide.isPending}
-                          onClick={() => decide.mutate({ id: row.id, action: 'reject' })}
-                        >
-                          Reject
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={decide.isPending}
-                          onClick={() => decide.mutate({ id: row.id, action: 'approve' })}
-                        >
-                          Approve
-                        </Button>
-                      </div>
-                    </TableCell>
+          <>
+            {/* Phone: one card per registration so the actions stay on screen. */}
+            <ul className="space-y-3 md:hidden">
+              {filteredRows.map((row) => (
+                <li key={row.id} className="surface-elevated space-y-3 p-4 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">{row.username ?? '—'}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{row.fbo_id}</p>
+                  </div>
+                  <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-muted-foreground">Upline</dt>
+                    <dd className="min-w-0 truncate text-foreground">
+                      {[row.upline_name, row.upline_fbo_id].filter(Boolean).join(' · ') || '—'}
+                    </dd>
+                    <dt className="text-muted-foreground">Email</dt>
+                    <dd className="min-w-0 break-all text-foreground">{row.email}</dd>
+                    <dt className="text-muted-foreground">Phone</dt>
+                    <dd className="text-foreground">{row.phone ?? '—'}</dd>
+                  </dl>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={decide.isPending}
+                      onClick={() => decide.mutate({ id: row.id, action: 'reject' })}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={decide.isPending}
+                      onClick={() => decide.mutate({ id: row.id, action: 'approve' })}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="surface-elevated hidden overflow-hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>FBO ID</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Upline</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-mono text-xs">{row.fbo_id}</TableCell>
+                      <TableCell>{row.username ?? '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        {row.upline_name ? (
+                          <span className="font-medium text-foreground">{row.upline_name}</span>
+                        ) : null}
+                        {row.upline_fbo_id ? (
+                          <span className="block font-mono text-ds-micro text-muted-foreground">{row.upline_fbo_id}</span>
+                        ) : null}
+                        {!row.upline_name && !row.upline_fbo_id ? '—' : null}
+                      </TableCell>
+                      <TableCell className="text-xs">{row.email}</TableCell>
+                      <TableCell className="text-xs">{row.phone ?? '—'}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={decide.isPending}
+                            onClick={() => decide.mutate({ id: row.id, action: 'reject' })}
+                          >
+                            Reject
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={decide.isPending}
+                            onClick={() => decide.mutate({ id: row.id, action: 'approve' })}
+                          >
+                            Approve
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )
       ) : null}
     </div>

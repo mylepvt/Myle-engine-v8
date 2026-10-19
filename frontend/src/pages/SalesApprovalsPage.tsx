@@ -118,7 +118,7 @@ export function SalesApprovalsPage({ title }: Props) {
       ) : null}
 
       {data && data.total === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded border border-dashed border-border dark:border-white/[0.12] py-14 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border dark:border-white/[0.12] py-14 text-center">
           <ClipboardList className="size-10 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No pending CC/sale invoices</p>
           <p className="text-xs text-muted-foreground">Auto-verified sales skip this queue.</p>
@@ -158,7 +158,7 @@ export function SalesApprovalsPage({ title }: Props) {
                             value={ccValue(row)}
                             onChange={(e) => setEdit(row, { cc: e.target.value })}
                             placeholder="0.000"
-                            className="h-9 w-28 rounded border border-border bg-background px-2 text-sm tabular-nums focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="h-9 w-28 input-base px-2 text-sm tabular-nums"
                           />
                         </label>
                         <label className="flex flex-col gap-0.5">
@@ -171,7 +171,7 @@ export function SalesApprovalsPage({ title }: Props) {
                             value={amountValue(row)}
                             onChange={(e) => setEdit(row, { amount: e.target.value })}
                             placeholder="0.00"
-                            className="h-9 w-32 rounded border border-border bg-background px-2 text-sm tabular-nums focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="h-9 w-32 input-base px-2 text-sm tabular-nums"
                           />
                         </label>
                         {row.invoice_number ? (

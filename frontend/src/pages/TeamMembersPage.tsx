@@ -117,7 +117,7 @@ export function TeamMembersPage({ title }: Props) {
           {filteredMembers.length ? (
             <ul className="space-y-3 overflow-x-hidden">
               {filteredMembers.map((m) => (
-                <li key={m.id} className="min-w-0 overflow-hidden rounded-xl border border-border bg-card px-4 py-3.5">
+                <li key={m.id} className="card min-w-0 overflow-hidden px-4 py-3.5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
@@ -221,7 +221,7 @@ export function TeamMembersPage({ title }: Props) {
       />
 
       {toastMsg ? (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-md border border-success/35 bg-success/15 px-3 py-2 text-ds-caption font-semibold text-success-ink shadow-lg">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[85] max-w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-success/35 bg-success/15 px-3 py-2 text-ds-caption font-semibold text-success-ink shadow-lg">
           {toastMsg}
         </div>
       ) : null}

@@ -109,28 +109,28 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
       <p className="mt-3 text-xs text-muted-foreground">Submitted {formatDateTime(item.submitted_at)}</p>
 
       <div className="mt-3 grid grid-cols-3 gap-3">
-        <div className="surface-inset rounded-lg px-2 py-2">
+        <div className="surface-inset rounded-2xl px-2 py-2">
           <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Calls</p>
           <ReportMetric reported={item.total_calling} system={item.calls_made_actual} tone="text-primary" />
         </div>
-        <div className="surface-inset rounded-lg px-2 py-2">
+        <div className="surface-inset rounded-2xl px-2 py-2">
           <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Picked</p>
           <div className="text-center text-sm font-semibold tabular-nums text-success-ink">{item.calls_picked}</div>
         </div>
-        <div className="surface-inset rounded-lg px-2 py-2">
+        <div className="surface-inset rounded-2xl px-2 py-2">
           <p className="text-ds-micro uppercase tracking-wide text-muted-foreground">Min. FLP</p>
           <ReportMetric reported={item.day1_count + item.day2_count + item.day3_count} system={item.payments_actual} tone="text-warning-ink" />
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-ds-micro text-muted-foreground">
-        <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">2CC {item.plan_2cc}</span>
-        <span className="rounded-full border border-border dark:border-white/10 px-2 py-1">Seat {item.seat_holdings}</span>
+        <span className="rounded-full px-2 py-1 bg-muted">2CC {item.plan_2cc}</span>
+        <span className="rounded-full px-2 py-1 bg-muted">Seat {item.seat_holdings}</span>
       </div>
 
       {item.remarks ? <p className="mt-3 text-sm text-muted-foreground">{item.remarks}</p> : null}
       {item.private_feedback ? (
-        <p className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning-ink">
+        <p className="mt-3 rounded-2xl bg-warning/10 px-3 py-2 text-sm text-warning-ink">
           <Lock className="mr-1 inline size-3.5" aria-hidden />Private feedback: {item.private_feedback}
         </p>
       ) : null}
@@ -184,7 +184,7 @@ export function TeamReportsPage({ title }: Props) {
             type="date"
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
-            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground"
+            className="input-base px-3 py-2 text-foreground"
           />
         </label>
         <span className="text-xs text-muted-foreground">
@@ -199,12 +199,12 @@ export function TeamReportsPage({ title }: Props) {
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded" />
+              <Skeleton key={i} className="h-28 rounded-card" />
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
             {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded" />
+              <Skeleton key={i} className="h-24 rounded-card" />
             ))}
           </div>
         </>
@@ -263,7 +263,7 @@ export function TeamReportsPage({ title }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
+          <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
             <section className="surface-elevated p-4 md:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
@@ -276,7 +276,7 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.items.length === 0 ? (
-                <div className="rounded border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   No reports submitted for {data.date}.
                 </div>
               ) : (
@@ -359,7 +359,7 @@ export function TeamReportsPage({ title }: Props) {
                               <td className="py-4 pl-4 text-sm text-muted-foreground">
                                 <div>{item.remarks ? item.remarks : '—'}</div>
                                 {item.private_feedback ? (
-                                  <div className="mt-2 rounded-lg border border-warning/30 bg-warning/10 px-2 py-1.5 text-xs text-warning-ink">
+                                  <div className="mt-2 rounded-2xl bg-warning/10 px-2 py-1.5 text-xs text-warning-ink">
                                     <Lock className="mr-1 inline size-3.5" aria-hidden />Private feedback: {item.private_feedback}
                                   </div>
                                 ) : null}
@@ -388,13 +388,13 @@ export function TeamReportsPage({ title }: Props) {
               </div>
 
               {data.missing_members.length === 0 ? (
-                <div className="rounded border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-dashed border-border dark:border-white/12 px-4 py-6 text-sm text-muted-foreground">
                   Everyone in scope has submitted for {data.date}.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {data.missing_members.map((member) => (
-                    <div key={member.user_id} className="surface-inset rounded px-3 py-3">
+                    <div key={member.user_id} className="surface-inset rounded-2xl px-3 py-3">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">

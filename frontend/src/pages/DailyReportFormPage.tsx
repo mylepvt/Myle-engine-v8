@@ -134,12 +134,12 @@ export function DailyReportFormPage({ title }: Props) {
             value={dateIso}
             onChange={(e) => setDateIso(e.target.value)}
             disabled={mut.isPending || !canPickDate}
-            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
+            className="input-base px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
       </div>
 
-      {q.isPending ? <Skeleton className="h-40 w-full rounded" /> : null}
+      {q.isPending ? <Skeleton className="h-40 w-full rounded-card" /> : null}
       {q.isError ? (
         <p className="text-sm text-destructive" role="alert">
           {q.error instanceof Error ? q.error.message : 'Failed to load'}
@@ -166,7 +166,7 @@ export function DailyReportFormPage({ title }: Props) {
                   setInts((prev) => ({ ...prev, [key]: Math.max(0, parseInt(e.target.value, 10) || 0) }))
                 }
                 className={cn(
-                  'rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 tabular-nums text-foreground disabled:opacity-50',
+                  'input-base px-3 py-2 tabular-nums text-foreground disabled:opacity-50',
                 )}
               />
             </label>
@@ -179,7 +179,7 @@ export function DailyReportFormPage({ title }: Props) {
             onChange={(e) => setRemarks(e.target.value)}
             rows={3}
             disabled={mut.isPending}
-            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
+            className="input-base px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -193,14 +193,14 @@ export function DailyReportFormPage({ title }: Props) {
             rows={3}
             placeholder="Anything you want to share privately with the admin…"
             disabled={mut.isPending}
-            className="rounded-lg border border-border dark:border-white/[0.12] bg-muted/60 px-3 py-2 text-foreground disabled:opacity-50"
+            className="input-base px-3 py-2 text-foreground disabled:opacity-50"
           />
         </label>
         <button
           type="submit"
           disabled={mut.isPending}
          
-          className="rounded-lg border border-primary/40 bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]"
+          className="rounded-full bg-primary/15 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-primary/25 disabled:opacity-50 min-h-[44px]"
         >
           {mut.isPending ? 'Saving…' : 'Save report'}
         </button>

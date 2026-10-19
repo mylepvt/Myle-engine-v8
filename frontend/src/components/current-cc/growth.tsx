@@ -90,7 +90,7 @@ export function ComparePills({ week, month }: { week: ComparePeriod; month: Comp
       <h2 className="text-ds-label uppercase text-muted-foreground">Growth vs previous period</h2>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {[week, month].map((p) => (
-          <div key={p.label} className="rounded-lg border border-border/50 bg-background/40 px-3 py-2.5">
+          <div key={p.label} className="rounded-2xl bg-muted px-3 py-2.5">
             <p className="mb-1.5 text-xs text-muted-foreground">{p.label}</p>
             <div className="flex items-center justify-between gap-2">
               <Metric name="CC" current={p.cc_current.toFixed(2)} pct={p.cc_pct} />

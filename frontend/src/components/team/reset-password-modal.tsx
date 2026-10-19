@@ -73,7 +73,7 @@ function ResetPasswordForm({
           <button
             type="button"
             onClick={() => setShowPw((v) => !v)}
-            className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-ds-caption text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="rounded-full bg-muted px-3 py-2 text-ds-caption text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             {showPw ? 'Hide' : 'Show'}
           </button>
