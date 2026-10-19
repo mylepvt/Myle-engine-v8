@@ -738,7 +738,7 @@ export function BudgetExportPage({ title }: Props) {
 
               {historyQuery.data ? (
                 <>
-                  <div className="rounded-md border border-border/70 bg-background/60 p-4">
+                  <div className="rounded-2xl bg-muted p-4">
                     <p className="text-lg font-semibold text-foreground">{historyQuery.data.subject.display_name}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {historyQuery.data.subject.email} · {historyQuery.data.subject.fbo_id}

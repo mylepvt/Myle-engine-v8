@@ -125,7 +125,7 @@ export function FinanceRechargesPage({ title }: Props) {
                 onChange={(e) => setUserId(e.target.value)}
                 required
                 disabled={mut.isPending}
-                className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground shadow-glass-inset focus:outline-none focus:ring-2 focus:ring-primary/35 disabled:opacity-50"
+                className="w-full input-base px-3 py-2 text-sm disabled:opacity-50"
               >
                 <option value="">Select…</option>
                 {visibleMembers.map((m) => (
@@ -157,7 +157,7 @@ export function FinanceRechargesPage({ title }: Props) {
               onChange={(e) => setAmountCents(e.target.value)}
               required
               disabled={mut.isPending}
-              className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
+              className="w-full input-base px-3 py-2 text-sm disabled:opacity-50"
             />
             {inrDisplay ? (
               <span className="shrink-0 text-sm font-medium text-muted-foreground">
@@ -178,7 +178,7 @@ export function FinanceRechargesPage({ title }: Props) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             disabled={mut.isPending}
-            className="w-full rounded-md border border-border dark:border-white/12 bg-muted/50 backdrop-blur-sm px-3 py-2 text-sm text-foreground disabled:opacity-50"
+            className="w-full input-base px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
         <Button type="submit" disabled={mut.isPending || !userId || !amountCents}>
@@ -201,7 +201,7 @@ export function FinanceRechargesPage({ title }: Props) {
           aria-modal="true"
           aria-label="Confirm wallet adjustment"
         >
-          <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+          <div className="card mx-4 w-full max-w-sm p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-foreground">Confirm wallet adjustment</h3>
             <div className="mt-3 space-y-2 text-sm">
               <p><span className="text-muted-foreground">User:</span> {memberSelectLabel(selectedMember)}</p>
@@ -213,7 +213,7 @@ export function FinanceRechargesPage({ title }: Props) {
               <button
                 type="button"
                 onClick={() => setShowConfirm(false)}
-                className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                className="rounded-full btn-secondary px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
               >
                 Cancel
               </button>
@@ -221,7 +221,7 @@ export function FinanceRechargesPage({ title }: Props) {
                 type="button"
                 onClick={() => void onSubmit()}
                 disabled={mut.isPending}
-                className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                className="rounded-full bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
               >
                 {mut.isPending ? 'Applying…' : 'Confirm adjustment'}
               </button>
