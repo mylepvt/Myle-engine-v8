@@ -622,11 +622,11 @@ export function BudgetExportPage({ title }: Props) {
                                 </p>
                               </td>
                               <td className="py-3 pr-4 text-muted-foreground">{member.role}</td>
-                              <td className="py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.current_balance_cents)}</td>
-                              <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_recharge_cents)}</td>
-                              <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_spend_cents)}</td>
-                              <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_adjustment_cents)}</td>
-                              <td className="py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.period_net_change_cents)}</td>
+                              <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.current_balance_cents)}</td>
+                              <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_recharge_cents)}</td>
+                              <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_spend_cents)}</td>
+                              <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_adjustment_cents)}</td>
+                              <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.period_net_change_cents)}</td>
                               <td className="py-3 text-right tabular-nums text-muted-foreground">{member.active_leads_count}</td>
                             </tr>
                           ))}
@@ -677,10 +677,10 @@ export function BudgetExportPage({ title }: Props) {
                             </p>
                           </td>
                           <td className="py-3 pr-4 text-muted-foreground">{member.role}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.current_balance_cents)}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_recharge_cents)}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_spend_cents)}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.period_net_change_cents)}</td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.current_balance_cents)}</td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_recharge_cents)}</td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-muted-foreground">{formatInr(member.period_spend_cents)}</td>
+                          <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-foreground">{formatInr(member.period_net_change_cents)}</td>
                           <td className="py-3 text-right tabular-nums text-muted-foreground">{member.active_leads_count}</td>
                         </tr>
                       ))}
@@ -720,7 +720,7 @@ export function BudgetExportPage({ title }: Props) {
                 <InlineEmpty>No person selected yet.</InlineEmpty>
               ) : null}
 
-              {historyQuery.isPending ? (
+              {selectedHistoryUserId !== null && historyQuery.isPending ? (
                 <div className="space-y-2">
                   <Skeleton className="h-10 w-full" />
                   <Skeleton className="h-10 w-full" />
@@ -771,7 +771,7 @@ export function BudgetExportPage({ title }: Props) {
                               <td className="py-3 pr-4 text-muted-foreground">{formatDateTime(entry.created_at)}</td>
                               <td className="py-3 pr-4 capitalize text-foreground">{entry.kind}</td>
                               <td className="py-3 pr-4 capitalize text-muted-foreground">{entry.direction}</td>
-                              <td className={`py-3 pr-4 text-right tabular-nums ${entry.amount_cents >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                              <td className={`whitespace-nowrap py-3 pr-4 text-right tabular-nums ${entry.amount_cents >= 0 ? 'text-foreground' : 'text-destructive'}`}>
                                 {formatInr(entry.amount_cents)}
                               </td>
                               <td className="py-3 pr-4 text-muted-foreground">

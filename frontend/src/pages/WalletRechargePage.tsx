@@ -246,7 +246,7 @@ export function WalletRechargePage({ title }: Props) {
                       <span className="ml-2 text-xs text-muted-foreground">UTR: {r.utr_number}</span>
                     ) : null}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <RechargeStatusBadge status={r.status} />
                     <span className="text-xs text-muted-foreground">
                       {new Date(r.created_at).toLocaleDateString()}

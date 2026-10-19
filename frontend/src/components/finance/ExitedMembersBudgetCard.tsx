@@ -129,10 +129,10 @@ export function ExitedMembersBudgetCard() {
                         >
                           {inr(row.balance_cents)}
                         </td>
-                        <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">
+                        <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-muted-foreground">
                           {inr(row.total_credited_cents)}
                         </td>
-                        <td className="py-3 pr-4 text-right tabular-nums text-muted-foreground">
+                        <td className="whitespace-nowrap py-3 pr-4 text-right tabular-nums text-muted-foreground">
                           {inr(row.total_debited_cents)}
                         </td>
                         <td className="py-3 text-muted-foreground">{shortDate(row.last_wallet_activity_at)}</td>

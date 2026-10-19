@@ -183,65 +183,115 @@ export function AdminInvoicesPage({ title }: Props) {
       ) : null}
 
       {inv.data ? (
-        <div className="overflow-x-auto rounded-2xl bg-muted">
-          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="px-3 py-2 font-medium">Invoice No.</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Member</th>
-                <th className="px-3 py-2 font-medium">Type</th>
-                <th className="px-3 py-2 font-medium text-right">Amount</th>
-                <th className="px-3 py-2 font-medium">Download</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inv.data.items.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
-                    No invoices match these filters.
-                  </td>
+        <>
+          {/* Phone: one card per invoice instead of a sideways-scrolling table. */}
+          <div className="space-y-2 md:hidden">
+            {inv.data.items.length === 0 ? (
+              <p className="surface-inset px-3 py-6 text-center text-sm text-muted-foreground">
+                No invoices match these filters.
+              </p>
+            ) : (
+              inv.data.items.map((row) => (
+                <div key={row.invoice_number} className="surface-inset space-y-2 px-3 py-3 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-foreground">
+                        {row.member_name}
+                        {row.member_username ? (
+                          <span className="ml-1 text-xs text-muted-foreground">@{row.member_username}</span>
+                        ) : null}
+                      </p>
+                      <p className="break-all font-mono text-xs text-muted-foreground">{row.invoice_number}</p>
+                    </div>
+                    <p className="shrink-0 whitespace-nowrap font-medium tabular-nums text-foreground">
+                      {formatMoney(row.total_cents, row.currency)}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {typeLabel(row.doc_type)} · {new Date(row.issued_at).toLocaleString()}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <InvoiceDownloadLink
+                      invoiceNumber={row.invoice_number}
+                      kind={row.doc_type === 'payment_receipt' ? 'receipt' : row.doc_type}
+                    />
+                    {row.doc_type === 'tax_invoice' ? (
+                      <button
+                        type="button"
+                        onClick={() => setRefundFor(row.invoice_number)}
+                        className="text-ds-caption font-semibold text-destructive-ink hover:underline"
+                      >
+                        Refund…
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            )}
+            <p className="px-1 text-xs text-muted-foreground">
+              Showing {inv.data.items.length} of {inv.data.total}
+            </p>
+          </div>
+          <div className="hidden overflow-x-auto rounded-2xl bg-muted md:block">
+            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-3 py-2 font-medium">Invoice No.</th>
+                  <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Member</th>
+                  <th className="px-3 py-2 font-medium">Type</th>
+                  <th className="px-3 py-2 font-medium text-right">Amount</th>
+                  <th className="px-3 py-2 font-medium">Download</th>
                 </tr>
-              ) : (
-                inv.data.items.map((row) => (
-                  <tr key={row.invoice_number} className="border-b border-border/80">
-                    <td className="px-3 py-2 font-mono text-xs">{row.invoice_number}</td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {new Date(row.issued_at).toLocaleString()}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="text-foreground">{row.member_name}</span>
-                      {row.member_username ? (
-                        <span className="ml-1 text-xs text-muted-foreground">@{row.member_username}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2">{typeLabel(row.doc_type)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{formatMoney(row.total_cents, row.currency)}</td>
-                    <td className="max-w-[12rem] px-3 py-2 align-top">
-                      <InvoiceDownloadLink
-                        invoiceNumber={row.invoice_number}
-                        kind={row.doc_type === 'payment_receipt' ? 'receipt' : row.doc_type}
-                        className="w-full whitespace-normal"
-                      />
-                      {row.doc_type === 'tax_invoice' ? (
-                        <button
-                          type="button"
-                          onClick={() => setRefundFor(row.invoice_number)}
-                          className="mt-1 text-ds-caption font-semibold text-destructive-ink hover:underline"
-                        >
-                          Refund…
-                        </button>
-                      ) : null}
+              </thead>
+              <tbody>
+                {inv.data.items.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                      No invoices match these filters.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-            Showing {inv.data.items.length} of {inv.data.total}
-          </p>
-        </div>
+                ) : (
+                  inv.data.items.map((row) => (
+                    <tr key={row.invoice_number} className="border-b border-border/80">
+                      <td className="px-3 py-2 font-mono text-xs">{row.invoice_number}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {new Date(row.issued_at).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="text-foreground">{row.member_name}</span>
+                        {row.member_username ? (
+                          <span className="ml-1 text-xs text-muted-foreground">@{row.member_username}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2">{typeLabel(row.doc_type)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{formatMoney(row.total_cents, row.currency)}</td>
+                      <td className="max-w-[12rem] px-3 py-2 align-top">
+                        <InvoiceDownloadLink
+                          invoiceNumber={row.invoice_number}
+                          kind={row.doc_type === 'payment_receipt' ? 'receipt' : row.doc_type}
+                          className="w-full whitespace-normal"
+                        />
+                        {row.doc_type === 'tax_invoice' ? (
+                          <button
+                            type="button"
+                            onClick={() => setRefundFor(row.invoice_number)}
+                            className="mt-1 text-ds-caption font-semibold text-destructive-ink hover:underline"
+                          >
+                            Refund…
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+              Showing {inv.data.items.length} of {inv.data.total}
+            </p>
+          </div>
+        </>
       ) : null}
       <RefundInvoiceDialog invoiceNumber={refundFor} onClose={() => setRefundFor(null)} />
     </div>
