@@ -76,6 +76,9 @@
     --spring-default-duration: 450ms;
     --spring-pop: linear(0, 0.1018, 0.3031, 0.5094, 0.6812, 0.8083, 0.8945, 0.9486, 0.98, 0.9964, 1.0038, 1.0061, 1.006, 1.0049, 1.0036, 1.0024, 1.0015, 1.0008, 1.0004, 1.0002, 1);
     --spring-pop-duration: 320ms;
+    /* SPRING.flick (0.24, bounce 0.25), sampled the same way: after a drag release. */
+    --spring-flick: linear(0, 0.051, 0.1704, 0.319, 0.471, 0.6107, 0.73, 0.826, 0.8993, 0.9521, 0.9879, 1.0102, 1.0225, 1.0277, 1.0281, 1.0258, 1.0219, 1.0176, 1.0134, 1.0096, 1.0065, 1.004, 1.0022, 1.0009, 1.0001, 0.9995, 0.9993, 1);
+    --spring-flick-duration: 430ms;
 
     --shadow-xs: 0 1px 2px rgba(17, 17, 20, 0.05);
     --shadow-card: 0 1px 1px rgba(17, 17, 20, 0.03), 0 8px 24px -12px rgba(30, 41, 80, 0.18);
@@ -521,13 +524,35 @@
     }
   }
 
-  /* The mobile drawer floats over content, so it takes the denser pop glass. */
+  /* The mobile drawer floats over content, so it takes the denser pop fill. It
+     keeps the standard 20px blur, not pop's 40px: a backdrop blur is redrawn every
+     frame the drawer moves, and the cost grows with the radius. */
   @media (max-width: 767px) {
     .dashboard-mobile-drawer.glass {
       background: var(--glass-bg-strong);
-      -webkit-backdrop-filter: blur(40px) saturate(190%);
-      backdrop-filter: blur(40px) saturate(190%);
       box-shadow: var(--glass-inset), var(--shadow-pop);
+    }
+  }
+
+  /* Desktop sidebar slides on transform only. Animating its width relaid out the
+     whole page every frame; now it leaves the flow when closed, and
+     DashboardLayout glides the content column across with a FLIP. */
+  @media (min-width: 768px) {
+    .dashboard-sidebar-panel {
+      transition:
+        transform var(--spring-default-duration) var(--spring-default),
+        visibility 0s;
+    }
+    .dashboard-sidebar-panel--closed {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
+      transform: translateX(calc(-100% - 1.5rem));
+      visibility: hidden;
+      transition:
+        transform var(--spring-default-duration) var(--spring-default),
+        visibility 0s linear var(--spring-default-duration);
     }
   }
 
@@ -742,7 +767,7 @@
     }
   }
   .nav-link[data-active='true'],
-  .nav-link[aria-current='page'],
+  .nav-link--active,
   .control-pill {
     color: var(--foreground);
     background: var(--control-bg);
@@ -751,22 +776,23 @@
 
   /* Respond on press, not release: shrink the instant a finger lands
      (100ms), then spring back on release. */
+  /* Crisp, as before the redesign: 100ms in and 100ms back out, no overshoot.
+     A slow spring on release read as floaty on every button. */
   .press,
   .card-interactive,
   .nav-link {
     transition:
-      background-color 0.18s ease,
-      border-color 0.18s ease,
-      color 0.18s ease,
-      box-shadow 0.18s ease,
-      opacity 0.18s ease,
-      transform var(--spring-default-duration) var(--spring-default);
+      background-color 0.1s ease,
+      border-color 0.1s ease,
+      color 0.1s ease,
+      box-shadow 0.15s ease,
+      opacity 0.1s ease,
+      transform 0.1s ease-out;
   }
+  /* Nav rows highlight; they don't shrink. */
   .press:active:not(:disabled),
-  .card-interactive:active,
-  .nav-link:active {
+  .card-interactive:active {
     transform: scale(0.97);
-    transition: transform 100ms ease-out, background-color 0s;
   }
   /* List rows highlight on touch-down instead of shrinking. */
   .press-row:active {
@@ -943,14 +969,32 @@
     border-radius: 9999px;
     z-index: 0;
     pointer-events: none;
-    background: var(--accent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    /* A solid primary pill with a glow, as before the redesign: the slide reads
+       clearly, where a pale tint barely showed it moving. */
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--primary) 88%, white),
+      var(--primary)
+    );
+    box-shadow:
+      0 8px 20px -6px color-mix(in srgb, var(--primary) 60%, transparent),
+      inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
     will-change: transform;
+    transition:
+      transform var(--spring-default-duration) var(--spring-default),
+      width var(--spring-default-duration) var(--spring-default),
+      opacity 0.15s ease;
   }
-  .dark .dashboard-mobile-tabbar__indicator {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  /* Follows the finger 1:1 while dragged, then lands with momentum's bounce. */
+  .dashboard-mobile-tabbar__indicator--dragging {
+    transition: none;
   }
-
+  .dashboard-mobile-tabbar__indicator--flick {
+    transition:
+      transform var(--spring-flick-duration) var(--spring-flick),
+      width var(--spring-flick-duration) var(--spring-flick),
+      opacity 0.15s ease;
+  }
   .dashboard-mobile-tabbar__tab {
     position: relative;
     z-index: 1;
@@ -975,14 +1019,17 @@
   }
 
   .dashboard-mobile-tabbar__tab--active > span {
-    color: var(--primary);
+    color: var(--primary-foreground);
     font-weight: 600;
   }
 
+  /* The active icon pops slightly as the pill lands. */
   .dashboard-mobile-tabbar__tab--active svg {
     position: relative;
     z-index: 1;
-    color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    transform: scale(1.05);
+    transition: transform 0.18s ease-out;
   }
 
   .dashboard-mobile-tabbar__tab--idle:active svg {

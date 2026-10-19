@@ -1,4 +1,5 @@
-import { Link, NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { m } from 'motion/react'
 
@@ -11,6 +12,7 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useDrawerGesture } from '@/hooks/use-drawer-gesture'
 import { useMetaQuery } from '@/hooks/use-meta-query'
 import type { DashboardNavSection } from '@/config/dashboard-nav'
+import { afterNextPaint } from '@/lib/after-next-paint'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -35,6 +37,12 @@ export function DashboardSidebar({
   const { role: shellRole, isPending: rolePending } = useDashboardShellRole()
   const { data: meta } = useMetaQuery()
   const envLabel = meta?.environment
+  const location = useLocation()
+  const navigate = useNavigate()
+  // The row a click is heading to. The route only commits once the next page has
+  // rendered, so the pill moves on the click instead of waiting for it.
+  const [pending, setPending] = useState<{ to: string; fromPath: string } | null>(null)
+  const pendingTo = pending && pending.fromPath === location.pathname ? pending.to : null
   const { panelRef: drawerRef, x: drawerX, scrimOpacity, handlers: drawerHandlers } = useDrawerGesture({
     enabled: isMobile,
     open: mobileMenuOpen,
@@ -62,9 +70,8 @@ export function DashboardSidebar({
       className={cn(
         // Desktop: a floating glass panel inset 12px from the edges. Mobile: a glass-pop drawer.
         'glass flex shrink-0 flex-col overflow-hidden',
-        'md:my-3 md:h-[calc(100%-1.5rem)] md:rounded-card',
-        'md:transition-[width,margin-left,visibility] md:duration-200 md:ease-out',
-        sidebarOpen ? 'md:ml-3 md:w-[240px]' : 'md:invisible md:ml-0 md:w-0',
+        'dashboard-sidebar-panel md:my-3 md:ml-3 md:h-[calc(100%-1.5rem)] md:w-[240px] md:rounded-card',
+        !sidebarOpen && 'dashboard-sidebar-panel--closed',
         'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(240px,85vw)] max-md:rounded-r-card max-md:touch-pan-y max-md:pt-[env(safe-area-inset-top)]',
         !mobileMenuOpen && 'max-md:pointer-events-none',
       )}
@@ -118,12 +125,25 @@ export function DashboardSidebar({
                               ? `${label}, ${pendingEnrollCount} pending`
                               : undefined
                           }
-                          onClick={() => {
+                          onClick={(e) => {
                             if (isMobile) setMobileMenuOpen(false)
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+                            // Paint the row's answer first, then render the next page.
+                            e.preventDefault()
+                            setPending({ to, fromPath: location.pathname })
+                            // Same page: replace, as <Link> does, so history gains no duplicate.
+                            afterNextPaint(() => navigate(to, { replace: to === location.pathname }))
                           }}
-                          className="nav-link group flex min-h-10 items-center gap-2.5 px-3 py-2 text-sm"
+                          className={({ isActive }) =>
+                            cn(
+                              'nav-link group flex min-h-10 items-center gap-2.5 px-3 py-2 text-sm',
+                              (pendingTo ? pendingTo === to : isActive) && 'nav-link--active',
+                            )
+                          }
                         >
-                          {({ isActive }) => (
+                          {({ isActive: routeActive }) => {
+                            const isActive = pendingTo ? pendingTo === to : routeActive
+                            return (
                             <>
                               <Icon
                                 className={cn(
@@ -146,7 +166,8 @@ export function DashboardSidebar({
                                 </span>
                               ) : null}
                             </>
-                          )}
+                            )
+                          }}
                         </NavLink>
                       </li>
                     )
