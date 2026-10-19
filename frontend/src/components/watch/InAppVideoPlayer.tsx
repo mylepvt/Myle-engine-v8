@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { ArrowUpRight, PlayCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -81,14 +81,14 @@ export function InAppVideoPlayer({
   playLabel = 'Play inside Myle',
   seekPrevention = false,
 }: InAppVideoPlayerProps) {
-  const [playerActivated, setPlayerActivated] = useState(false)
+  // Activation belongs to one source: a new video shows its preview again. Keyed
+  // in render rather than reset in an effect, because a mount-time reset effect
+  // could land after an early tap and swallow it (play pressed, nothing happens).
+  const sourceKey = `${embedUrl ?? ''}|${fallbackUrl ?? ''}|${title}`
+  const [activatedFor, setActivatedFor] = useState<string | null>(null)
+  const playerActivated = activatedFor === sourceKey
   const maxAllowedTimeRef = useRef(0)
   const playbackSource = resolvePlaybackSource(embedUrl)
-
-  useEffect(() => {
-    setPlayerActivated(false)
-    maxAllowedTimeRef.current = 0
-  }, [embedUrl, fallbackUrl, title])
 
   if (!playbackSource || playbackSource.kind === 'unsupported') {
     if (!fallbackUrl) {
@@ -135,7 +135,10 @@ export function InAppVideoPlayer({
             <Button
               type="button"
               className="mt-5 inline-flex items-center gap-2"
-              onClick={() => setPlayerActivated(true)}
+              onClick={() => {
+                maxAllowedTimeRef.current = 0
+                setActivatedFor(sourceKey)
+              }}
             >
               <PlayCircle className="size-4" />
               {playLabel}
