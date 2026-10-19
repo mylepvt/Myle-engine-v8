@@ -32,7 +32,7 @@ function todayIsoLocal() {
 }
 
 const inputCls =
-  'w-full min-w-0 input-base px-2.5 py-2 text-sm text-foreground disabled:opacity-50'
+  'w-full min-w-0 input-base px-2 py-2 text-sm text-foreground disabled:opacity-50'
 
 const emptyPerson = (): PersonRow => ({ name: '', ccs: 0, current_state: '', next_task: '' })
 const emptyEnroll = (): EnrollmentRow => ({ name: '', fresh_lead: 0, old_lead: 0 })
@@ -428,10 +428,11 @@ export function CurrentCcPage({ title }: Props) {
 
             {/* 8. Enrollment Tracking */}
             <Section title="8. Enrollment Tracking (Prospect)">
-              <RowHeader cols={['Name', 'State', 'Drop/Cont', 'Day-1', '']} grid="grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem_1.25rem]" />
+              <RowHeader cols={['Name', 'State', 'Drop/Cont', 'Day-1', '']} grid="grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5.5rem_3rem_1.25rem]" />
               {form.enrollment_tracking_rows.map((r, i) => (
-                <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem_1.25rem] items-center gap-1.5">
-                  <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { name: e.target.value })} className={inputCls} />
+                // Phone: name on the first line, state / drop-continue / day-1 under it.
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_6rem_3rem_1.25rem] items-center gap-1.5 max-sm:mb-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5.5rem_3rem_1.25rem]">
+                  <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { name: e.target.value })} className={cn(inputCls, 'max-sm:col-span-3')} />
                   <input value={r.current_state} placeholder="State" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { current_state: e.target.value })} className={inputCls} />
                   <NativeSelect value={r.drop_continue} disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { drop_continue: e.target.value })} className={inputCls}>
                     <option value="">—</option>
@@ -439,7 +440,9 @@ export function CurrentCcPage({ title }: Props) {
                     <option value="drop">Drop</option>
                   </NativeSelect>
                   <input value={r.day1} placeholder="D1" disabled={disabled} onChange={(e) => updateRow('enrollment_tracking_rows', i, { day1: e.target.value })} className={inputCls} />
-                  <RemoveBtn onClick={() => removeRow('enrollment_tracking_rows', i)} />
+                  <span className="max-sm:col-start-4 max-sm:row-start-1">
+                    <RemoveBtn onClick={() => removeRow('enrollment_tracking_rows', i)} />
+                  </span>
                 </div>
               ))}
               <AddBtn onClick={() => addRow('enrollment_tracking_rows', emptyTrack)} />
@@ -510,14 +513,17 @@ function PersonTable({ rows, disabled, onChange, onAdd, onRemove }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <RowHeader cols={['Name', 'CCs', 'Current State', 'Next Task', '']} grid="grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_minmax(0,1fr)_1.25rem]" />
+      <RowHeader cols={['Name', 'CCs', 'Current State', 'Next Task', '']} grid="grid-cols-[minmax(0,1fr)_3.75rem_minmax(0,1fr)_minmax(0,1fr)_1.25rem]" />
       {rows.map((r, i) => (
-        <div key={i} className="grid grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_minmax(0,1fr)_1.25rem] items-center gap-1.5">
-          <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => onChange(i, { name: e.target.value })} className={inputCls} />
+        // Phone: name + CCs on the first line, state + task under them.
+        <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3.75rem_1.25rem] items-center gap-1.5 max-sm:mb-2 sm:grid-cols-[minmax(0,1fr)_3.75rem_minmax(0,1fr)_minmax(0,1fr)_1.25rem]">
+          <input value={r.name} placeholder="Name" disabled={disabled} onChange={(e) => onChange(i, { name: e.target.value })} className={cn(inputCls, 'max-sm:col-span-2')} />
           <input type="number" min={0} step="0.001" value={r.ccs} disabled={disabled} onChange={(e) => onChange(i, { ccs: Math.max(0, parseFloat(e.target.value) || 0) })} className={cn(inputCls, 'tabular-nums')} />
           <input value={r.current_state} placeholder="State" disabled={disabled} onChange={(e) => onChange(i, { current_state: e.target.value })} className={inputCls} />
-          <input value={r.next_task} placeholder="Task" disabled={disabled} onChange={(e) => onChange(i, { next_task: e.target.value })} className={inputCls} />
-          <RemoveBtn onClick={() => onRemove(i)} />
+          <input value={r.next_task} placeholder="Task" disabled={disabled} onChange={(e) => onChange(i, { next_task: e.target.value })} className={cn(inputCls, 'max-sm:col-span-2')} />
+          <span className="max-sm:col-start-4 max-sm:row-start-1">
+            <RemoveBtn onClick={() => onRemove(i)} />
+          </span>
         </div>
       ))}
       <AddBtn onClick={onAdd} />
