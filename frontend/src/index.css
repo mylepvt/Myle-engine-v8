@@ -788,28 +788,21 @@
     box-shadow:
       0 8px 20px -6px color-mix(in srgb, var(--primary) 60%, transparent),
       inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
-    transition:
-      transform 0.44s cubic-bezier(0.34, 1.4, 0.5, 1),
-      width 0.3s ease,
-      opacity 0.2s ease;
+    /* Motion (springs) lives in DashboardMobileTabBar; no CSS transition here. */
     will-change: transform;
-  }
-
-  /* During drag: no transition — follows finger instantly */
-  .dashboard-mobile-tabbar__indicator--dragging {
-    transition: none !important;
   }
 
   .dashboard-mobile-tabbar__tab {
     position: relative;
     z-index: 1;
     border: 1px solid transparent;
-    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+    /* Press feedback lands on touch-down and settles without overshoot. */
+    transition: transform 0.1s ease-out,
       color 0.18s ease;
   }
 
   .dashboard-mobile-tabbar__tab:active {
-    transform: scale(0.86);
+    transform: scale(0.94);
   }
 
   /* Icon + short label: new members learn the tabs without guessing icons */
@@ -832,7 +825,7 @@
     z-index: 1;
     color: var(--primary-foreground) !important;
     transform: scale(1.05);
-    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.18s ease-out;
   }
 
   .dashboard-mobile-tabbar__tab--idle:active svg {
