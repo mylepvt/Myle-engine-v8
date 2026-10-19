@@ -128,9 +128,20 @@ export function DashboardSidebar({
                           onClick={(e) => {
                             if (isMobile) setMobileMenuOpen(false)
                             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-                            // Paint the row's answer first, then render the next page.
                             e.preventDefault()
                             setPending({ to, fromPath: location.pathname })
+                            if (isMobile) {
+                              // The open drawer owns a Back placeholder entry, which closing it
+                              // drops with history.back() a tick later. Navigate now, replacing
+                              // that entry: deferred, the pending back() would undo the
+                              // navigation. Back from the new page then returns here.
+                              const onPlaceholder = Boolean(
+                                (window.history.state as { backClose?: boolean } | null)?.backClose,
+                              )
+                              navigate(to, { replace: onPlaceholder || to === location.pathname })
+                              return
+                            }
+                            // Desktop: paint the row's answer first, then render the next page.
                             // Same page: replace, as <Link> does, so history gains no duplicate.
                             afterNextPaint(() => navigate(to, { replace: to === location.pathname }))
                           }}
