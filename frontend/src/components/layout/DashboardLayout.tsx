@@ -22,6 +22,7 @@ import { PushNotificationGate } from '@/components/notifications/PushNotificatio
 import { useReportDeviceStatus } from '@/hooks/use-report-device-status'
 import { InstallAppGate } from '@/components/pwa/InstallAppGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
+import { prefetchDashboardPages } from '@/lib/prefetch-dashboard-pages'
 import { cn } from '@/lib/utils'
 import { authLogout } from '@/lib/auth-api'
 import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
@@ -107,6 +108,12 @@ export function DashboardLayout() {
     () => ({ '--keyboard-inset-height': `${keyboardInset}px` }) as CSSProperties,
     [keyboardInset],
   )
+  // Once the shell is up, fetch the tab bar pages' code in idle time so their first
+  // visit is instant instead of waiting on a chunk download.
+  useEffect(() => {
+    prefetchDashboardPages()
+  }, [])
+
   // Sheets portal to <body>, outside .dashboard-shell, so they need the inset on
   // <html> too — otherwise a sheet never lifts above the Android keyboard.
   useEffect(() => {
