@@ -392,14 +392,6 @@
     scroll-behavior: smooth;
   }
 
-  /* Auth card dark header — always dark regardless of theme */
-  .auth-header-banner {
-    background: linear-gradient(
-      135deg,
-      var(--palette-ink),
-      color-mix(in srgb, var(--palette-blue) 12%, var(--palette-ink) 88%)
-    );
-  }
 }
 
 @keyframes fadeIn {
@@ -717,6 +709,7 @@
     }
   }
   .input-base:focus,
+  .input-base:focus-within,
   .field-input:focus {
     background: var(--control-bg);
     border-color: var(--primary);

@@ -225,32 +225,12 @@ export function LoginPage() {
   if (bootUser && bootFinished) return null
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -left-24 top-[12%] h-80 w-80 rounded-full bg-primary/[0.09] blur-3xl" />
-        <div className="absolute -right-16 bottom-[18%] h-72 w-72 rounded-full bg-muted/30 blur-3xl" />
-      </div>
-
-      <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
+    <div className="relative flex min-h-dvh flex-col items-center overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+      {/* my-auto, not justify-center: a card taller than the screen stays scrollable from its top. */}
+      <div className="relative z-[1] my-auto w-full max-w-[min(100%,26rem)]">
         <AuthCard
           variant="center"
           icon={Network}
-          iconNode={
-            <div className="flex size-[3.25rem] items-center justify-center rounded"
-              style={{ background: 'linear-gradient(145deg, #1a1008 0%, #0d0904 100%)', boxShadow: '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.15)' }}
-              aria-hidden>
-              <svg width="30" height="28" viewBox="0 0 30 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2 26V4L15 20L28 4V26" stroke="url(#gold)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-                <defs>
-                  <linearGradient id="gold" x1="2" y1="4" x2="28" y2="26" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#F5D060"/>
-                    <stop offset="50%" stopColor="#D4AF37"/>
-                    <stop offset="100%" stopColor="#A07820"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-          }
           title="Welcome back"
           subtitle="Sign in to Myle Community"
           footer={
@@ -268,7 +248,7 @@ export function LoginPage() {
         >
           {showGateBanner ? (
             <div
-              className="flex items-start gap-2 rounded border border-warning/35 bg-warning/[0.12] px-3 py-2.5 text-left text-sm text-warning-ink/95"
+              className="flex items-center gap-2 rounded-2xl bg-warning/10 py-2 pl-3.5 pr-2 text-left text-sm text-warning-ink"
               role="status"
             >
               <span className="min-w-0 flex-1">
@@ -276,7 +256,7 @@ export function LoginPage() {
               </span>
               <button
                 type="button"
-                className="shrink-0 rounded-md p-1 text-warning-ink/90 transition-colors hover:bg-warning/20 hover:text-warning-ink"
+                className="press flex size-8 shrink-0 items-center justify-center rounded-full text-warning-ink hover:bg-warning/15"
                 onClick={() => setShowGateBanner(false)}
                 aria-label="Dismiss notice"
               >
@@ -286,8 +266,8 @@ export function LoginPage() {
           ) : null}
 
           {devLoginAllowed ? (
-            <div className="space-y-3 rounded border border-warning/30 bg-warning/[0.07] p-4">
-              <p className="text-ds-label uppercase text-warning-ink/90">
+            <div className="space-y-3 rounded-2xl bg-warning/10 p-4">
+              <p className="text-ds-label uppercase text-warning-ink">
                 Quick Access
               </p>
               <label className="field-label" htmlFor="login-role">
@@ -298,7 +278,7 @@ export function LoginPage() {
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
                 disabled={pending}
-                className="field-input appearance-none bg-muted/40"
+                className="field-input appearance-none"
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -327,7 +307,7 @@ export function LoginPage() {
 
           {error ? (
             <div
-              className="rounded border border-destructive/40 bg-destructive/[0.12] px-3 py-2.5 text-center text-sm text-destructive"
+              className="rounded-2xl bg-destructive/10 px-3.5 py-2.5 text-center text-sm text-destructive-ink"
               role="alert"
             >
               {error}
@@ -344,7 +324,7 @@ export function LoginPage() {
           >
             <div
               className={cn(
-                devLoginAllowed ? 'border-t border-border/60 pt-5' : '',
+                devLoginAllowed ? 'border-t border-border pt-5' : '',
               )}
             >
               {devLoginAllowed ? (
@@ -360,7 +340,7 @@ export function LoginPage() {
               <div className="space-y-3.5">
                 <div>
                   <label
-                    className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                    className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                     htmlFor="login-fbo-id"
                   >
                     FBO ID
@@ -375,14 +355,14 @@ export function LoginPage() {
                     placeholder="Your FBO ID"
                     icon={IdCard}
                   />
-                  <p className="mt-1.5 text-ds-micro leading-relaxed text-muted-foreground/90">
+                  <p className="mt-1.5 text-ds-micro leading-relaxed text-muted-foreground">
                     Password is required. If you used a username before, enter it in this field instead of FBO.
                   </p>
                 </div>
 
                 <div>
                   <label
-                    className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                    className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                     htmlFor="login-password"
                   >
                     Password
@@ -406,7 +386,7 @@ export function LoginPage() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => setShowPassword((s) => !s)}
-                        className="flex size-11 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                        className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? (
@@ -434,7 +414,7 @@ export function LoginPage() {
                         /* ignore */
                       }
                     }}
-                    className="size-4 rounded border-white/25 bg-muted/40 text-primary accent-primary focus:ring-2 focus:ring-primary/40"
+                    className="size-4 rounded accent-primary focus-visible:ring-2 focus-visible:ring-primary/40"
                   />
                   <span className="select-none">Remember me</span>
                 </label>
@@ -447,7 +427,7 @@ export function LoginPage() {
                 </button>
               </div>
               {showForgotHint && (
-                <p className="mt-2 rounded border border-primary/25 bg-primary/[0.08] px-3 py-2.5 text-center text-xs text-muted-foreground">
+                <p className="mt-2 rounded-2xl bg-accent px-3.5 py-2.5 text-center text-xs text-accent-foreground">
                   Contact your leader or admin to reset your password.
                 </p>
               )}
@@ -455,7 +435,8 @@ export function LoginPage() {
               <Button
                 type="submit"
                 variant="default"
-                className="mt-6 h-11 w-full gap-2 text-base font-semibold shadow-lg shadow-primary/20"
+                size="lg"
+                className="mt-6 w-full gap-2 font-semibold"
                 disabled={pwPending}
               >
                 {pwPending ? (
@@ -474,8 +455,8 @@ export function LoginPage() {
           </form>
         </AuthCard>
 
-        <p className="mt-5 flex items-center justify-center gap-2 text-center text-ds-micro leading-relaxed text-muted-foreground/85">
-          <Shield className="size-3.5 shrink-0 opacity-80" aria-hidden />
+        <p className="mt-5 flex items-center justify-center gap-2 text-center text-ds-micro leading-relaxed text-muted-foreground">
+          <Shield className="size-3.5 shrink-0" aria-hidden />
           Secure internal access · Credentials sent over HTTPS only.
         </p>
         <p className="mt-1 text-center text-ds-micro text-muted-foreground">

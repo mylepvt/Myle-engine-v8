@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
+import { MyleBrandTile } from '@/components/brand/MyleSidebarMark'
 import { cn } from '@/lib/utils'
 
 type AuthCardProps = {
-  /** Header visual: centered icon (login) or split icon + titles (register). */
+  /** Header layout: centered brand tile (login) or tile beside the titles (register). */
   variant: 'center' | 'split'
-  icon: LucideIcon
-  /** Override the icon entirely with a custom node (e.g. branded SVG). */
+  /** Kept for callers; the header shows the Myle brand tile. */
+  icon?: LucideIcon
+  /** Override the brand tile with a custom node. */
   iconNode?: ReactNode
   title: string
   subtitle: string
@@ -17,9 +19,9 @@ type AuthCardProps = {
   className?: string
 }
 
+/** Myle Ledger auth card: a solid card on the ambient backdrop, brand tile, then the form. */
 export function AuthCard({
   variant,
-  icon: Icon,
   iconNode,
   title,
   subtitle,
@@ -27,62 +29,29 @@ export function AuthCard({
   footer,
   className,
 }: AuthCardProps) {
+  const mark = iconNode ?? <MyleBrandTile className="size-14 rounded-2xl text-ds-h1" />
   return (
-    <div
-      className={cn(
-        'w-full max-w-[min(100%,26rem)] overflow-hidden rounded border border-border',
-        'bg-card ',
-        className,
-      )}
-    >
-      <div
-        className={cn(
-          'relative',
-          'auth-header-banner',
-          variant === 'center' ? 'px-6 pb-8 pt-9 text-center' : 'px-5 pb-6 pt-6 sm:px-6',
-        )}
-      >
-        {/* subtle grid pattern */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px' }}
-          aria-hidden
-        />
-        {variant === 'center' ? (
-          <>
-            <div className="mx-auto mb-4 flex size-[4.25rem] items-center justify-center rounded-full border border-primary-foreground/25 bg-primary-foreground/15 shadow-inner backdrop-blur-sm">
-              {iconNode ?? <Icon className="size-9 text-primary-foreground" aria-hidden />}
-            </div>
-            <h1 className="font-heading text-ds-h1 text-primary-foreground">
-              {title}
-            </h1>
-            <p className="mt-1.5 text-ds-body text-primary-foreground/88">
-              {subtitle}
-            </p>
-          </>
-        ) : (
-          <div className="flex items-start gap-4">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-full border border-primary-foreground/25 bg-primary-foreground/15 shadow-inner">
-              <Icon className="size-7 text-primary-foreground" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1 pt-0.5 text-left">
-              <h1 className="font-heading text-ds-h1 text-primary-foreground">
-                {title}
-              </h1>
-              <p className="mt-1 text-ds-body text-primary-foreground/88">
-                {subtitle}
-              </p>
-            </div>
+    <div className={cn('card w-full max-w-[min(100%,26rem)] overflow-hidden', className)}>
+      {variant === 'center' ? (
+        <div className="px-6 pt-8 text-center sm:px-8">
+          <div className="mx-auto mb-4 flex w-fit">{mark}</div>
+          <h1 className="text-ds-h1 text-foreground">{title}</h1>
+          <p className="mt-1 text-ds-body text-muted-foreground">{subtitle}</p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-4 px-5 pt-6 sm:px-7">
+          {mark}
+          <div className="min-w-0 flex-1 text-left">
+            <h1 className="text-ds-h1 text-foreground">{title}</h1>
+            <p className="mt-0.5 text-ds-body text-muted-foreground">{subtitle}</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="space-y-5 bg-card px-5 py-6 sm:px-7">{children}</div>
+      <div className="space-y-5 px-5 py-6 sm:px-7">{children}</div>
 
       {footer ? (
-        <div className="border-t border-border bg-card/95 px-5 py-4 text-center sm:px-7">
-          {footer}
-        </div>
+        <div className="border-t border-border px-5 py-4 text-center sm:px-7">{footer}</div>
       ) : null}
     </div>
   )
