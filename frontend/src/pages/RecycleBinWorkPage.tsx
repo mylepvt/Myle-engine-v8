@@ -51,7 +51,7 @@ export function RecycleBinWorkPage({ title }: Props) {
         Soft-deleted leads from your execution scope. Restoring returns the lead to your active list.
       </p>
 
-      <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
+      <div className="input-base flex h-11 items-center gap-2 rounded-full px-3.5">
         <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <input
           type="text"
@@ -97,7 +97,9 @@ export function RecycleBinWorkPage({ title }: Props) {
               {data.items.map((l) => (
                 <li
                   key={l.id}
-                  className="surface-inset flex items-center gap-3 px-3 py-2"
+                  // Stacks on phones: side by side, the actions squeezed the name into a
+                  // sliver and pushed "Delete permanently" past the card's edge.
+                  className="surface-inset flex flex-col gap-2 rounded-2xl px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3"
                 >
                   <div className="min-w-0 flex-1">
                     <span className="font-medium text-foreground">{l.name}</span>
@@ -106,7 +108,7 @@ export function RecycleBinWorkPage({ title }: Props) {
                       {l.deleted_at ? new Date(l.deleted_at).toLocaleString() : '—'}
                     </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                     <LeadContactActions phone={l.phone} />
                     <Button
                       type="button"
@@ -134,7 +136,7 @@ export function RecycleBinWorkPage({ title }: Props) {
             </ul>
           )}
           {patchMut.isError || permanentDeleteMut.isError ? (
-            <p className="mt-3 rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+            <p className="mt-3 rounded-2xl bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
               {patchMut.error instanceof Error
                 ? patchMut.error.message
                 : permanentDeleteMut.error instanceof Error

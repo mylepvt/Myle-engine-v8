@@ -105,7 +105,7 @@ export function Day2TestSignals({
                 )
                 .finally(() => setDownloading(false))
             }}
-            className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-success/40 bg-success/10 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
+            className="rounded-full mt-2 flex h-8 w-full items-center justify-center gap-1.5 bg-success/10 text-ds-caption font-semibold text-success-ink transition hover:bg-success/20 disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" aria-hidden />
             {downloading ? 'Downloading…' : 'Download certificate'}

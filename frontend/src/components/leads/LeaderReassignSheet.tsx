@@ -41,7 +41,7 @@ export function LeaderReassignSheet({
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card shadow-2xl">
+      <div className="card w-full max-w-sm shadow-2xl">
         <div className="border-b border-border px-4 py-3">
           <p className="text-ds-caption text-muted-foreground">Reassign lead</p>
           <h2 className="truncate text-sm font-semibold text-foreground">{leadName}</h2>
@@ -82,7 +82,7 @@ export function LeaderReassignSheet({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name…"
-              className="mb-3 w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none"
+              className="mb-3 w-full rounded-2xl bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none"
             />
           ) : null}
 
@@ -111,7 +111,7 @@ export function LeaderReassignSheet({
                       disabled={busy}
                       onClick={() => onConfirm(entry.user_id, entry.name)}
                       className={cn(
-                        'flex w-full items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-left transition',
+                        'flex w-full items-center gap-3 rounded-2xl bg-muted px-3 py-2.5 text-left transition',
                         'hover:border-primary/40 hover:bg-muted/60 active:scale-[0.98] disabled:opacity-50',
                         idx === 0 && !search.trim() && 'border-warning/30 bg-warning/[0.06]',
                       )}
@@ -124,7 +124,7 @@ export function LeaderReassignSheet({
                           {entry.name}
                         </span>
                         {entry.role === 'leader' ? (
-                          <span className="shrink-0 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-ds-micro font-semibold uppercase text-primary">
+                          <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-ds-micro font-semibold uppercase text-primary">
                             Leader
                           </span>
                         ) : null}
@@ -152,7 +152,7 @@ export function LeaderReassignSheet({
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-lg border border-border bg-muted/50 py-2 text-sm text-muted-foreground transition hover:bg-muted"
+            className="rounded-full w-full bg-muted py-2 text-sm text-muted-foreground transition hover:bg-muted"
           >
             Cancel
           </button>

@@ -75,7 +75,7 @@ function StageBlock({
   }
 
   return (
-    <div className="rounded border border-border/60 p-3 space-y-2">
+    <div className="rounded-2xl p-3 space-y-2 bg-muted">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold text-foreground">{label}</p>
         {sale ? (

@@ -255,15 +255,15 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           Restore a lead to send it back to your main list and workboard.
         </p>
 
-        <div className="surface-inset flex h-9 items-center gap-1.5 rounded-lg px-2.5">
-          <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="input-base flex h-11 items-center gap-2 rounded-full px-3.5">
+          <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <input
             type="text"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
             placeholder="Search name, phone, email..."
             aria-label="Search archived leads"
-            className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:shadow-none"
             autoComplete="off"
           />
         </div>
@@ -318,7 +318,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                   ))}
                 </ul>
                 {/* Desktop: virtualized table (owns its own horizontal scroll). */}
-                <div className="hidden overflow-hidden rounded-md border border-border/50 md:block">
+                <div className="hidden overflow-hidden rounded-2xl md:block bg-muted">
                   <LeadsVirtualizedBody
                     items={items}
                     archivedOnly={archivedOnly}
@@ -365,21 +365,22 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   return (
     <>
       <div className="mx-auto max-w-6xl">
-        <div className="mx-auto min-h-[50dvh] max-w-[430px] bg-background pb-8 text-foreground transition-colors md:max-w-[480px]">
-        <div className="border-b border-border/30 bg-card/30 px-4 py-1.5">
+        <div className="mx-auto min-h-[50dvh] max-w-[430px] pb-8 text-foreground md:max-w-[480px]">
+        {/* Toolbar sits on the ambient backdrop: a search pill and icon pills, no slab. */}
+        <div className="px-4 py-1.5">
           <button type="button" onClick={goBack} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
         </div>
-        <div className="border-b border-border/60 bg-card/55 px-4 pb-2 pt-2 supports-[backdrop-filter]:bg-card/40">
+        <div className="px-4 pb-2 pt-1">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="surface-inset flex h-9 min-w-0 basis-full items-center gap-1.5 rounded-lg px-2.5 min-[360px]:basis-0 min-[360px]:flex-1">
-              <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <div className="input-base flex h-11 min-w-0 basis-full items-center gap-2 rounded-full px-3.5 min-[360px]:basis-0 min-[360px]:flex-1">
+              <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               <input
                 type="text"
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
                 placeholder="Search name, phone, email..."
                 aria-label="Search leads"
-                className="min-w-0 flex-1 bg-transparent text-ds-caption text-foreground outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:shadow-none"
                 autoComplete="off"
               />
             </div>
@@ -388,7 +389,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 type="button"
                 aria-label="Filters"
                 onClick={() => setFilterOpen((o) => !o)}
-                className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
+                className="rounded-full btn-secondary flex size-11 shrink-0 items-center justify-center text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
                 <Filter className="size-4" />
               </button>
@@ -408,7 +409,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                     aria-label="Import leads from PDF or Excel"
                     disabled={importMut.isPending}
                     onClick={() => importFileRef.current?.click()}
-                    className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    className="rounded-full btn-secondary flex size-11 shrink-0 items-center justify-center text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
                   >
                     <Upload className="size-4" />
                   </button>
@@ -418,7 +419,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                 type="button"
                 aria-label="Add lead"
                 onClick={() => setQuickAddOpen(true)}
-                className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition active:scale-95"
+                className="btn-primary press flex size-11 shrink-0 items-center justify-center rounded-full"
               >
                 <Plus className="size-4" />
               </button>
@@ -432,7 +433,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
         </div>
 
         {filterOpen ? (
-          <div className="border-b border-border px-4 pb-3">
+          <div className="px-4 pb-3">
             <label htmlFor="lead-filter-status-crm" className="mb-1 block text-ds-caption font-medium text-muted-foreground">
               Status
             </label>
@@ -511,7 +512,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
                     {classicLeadsQ.data.pages.flatMap((p) => p.items).length === 0 ? (
                       <p className="px-2 text-sm">{emptyListHint(surfaceRole ?? null, false)}</p>
                     ) : (
-                      <div className="-mx-1 max-w-full overflow-hidden rounded-md border border-border">
+                      <div className="-mx-1 max-w-full overflow-hidden rounded-2xl bg-muted">
                         <LeadsVirtualizedBody
                           items={classicLeadsQ.data.pages.flatMap((p) => p.items)}
                           archivedOnly={false}
@@ -577,7 +578,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
             </div>
             <button
               type="button"
-              className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label="Close"
               onClick={() => setQuickAddOpen(false)}
             >
@@ -586,7 +587,7 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
           </div>
           <div className="p-4">
             <p className="mb-3 flex items-center gap-2 text-ds-caption font-semibold uppercase tracking-wide text-muted-foreground">
-              <span className="inline-flex size-6 items-center justify-center rounded-md bg-muted text-[var(--palette-cyan-dull)]">
+              <span className="inline-flex size-6 items-center justify-center rounded-full bg-muted text-[var(--palette-cyan-dull)]">
                 <Phone className="size-3.5" aria-hidden />
               </span>
               Contact information

@@ -62,7 +62,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
       <p className="mt-1 text-sm text-muted-foreground">{leadName}</p>
 
       {phone?.trim() ? (
-        <div className="mt-3 rounded border border-border bg-muted/40 p-3">
+        <div className="mt-3 rounded-2xl bg-muted p-3">
           <p className="font-mono text-sm text-foreground">{phone.trim()}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {canDial ? (
@@ -116,7 +116,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
                   }
                   onPick(o.action)
                 }}
-                className="min-h-12 w-full rounded border border-border bg-muted/50 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
+                className="rounded-full min-h-12 w-full bg-muted px-3 py-3 text-left text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
               >
                 {o.label}
               </button>
@@ -132,7 +132,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
                 type="button"
                 disabled={busy || !onCallOutcome}
                 onClick={() => onCallOutcome?.(o.slug)}
-                className="min-h-12 w-full rounded border border-border bg-muted/30 px-3 py-3 text-left text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-muted disabled:opacity-50"
+                className="rounded-full min-h-12 w-full bg-muted px-3 py-3 text-left text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
               >
                 {o.label}
               </button>
@@ -167,7 +167,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
             type="button"
             disabled={busy}
             onClick={() => onPick('call_later')}
-            className="min-h-11 w-full rounded border border-border bg-muted/30 py-2 text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-50"
+            className="rounded-full min-h-11 w-full bg-muted py-2 text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-50"
           >
             Use default (24h)
           </button>
@@ -175,13 +175,13 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
             type="button"
             disabled={busy}
             onClick={() => setStep('outcomes')}
-            className="min-h-11 w-full rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-50"
+            className="rounded-full min-h-11 w-full py-2 text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-50 bg-muted"
           >
             Back
           </button>
           <button
             type="button"
-            className="mt-1 w-full min-h-11 rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
+            className="rounded-full mt-1 w-full min-h-11 py-2 text-sm text-muted-foreground hover:bg-muted/40 bg-muted"
             onClick={onClose}
             disabled={busy}
           >
@@ -193,7 +193,7 @@ export function CtcsOutcomeModal({ open, leadName, phone, busy, onClose, onPick,
       {step === 'outcomes' ? (
         <button
           type="button"
-          className="mt-3 w-full min-h-11 rounded border border-border py-2 text-sm text-muted-foreground hover:bg-muted/40"
+          className="rounded-full mt-3 w-full min-h-11 py-2 text-sm text-muted-foreground hover:bg-muted/40 bg-muted"
           onClick={onClose}
           disabled={busy}
         >

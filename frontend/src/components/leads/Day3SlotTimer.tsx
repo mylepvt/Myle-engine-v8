@@ -140,7 +140,7 @@ export function Day3SlotTimer({
   const r = deadline ? remainingParts(deadline, now) : null
 
   return (
-    <div className="space-y-2 rounded-xl border border-warning/30 bg-warning/[0.06] p-3">
+    <div className="space-y-2 rounded-2xl bg-warning/10 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-ds-caption font-bold uppercase tracking-wider text-warning-ink">
           <Clock className="size-3.5" aria-hidden />
@@ -181,7 +181,7 @@ export function Day3SlotTimer({
             <button
               type="button"
               onClick={() => void share()}
-              className="flex items-center justify-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-2 py-1.5 text-ds-caption font-semibold text-success-ink hover:bg-success/20"
+              className="rounded-full flex items-center justify-center gap-1.5 bg-success/10 px-2 py-1.5 text-ds-caption font-semibold text-success-ink hover:bg-success/20"
             >
               <ImageDown className="size-3.5" aria-hidden />
               Share image
@@ -189,7 +189,7 @@ export function Day3SlotTimer({
             <button
               type="button"
               onClick={() => setPicking(true)}
-              className="rounded-md border border-border px-2 py-1.5 text-ds-caption font-semibold text-foreground hover:bg-muted"
+              className="rounded-full px-2 py-1.5 text-ds-caption font-semibold text-foreground hover:bg-muted bg-muted"
             >
               Change time
             </button>
@@ -206,7 +206,7 @@ export function Day3SlotTimer({
                 type="button"
                 disabled={leadPatchBusy}
                 onClick={() => save(p.at)}
-                className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-ds-caption font-semibold text-primary hover:bg-primary/20 disabled:opacity-50"
+                className="rounded-full bg-primary/10 px-2.5 py-1 text-ds-caption font-semibold text-primary hover:bg-primary/20 disabled:opacity-50"
               >
                 {p.label}
               </button>

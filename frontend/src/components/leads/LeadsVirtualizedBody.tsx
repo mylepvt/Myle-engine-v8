@@ -44,9 +44,9 @@ export type LeadsVirtualizedBodyProps = {
 type RowData = LeadsVirtualizedBodyProps
 
 const gridArchived =
-  'grid h-full w-full min-w-[1040px] grid-cols-[4.5rem_minmax(8rem,1fr)_minmax(7rem,11rem)_minmax(8rem,11rem)_7.5rem_7.5rem_minmax(8.5rem,12rem)_minmax(10rem,1fr)] items-center gap-2 px-2 py-1'
+  'grid h-full w-full min-w-[1060px] grid-cols-[4.5rem_minmax(8rem,1fr)_minmax(11.5rem,13rem)_minmax(6rem,9rem)_7.5rem_7.5rem_minmax(8.5rem,12rem)_minmax(9rem,1fr)] items-center gap-2 px-2 py-1'
 const gridActive =
-  'grid h-full w-full min-w-[1040px] grid-cols-[4.5rem_minmax(9rem,1fr)_minmax(7rem,11rem)_minmax(9rem,13rem)_7.5rem_minmax(8.5rem,12rem)_minmax(10rem,1fr)] items-center gap-2 px-2 py-1'
+  'grid h-full w-full min-w-[1060px] grid-cols-[4.5rem_minmax(9rem,1fr)_minmax(11.5rem,13rem)_minmax(7rem,13rem)_7.5rem_minmax(8.5rem,12rem)_minmax(9rem,1fr)] items-center gap-2 px-2 py-1'
 
 function LeadRow(props: RowComponentProps<RowData>): ReactElement | null {
   const {

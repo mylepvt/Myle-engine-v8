@@ -264,7 +264,7 @@ export function LeadControlPage({ title }: Props) {
                   Day 2 uploads are visible in the admin command center — reassignment controls stay focused here.
                 </p>
               </div>
-              <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                 Admin only
               </span>
             </CardContent>
@@ -360,7 +360,7 @@ export function LeadControlPage({ title }: Props) {
                               <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
-                                <span className="rounded-full border border-border px-2 py-0.5 text-ds-micro uppercase tracking-wide text-muted-foreground">
+                                <span className="rounded-full px-2 py-0.5 text-ds-micro uppercase tracking-wide text-muted-foreground bg-muted">
                                   {statusLabel(lead.status)}
                                 </span>
                               </div>
@@ -411,7 +411,7 @@ export function LeadControlPage({ title }: Props) {
                         </div>
                         <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
                           {selectedBulkLeads.map((lead) => (
-                            <div key={lead.lead_id} className="rounded border border-border/60 px-3 py-2 text-sm">
+                            <div key={lead.lead_id} className="rounded-2xl px-3 py-2 text-sm bg-muted">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <p className="font-medium text-foreground">{lead.lead_name}</p>
                                 <span className="text-xs text-muted-foreground">{statusLabel(lead.status)}</span>
@@ -489,12 +489,12 @@ export function LeadControlPage({ title }: Props) {
                     </label>
 
                     {submitMessage ? (
-                      <p className="rounded border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary">
+                      <p className="rounded-2xl bg-primary/10 px-3 py-2 text-sm text-primary">
                         {submitMessage}
                       </p>
                     ) : null}
                     {submitError ? (
-                      <p className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      <p className="rounded-2xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
                         {submitError}
                       </p>
                     ) : null}
@@ -551,13 +551,13 @@ export function LeadControlPage({ title }: Props) {
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full border border-border px-2.5 py-1 text-foreground">
+                          <span className="rounded-full px-2.5 py-1 text-foreground bg-muted">
                             Total {row.total_received}
                           </span>
-                          <span className="rounded-full border border-border px-2.5 py-1 text-muted-foreground">
+                          <span className="rounded-full px-2.5 py-1 text-muted-foreground bg-muted">
                             Auto {row.auto_received}
                           </span>
-                          <span className="rounded-full border border-border px-2.5 py-1 text-muted-foreground">
+                          <span className="rounded-full px-2.5 py-1 text-muted-foreground bg-muted">
                             Manual {row.manual_received}
                           </span>
                         </div>
@@ -599,7 +599,7 @@ export function LeadControlPage({ title }: Props) {
                               Owner {row.owner_name || 'Unknown'} · {formatDateTime(row.occurred_at)}
                             </p>
                           </div>
-                          <span className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground">
+                          <span className="rounded-full px-2.5 py-1 text-xs text-foreground bg-muted">
                             {row.mode === 'manual' ? 'Manual' : 'Auto'}
                           </span>
                         </div>
