@@ -16,7 +16,6 @@ const SRC = join(__dirname)
 
 /** Pages and panels drawn on a fixed (always-dark or always-light) surface, not the app theme. */
 const FIXED_SURFACE = new Set([
-  'components/dashboard/TeamDashboardHomeModern.tsx',
   'components/layout/DashboardLayout.tsx',
   'components/watch/InAppVideoPlayer.tsx',
   'components/watch/VideoProtection.tsx',
