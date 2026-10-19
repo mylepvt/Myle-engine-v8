@@ -5,6 +5,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Sheet } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
@@ -28,8 +29,24 @@ import {
   formatMemberTimestamp,
 } from '@/components/team/member-utils'
 import { InlineEmpty } from '@/components/ui/states'
+import { useLatestValue } from '@/hooks/use-latest-value'
 
 export function MemberProfileModal({
+  member,
+  onClose,
+}: {
+  member: TeamMemberPublic | null
+  onClose: () => void
+}) {
+  const shown = useLatestValue(member)
+  return (
+    <Sheet open={member != null} onClose={onClose} label={shown ? `Member ${shown.fbo_id}` : 'Member'} size="lg" className="text-sm">
+      {shown ? <MemberProfileBody key={shown.id} member={shown} onClose={onClose} /> : null}
+    </Sheet>
+  )
+}
+
+function MemberProfileBody({
   member,
   onClose,
 }: {
@@ -154,431 +171,421 @@ export function MemberProfileModal({
 
   return (
     <>
-    <div
-      className="keyboard-safe-modal fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="keyboard-safe-sheet surface-elevated max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded text-sm shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Sticky header */}
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 rounded-t-xl border-b border-border bg-card p-4 md:p-6">
-          <div className="min-w-0 flex-1">
-            <h2 className="break-all text-base font-semibold text-foreground">{currentMember.fbo_id}</h2>
-            {currentMember.username ? (
-              <p className="break-words text-ds-caption text-muted-foreground">({currentMember.username})</p>
-            ) : null}
-            <p className="mt-0.5 break-all text-ds-caption text-muted-foreground">{currentMember.email}</p>
-            <p className="mt-0.5 text-ds-caption text-muted-foreground">
-              Joined {formatMemberTimestamp(currentMember.created_at)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close"
-          >
-            <X className="size-5" aria-hidden />
-          </button>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-3 rounded-t-xl border-b border-border bg-card p-4 md:p-6">
+        <div className="min-w-0 flex-1">
+          <h2 className="break-all text-base font-semibold text-foreground">{currentMember.fbo_id}</h2>
+          {currentMember.username ? (
+            <p className="break-words text-ds-caption text-muted-foreground">({currentMember.username})</p>
+          ) : null}
+          <p className="mt-0.5 break-all text-ds-caption text-muted-foreground">{currentMember.email}</p>
+          <p className="mt-0.5 text-ds-caption text-muted-foreground">
+            Joined {formatMemberTimestamp(currentMember.created_at)}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Close"
+        >
+          <X className="size-5" aria-hidden />
+        </button>
+      </div>
 
-        <div className="px-4 pb-4 pt-4 md:px-6 md:pb-6">
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="role">Role</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="access">Access</TabsTrigger>
-              <TabsTrigger value="danger">Danger</TabsTrigger>
-            </TabsList>
+      <div className="px-4 pb-4 pt-4 md:px-6 md:pb-6">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="mb-4 grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="role">Role</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="access">Access</TabsTrigger>
+            <TabsTrigger value="danger">Danger</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="overview">
-          <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-ds-label uppercase text-muted-foreground">Compliance Control</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {currentMember.compliance_title ? (
-                      <Badge variant={complianceBadgeVariant(currentMember.compliance_level)}>
-                        {currentMember.compliance_title}
-                      </Badge>
-                    ) : null}
-                    {currentMember.grace_end_date ? (
-                      <Badge variant="outline">Grace till {formatMemberDate(currentMember.grace_end_date)}</Badge>
-                    ) : null}
-                    {currentMember.grace_request_end_date ? (
-                      <Badge variant="primary">
-                        Request till {formatMemberDate(currentMember.grace_request_end_date)}
-                      </Badge>
-                    ) : null}
-                    {currentMember.access_blocked ? (
-                      <Badge variant="danger">Access blocked</Badge>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="text-right text-ds-micro text-muted-foreground">
-                  <p>Calls streak: {currentMember.calls_short_streak ?? 0}d</p>
-                  <p>Report streak: {currentMember.missing_report_streak ?? 0}d</p>
+          <TabsContent value="overview">
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-ds-label uppercase text-muted-foreground">Compliance Control</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {currentMember.compliance_title ? (
+                    <Badge variant={complianceBadgeVariant(currentMember.compliance_level)}>
+                      {currentMember.compliance_title}
+                    </Badge>
+                  ) : null}
+                  {currentMember.grace_end_date ? (
+                    <Badge variant="outline">Grace till {formatMemberDate(currentMember.grace_end_date)}</Badge>
+                  ) : null}
+                  {currentMember.grace_request_end_date ? (
+                    <Badge variant="primary">
+                      Request till {formatMemberDate(currentMember.grace_request_end_date)}
+                    </Badge>
+                  ) : null}
+                  {currentMember.access_blocked ? (
+                    <Badge variant="danger">Access blocked</Badge>
+                  ) : null}
                 </div>
               </div>
-              <p className={`text-xs ${complianceTone(currentMember.compliance_level)}`}>
-                {currentMember.compliance_summary ?? 'No active discipline note.'}
+              <div className="text-right text-ds-micro text-muted-foreground">
+                <p>Calls streak: {currentMember.calls_short_streak ?? 0}d</p>
+                <p>Report streak: {currentMember.missing_report_streak ?? 0}d</p>
+              </div>
+            </div>
+            <p className={`text-xs ${complianceTone(currentMember.compliance_level)}`}>
+              {currentMember.compliance_summary ?? 'No active discipline note.'}
+            </p>
+            {currentMember.grace_request_end_date ? (
+              <p className="text-ds-micro text-primary">
+                Pending grace request till {formatMemberDate(currentMember.grace_request_end_date)}
+                {currentMember.grace_request_reason ? ` · ${currentMember.grace_request_reason}` : ''}
               </p>
-              {currentMember.grace_request_end_date ? (
-                <p className="text-ds-micro text-primary">
-                  Pending grace request till {formatMemberDate(currentMember.grace_request_end_date)}
-                  {currentMember.grace_request_reason ? ` · ${currentMember.grace_request_reason}` : ''}
-                </p>
-              ) : null}
+            ) : null}
 
-              {currentMember.role === 'admin' ? (
-                <p className="text-ds-micro text-muted-foreground">
-                  Admin accounts are excluded from call/report discipline rules.
-                </p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                    <label className="block">
-                      <span className="mb-1 block text-ds-caption text-muted-foreground">Grace till</span>
-                      <input
-                        type="date"
-                        value={graceEndDate}
-                        onChange={(e) => setGraceEndDate(e.target.value)}
-                        disabled={updateComplianceMut.isPending}
-                        className="field-input"
-                      />
-                    </label>
-                    <div className="flex items-end">
+            {currentMember.role === 'admin' ? (
+              <p className="text-ds-micro text-muted-foreground">
+                Admin accounts are excluded from call/report discipline rules.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <label className="block">
+                    <span className="mb-1 block text-ds-caption text-muted-foreground">Grace till</span>
+                    <input
+                      type="date"
+                      value={graceEndDate}
+                      onChange={(e) => setGraceEndDate(e.target.value)}
+                      disabled={updateComplianceMut.isPending}
+                      className="field-input"
+                    />
+                  </label>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={updateComplianceMut.isPending || !graceEndDate.trim()}
+                      onClick={() => handleComplianceAction('grant_grace')}
+                      className="w-full md:w-auto"
+                    >
+                      {updateComplianceMut.isPending ? '…' : 'Grant Grace'}
+                    </Button>
+                  </div>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block text-ds-caption text-muted-foreground">Reason / note</span>
+                  <textarea
+                    value={graceReason}
+                    onChange={(e) => setGraceReason(e.target.value)}
+                    disabled={updateComplianceMut.isPending}
+                    rows={3}
+                    className="field-input min-h-[5.5rem] resize-y"
+                    placeholder="Optional reason for grace or removal note"
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {currentMember.grace_request_end_date ? (
+                    <>
                       <Button
                         type="button"
                         size="sm"
-                        disabled={updateComplianceMut.isPending || !graceEndDate.trim()}
-                        onClick={() => handleComplianceAction('grant_grace')}
-                        className="w-full md:w-auto"
+                        disabled={updateComplianceMut.isPending}
+                        onClick={() => handleComplianceAction('approve_grace_request')}
                       >
-                        {updateComplianceMut.isPending ? '…' : 'Grant Grace'}
+                        Approve Request
                       </Button>
-                    </div>
-                  </div>
-                  <label className="block">
-                    <span className="mb-1 block text-ds-caption text-muted-foreground">Reason / note</span>
-                    <textarea
-                      value={graceReason}
-                      onChange={(e) => setGraceReason(e.target.value)}
-                      disabled={updateComplianceMut.isPending}
-                      rows={3}
-                      className="field-input min-h-[5.5rem] resize-y"
-                      placeholder="Optional reason for grace or removal note"
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {currentMember.grace_request_end_date ? (
-                      <>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={updateComplianceMut.isPending}
-                          onClick={() => handleComplianceAction('approve_grace_request')}
-                        >
-                          Approve Request
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={updateComplianceMut.isPending}
-                          onClick={() => handleComplianceAction('reject_grace_request')}
-                        >
-                          Reject Request
-                        </Button>
-                      </>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={updateComplianceMut.isPending || !currentMember.grace_end_date}
-                      onClick={() => handleComplianceAction('clear_grace')}
-                    >
-                      Clear Grace
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={updateComplianceMut.isPending}
-                      onClick={() => handleComplianceAction('restore_access')}
-                    >
-                      Restore & Reset
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={updateComplianceMut.isPending}
-                      onClick={() => setDanger('remove_now')}
-                      className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                    >
-                      Remove Now
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              {complianceError ? (
-                <p className="text-ds-caption text-destructive" role="alert">{complianceError}</p>
-              ) : null}
-            </div>
-          </div>
-            </TabsContent>
-
-            <TabsContent value="role">
-          {/* Role change */}
-          <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
-            <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Change Role</p>
-            <div className="flex items-center gap-2">
-              <NativeSelect
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as Role)}
-                disabled={updateRoleMut.isPending}
-                className="field-input flex-1"
-              >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>{roleShortLabel(r)}</option>
-                ))}
-              </NativeSelect>
-              <Button
-                type="button"
-                size="sm"
-                disabled={updateRoleMut.isPending || selectedRole === currentMember.role}
-                onClick={handleRoleChange}
-              >
-                {updateRoleMut.isPending ? '…' : 'Save'}
-              </Button>
-            </div>
-            {roleError ? (
-              <p className="mt-1 text-ds-caption text-destructive" role="alert">{roleError}</p>
-            ) : null}
-          </div>
-
-          {/* Upline (leader) */}
-          <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
-            <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Upline Leader</p>
-            <p className="mb-2 text-ds-caption text-muted-foreground">
-              Handoffs go to this member's nearest upline leader. Move them under the right leader here.
-            </p>
-            <div className="flex items-center gap-2">
-              <NativeSelect
-                value={selectedUpline}
-                onChange={(e) => setSelectedUpline(e.target.value)}
-                disabled={updateUplineMut.isPending}
-                className="field-input flex-1"
-              >
-                <option value="">Select a leader…</option>
-                {(allMembers?.items ?? [])
-                  .filter((m) => (m.role === 'leader' || m.role === 'admin') && m.id !== currentMember.id)
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {(m.username ?? m.email)} · {roleShortLabel(m.role as Role)}
-                    </option>
-                  ))}
-              </NativeSelect>
-              <Button
-                type="button"
-                size="sm"
-                disabled={
-                  updateUplineMut.isPending ||
-                  !selectedUpline ||
-                  Number(selectedUpline) === currentMember.upline_user_id
-                }
-                onClick={handleUplineChange}
-              >
-                {updateUplineMut.isPending ? '…' : 'Save'}
-              </Button>
-            </div>
-            {uplineError ? (
-              <p className="mt-1 text-ds-caption text-destructive" role="alert">{uplineError}</p>
-            ) : null}
-          </div>
-            </TabsContent>
-
-            <TabsContent value="activity">
-          {/* Leads */}
-          <div className="mb-4">
-            <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Leads {data ? `(${data.total})` : ''}
-            </p>
-            {isPending ? (
-              <div className="space-y-1.5">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-9 w-full" />
-                ))}
-              </div>
-            ) : !data?.items.length ? (
-              <InlineEmpty>No leads yet.</InlineEmpty>
-            ) : (
-              <ul className="max-h-64 space-y-1 overflow-y-auto">
-                {data.items.map((lead) => (
-                  <li
-                    key={lead.id}
-                    className="surface-inset flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={updateComplianceMut.isPending}
+                        onClick={() => handleComplianceAction('reject_grace_request')}
+                      >
+                        Reject Request
+                      </Button>
+                    </>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateComplianceMut.isPending || !currentMember.grace_end_date}
+                    onClick={() => handleComplianceAction('clear_grace')}
                   >
-                    <div className="min-w-0">
-                      <span className="block truncate font-medium capitalize text-foreground">
-                        {lead.name.toLowerCase()}
-                      </span>
-                      {lead.phone ? (
-                        <span className="text-ds-caption text-muted-foreground">{lead.phone}</span>
-                      ) : null}
-                    </div>
-                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                      {lead.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Invoices */}
-          <div className="mb-4">
-            <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Invoices</p>
-            {invQuery.isPending ? (
-              <div className="space-y-1.5">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <Skeleton key={i} className="h-9 w-full" />
-                ))}
-              </div>
-            ) : !invQuery.data?.items.length ? (
-              <InlineEmpty>No invoices yet.</InlineEmpty>
-            ) : (
-              <ul className="max-h-48 space-y-1 overflow-y-auto text-ds-caption">
-                {invQuery.data.items.map((inv) => (
-                  <li
-                    key={inv.invoice_number}
-                    className="surface-inset flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2"
+                    Clear Grace
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateComplianceMut.isPending}
+                    onClick={() => handleComplianceAction('restore_access')}
                   >
-                    <div className="min-w-0">
-                      <span className="font-mono text-xs text-foreground">{inv.invoice_number}</span>
-                      <span className="ml-2 text-muted-foreground">
-                        {inv.doc_type === 'tax_invoice' ? 'Tax Invoice' : inv.doc_type === 'credit_note' ? 'Credit Note' : 'Receipt'}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {new Date(inv.issued_at).toLocaleDateString()} · ₹
-                        {(inv.total_cents / 100).toFixed(2)}
-                      </span>
-                    </div>
-                    <InvoiceDownloadLink
-                      invoiceNumber={inv.invoice_number}
-                      kind={inv.doc_type === 'payment_receipt' ? 'receipt' : inv.doc_type}
-                      className="shrink-0"
-                    />
-                  </li>
-                ))}
-              </ul>
+                    Restore & Reset
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updateComplianceMut.isPending}
+                    onClick={() => setDanger('remove_now')}
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                  >
+                    Remove Now
+                  </Button>
+                </div>
+              </>
             )}
-          </div>
-            </TabsContent>
 
-            <TabsContent value="access">
-          {/* Training lock/unlock */}
-          <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
-            <p className="mb-2 text-ds-label uppercase text-muted-foreground">Training Gate</p>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs text-foreground">
-                  Status:{' '}
-                  <span className={trainingRequired ? 'text-warning-ink font-medium' : 'text-success-ink font-medium'}>
-                    {trainingRequired ? 'Locked (training required)' : 'Unlocked'}
-                  </span>
-                </p>
-                {currentMember.training_status ? (
-                  <p className="mt-0.5 text-ds-micro text-muted-foreground">
-                    Progress: {currentMember.training_status}
-                  </p>
-                ) : null}
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={trainingToggle.isPending}
-                onClick={() => {
-                  setTrainingError(null)
-                  const newLocked = !trainingRequired
-                  trainingToggle.mutate(
-                    { userId: currentMember.id, locked: newLocked },
-                    {
-                      onSuccess: (updated) => {
-                        setTrainingRequired(newLocked)
-                        setCurrentMember((prev) => ({
-                          ...prev,
-                          training_required: updated.training_required,
-                          training_status: updated.training_status,
-                        }))
-                      },
-                      onError: (e: Error) => setTrainingError(e.message),
-                    },
-                  )
-                }}
-                className="shrink-0"
-              >
-                {trainingToggle.isPending ? '…' : trainingRequired ? 'Unlock' : 'Lock'}
-              </Button>
-            </div>
-            {trainingError ? (
-              <p className="mt-1 text-ds-caption text-destructive" role="alert">{trainingError}</p>
+            {complianceError ? (
+              <p className="text-ds-caption text-destructive" role="alert">{complianceError}</p>
             ) : null}
           </div>
+        </div>
+          </TabsContent>
 
-            </TabsContent>
-
-            <TabsContent value="danger">
-          {/* Delete */}
-          <div className="border-t border-border pt-3">
-            {deleteError ? (
-              <p className="mb-2 text-ds-caption text-destructive" role="alert">{deleteError}</p>
-            ) : null}
+          <TabsContent value="role">
+        {/* Role change */}
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Change Role</p>
+          <div className="flex items-center gap-2">
+            <NativeSelect
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as Role)}
+              disabled={updateRoleMut.isPending}
+              className="field-input flex-1"
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>{roleShortLabel(r)}</option>
+              ))}
+            </NativeSelect>
             <Button
               type="button"
-              variant="outline"
               size="sm"
-              disabled={deleteMut.isPending}
-              onClick={() => setDanger('delete')}
-              className="border-destructive/50 text-destructive hover:bg-destructive/10"
+              disabled={updateRoleMut.isPending || selectedRole === currentMember.role}
+              onClick={handleRoleChange}
             >
-              {deleteMut.isPending ? 'Removing…' : 'Remove member'}
+              {updateRoleMut.isPending ? '…' : 'Save'}
+            </Button>
+          </div>
+          {roleError ? (
+            <p className="mt-1 text-ds-caption text-destructive" role="alert">{roleError}</p>
+          ) : null}
+        </div>
+
+        {/* Upline (leader) */}
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Upline Leader</p>
+          <p className="mb-2 text-ds-caption text-muted-foreground">
+            Handoffs go to this member's nearest upline leader. Move them under the right leader here.
+          </p>
+          <div className="flex items-center gap-2">
+            <NativeSelect
+              value={selectedUpline}
+              onChange={(e) => setSelectedUpline(e.target.value)}
+              disabled={updateUplineMut.isPending}
+              className="field-input flex-1"
+            >
+              <option value="">Select a leader…</option>
+              {(allMembers?.items ?? [])
+                .filter((m) => (m.role === 'leader' || m.role === 'admin') && m.id !== currentMember.id)
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {(m.username ?? m.email)} · {roleShortLabel(m.role as Role)}
+                  </option>
+                ))}
+            </NativeSelect>
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                updateUplineMut.isPending ||
+                !selectedUpline ||
+                Number(selectedUpline) === currentMember.upline_user_id
+              }
+              onClick={handleUplineChange}
+            >
+              {updateUplineMut.isPending ? '…' : 'Save'}
+            </Button>
+          </div>
+          {uplineError ? (
+            <p className="mt-1 text-ds-caption text-destructive" role="alert">{uplineError}</p>
+          ) : null}
+        </div>
+          </TabsContent>
+
+          <TabsContent value="activity">
+        {/* Leads */}
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Leads {data ? `(${data.total})` : ''}
+          </p>
+          {isPending ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
+            </div>
+          ) : !data?.items.length ? (
+            <InlineEmpty>No leads yet.</InlineEmpty>
+          ) : (
+            <ul className="max-h-64 space-y-1 overflow-y-auto">
+              {data.items.map((lead) => (
+                <li
+                  key={lead.id}
+                  className="surface-inset flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <span className="block truncate font-medium capitalize text-foreground">
+                      {lead.name.toLowerCase()}
+                    </span>
+                    {lead.phone ? (
+                      <span className="text-ds-caption text-muted-foreground">{lead.phone}</span>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                    {lead.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Invoices */}
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Invoices</p>
+          {invQuery.isPending ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
+            </div>
+          ) : !invQuery.data?.items.length ? (
+            <InlineEmpty>No invoices yet.</InlineEmpty>
+          ) : (
+            <ul className="max-h-48 space-y-1 overflow-y-auto text-ds-caption">
+              {invQuery.data.items.map((inv) => (
+                <li
+                  key={inv.invoice_number}
+                  className="surface-inset flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <span className="font-mono text-xs text-foreground">{inv.invoice_number}</span>
+                    <span className="ml-2 text-muted-foreground">
+                      {inv.doc_type === 'tax_invoice' ? 'Tax Invoice' : inv.doc_type === 'credit_note' ? 'Credit Note' : 'Receipt'}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {new Date(inv.issued_at).toLocaleDateString()} · ₹
+                      {(inv.total_cents / 100).toFixed(2)}
+                    </span>
+                  </div>
+                  <InvoiceDownloadLink
+                    invoiceNumber={inv.invoice_number}
+                    kind={inv.doc_type === 'payment_receipt' ? 'receipt' : inv.doc_type}
+                    className="shrink-0"
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+          </TabsContent>
+
+          <TabsContent value="access">
+        {/* Training lock/unlock */}
+        <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+          <p className="mb-2 text-ds-label uppercase text-muted-foreground">Training Gate</p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-foreground">
+                Status:{' '}
+                <span className={trainingRequired ? 'text-warning-ink font-medium' : 'text-success-ink font-medium'}>
+                  {trainingRequired ? 'Locked (training required)' : 'Unlocked'}
+                </span>
+              </p>
+              {currentMember.training_status ? (
+                <p className="mt-0.5 text-ds-micro text-muted-foreground">
+                  Progress: {currentMember.training_status}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={trainingToggle.isPending}
+              onClick={() => {
+                setTrainingError(null)
+                const newLocked = !trainingRequired
+                trainingToggle.mutate(
+                  { userId: currentMember.id, locked: newLocked },
+                  {
+                    onSuccess: (updated) => {
+                      setTrainingRequired(newLocked)
+                      setCurrentMember((prev) => ({
+                        ...prev,
+                        training_required: updated.training_required,
+                        training_status: updated.training_status,
+                      }))
+                    },
+                    onError: (e: Error) => setTrainingError(e.message),
+                  },
+                )
+              }}
+              className="shrink-0"
+            >
+              {trainingToggle.isPending ? '…' : trainingRequired ? 'Unlock' : 'Lock'}
+            </Button>
+          </div>
+          {trainingError ? (
+            <p className="mt-1 text-ds-caption text-destructive" role="alert">{trainingError}</p>
+          ) : null}
+        </div>
+
+          </TabsContent>
+
+          <TabsContent value="danger">
+        {/* Delete */}
+        <div className="border-t border-border pt-3">
+          {deleteError ? (
+            <p className="mb-2 text-ds-caption text-destructive" role="alert">{deleteError}</p>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={deleteMut.isPending}
+            onClick={() => setDanger('delete')}
+            className="border-destructive/50 text-destructive hover:bg-destructive/10"
+          >
+            {deleteMut.isPending ? 'Removing…' : 'Remove member'}
+          </Button>
+          <p className="mt-1 text-ds-caption text-muted-foreground">
+            Blocks login. Account and history stay, so it can be restored.
+          </p>
+        </div>
+        {currentMember.role !== 'admin' ? (
+          <div className="mt-4 border-t border-border pt-3">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              disabled={purgeMut.isPending}
+              onClick={() => setDanger('purge')}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {purgeMut.isPending ? 'Deleting…' : 'Delete permanently'}
             </Button>
             <p className="mt-1 text-ds-caption text-muted-foreground">
-              Blocks login. Account and history stay, so it can be restored.
+              Erases name, phone, email and FBO ID for good (can&apos;t be undone). Their leads go to their
+              leader and their team moves up one level. Money, sales and reports stay as &quot;Deleted member&quot;.
             </p>
           </div>
-          {currentMember.role !== 'admin' ? (
-            <div className="mt-4 border-t border-border pt-3">
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                disabled={purgeMut.isPending}
-                onClick={() => setDanger('purge')}
-                className="bg-destructive text-white hover:bg-destructive/90"
-              >
-                {purgeMut.isPending ? 'Deleting…' : 'Delete permanently'}
-              </Button>
-              <p className="mt-1 text-ds-caption text-muted-foreground">
-                Erases name, phone, email and FBO ID for good (can&apos;t be undone). Their leads go to their
-                leader and their team moves up one level. Money, sales and reports stay as &quot;Deleted member&quot;.
-              </p>
-            </div>
-          ) : null}
-            </TabsContent>
-          </Tabs>
-        </div>
+        ) : null}
+          </TabsContent>
+        </Tabs>
       </div>
-    </div>
 
       <ConfirmDialog
         open={danger !== null}

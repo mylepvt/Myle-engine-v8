@@ -304,20 +304,16 @@ export function SettingsOrgTreePage({ title }: Props) {
           </>
         ) : null}
 
-        {resetTarget ? (
-          <ResetPasswordModal
-            target={resetTarget}
-            onClose={() => setResetTarget(null)}
-            onSuccess={(name) => setToastMsg(`Password reset for ${name}`)}
-          />
-        ) : null}
+        <ResetPasswordModal
+          target={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onSuccess={(name) => setToastMsg(`Password reset for ${name}`)}
+        />
 
-        {profileTarget ? (
-          <MemberProfileModal
-            member={profileTarget}
-            onClose={() => setProfileTarget(null)}
-          />
-        ) : null}
+        <MemberProfileModal
+          member={profileTarget}
+          onClose={() => setProfileTarget(null)}
+        />
 
         {toastMsg ? (
           <div style={{

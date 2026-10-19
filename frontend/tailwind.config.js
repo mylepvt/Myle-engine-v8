@@ -24,11 +24,13 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        /* Apple devices get SF (optical sizing + tracking tables built in);
+           everyone else keeps Inter. */
         sans: [
-          'Inter',
-          'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
+          'Inter',
+          'system-ui',
           '"Segoe UI"',
           'Roboto',
           'Helvetica',
@@ -36,10 +38,10 @@ export default {
           'sans-serif',
         ],
         heading: [
-          'Inter',
-          'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
+          'Inter',
+          'system-ui',
           '"Segoe UI"',
           'Roboto',
           'sans-serif',
@@ -267,6 +269,7 @@ export default {
       boxShadow: {
         'ios-bar': 'var(--shadow-ios-bar)',
         'ios-card': 'var(--shadow-card)',
+        sheet: 'var(--shadow-sheet)',
         'glass-inset': 'inset 0 1px 1px color-mix(in srgb, var(--palette-ink) 35%, transparent)',
         'urgency-safe': themeColor('urgency-safe-glow'),
         'urgency-safe-card': themeColor('urgency-safe-card-glow'),

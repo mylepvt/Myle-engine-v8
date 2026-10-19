@@ -67,6 +67,9 @@
     /* soft neumorphic card shadows — strengthened so white cards lift off the
        light page / white panels they nest inside (was 0.12/0.06) */
     --shadow-card: 0 4px 16px -6px rgba(45,70,120,0.18), 0 1px 3px -1px rgba(45,70,120,0.10);
+    /* Modal sheets: deeper than cards (bigger surface reads as thicker) + the dim behind them */
+    --shadow-sheet: 0 24px 64px -16px rgba(20,30,60,0.32), 0 4px 16px -4px rgba(20,30,60,0.14);
+    --scrim: rgba(10,14,24,0.42);
     --shadow-card-hover: 0 12px 28px -8px rgba(45,70,120,0.24), 0 2px 6px -2px rgba(45,70,120,0.12);
     --shadow-ios-bar: 0 1px 0 0 rgba(255,255,255,0.7),
       0 10px 30px -16px rgba(45,70,120,0.22);
@@ -171,6 +174,8 @@
     /* ── Shadows: darkness + a hairline ring so cards/modals actually lift off
        the near-black surfaces (was 1px/3px with no ring — zero elevation) */
     --shadow-card: 0 2px 8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
+    --shadow-sheet: 0 24px 64px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.08);
+    --scrim: rgba(0,0,0,0.6);
     --shadow-card-hover: 0 8px 22px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.09);
     --shadow-ios-bar: 0 1px 0 rgba(255,255,255,0.03);
   }
@@ -573,29 +578,8 @@
     background: var(--muted-foreground);
   }
 
-  /* ── Modal / sheet entrance animations ──────────────────────────── */
-  .keyboard-safe-modal {
-    animation: modalFadeIn 0.16s ease-out;
-  }
-  .keyboard-safe-sheet {
-    /* decelerate (ease-out-expo) for a settled, native feel */
-    animation: sheetSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  @keyframes modalFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes sheetSlideUp {
-    from { opacity: 0; transform: translateY(14px) scale(0.985); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  /* Honour reduced-motion: snap, don't slide */
-  @media (prefers-reduced-motion: reduce) {
-    .keyboard-safe-modal,
-    .keyboard-safe-sheet {
-      animation: none;
-    }
-  }
+  /* Modal enter/exit motion lives in components/ui/sheet.tsx (interruptible
+     springs); a CSS animation here would fight its transform. */
 
   /* ── Shimmer skeleton ───────────────────────────────────────────── */
   @keyframes skeletonShimmer {

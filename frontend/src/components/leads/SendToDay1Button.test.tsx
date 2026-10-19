@@ -24,7 +24,8 @@ describe('SendToDay1Button', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send to Day 1/ }))
     const dialog = screen.getByRole('dialog', { name: 'Send to Day 1' })
     expect(screen.getByTestId('card').contains(dialog)).toBe(false)
-    expect(dialog.parentElement).toBe(document.body)
+    // Portalled: its fixed overlay is a direct child of <body>.
+    expect(dialog.closest('.fixed')?.parentElement).toBe(document.body)
     expect(container.contains(dialog)).toBe(false)
     expect(screen.getByText('Payment screenshot')).toBeTruthy()
   })

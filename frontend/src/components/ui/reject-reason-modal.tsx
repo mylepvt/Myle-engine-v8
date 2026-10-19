@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { useBackClose } from '@/hooks/use-back-close'
+
+import { Button } from '@/components/ui/button'
+import { Sheet } from '@/components/ui/sheet'
 
 type Props = {
   open: boolean
@@ -22,9 +24,6 @@ export function RejectReasonModal({
   onCancel,
 }: Props) {
   const [reason, setReason] = useState(defaultReason)
-  useBackClose({ open, onClose: onCancel })
-
-  if (!open) return null
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -32,28 +31,13 @@ export function RejectReasonModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
-      onKeyDown={(e) => { if (e.key === 'Escape') onCancel() }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
-      <form
-        onSubmit={handleSubmit}
-        className="keyboard-safe-modal mx-4 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl"
-      >
+    <Sheet open={open} onClose={onCancel} label={title} className="p-6">
+      <form onSubmit={handleSubmit}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close"
-          >
+          <Button type="button" variant="ghost" size="icon" onClick={onCancel} aria-label="Close">
             <X className="size-5" />
-          </button>
+          </Button>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">{description}</p>
         <textarea
@@ -65,21 +49,14 @@ export function RejectReasonModal({
           className="field-input mb-4 resize-none"
         />
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition hover:bg-destructive/90"
-          >
+          </Button>
+          <Button type="submit" variant="destructive">
             Reject
-          </button>
+          </Button>
         </div>
       </form>
-    </div>
+    </Sheet>
   )
 }

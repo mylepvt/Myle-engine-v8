@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 
 import { App } from '@/App'
 import { AppSoundProvider } from '@/components/providers/AppSoundProvider'
+import { MotionProvider } from '@/components/providers/MotionProvider'
 import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbackProvider'
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
@@ -80,7 +81,9 @@ createRoot(rootEl).render(
         <BrowserRouter>
           <ThemeAndFeedbackProvider>
             <AppSoundProvider>
-              <App />
+              <MotionProvider>
+                <App />
+              </MotionProvider>
             </AppSoundProvider>
           </ThemeAndFeedbackProvider>
         </BrowserRouter>

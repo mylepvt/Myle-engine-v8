@@ -25,6 +25,7 @@ import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { resolveDashboardSurfaceRole } from '@/lib/dashboard-role'
 import { sendEnrollmentLiveLink } from '@/lib/enrollment-send'
 import { useCallToCloseStore } from '@/stores/call-to-close-store'
+import { useLatestValue } from '@/hooks/use-latest-value'
 
 function nextLeadId(items: LeadPublic[], current: number | null): number | null {
   if (!items.length) return null
@@ -188,6 +189,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
     () => items.find((x) => x.id === outcomeLeadId) ?? null,
     [items, outcomeLeadId],
   )
+  // The outcome sheet keeps the last lead while it animates out (the lead may
+  // already have left `items` after the pick).
+  const shownOutcomeLeadId = useLatestValue(outcomeLeadId)
+  const shownOutcomeLead = useLatestValue(outcomeLead)
 
   const onSendEnrollment = useCallback(
     async (id: number, targetStatus: LeadStatus = 'video_sent') => {
@@ -470,10 +475,10 @@ export function CtcsWorkSurface({ filters, patchBusyLeadId }: Props) {
       ) : null}
 
       <CtcsOutcomeModal
-        key={outcomeLeadId ?? 'closed'}
+        key={shownOutcomeLeadId ?? 'none'}
         open={outcomeLeadId != null}
-        leadName={outcomeLead?.name ?? ''}
-        phone={outcomeLead?.phone}
+        leadName={shownOutcomeLead?.name ?? ''}
+        phone={shownOutcomeLead?.phone}
         busy={ctcsMut.isPending}
         onClose={() => setOutcomeLeadId(null)}
         onPick={(action, followupAt) => {
