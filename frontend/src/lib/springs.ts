@@ -22,10 +22,6 @@ export const SPRING = {
   /** Things leaving along a path (px), keeping release velocity: quick, no overshoot, and
    *  called done at ~1px instead of crawling through the last sub-pixel tail. */
   exit: { type: 'spring', visualDuration: 0.18, bounce: 0, restDelta: 1, restSpeed: 20 },
-  /** Panels arriving against a screen edge (the drawer): no overshoot, since a bounce
-   *  past the edge would flash a gap, and done at ~1px. A plain no-bounce spring
-   *  crawls through its last few pixels for ~150ms, which reads as slow. */
-  edge: { type: 'spring', visualDuration: 0.2, bounce: 0, restDelta: 1, restSpeed: 20 },
 } as const satisfies Record<string, Transition>
 
 /** Fades/scales out (0–1 values, nothing to carry): a crisp accelerate-out. */

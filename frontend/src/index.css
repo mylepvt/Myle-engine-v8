@@ -524,12 +524,14 @@
     }
   }
 
-  /* The mobile drawer floats over content, so it takes the denser pop fill. It
-     keeps the standard 20px blur, not pop's 40px: a backdrop blur is redrawn every
-     frame the drawer moves, and the cost grows with the radius. */
+  /* The phone drawer slides over content, so it takes the opaque card fill and no
+     live blur: a backdrop blur is redrawn on every frame the drawer moves, which a phone
+     GPU feels. Before the redesign the drawer was solid and slid smoothly. */
   @media (max-width: 767px) {
     .dashboard-mobile-drawer.glass {
-      background: var(--glass-bg-strong);
+      background: var(--card-bg);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
       box-shadow: var(--glass-inset), var(--shadow-pop);
     }
   }
