@@ -53,7 +53,7 @@ function StatCard({
   hint: string
 }) {
   return (
-    <Card className="surface-elevated border-border/60">
+    <Card className="surface-elevated">
       <CardContent className="space-y-2 p-4">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
         <p className="font-heading text-3xl text-foreground">{value}</p>
@@ -294,7 +294,7 @@ export function LeadControlPage({ title }: Props) {
           </section>
 
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-            <Card className="surface-elevated overflow-hidden border-border/60">
+            <Card className="surface-elevated overflow-hidden">
               <CardHeader className="border-b border-border/60 px-5 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -388,7 +388,7 @@ export function LeadControlPage({ title }: Props) {
               </CardContent>
             </Card>
 
-            <Card className="surface-elevated border-border/60">
+            <Card className="surface-elevated">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <UserCheck className="size-4" />
@@ -523,7 +523,7 @@ export function LeadControlPage({ title }: Props) {
           </section>
 
           <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="surface-elevated border-border/60">
+            <Card className="surface-elevated">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <ShieldCheck className="size-4" />
@@ -568,7 +568,7 @@ export function LeadControlPage({ title }: Props) {
               </CardContent>
             </Card>
 
-            <Card className="surface-elevated border-border/60">
+            <Card className="surface-elevated">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Clock3 className="size-4" />

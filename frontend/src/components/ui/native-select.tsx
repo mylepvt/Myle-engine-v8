@@ -35,7 +35,7 @@ export const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProp
   return (
     <div
       className={cn(
-        'relative inline-flex min-w-0 items-center gap-1.5 focus-within:ring-2 focus-within:ring-primary/40',
+        'relative inline-flex min-w-0 items-center gap-1.5 focus-within:ring-4 focus-within:ring-primary/15',
         disabled && 'opacity-50',
         className,
       )}

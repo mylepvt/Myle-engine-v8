@@ -46,7 +46,7 @@ export type ActivityBreakdown = {
  */
 export function AutoView({ auto }: { auto: AutoReport }) {
   return (
-    <div className="surface-elevated space-y-5 rounded-xl border border-primary/20 bg-primary/[0.03] p-4">
+    <div className="surface-elevated space-y-5 border-primary/20 bg-primary/[0.03] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-ds-label uppercase text-muted-foreground">
           System computed <span className="text-primary">· auto from data</span>

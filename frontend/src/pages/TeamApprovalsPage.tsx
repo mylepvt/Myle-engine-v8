@@ -110,7 +110,7 @@ export function TeamApprovalsPage({ title }: Props) {
             No pending registrations match this search.
           </div>
         ) : (
-          <div className="surface-elevated overflow-hidden rounded border border-border">
+          <div className="surface-elevated overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>

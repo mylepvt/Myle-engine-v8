@@ -28,7 +28,7 @@ export function ListSearchInput({
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
         autoComplete="off"
-        className={cn('pl-9', value ? 'pr-10' : 'pr-3', className)}
+        className={cn('rounded-full pl-9', value ? 'pr-10' : 'pr-3', className)}
       />
       {value ? (
         <button

@@ -24,26 +24,25 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        /* Apple devices get SF (optical sizing + tracking tables built in);
-           everyone else keeps Inter. */
+        /* Myle system stack: SF on Apple, Segoe on Windows, Roboto on Android. */
         sans: [
           '-apple-system',
           'BlinkMacSystemFont',
-          'Inter',
-          'system-ui',
+          '"SF Pro Text"',
           '"Segoe UI"',
           'Roboto',
-          'Helvetica',
+          '"Helvetica Neue"',
           'Arial',
           'sans-serif',
         ],
         heading: [
           '-apple-system',
           'BlinkMacSystemFont',
-          'Inter',
-          'system-ui',
+          '"SF Pro Display"',
           '"Segoe UI"',
           'Roboto',
+          '"Helvetica Neue"',
+          'Arial',
           'sans-serif',
         ],
       },
@@ -70,21 +69,21 @@ export default {
         xs: ['0.8125rem', { lineHeight: '1.2rem' }],
         sm: ['0.9375rem', { lineHeight: '1.375rem' }],
         /* 28px — big KPI / stat numbers only (dashboard tiles, scores). */
-        'ds-display': ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.03em' }],
+        'ds-display': ['1.75rem', { lineHeight: '1.12', letterSpacing: '-0.024em' }],
         /* iOS large title feel on web (scaled for dashboard density) */
         'ds-h1': [
-          '1.625rem',
-          { lineHeight: '2rem', fontWeight: '700', letterSpacing: '-0.035em' },
+          '1.5rem',
+          { lineHeight: '1.2', fontWeight: '600', letterSpacing: '-0.02em' },
         ],
         'ds-h2': [
           '1.25rem',
-          { lineHeight: '1.625rem', fontWeight: '700', letterSpacing: '-0.025em' },
+          { lineHeight: '1.3', fontWeight: '600', letterSpacing: '-0.016em' },
         ],
         'ds-h3': [
           // 17px — restores a real step above the 15px body (was 16px, a 1px
           // collapse that flattened the heading vs body hierarchy)
           '1.0625rem',
-          { lineHeight: '1.45rem', fontWeight: '600', letterSpacing: '-0.015em' },
+          { lineHeight: '1.45rem', fontWeight: '600', letterSpacing: '-0.012em' },
         ],
         'ds-body': [
           '0.9375rem',
@@ -121,6 +120,7 @@ export default {
           critical: themeColor('urgency-critical'),
         },
         border: themeColor('border'),
+        'border-strong': themeColor('border-strong'),
         input: themeColor('input'),
         ring: themeColor('ring'),
         background: themeColor('background'),
@@ -251,8 +251,10 @@ export default {
         'smooth-bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       },
             borderRadius: {
-        /* One scale from --radius (10px). Arbitrary `rounded-[…]` values are
-           blocked by design-tokens-usage.test.ts — pick the nearest step instead. */
+        /* One scale from --radius (12px), plus Myle's card (22px) and sheet (28px).
+           Arbitrary `rounded-[…]` values are blocked by design-tokens-usage.test.ts. */
+        card: 'var(--radius-card)',
+        sheet: 'var(--radius-sheet)',
         DEFAULT: 'calc(var(--radius) - 4px)',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
@@ -270,6 +272,10 @@ export default {
         'ios-bar': 'var(--shadow-ios-bar)',
         'ios-card': 'var(--shadow-card)',
         sheet: 'var(--shadow-sheet)',
+        card: 'var(--glass-inset), var(--shadow-card)',
+        pop: 'var(--glass-inset), var(--shadow-pop)',
+        accent: 'var(--shadow-accent)',
+        xs: 'var(--shadow-xs)',
         'glass-inset': 'inset 0 1px 1px color-mix(in srgb, var(--palette-ink) 35%, transparent)',
         'urgency-safe': themeColor('urgency-safe-glow'),
         'urgency-safe-card': themeColor('urgency-safe-card-glow'),
