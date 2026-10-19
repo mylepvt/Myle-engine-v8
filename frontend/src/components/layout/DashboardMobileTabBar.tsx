@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { MoreHorizontal } from 'lucide-react'
 
@@ -96,9 +96,11 @@ export function DashboardMobileTabBar({
   const innerRef = useRef<HTMLDivElement>(null)
   const [indicator, setIndicator] = useState<IndicatorState>({ left: 0, width: 46, visible: false })
   const [isDragging, setIsDragging] = useState(false)
-  // Bounce only when a drag threw the indicator; a tap glides in without overshoot.
-  const [releasedFromDrag, setReleasedFromDrag] = useState(false)
-  const dragRef = useRef({ startX: 0, currentX: 0, activeIdx: 0 })
+  // The tab the user just picked. The router only commits the new location once
+  // the next page has rendered, so without this the pill waits for the page (and
+  // a tap first snapped it back to the old tab). Cleared when the location lands.
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null)
+  const dragRef = useRef({ startX: 0, currentX: 0, activeIdx: 0, downTab: -1 })
 
   const fourth = fourthTabDef(role)
   const defs: DashboardRouteDef[] = [
@@ -116,11 +118,23 @@ export function DashboardMobileTabBar({
       ? location.pathname === '/dashboard'
       : location.pathname === to || location.pathname.startsWith(`${to}/`),
   )
+  const shownIndex = pendingIndex ?? activeIndex
+
+  useEffect(() => {
+    setPendingIndex(null)
+  }, [location.key])
+
+  // Safety net: if a tap never turns into a navigation, fall back to the real tab.
+  useEffect(() => {
+    if (pendingIndex == null) return
+    const id = window.setTimeout(() => setPendingIndex(null), 3000)
+    return () => window.clearTimeout(id)
+  }, [pendingIndex])
 
   // Measure the active tab so the liquid-glass indicator can slide to it.
   useLayoutEffect(() => {
     if (isDragging) return
-    const el = activeIndex >= 0 ? tabRefs.current[activeIndex] : null
+    const el = shownIndex >= 0 ? tabRefs.current[shownIndex] : null
     if (!el) {
       setIndicator((s) => ({ ...s, visible: false }))
       return
@@ -133,15 +147,18 @@ export function DashboardMobileTabBar({
       width: w,
       visible: true,
     })
-  }, [activeIndex, defs.length, scrolled, keyboardOpen, isDragging])
+  }, [shownIndex, defs.length, scrolled, keyboardOpen, isDragging])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!innerRef.current) return
     const rect = innerRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
-    dragRef.current = { startX: x, currentX: x, activeIdx: activeIndex >= 0 ? activeIndex : 0 }
+    // The tab under the finger, read before pointer capture retargets later events
+    // to the bar itself (-1 for More, which only opens the menu).
+    const link = (e.target as Element).closest('a')
+    const downTab = link ? tabRefs.current.indexOf(link as HTMLAnchorElement) : -1
+    dragRef.current = { startX: x, currentX: x, activeIdx: activeIndex >= 0 ? activeIndex : 0, downTab }
     setIsDragging(true)
-    setReleasedFromDrag(false)
     innerRef.current.setPointerCapture(e.pointerId)
   }, [activeIndex])
 
@@ -173,10 +190,16 @@ export function DashboardMobileTabBar({
     setIsDragging(false)
     // Only navigate on actual drag (>10px) — taps let NavLink handle naturally
     if (dx > 10) {
-      setReleasedFromDrag(true)
       // Same matching as activeIndex: Home is exact, otherwise every page
       // under /dashboard/ would count as "already on Home" and never navigate.
-      if (idx !== activeIndex && tos[idx]) navigate(tos[idx])
+      if (idx !== activeIndex && tos[idx]) {
+        setPendingIndex(idx)
+        navigate(tos[idx])
+      }
+    } else {
+      // A tap: hold the pill on the tapped tab while its page renders.
+      const tapped = dragRef.current.downTab
+      if (tapped >= 0 && tapped !== activeIndex) setPendingIndex(tapped)
     }
   }, [isDragging, tos, activeIndex, navigate])
 
@@ -261,15 +284,14 @@ export function DashboardMobileTabBar({
         onPointerCancel={handlePointerUp}
         style={{ touchAction: 'none' }}
       >
-        {/* Sliding indicator: follows the finger 1:1 while dragged, then glides to
-            the tab (a little bounce after a drag). A CSS transition, not a JS spring:
-            it runs on the compositor, so it stays smooth while the next page renders. */}
+        {/* Sliding indicator: follows the finger 1:1 while dragged, then springs to
+            the tab. A CSS transition, not a JS spring: it runs on the compositor, so
+            it stays smooth while the next page renders. */}
         <span
           aria-hidden
           className={cn(
             'dashboard-mobile-tabbar__indicator',
             isDragging && 'dashboard-mobile-tabbar__indicator--dragging',
-            releasedFromDrag && 'dashboard-mobile-tabbar__indicator--flick',
           )}
           style={{
             transform: `translateX(${indicator.left}px)`,
@@ -294,14 +316,14 @@ export function DashboardMobileTabBar({
               }}
               className={cn(
                 tabClass,
-                i === activeIndex
+                i === shownIndex
                   ? 'dashboard-mobile-tabbar__tab--active text-primary'
                   : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon
-                className={cn(iconClass, i === activeIndex ? 'text-primary' : 'text-muted-foreground')}
-                strokeWidth={i === activeIndex ? 2.25 : 1.75}
+                className={cn(iconClass, i === shownIndex ? 'text-primary' : 'text-muted-foreground')}
+                strokeWidth={i === shownIndex ? 2.25 : 1.75}
                 aria-hidden
               />
               <span className="truncate">{label}</span>
