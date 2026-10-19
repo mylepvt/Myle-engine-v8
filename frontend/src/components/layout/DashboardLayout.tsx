@@ -1,6 +1,6 @@
 import { type CSSProperties, type FormEvent, type UIEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { AlertTriangle, RefreshCw, WifiOff, X } from 'lucide-react'
+import { AlertTriangle, Bell, RefreshCw, WifiOff, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -378,101 +378,6 @@ export function DashboardLayout() {
           displayInitial={displayInitial}
         />
 
-        {/* Alerts sit on a solid layer: tinted text over moving content would be unreadable. */}
-        <div className="max-h-[132px] space-y-0 overflow-y-auto bg-background">
-        {enrollmentAlert.open && approverForEnroll ? (
-          <div
-            role="status"
-            className="flex shrink-0 items-center justify-between gap-3 border-b border-warning/35 bg-warning/10 px-3 py-2.5 text-warning-ink"
-          >
-            <p className="min-w-0 text-sm text-warning-ink">
-              <span className="font-semibold">New Min. FLP approval request</span>
-              {enrollmentAlert.delta === 1
-                ? ' — 1 FLP invoice needs review.'
-                : ` — ${enrollmentAlert.delta} FLP invoices need review.`}
-            </p>
-            <div className="flex shrink-0 items-center gap-2">
-              <Link
-                to="/dashboard/team/flp-min-billing"
-                className="text-sm font-semibold text-warning-ink underline underline-offset-2"
-                onClick={() => enrollmentAlert.dismiss()}
-              >
-                Open queue
-              </Link>
-              <button
-                type="button"
-                className="rounded-md p-2 text-warning-ink transition hover:bg-warning/20"
-                aria-label="Dismiss"
-                onClick={() => enrollmentAlert.dismiss()}
-              >
-                <X className="size-4" aria-hidden />
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {me?.compliance_level === 'final_warning' ? (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="flex shrink-0 items-center gap-3 border-b border-destructive/40 bg-destructive/10 px-3 py-3"
-          >
-            <AlertTriangle className="size-5 shrink-0 text-destructive-ink" aria-hidden />
-            <p className="min-w-0 flex-1 text-sm text-destructive-ink">
-              <span className="font-bold">Final Warning — You will be removed tomorrow.</span>
-              {me.compliance_summary ? ` ${me.compliance_summary}` : ' You have not met your daily targets for 3 days in a row. Complete today\'s calls and daily report before midnight to avoid removal.'}
-            </p>
-          </div>
-        ) : me?.compliance_level === 'strong_warning' ? (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="flex shrink-0 items-center gap-3 border-b border-warning/40 bg-warning/10 px-3 py-2.5"
-          >
-            <AlertTriangle className="size-4 shrink-0 text-warning-ink" aria-hidden />
-            <p className="min-w-0 flex-1 text-sm text-warning-ink">
-              <span className="font-semibold">Strong Warning.</span>
-              {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}
-            </p>
-          </div>
-        ) : null}
-
-        {appUpdate.updateAvailable ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex shrink-0 items-center gap-2.5 border-b border-primary/30 bg-primary/10 px-3 py-2"
-          >
-            <RefreshCw className="size-3.5 shrink-0 text-primary" aria-hidden />
-            <p className="min-w-0 flex-1 text-xs text-foreground">
-              <span className="font-semibold">New version of Myle is ready.</span>
-            </p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground"
-            >
-              Update
-            </button>
-          </div>
-        ) : null}
-
-        {!isOnline ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex shrink-0 items-center gap-2.5 border-b border-border/30 bg-muted/10 px-3 py-2"
-          >
-            <WifiOff className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            <p className="min-w-0 text-xs text-foreground">
-              <span className="font-semibold">You&apos;re offline</span>
-              {' — '}
-              viewing cached data. Changes will sync when connected.
-            </p>
-          </div>
-        ) : null}
-
-        </div>
         </div>
 
         <main
@@ -496,7 +401,7 @@ export function DashboardLayout() {
               )}
               style={{ height: pullToRefresh.pull }}
             >
-              <span className="mb-2 flex size-8 items-center justify-center rounded-full border border-border bg-card shadow-sm">
+              <span className="glass mb-2 flex size-9 items-center justify-center rounded-full">
                 <RefreshCw
                   className={cn('size-4 text-primary', pullToRefresh.refreshing && 'animate-spin')}
                   style={
@@ -506,6 +411,113 @@ export function DashboardLayout() {
                   }
                 />
               </span>
+            </div>
+          ) : null}
+          {((enrollmentAlert.open && approverForEnroll) || me?.compliance_level === 'final_warning' || me?.compliance_level === 'strong_warning' || appUpdate.updateAvailable || !isOnline) ? (
+            // Alerts live in the content flow as tinted cards, under the floating header.
+            <div className="mb-4 space-y-2 md:mb-6">
+            {enrollmentAlert.open && approverForEnroll ? (
+              <div
+                role="status"
+                className="flex items-center gap-3 rounded-card border border-transparent p-3 sm:p-4 bg-warning/10 text-warning-ink"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-warning/15">
+                  <Bell className="size-4" aria-hidden />
+                </span>
+                <p className="min-w-0 flex-1 text-sm text-warning-ink">
+                  <span className="font-semibold">New Min. FLP approval request</span>
+                  {enrollmentAlert.delta === 1
+                    ? ' — 1 FLP invoice needs review.'
+                    : ` — ${enrollmentAlert.delta} FLP invoices need review.`}
+                </p>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Link
+                    to="/dashboard/team/flp-min-billing"
+                    className="text-sm font-semibold text-warning-ink underline underline-offset-2"
+                    onClick={() => enrollmentAlert.dismiss()}
+                  >
+                    Open queue
+                  </Link>
+                  <button
+                    type="button"
+                    className="press flex size-9 items-center justify-center rounded-full text-warning-ink hover:bg-warning/15"
+                    aria-label="Dismiss"
+                    onClick={() => enrollmentAlert.dismiss()}
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {me?.compliance_level === 'final_warning' ? (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="flex items-center gap-3 rounded-card border border-transparent p-3 sm:p-4 bg-destructive/10"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive-ink">
+                  <AlertTriangle className="size-4" aria-hidden />
+                </span>
+                <p className="min-w-0 flex-1 text-sm text-destructive-ink">
+                  <span className="font-bold">Final Warning — You will be removed tomorrow.</span>
+                  {me.compliance_summary ? ` ${me.compliance_summary}` : ' You have not met your daily targets for 3 days in a row. Complete today\'s calls and daily report before midnight to avoid removal.'}
+                </p>
+              </div>
+            ) : me?.compliance_level === 'strong_warning' ? (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="flex items-center gap-3 rounded-card border border-transparent p-3 sm:p-4 bg-warning/10"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning-ink">
+                  <AlertTriangle className="size-4" aria-hidden />
+                </span>
+                <p className="min-w-0 flex-1 text-sm text-warning-ink">
+                  <span className="font-semibold">Strong Warning.</span>
+                  {me.compliance_summary ? ` ${me.compliance_summary}` : ' 2 days of missed targets. One more day and you will receive a final warning.'}
+                </p>
+              </div>
+            ) : null}
+
+            {appUpdate.updateAvailable ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-3 rounded-card border border-transparent p-3 sm:p-4 bg-primary/10"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <RefreshCw className="size-4" aria-hidden />
+                </span>
+                <p className="min-w-0 flex-1 text-sm text-foreground">
+                  <span className="font-semibold">New version of Myle is ready.</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="btn-primary press h-8 shrink-0 rounded-full px-3.5 text-xs font-semibold"
+                >
+                  Update
+                </button>
+              </div>
+            ) : null}
+
+            {!isOnline ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex items-center gap-3 rounded-card border border-transparent p-3 sm:p-4 bg-muted"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background/60 text-muted-foreground">
+                  <WifiOff className="size-4" aria-hidden />
+                </span>
+                <p className="min-w-0 flex-1 text-sm text-foreground">
+                  <span className="font-semibold">You&apos;re offline</span>
+                  {' — '}
+                  viewing cached data. Changes will sync when connected.
+                </p>
+              </div>
+            ) : null}
             </div>
           ) : null}
           <DashboardOutletErrorBoundary>

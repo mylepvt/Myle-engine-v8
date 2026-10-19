@@ -16,13 +16,13 @@ export function ShellHeaderFeedbackControls() {
       className={cn(
         'flex shrink-0 items-center gap-0.5',
         'max-md:gap-0',
-        'md:gap-0.5 md:rounded md:border md:border-border/50 md:bg-muted/25 md:p-0.5',
+        'md:gap-0.5',
       )}
     >
       <button
         type="button"
         onClick={cycleTheme}
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground max-md:min-h-[36px] max-md:min-w-[36px]"
+        className="press flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground max-md:size-9 [@media(pointer:coarse)]:size-11 max-md:[@media(pointer:coarse)]:size-10"
         title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
         aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       >
@@ -33,7 +33,7 @@ export function ShellHeaderFeedbackControls() {
         type="button"
         onClick={toggleSound}
         data-no-tap-sound
-        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground max-md:min-h-[36px] max-md:min-w-[36px]"
+        className="press flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground max-md:size-9 [@media(pointer:coarse)]:size-11 max-md:[@media(pointer:coarse)]:size-10"
         title={soundEnabled ? 'Mute app sounds' : 'Unmute app sounds'}
         aria-label={soundEnabled ? 'Mute app sounds' : 'Unmute app sounds'}
         aria-pressed={soundEnabled}
@@ -41,10 +41,9 @@ export function ShellHeaderFeedbackControls() {
         {soundEnabled ? <Volume2 className="size-4" aria-hidden /> : <VolumeX className="size-4" aria-hidden />}
       </button>
 
-      <div className="mx-0 hidden h-6 w-px bg-border/70 md:mx-0.5 md:block" aria-hidden />
-
+      
       <div
-        className="hidden items-center gap-1 rounded px-1.5 py-0.5 tabular-nums text-muted-foreground sm:flex"
+        className="hidden h-7 items-center gap-1 rounded-full bg-muted px-2.5 tabular-nums text-muted-foreground sm:flex"
         title="Points from UI interactions (local only)"
       >
         <Sparkles className="size-3 shrink-0 text-chart-4" aria-hidden />

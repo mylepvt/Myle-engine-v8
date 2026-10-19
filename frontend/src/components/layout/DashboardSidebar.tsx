@@ -60,21 +60,22 @@ export function DashboardSidebar({
       style={isMobile ? { x: drawerX } : undefined}
       aria-hidden={isMobile && !mobileMenuOpen ? true : undefined}
       className={cn(
-        'flex h-full shrink-0 flex-col border-r border-border dashboard-sidebar overflow-y-auto',
-        'transition-[width] duration-200 ease-out',
-        sidebarOpen ? 'md:w-[240px]' : 'md:w-0 md:overflow-hidden md:border-0',
-        'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(240px,85vw)] max-md:touch-pan-y max-md:pt-[env(safe-area-inset-top)]',
-        'max-md:shadow-sheet',
+        // Desktop: a floating glass panel inset 12px from the edges. Mobile: a glass-pop drawer.
+        'glass flex shrink-0 flex-col overflow-hidden',
+        'md:my-3 md:h-[calc(100%-1.5rem)] md:rounded-card',
+        'md:transition-[width,margin-left,visibility] md:duration-200 md:ease-out',
+        sidebarOpen ? 'md:ml-3 md:w-[240px]' : 'md:invisible md:ml-0 md:w-0',
+        'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(240px,85vw)] max-md:rounded-r-card max-md:touch-pan-y max-md:pt-[env(safe-area-inset-top)]',
         !mobileMenuOpen && 'max-md:pointer-events-none',
       )}
     >
       {/* Header */}
-      <div className="flex h-[48px] shrink-0 items-center border-b border-border px-4 gap-2">
+      <div className="flex h-14 shrink-0 items-center gap-2 px-4">
         <Link to="/dashboard" className="min-w-0 flex-1">
           <MyleSidebarMark />
         </Link>
         {envLabel && envLabel !== 'production' ? (
-          <span className="shrink-0 rounded border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-ds-label uppercase text-warning">
+          <span className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-ds-label uppercase text-warning-ink">
             {envLabel}
           </span>
         ) : null}
@@ -83,11 +84,11 @@ export function DashboardSidebar({
       {/* Nav */}
       {/* touch-pan-y here too: touch-action stops at the nearest scroller, so the
           drawer's own pan-y would not stop the browser claiming a sideways drag. */}
-      <nav aria-label="Sidebar navigation" className="scroll-ios max-md:touch-pan-y flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 py-2">
+      <nav aria-label="Sidebar navigation" className="scroll-ios max-md:touch-pan-y no-scrollbar flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 pb-2">
         {rolePending && shellRole == null ? (
           <div className="space-y-2 px-2" aria-busy="true" aria-label="Loading navigation">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-11 rounded-lg" />
+              <Skeleton key={i} className="h-10 rounded-full" />
             ))}
           </div>
         ) : null}
@@ -96,7 +97,7 @@ export function DashboardSidebar({
           ? sections.map((section) => (
               <div key={section.id} className="mb-1">
                 {section.label ? (
-                  <p className="mb-1 mt-3 px-2 text-ds-label uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-1 mt-3 px-3 text-ds-label uppercase tracking-wider text-muted-foreground">
                     {section.label}
                   </p>
                 ) : null}
@@ -120,15 +121,7 @@ export function DashboardSidebar({
                           onClick={() => {
                             if (isMobile) setMobileMenuOpen(false)
                           }}
-                          className={({ isActive }) =>
-                            cn(
-                              'group flex min-h-[36px] items-center gap-2.5 rounded px-2 py-1.5 text-sm font-medium',
-                              'transition-[background-color,color] duration-100',
-                              isActive
-                                ? 'bg-primary/20 text-primary font-semibold'
-                                : 'text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground',
-                            )
-                          }
+                          className="nav-link group flex min-h-10 items-center gap-2.5 px-3 py-2 text-sm"
                         >
                           {({ isActive }) => (
                             <>
@@ -145,10 +138,7 @@ export function DashboardSidebar({
                               {item.path === 'team/flp-min-billing' && pendingEnrollCount > 0 ? (
                                 <span
                                   className={cn(
-                                    'shrink-0 rounded px-1.5 py-0.5 text-ds-label font-bold tabular-nums',
-                                    isActive
-                                      ? 'bg-primary/30 text-primary'
-                                      : 'bg-primary text-primary-foreground',
+                                    'shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-ds-label font-bold tabular-nums text-primary-foreground',
                                   )}
                                   aria-hidden
                                 >
@@ -168,12 +158,11 @@ export function DashboardSidebar({
       </nav>
 
       {/* Footer */}
-      <div className="shrink-0 border-t border-border p-2">
+      <div className="shrink-0 p-2 max-md:pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="w-full gap-2 text-muted-foreground hover:text-foreground"
+          className="w-full justify-start gap-2.5 px-3"
           onClick={() => void onLogout()}
         >
           <LogOut className="size-4" aria-hidden />

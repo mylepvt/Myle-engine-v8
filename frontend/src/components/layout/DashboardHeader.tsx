@@ -51,18 +51,16 @@ export function DashboardHeader({
     Boolean(me?.authenticated) && me?.role === 'admin'
 
   return (
-    <header
-      className={cn(
-        'dashboard-shell-header relative z-20 flex h-[48px] shrink-0 items-center gap-1 px-2 min-[400px]:gap-2 min-[400px]:px-3 md:px-4',
-      )}
-    >
+    // A floating glass pill, detached from the screen edges; <main> scrolls underneath.
+    <div className="pointer-events-none px-3 pt-2 sm:px-6">
+    <header className="glass pointer-events-auto relative z-20 flex h-12 shrink-0 items-center gap-1 rounded-full px-1.5 min-[400px]:gap-2 sm:h-14 sm:px-2">
       {/* Left: toggle + role picker */}
       <div className="flex shrink-0 items-center gap-1">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="min-h-[44px] min-w-[44px]"
+          className="text-foreground"
           onClick={() => {
             if (isMobile) setMobileMenuOpen(!mobileMenuOpen)
             else toggleSidebar()
@@ -84,8 +82,7 @@ export function DashboardHeader({
             <NativeSelect
               id="header-view-as"
               className={cn(
-                'h-8 min-w-[5rem] max-w-[8rem] shrink-0 rounded border border-border bg-muted/60 py-0 pl-2 pr-6 text-ds-caption font-medium text-foreground',
-                'focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/30',
+                'h-8 min-w-[5rem] max-w-[8rem] shrink-0 rounded-full bg-muted py-0 pl-3 pr-6 text-ds-caption font-medium text-foreground',
               )}
               value={viewAsRole ?? 'admin'}
               title="UI preview only — your account stays admin"
@@ -112,7 +109,7 @@ export function DashboardHeader({
         role="search"
       >
         <Search
-          className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden
         />
         <input
@@ -121,7 +118,7 @@ export function DashboardHeader({
           value={headerSearch}
           onChange={(e) => setHeaderSearch(e.target.value)}
           placeholder="Search leads"
-          className="h-8 w-full rounded border border-border bg-muted/50 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="h-9 w-full rounded-full border border-transparent bg-muted pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none focus:ring-4 focus:ring-primary/15 sm:h-10"
           aria-label="Search leads"
           autoComplete="off"
         />
@@ -136,9 +133,10 @@ export function DashboardHeader({
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <ShellHeaderFeedbackControls />
 
+        {/* Hidden on narrow phones: the avatar opens the same page. */}
         <Link
           to="/dashboard/settings/profile"
-          className="flex min-h-[44px] min-w-[44px] max-md:min-w-[36px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground md:flex"
+          className="press max-[399px]:!hidden flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground max-md:size-9 [@media(pointer:coarse)]:size-11 max-md:[@media(pointer:coarse)]:size-10"
           aria-label="Settings"
         >
           <Settings className="size-[17px]" />
@@ -150,14 +148,14 @@ export function DashboardHeader({
           <div className="relative">
             <Link
               to="/dashboard/other/notice-board"
-              className="relative flex min-h-[44px] min-w-[44px] max-md:min-w-[36px] items-center justify-center rounded transition-colors duration-100 text-muted-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] hover:text-foreground"
+              className="press relative flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground max-md:size-9 [@media(pointer:coarse)]:size-11 max-md:[@media(pointer:coarse)]:size-10"
               aria-label={noticeBoardUnread > 0 ? `Notice board — ${noticeBoardUnread} new` : 'Notice board'}
             >
               <Bell className="size-[17px]" />
             </Link>
             {noticeBoardUnread > 0 ? (
               <span
-                className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-ds-micro font-bold leading-4 text-white"
+                className="pointer-events-none absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-ds-micro font-bold leading-4 text-white"
                 aria-hidden
               >
                 {noticeBoardUnread > 9 ? '9+' : noticeBoardUnread}
@@ -168,7 +166,7 @@ export function DashboardHeader({
 
         {shellRole != null ? (
           <span
-            className="hidden rounded border border-border bg-muted/40 px-2 py-0.5 text-ds-caption font-medium text-foreground md:inline-flex"
+            className="hidden h-7 items-center rounded-full bg-muted px-2.5 text-ds-caption font-medium text-foreground md:inline-flex"
             title={
               isAdminPreviewing && serverRole === 'admin'
                 ? `Nav as ${roleShortLabel(shellRole)} · signed in as Admin`
@@ -180,12 +178,12 @@ export function DashboardHeader({
               : roleShortLabel(shellRole)}
           </span>
         ) : rolePending ? (
-          <span className="hidden h-7 w-12 animate-pulse rounded bg-muted/60 md:inline-block" />
+          <span className="hidden h-7 w-12 animate-pulse rounded-full bg-muted md:inline-block" />
         ) : null}
 
         <Link
           to="/dashboard/settings/profile"
-          className="relative ml-1 flex size-11 shrink-0 max-md:ml-0.5 max-md:size-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-ds-caption font-semibold text-foreground transition-opacity hover:opacity-85 active:opacity-70"
+          className="press relative ml-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-ds-caption font-semibold text-accent-foreground max-md:ml-0.5 max-md:size-9"
           title={
             me?.fbo_id
               ? `${me.fbo_id}${me.username ? ` · ${me.username}` : ''}${me.email ? ` · ${me.email}` : ''}`
@@ -197,7 +195,7 @@ export function DashboardHeader({
             <img
               src={apiUrl(me.avatar_url)}
               alt={me.username ? `Profile photo for ${me.username}` : me.email ? `Profile photo for ${me.email}` : 'Your profile photo'}
-              className="size-full object-cover"
+              className="size-full rounded-full object-cover"
               width={44}
               height={44}
             />
@@ -215,5 +213,6 @@ export function DashboardHeader({
         </Button>
       </div>
     </header>
+    </div>
   )
 }

@@ -188,10 +188,10 @@ export function DashboardMobileTabBar({
     scrolled && 'dashboard-mobile-tabbar--scrolled',
   )
   const innerClass =
-    'dashboard-mobile-tabbar__inner mx-auto flex h-[60px] max-w-lg items-stretch justify-around gap-1 px-1.5 min-[390px]:px-2'
+    'dashboard-mobile-tabbar__inner glass mx-auto flex max-w-lg items-stretch justify-around gap-1 px-1.5 min-[390px]:px-2'
   const tabClass =
-    'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 text-ds-label font-medium transition-colors active:opacity-70'
-  const iconClass = 'size-5 shrink-0'
+    'dashboard-mobile-tabbar__tab flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1 text-ds-label font-medium transition-colors active:opacity-70'
+  const iconClass = 'size-[21px] shrink-0'
 
   if (trainingLocked) {
     const def = defForPath('system/training')

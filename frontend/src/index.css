@@ -529,6 +529,16 @@
     }
   }
 
+  /* The mobile drawer floats over content, so it takes the denser pop glass. */
+  @media (max-width: 767px) {
+    .dashboard-mobile-drawer.glass {
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: blur(40px) saturate(190%);
+      backdrop-filter: blur(40px) saturate(190%);
+      box-shadow: var(--glass-inset), var(--shadow-pop);
+    }
+  }
+
   /* Avoid content-visibility on the dashboard <main> scroll container — it can leave
      blank regions or odd scroll extents with flex + short pages (mobile shell). */
 }
@@ -739,6 +749,7 @@
     }
   }
   .nav-link[data-active='true'],
+  .nav-link[aria-current='page'],
   .control-pill {
     color: var(--foreground);
     background: var(--control-bg);
@@ -839,56 +850,8 @@
     animation: skeletonShimmer 1.5s ease-in-out infinite;
   }
 
-  /* Header = a floating translucent layer; <main> scrolls underneath it. */
-  .dashboard-shell-header {
-    background-color: color-mix(in srgb, var(--background) 72%, transparent);
-    /* -webkit- first, unprefixed last: in the other order the CSS minifier
-       keeps only the -webkit- one, and Chrome/Android get no blur at all. */
-    --material: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: var(--material);
-    backdrop-filter: var(--material);
-  }
-
-  /* Scroll edge instead of a hard divider: a soft fade appears under the top
-     chrome only once content is actually passing beneath it. */
-  .shell-top-chrome::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    height: 14px;
-    pointer-events: none;
-    background: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--foreground) 7%, transparent),
-      transparent
-    );
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-  .shell-top-chrome--scrolled::after {
-    opacity: 1;
-  }
-
-  /*
-   * Extend header frosted-glass background behind the iOS status bar.
-   * The wrapper div has pt-[env(safe-area-inset-top)] so the header starts
-   * below the status bar. This ::before fills that gap so the header looks
-   * like a native iOS nav bar that covers the status bar area.
-   */
-  .dashboard-shell-header::before {
-    content: '';
-    position: absolute;
-    top: calc(-1 * env(safe-area-inset-top, 0px));
-    left: 0;
-    right: 0;
-    height: env(safe-area-inset-top, 0px);
-    background-color: inherit;
-    -webkit-backdrop-filter: var(--material);
-    backdrop-filter: var(--material);
-    z-index: -1;
-  }
+  /* Header = a floating glass pill (`.glass` in DashboardHeader); <main>
+     scrolls underneath it. */
 
   .dashboard-shell :is(
       input:not([type='checkbox']):not([type='radio']),
@@ -955,8 +918,8 @@
     position: relative;
     isolation: isolate;
     pointer-events: none;
-    padding: 6px 14px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    padding: 6px 12px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
     background: transparent;
     transition: opacity 0.2s ease, transform 0.22s ease;
   }
@@ -966,56 +929,18 @@
     display: none;
   }
 
-  /* The pill itself */
-  /* Liquid-glass pill — layered material: blur, saturation, top sheen, inset rims */
+  /* The pill itself: material from `.glass` (in the JSX), floating shadow here. */
   .dashboard-mobile-tabbar__inner {
-    position: relative;
     pointer-events: auto;
-    height: 62px;
+    height: 58px;
     border-radius: 9999px;
-    overflow: hidden;
-    /* Content scrolls under the pill now, so let the glass actually show it. */
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--card) 68%, transparent),
-      color-mix(in srgb, var(--card) 84%, transparent)
-    );
-    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-    box-shadow:
-      0 16px 38px -14px rgba(0, 0, 0, 0.45),
-      0 3px 10px -5px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 color-mix(in srgb, white 55%, transparent),
-      inset 0 -1px 1px color-mix(in srgb, var(--foreground) 7%, transparent);
-    --material: saturate(200%) blur(28px); /* prefix order: see .dashboard-shell-header */
-    -webkit-backdrop-filter: var(--material);
-    backdrop-filter: var(--material);
-    transition: background 0.2s ease, box-shadow 0.22s ease;
+    /* clip, not hidden, so the 1px specular ring in the border band survives */
+    overflow: clip;
+    overflow-clip-margin: 1px;
+    box-shadow: var(--glass-inset), var(--shadow-pop);
   }
 
-  /* specular gloss across the top of the glass */
-  .dashboard-mobile-tabbar__inner::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    z-index: 0;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, white 22%, transparent) 0%,
-      transparent 46%
-    );
-  }
-
-  .dashboard-mobile-tabbar--scrolled .dashboard-mobile-tabbar__inner {
-    box-shadow:
-      0 20px 46px -14px rgba(0, 0, 0, 0.55),
-      0 3px 10px -5px rgba(0, 0, 0, 0.38),
-      inset 0 1px 0 color-mix(in srgb, white 60%, transparent),
-      inset 0 -1px 1px color-mix(in srgb, var(--foreground) 8%, transparent);
-  }
-
-  /* The sliding liquid indicator — springs to the active tab */
+  /* The sliding indicator: an accent-tint pill (springs live in the component). */
   .dashboard-mobile-tabbar__indicator {
     position: absolute;
     top: 50%;
@@ -1025,16 +950,12 @@
     border-radius: 9999px;
     z-index: 0;
     pointer-events: none;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--primary) 88%, white),
-      var(--primary)
-    );
-    box-shadow:
-      0 8px 20px -6px color-mix(in srgb, var(--primary) 60%, transparent),
-      inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
-    /* Motion (springs) lives in DashboardMobileTabBar; no CSS transition here. */
+    background: var(--accent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
     will-change: transform;
+  }
+  .dark .dashboard-mobile-tabbar__indicator {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .dashboard-mobile-tabbar__tab {
@@ -1061,29 +982,20 @@
   }
 
   .dashboard-mobile-tabbar__tab--active > span {
-    color: var(--primary-foreground);
+    color: var(--primary);
     font-weight: 600;
   }
 
   .dashboard-mobile-tabbar__tab--active svg {
     position: relative;
     z-index: 1;
-    color: var(--primary-foreground) !important;
-    transform: scale(1.05);
-    transition: transform 0.18s ease-out;
+    color: var(--primary) !important;
   }
 
   .dashboard-mobile-tabbar__tab--idle:active svg {
     color: var(--foreground);
   }
 
-  .dashboard-sidebar {
-    background-color: var(--surface);
-  }
-
-  html.dark .dashboard-sidebar {
-    background-color: var(--popover);
-  }
 }
 
 /*
@@ -1139,22 +1051,7 @@ html.perf-low-end .glass-scrim {
   background: var(--scrim);
 }
 
-html.perf-low-end .dashboard-shell-header {
-  background-color: var(--background);
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
-
-html.perf-low-end .dashboard-mobile-tabbar__inner {
-  background: var(--card);
-}
-
-html.perf-low-end .dashboard-mobile-tabbar,
-html.perf-low-end .dashboard-mobile-tabbar__inner,
-html.perf-low-end .dashboard-mobile-tabbar__tab {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
+/* Header, tab bar and sidebar are `.glass`, so the rule above makes them solid. */
 
 html.perf-low-end .watch-gauge-hue,
 html.perf-low-end .watch-gauge-needle {
@@ -1297,16 +1194,6 @@ html.pwa-standalone * {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  .dashboard-shell-header {
-    background-color: var(--background);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  .dashboard-mobile-tabbar__inner {
-    background: var(--card);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
 }
 @media (prefers-contrast: more) {
   :root {
@@ -1341,18 +1228,6 @@ html.pwa-standalone * {
   .glass-pop::after,
   .surface-elevated::after {
     display: none;
-  }
-  .dashboard-shell-header {
-    background-color: var(--background);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    border-bottom: 1px solid var(--foreground);
-  }
-  .dashboard-mobile-tabbar__inner {
-    background: var(--card);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    border-color: var(--foreground);
   }
 }
 
