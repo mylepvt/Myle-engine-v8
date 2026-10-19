@@ -55,8 +55,8 @@ interface StaggerContainerProps {
 const StaggerContainer = ({
   children,
   className,
-  staggerDelay = 40,
-  maxStagger = 10,
+  staggerDelay = 24,
+  maxStagger = 8,
 }: StaggerContainerProps) => {
   const reduced = useReducedMotion()
   if (reduced) {

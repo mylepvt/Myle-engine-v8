@@ -20,7 +20,7 @@ import {
 
 import { useBackClose } from '@/hooks/use-back-close'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { FADE, SPRING, project, rubberband } from '@/lib/springs'
+import { EXIT_FADE, FADE, SPRING, project, rubberband } from '@/lib/springs'
 import { cn } from '@/lib/utils'
 
 /**
@@ -55,6 +55,9 @@ const SIZE_CLASS = { sm: 'sm:max-w-sm', md: 'sm:max-w-md', lg: 'sm:max-w-lg' } a
 
 /** Gap kept between a dismissed sheet and the screen edge so its shadow clears too. */
 const EDGE_GAP = 24
+/** Exit aims this far past off-screen and stops once it's half-way there, so the
+ *  sheet leaves at full speed instead of easing through its last visible pixels. */
+const EXIT_OVERSHOOT = 64
 /** Movement before a body drag commits to moving the sheet (taps stay taps). */
 const DRAG_SLOP = 10
 const VELOCITY_WINDOW_MS = 100
@@ -119,7 +122,7 @@ function SheetSurface({
   const travel = useMotionValue(1)
   const progress = useMotionValue(0)
   const sheetShown = useTransform([y, travel], ([v, t]: number[]) => Math.min(1, Math.max(0, 1 - v / t)))
-  const scale = useTransform(progress, [0, 1], [0.96, 1])
+  const scale = useTransform(progress, [0, 1], [0.94, 1])
   const scrimOpacity = mode === 'sheet' ? sheetShown : progress
 
   function run(controls: AnimationPlaybackControls) {
@@ -156,8 +159,13 @@ function SheetSurface({
     if (isPresent) return
     const controls =
       mode === 'sheet'
-        ? animate(y, travel.get(), { ...SPRING.default, velocity: releaseVelocity.current })
-        : animate(progress, 0, mode === 'fade' ? FADE : { ...SPRING.default, visualDuration: 0.25 })
+        ? animate(y, travel.get() + EXIT_OVERSHOOT, {
+            ...SPRING.exit,
+            restDelta: EXIT_OVERSHOOT / 2,
+            restSpeed: Number.POSITIVE_INFINITY, // done by position alone: it's off-screen
+            velocity: releaseVelocity.current,
+          })
+        : animate(progress, 0, mode === 'fade' ? FADE : EXIT_FADE)
     run(controls)
     controls.then(safeToRemove)
   }, [isPresent, mode, progress, safeToRemove, travel, y])
@@ -261,6 +269,9 @@ function SheetSurface({
       samples: [],
     }
     if (fromHandle) beginDrag(e)
+    // Touching a sheet that is still moving catches it, as on iOS; a plain tap
+    // lets it settle again on release (onPointerEnd).
+    else if (Math.abs(y.get()) > 0.5) running.current?.stop()
   }
 
   function beginDrag(e: ReactPointerEvent<HTMLDivElement>) {
@@ -282,6 +293,7 @@ function SheetSurface({
       if (Math.abs(dy) < DRAG_SLOP) return
       if (dy < 0) {
         drag.current = null // upward on the body: not a dismiss gesture
+        if (Math.abs(y.get()) > 0.5) run(animate(y, 0, SPRING.default)) // release a caught sheet
         return
       }
       beginDrag(e)
@@ -299,7 +311,10 @@ function SheetSurface({
     const d = drag.current
     if (!d || e.pointerId !== d.pointerId) return
     drag.current = null
-    if (!d.active) return
+    if (!d.active) {
+      if (present.current && Math.abs(y.get()) > 0.5) run(animate(y, 0, SPRING.default))
+      return
+    }
 
     const first = d.samples[0]
     const last = d.samples[d.samples.length - 1]

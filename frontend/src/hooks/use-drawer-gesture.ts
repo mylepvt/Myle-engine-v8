@@ -90,7 +90,9 @@ export function useDrawerGesture({
       x.set(target)
       return
     }
-    run(animate(x, target, { ...SPRING.default, velocity: releaseVelocity.current }))
+    // No overshoot when opening: the drawer is pinned to the screen edge, and a
+    // bounce past it would flash a gap on the left.
+    run(animate(x, target, { ...(open ? { ...SPRING.default, bounce: 0 } : SPRING.exit), velocity: releaseVelocity.current }))
     releaseVelocity.current = 0
   }, [enabled, open, reduced, x, closedX])
 
@@ -151,7 +153,7 @@ export function useDrawerGesture({
       releaseVelocity.current = velocity
       onCloseRef.current()
     } else {
-      run(animate(x, 0, { ...SPRING.flick, velocity }))
+      run(animate(x, 0, { ...SPRING.default, bounce: 0, velocity })) // edge-pinned: no overshoot
     }
   }
 
