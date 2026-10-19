@@ -1005,20 +1005,16 @@
       0 8px 20px -6px color-mix(in srgb, var(--primary) 60%, transparent),
       inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
     will-change: transform;
+    /* Pre-redesign curve: leaves at full speed and lands with a small bounce,
+       which reads snappier than the slow-starting spring. */
     transition:
-      transform var(--spring-default-duration) var(--spring-default),
-      width var(--spring-default-duration) var(--spring-default),
+      transform 0.44s cubic-bezier(0.34, 1.4, 0.5, 1),
+      width 0.3s ease,
       opacity 0.15s ease;
   }
-  /* Follows the finger 1:1 while dragged, then lands with momentum's bounce. */
+  /* Follows the finger 1:1 while dragged. */
   .dashboard-mobile-tabbar__indicator--dragging {
     transition: none;
-  }
-  .dashboard-mobile-tabbar__indicator--flick {
-    transition:
-      transform var(--spring-flick-duration) var(--spring-flick),
-      width var(--spring-flick-duration) var(--spring-flick),
-      opacity 0.15s ease;
   }
   .dashboard-mobile-tabbar__tab {
     position: relative;
