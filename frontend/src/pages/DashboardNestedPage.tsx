@@ -201,9 +201,11 @@ export function DashboardNestedPage() {
   }
 
   // Smooth enter animation on every route change (keyed by path → re-runs on nav).
-  // PageTransition no-ops under prefers-reduced-motion.
+  // PageTransition no-ops under prefers-reduced-motion. min-h, not h: a fixed
+  // height let long pages overflow it, and <main>'s bottom padding (which clears
+  // the floating tab bar) only counts in-flow content, so the last row hid under it.
   return (
-    <PageTransition key={path} className="h-full">
+    <PageTransition key={path} className="min-h-full">
       <Suspense fallback={<PageFallback />}>{content}</Suspense>
     </PageTransition>
   )

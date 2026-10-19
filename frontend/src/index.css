@@ -962,10 +962,27 @@
     position: relative;
     isolation: isolate;
     pointer-events: none;
-    padding: 6px 12px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    /* Same side inset as the header pill, plus the notch inset in landscape. */
+    padding: 6px calc(env(safe-area-inset-right, 0px) + 12px)
+      calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
+      calc(env(safe-area-inset-left, 0px) + 12px);
     background: transparent;
     transition: opacity 0.2s ease, transform 0.22s ease;
+  }
+  /* Content scrolls under the floating pill; fade it out below and around the
+     pill so rows never show through the gap under the bar. */
+  .dashboard-mobile-tabbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--background) 85%, transparent) 45%,
+      var(--background)
+    );
   }
 
   /* Hide tab bar when software keyboard is open (keyboard inset > 0) */
