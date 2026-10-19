@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
-import { SPRING } from '@/lib/springs'
+import { EXIT_FADE, SPRING } from '@/lib/springs'
 import { cn } from '@/lib/utils'
 import { useFlpMinBillingApprovalsPendingQuery, useTeamMembersQuery } from '@/hooks/use-team-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
@@ -153,7 +153,7 @@ export function NotificationsBell() {
           role="menu"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.14, ease: 'easeIn' } }}
+          exit={{ opacity: 0, scale: 0.95, transition: EXIT_FADE }}
           transition={SPRING.snappy}
           style={{ position: 'fixed', top: pos.top, right: pos.right, maxHeight: 'calc(100vh - 72px)', transformOrigin: 'top right' }}
           className="z-[60] flex w-72 max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl border border-border/60 bg-popover/95 shadow-xl backdrop-blur-xl"

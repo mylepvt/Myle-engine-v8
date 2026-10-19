@@ -1,12 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import { BatchWatchPage } from '@/pages/BatchWatchPage'
-
-// Under a busy parallel run (CI) these waits took 1.04–1.13 s, just past the
-// 1 s default, and flaked. Give them headroom.
-configure({ asyncUtilTimeout: 5000 })
 
 describe('BatchWatchPage', () => {
   afterEach(() => {

@@ -5,20 +5,30 @@ import type { Transition } from 'motion/react'
  * response = how fast the value reaches its target (Motion's `visualDuration`),
  * damping ratio = overshoot (Motion's `bounce` ≈ 1 − damping ratio).
  *
+ * House feel is punchy: short responses with a hint of snap (damping ~0.9)
+ * instead of fully critically damped, whose long settling tail read as slow.
+ * Leaving is quicker than arriving.
+ *
  * Springs start from the value's current position and velocity, so any of
  * these can be interrupted mid-flight without a jump.
  */
 export const SPRING = {
-  /** Default for UI that just appears (damping 1.0, response 0.35): no overshoot. */
-  default: { type: 'spring', visualDuration: 0.35, bounce: 0 },
-  /** Small controls: switch knobs, tab indicators (damping 1.0, response 0.25). */
-  snappy: { type: 'spring', visualDuration: 0.25, bounce: 0 },
-  /** After a flick or drag release (damping 0.8, response 0.3): a little bounce, earned by momentum. */
-  flick: { type: 'spring', visualDuration: 0.3, bounce: 0.2 },
+  /** Things arriving: sheets, dialogs, drawers (damping ~0.9, response 0.24). */
+  default: { type: 'spring', visualDuration: 0.24, bounce: 0.12 },
+  /** Small controls: switch knobs, tab indicators, popovers (response 0.16). */
+  snappy: { type: 'spring', visualDuration: 0.16, bounce: 0.15 },
+  /** After a flick or drag release (damping ~0.75, response 0.24): bounce earned by momentum. */
+  flick: { type: 'spring', visualDuration: 0.24, bounce: 0.25 },
+  /** Things leaving along a path (px), keeping release velocity: quick, no overshoot, and
+   *  called done at ~1px instead of crawling through the last sub-pixel tail. */
+  exit: { type: 'spring', visualDuration: 0.18, bounce: 0, restDelta: 1, restSpeed: 20 },
 } as const satisfies Record<string, Transition>
 
+/** Fades/scales out (0–1 values, nothing to carry): a crisp accelerate-out. */
+export const EXIT_FADE: Transition = { duration: 0.14, ease: [0.4, 0, 1, 1] }
+
 /** Reduced-motion stand-in: a short cross-fade instead of movement. */
-export const FADE: Transition = { duration: 0.2, ease: 'easeOut' }
+export const FADE: Transition = { duration: 0.15, ease: 'easeOut' }
 
 /**
  * Where a flick would come to rest, as scroll deceleration does

@@ -321,12 +321,13 @@
   }
 
   /* PREMIUM ANIMATION SYSTEM */
+  /* Entrances: fast start, quick settle (expo-out) — punchy, not floaty. */
   .animate-fade-in {
-    animation: fadeIn 0.2s ease-out forwards;
+    animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .animate-slide-up {
-    animation: slideUp 0.2s ease-out forwards;
+    animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .shadow-premium-hover {
@@ -371,7 +372,7 @@
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;

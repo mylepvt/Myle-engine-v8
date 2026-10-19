@@ -273,7 +273,7 @@ export function DashboardMobileTabBar({
           transition={
             isDragging
               ? { duration: 0 }
-              : { ...(releasedFromDrag ? SPRING.flick : SPRING.default), opacity: { duration: 0.2 } }
+              : { ...(releasedFromDrag ? SPRING.flick : SPRING.default), opacity: { duration: 0.15 } }
           }
         />
         {defs.map((def, i) => {
