@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 /**
  * Myle pill buttons. Fills come from `.btn-primary` / `.btn-secondary` /
  * `.btn-destructive` in index.css; `.press` shrinks to 0.97 on touch-down
- * (100ms) and springs back on release.
+ * and returns, 100ms each way.
  */
 export const buttonVariants = cva(
   'press inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
