@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { ClosingReadyCard } from '@/components/closing/ClosingReadyCard'
 import { ControlRoomCard } from '@/components/control-room/ControlRoomCard'
 import { AppSetupCard } from '@/components/dashboard/overview/AppSetupCard'
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 
 type Props = {
   firstName: string
@@ -18,7 +19,7 @@ type Props = {
 export function OverviewTab({ firstName, actionNeeded, highlights, tools }: Props) {
   return (
     <div className="space-y-4">
-      <h1 className="px-0.5 text-ds-h2 font-semibold tracking-tight text-foreground">Welcome back, {firstName}</h1>
+      <DashboardGreeting firstName={firstName} />
       {actionNeeded}
       <ClosingReadyCard />
       <ControlRoomCard groupByLeader />

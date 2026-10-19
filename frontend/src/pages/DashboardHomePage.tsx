@@ -39,6 +39,7 @@ import { usePingLoginMutation } from '@/hooks/use-xp-query'
 import { VerificationHomePanel } from '@/components/dashboard/VerificationHomePanel'
 import { CampaignProgressCard } from '@/components/dashboard/CampaignProgressCard'
 import { MissionHomePanel } from '@/components/dashboard/MissionHomePanel'
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 import { cn, firstNameOf } from '@/lib/utils'
 
 function CollapsibleSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: ReactNode }) {
@@ -222,11 +223,7 @@ export function DashboardHomePage() {
 
   return (
     <div className={cn('mx-auto space-y-4 md:space-y-6', role === 'leader' ? 'max-w-7xl' : 'max-w-6xl')}>
-      <div className="flex items-center gap-2 px-0.5">
-        <h1 className="text-ds-h2 font-semibold tracking-tight text-foreground">
-          Welcome back, {firstName}
-        </h1>
-      </div>
+      <DashboardGreeting firstName={firstName} />
 
       {role === 'leader' ? <ClosingReadyCard /> : null}
       {role === 'leader' ? <ControlRoomCard /> : null}
