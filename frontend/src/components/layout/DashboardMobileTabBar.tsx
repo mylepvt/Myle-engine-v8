@@ -1,7 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { MoreHorizontal } from 'lucide-react'
-import { m } from 'motion/react'
 
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
 import {
@@ -10,7 +9,7 @@ import {
   resolveTitleForPath,
   routeDefAccessible,
 } from '@/config/dashboard-registry'
-import { SPRING } from '@/lib/springs'
+import { afterNextPaint } from '@/lib/after-next-paint'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/role'
 
@@ -101,6 +100,9 @@ export function DashboardMobileTabBar({
   // Bounce only when a drag threw the indicator; a tap glides in without overshoot.
   const [releasedFromDrag, setReleasedFromDrag] = useState(false)
   const dragRef = useRef({ startX: 0, currentX: 0, activeIdx: 0 })
+  // The tab a tap is heading to. The route only commits once the next page has
+  // rendered, so without this the pill and tint would answer the tap late.
+  const [pending, setPending] = useState<{ index: number; fromPath: string } | null>(null)
 
   const fourth = fourthTabDef(role)
   const defs: DashboardRouteDef[] = [
@@ -118,11 +120,14 @@ export function DashboardMobileTabBar({
       ? location.pathname === '/dashboard'
       : location.pathname === to || location.pathname.startsWith(`${to}/`),
   )
+  // Any committed navigation supersedes the pending tap.
+  const shownIndex =
+    pending && pending.fromPath === location.pathname ? pending.index : activeIndex
 
   // Measure the active tab so the liquid-glass indicator can slide to it.
   useLayoutEffect(() => {
     if (isDragging) return
-    const el = activeIndex >= 0 ? tabRefs.current[activeIndex] : null
+    const el = shownIndex >= 0 ? tabRefs.current[shownIndex] : null
     if (!el) {
       setIndicator((s) => ({ ...s, visible: false }))
       return
@@ -135,7 +140,7 @@ export function DashboardMobileTabBar({
       width: w,
       visible: true,
     })
-  }, [activeIndex, defs.length, scrolled, keyboardOpen, isDragging])
+  }, [shownIndex, defs.length, scrolled, keyboardOpen, isDragging])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (!innerRef.current) return
@@ -178,9 +183,13 @@ export function DashboardMobileTabBar({
       setReleasedFromDrag(true)
       // Same matching as activeIndex: Home is exact, otherwise every page
       // under /dashboard/ would count as "already on Home" and never navigate.
-      if (idx !== activeIndex && tos[idx]) navigate(tos[idx])
+      if (idx !== activeIndex && tos[idx]) {
+        setPending({ index: idx, fromPath: location.pathname })
+        const target = tos[idx]
+        afterNextPaint(() => navigate(target))
+      }
     }
-  }, [isDragging, tos, activeIndex, navigate])
+  }, [isDragging, tos, activeIndex, navigate, location.pathname])
 
   const barClass = cn(
     'dashboard-mobile-tabbar shrink-0 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] md:hidden',
@@ -263,18 +272,21 @@ export function DashboardMobileTabBar({
         onPointerCancel={handlePointerUp}
         style={{ touchAction: 'none' }}
       >
-        {/* Liquid-glass sliding indicator: follows the finger 1:1 while dragged,
-            then springs to the tab, carrying the drag's velocity. */}
-        <m.span
+        {/* Sliding indicator: follows the finger 1:1 while dragged, then glides to
+            the tab (a little bounce after a drag). A CSS transition, not a JS spring:
+            it runs on the compositor, so it stays smooth while the next page renders. */}
+        <span
           aria-hidden
-          className="dashboard-mobile-tabbar__indicator"
-          initial={false}
-          animate={{ x: indicator.left, width: indicator.width, opacity: indicator.visible ? 1 : 0 }}
-          transition={
-            isDragging
-              ? { duration: 0 }
-              : { ...(releasedFromDrag ? SPRING.flick : SPRING.default), opacity: { duration: 0.15 } }
-          }
+          className={cn(
+            'dashboard-mobile-tabbar__indicator',
+            isDragging && 'dashboard-mobile-tabbar__indicator--dragging',
+            releasedFromDrag && 'dashboard-mobile-tabbar__indicator--flick',
+          )}
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: indicator.width,
+            opacity: indicator.visible ? 1 : 0,
+          }}
         />
         {defs.map((def, i) => {
           const to = tos[i]
@@ -291,28 +303,26 @@ export function DashboardMobileTabBar({
               ref={(el) => {
                 tabRefs.current[i] = el
               }}
-              className={({ isActive }) =>
-                cn(
-                  tabClass,
-                  isActive
-                    ? 'dashboard-mobile-tabbar__tab--active text-primary'
-                    : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    className={cn(
-                      iconClass,
-                      isActive ? 'text-primary' : 'text-muted-foreground',
-                    )}
-                    strokeWidth={isActive ? 2.25 : 1.75}
-                    aria-hidden
-                  />
-                  <span className="truncate">{label}</span>
-                </>
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0 || i === activeIndex) return
+                // Paint the tab's answer first, then render the next page.
+                e.preventDefault()
+                setPending({ index: i, fromPath: location.pathname })
+                afterNextPaint(() => navigate(to))
+              }}
+              className={cn(
+                tabClass,
+                i === shownIndex
+                  ? 'dashboard-mobile-tabbar__tab--active text-primary'
+                  : 'dashboard-mobile-tabbar__tab--idle text-muted-foreground hover:text-foreground',
               )}
+            >
+              <Icon
+                className={cn(iconClass, i === shownIndex ? 'text-primary' : 'text-muted-foreground')}
+                strokeWidth={i === shownIndex ? 2.25 : 1.75}
+                aria-hidden
+              />
+              <span className="truncate">{label}</span>
             </NavLink>
           )
         })}

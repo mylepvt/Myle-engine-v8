@@ -139,6 +139,33 @@ export function DashboardLayout() {
     return () => observer.disconnect()
   })
 
+  // Desktop sidebar toggle: the content column's width changes in one step, then
+  // glides from where it was (FLIP) on the compositor, in step with the sidebar's
+  // own transform slide. Animating widths instead relaid out the page every frame.
+  const lastColumnLeft = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    const column = columnRef.current
+    if (!column) return
+    // A toggle mid-glide starts from where the column is drawn, not where it was laid out.
+    const drawnLeft = column.getBoundingClientRect().left
+    for (const running of column.getAnimations()) running.cancel()
+    const left = column.getBoundingClientRect().left
+    const prev = lastColumnLeft.current
+    lastColumnLeft.current = left
+    const from = prev == null ? 0 : prev + (drawnLeft - left) - left
+    if (isMobile || Math.abs(from) < 1) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const keyframes = [{ transform: `translateX(${from}px)` }, { transform: 'none' }]
+    const styles = getComputedStyle(document.documentElement)
+    const duration = parseFloat(styles.getPropertyValue('--spring-default-duration')) || 450
+    try {
+      column.animate(keyframes, { duration, easing: styles.getPropertyValue('--spring-default').trim() })
+    } catch {
+      // Browsers without CSS linear() easing reject it; fall back to a plain ease-out.
+      column.animate(keyframes, { duration: 300, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' })
+    }
+  }, [sidebarOpen, isMobile])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(max-width: 767px)')
