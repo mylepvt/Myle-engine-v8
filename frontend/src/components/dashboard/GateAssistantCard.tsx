@@ -289,7 +289,7 @@ export function GateAssistantCard({ sessionReady }: Props) {
         ) : null}
 
         {showEarlyEndPrompt ? (
-          <div className="rounded-2xl bg-warning/60 px-3 py-3 text-sm">
+          <div className="rounded-2xl bg-warning/15 px-3 py-3 text-sm">
             <p className="font-semibold text-warning-ink">
               You're working during grace
             </p>

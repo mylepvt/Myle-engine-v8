@@ -55,7 +55,7 @@ export function AutomationPanel({ className }: { className?: string }) {
       </div>
 
       {evaluate.data && (
-        <div className="rounded-2xl bg-success/60 p-3">
+        <div className="rounded-2xl bg-success/15 p-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="size-4 text-success-ink" />
             <p className="text-xs font-semibold text-success-ink">

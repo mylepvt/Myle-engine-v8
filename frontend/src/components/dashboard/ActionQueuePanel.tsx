@@ -33,6 +33,13 @@ function severityClasses(severity: number): string {
   return 'bg-primary/15 text-primary'
 }
 
+/** Severity as text colour only, for numbers (the classes above are for pills). */
+function severityText(severity: number): string {
+  if (severity >= 70) return 'text-destructive-ink'
+  if (severity >= 50) return 'text-warning-ink'
+  return 'text-primary'
+}
+
 function QueueRow({ item }: { item: ActionQueueItem }) {
   const execute = useExecuteQueueAction()
   const [lastResult, setLastResult] = useState<{ action: ActionKey; status: string } | null>(null)
@@ -98,7 +105,7 @@ function SummaryView({ items }: { items: ActionQueueItem[] }) {
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {Object.entries(groups).map(([type, g]) => (
         <div key={type} className="rounded-2xl bg-muted p-3 text-center">
-          <p className={cn('text-lg font-bold', severityClasses(g.avgSeverity))}>{g.count}</p>
+          <p className={cn('text-2xl font-semibold tabular-nums', severityText(g.avgSeverity))}>{g.count}</p>
           <p className="mt-0.5 text-ds-micro text-muted-foreground">{TYPE_LABEL[type as ActionQueueItem['item_type']] ?? type}</p>
         </div>
       ))}

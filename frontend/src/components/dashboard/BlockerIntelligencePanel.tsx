@@ -98,7 +98,7 @@ export function BlockerIntelligencePanel({ className }: { className?: string }) 
 
         {/* Suggestion */}
         {data.biggest_blocker && (
-          <div className="mt-4 rounded-2xl bg-warning/60 p-3">
+          <div className="mt-4 rounded-2xl bg-warning/15 p-3">
             <div className="flex items-start gap-2">
               <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning-ink" />
               <div>

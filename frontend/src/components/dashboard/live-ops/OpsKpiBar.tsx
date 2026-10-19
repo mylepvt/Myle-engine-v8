@@ -26,7 +26,8 @@ function KpiCard({
 }) {
   const base = cn(
     'flex flex-col gap-2 rounded-2xl px-4 py-3 transition-colors duration-150',
-    urgent ? 'bg-warning/10' : 'bg-muted',
+    // These sit on the page background: a card when calm, a warning tint when urgent.
+    urgent ? 'bg-warning/10' : 'card',
     clickable && 'press cursor-pointer',
   )
   const inner = (
