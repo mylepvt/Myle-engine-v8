@@ -180,21 +180,9 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -left-20 top-[10%] h-80 w-80 rounded-full bg-primary/[0.08] blur-3xl" />
-        <div className="absolute -right-20 bottom-[15%] h-72 w-72 rounded-full bg-muted/30 blur-3xl" />
-      </div>
-
-      <div className="relative z-[1] w-full max-w-[min(100%,26rem)]">
-        {/* Brand mark above card */}
-        <div className="mb-8 flex flex-col items-center gap-2">
-          <div className="flex size-14 items-center justify-center rounded-md bg-primary shadow-lg shadow-primary/40">
-            <UserPlus className="size-7 text-white" aria-hidden />
-          </div>
-          <span className="font-heading text-ds-h2 text-foreground">Myle</span>
-        </div>
-
+    <div className="relative flex min-h-dvh flex-col items-center overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+      {/* my-auto, not justify-center: a card taller than the screen stays scrollable from its top. */}
+      <div className="relative z-[1] my-auto w-full max-w-[min(100%,26rem)]">
         <AuthCard
           variant="center"
           icon={UserPlus}
@@ -215,7 +203,7 @@ export function RegisterPage() {
         >
           {submitted ? (
             <div
-              className="rounded border border-primary/35 bg-primary/[0.08] px-3 py-3 text-center text-sm text-foreground"
+              className="rounded-2xl bg-accent px-3.5 py-3 text-center text-sm text-foreground"
               role="status"
             >
               <p className="font-medium text-foreground">{successMessage}</p>
@@ -234,7 +222,7 @@ export function RegisterPage() {
           <form className="space-y-4 md:space-y-6" onSubmit={(e) => void handleSubmit(e)} noValidate>
             {fromLead ? (
               <div
-                className="rounded border border-primary/35 bg-primary/[0.08] px-3 py-2 text-center text-sm text-foreground"
+                className="rounded-2xl bg-accent px-3.5 py-2.5 text-center text-sm text-foreground"
                 role="status"
               >
                 <PartyPopper className="mr-1.5 inline size-4 text-primary" aria-hidden />
@@ -243,7 +231,7 @@ export function RegisterPage() {
             ) : null}
             {formError ? (
               <div
-                className="rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive"
+                className="rounded-2xl bg-destructive/10 px-3.5 py-2.5 text-center text-sm text-destructive-ink"
                 role="alert"
               >
                 {formError}
@@ -257,7 +245,7 @@ export function RegisterPage() {
               </p>
               <div>
                 <label
-                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                   htmlFor="reg-fbo-id"
                 >
                   FBO ID
@@ -274,7 +262,7 @@ export function RegisterPage() {
               </div>
               <div>
                 <label
-                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                   htmlFor="reg-username"
                 >
                   Display name
@@ -288,13 +276,13 @@ export function RegisterPage() {
                   placeholder="Your name as it should appear"
                   icon={User}
                 />
-                <p className="mt-1.5 text-ds-micro text-muted-foreground/80">
+                <p className="mt-1.5 text-ds-micro text-muted-foreground">
                   Spaces allowed — special characters will be auto-removed.
                 </p>
               </div>
               <div>
                 <label
-                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                   htmlFor="reg-email"
                 >
                   Email
@@ -313,7 +301,7 @@ export function RegisterPage() {
               </div>
               <div>
                 <label
-                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                   htmlFor="reg-password"
                 >
                   Password
@@ -332,7 +320,7 @@ export function RegisterPage() {
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowPassword((s) => !s)}
-                      className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? (
@@ -350,7 +338,7 @@ export function RegisterPage() {
               <SectionTitle>Network details</SectionTitle>
               <div>
                 <label
-                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                   htmlFor="reg-upline"
                 >
                   Upline FBO ID
@@ -373,8 +361,8 @@ export function RegisterPage() {
                   <p
                     className={`mt-2 flex items-start gap-2 text-ds-caption ${
                       uplineLookup.is_valid_upline
-                        ? 'text-success-ink/95'
-                        : 'text-warning-ink/90'
+                        ? 'text-success-ink'
+                        : 'text-warning-ink'
                     }`}
                   >
                     <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
@@ -392,7 +380,7 @@ export function RegisterPage() {
               <SectionTitle>Joining info</SectionTitle>
               <div>
                 <label
-                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-semibold text-foreground"
+                  className="mb-1.5 flex flex-wrap items-baseline gap-1 text-sm font-medium text-foreground"
                   htmlFor="reg-phone"
                 >
                   Phone
@@ -410,13 +398,13 @@ export function RegisterPage() {
                 />
               </div>
 
-              <div className="rounded-md border border-border/60 bg-muted/35 p-4">
+              <div className="surface-inset rounded-2xl p-4">
                 <label className="flex cursor-pointer gap-3 text-ds-body text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={newJoining}
                     onChange={(e) => setNewJoining(e.target.checked)}
-                    className="mt-1 size-4 shrink-0 rounded border-white/25 bg-muted/40 text-primary accent-primary focus:ring-2 focus:ring-primary/40"
+                    className="mt-1 size-4 shrink-0 rounded accent-primary focus-visible:ring-2 focus-visible:ring-primary/40"
                   />
                   <span className="min-w-0">
                     <span className="mb-1 flex flex-wrap items-center gap-2 font-semibold text-foreground">
@@ -436,7 +424,8 @@ export function RegisterPage() {
               type="submit"
               variant="default"
               disabled={submitting}
-              className="h-11 w-full gap-2 text-base font-semibold shadow-lg shadow-primary/20"
+              size="lg"
+              className="w-full gap-2 font-semibold"
             >
               {submitting ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
