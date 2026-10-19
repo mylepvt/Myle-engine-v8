@@ -1,6 +1,6 @@
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, NavLink } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
-import { m } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,10 +8,9 @@ import { MyleSidebarMark } from '@/components/brand/MyleSidebarMark'
 import { getDashboardNavIcon } from '@/config/dashboard-nav-icons'
 import { resolveItemLabel } from '@/config/dashboard-nav'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
-import { useDrawerGesture } from '@/hooks/use-drawer-gesture'
+import { useBackClose } from '@/hooks/use-back-close'
 import { useMetaQuery } from '@/hooks/use-meta-query'
 import type { DashboardNavSection } from '@/config/dashboard-nav'
-import { afterNextPaint } from '@/lib/after-next-paint'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -36,39 +35,45 @@ export function DashboardSidebar({
   const { role: shellRole, isPending: rolePending } = useDashboardShellRole()
   const { data: meta } = useMetaQuery()
   const envLabel = meta?.environment
-  const location = useLocation()
-  const navigate = useNavigate()
-  const { panelRef: drawerRef, x: drawerX, scrimOpacity, handlers: drawerHandlers } = useDrawerGesture({
-    enabled: isMobile,
-    open: mobileMenuOpen,
-    onClose: () => setMobileMenuOpen(false),
-  })
+  const drawerOpen = isMobile && mobileMenuOpen
+  // Device Back and Escape close the phone drawer.
+  useBackClose({ open: drawerOpen, onClose: () => setMobileMenuOpen(false) })
+  useEffect(() => {
+    if (!drawerOpen) return undefined
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawerOpen, setMobileMenuOpen])
 
   return (
     <>
     {isMobile ? (
-      // Dims with the drawer's position, so it fades in step with a drag.
-      <m.button
+      <button
         type="button"
         aria-label="Close menu"
         tabIndex={mobileMenuOpen ? 0 : -1}
-        className={cn('fixed inset-0 z-40 md:hidden', !mobileMenuOpen && 'pointer-events-none')}
-        style={{ opacity: scrimOpacity, background: 'var(--scrim)' }}
+        className={cn(
+          'fixed inset-0 z-40 transition-opacity duration-200 ease-out md:hidden',
+          mobileMenuOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+        style={{ background: 'var(--scrim)' }}
         onClick={() => setMobileMenuOpen(false)}
       />
     ) : null}
-    <m.aside
-      ref={drawerRef}
-      {...(isMobile ? drawerHandlers : {})}
-      style={isMobile ? { x: drawerX } : undefined}
+    <aside
       aria-hidden={isMobile && !mobileMenuOpen ? true : undefined}
       className={cn(
         // Desktop: a floating glass panel inset 12px from the edges. Mobile: a glass-pop drawer.
         'glass flex shrink-0 flex-col overflow-hidden',
         'dashboard-sidebar-panel md:my-3 md:ml-3 md:h-[calc(100%-1.5rem)] md:w-[240px] md:rounded-card',
         !sidebarOpen && 'dashboard-sidebar-panel--closed',
-        'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(240px,85vw)] max-md:rounded-r-card max-md:touch-pan-y max-md:pt-[env(safe-area-inset-top)]',
-        !mobileMenuOpen && 'max-md:pointer-events-none',
+        // Phone drawer slides as it did before the redesign: a 200ms CSS transform
+        // transition, which runs on the compositor and stays smooth under load.
+        'dashboard-mobile-drawer max-md:fixed max-md:left-0 max-md:top-0 max-md:z-50 max-md:w-[min(240px,85vw)] max-md:rounded-r-card max-md:pt-[env(safe-area-inset-top)]',
+        'max-md:transition-transform max-md:duration-200 max-md:ease-out',
+        mobileMenuOpen ? 'max-md:translate-x-0' : 'max-md:pointer-events-none max-md:-translate-x-[calc(100%+24px)]',
       )}
     >
       {/* Header */}
@@ -120,33 +125,11 @@ export function DashboardSidebar({
                               ? `${label}, ${pendingEnrollCount} pending`
                               : undefined
                           }
-                          onClick={(e) => {
+                          // On a phone the open drawer sits on a Back placeholder entry;
+                          // replacing it keeps Back from the new page returning here.
+                          replace={isMobile}
+                          onClick={() => {
                             if (isMobile) setMobileMenuOpen(false)
-                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-                            e.preventDefault()
-                            if (isMobile) {
-                              // The open drawer owns a Back placeholder entry, which closing it
-                              // drops with history.back() a tick later. Navigate now, replacing
-                              // that entry: deferred, the pending back() would undo the
-                              // navigation. Back from the new page then returns here.
-                              const onPlaceholder = Boolean(
-                                (window.history.state as { backClose?: boolean } | null)?.backClose,
-                              )
-                              navigate(to, { replace: onPlaceholder || to === location.pathname })
-                              return
-                            }
-                            // Desktop: move the pill on the click, then render the next page after
-                            // that paints. The pill moves by swapping one class on two rows, not
-                            // through React state: re-rendering every row on the click cost a
-                            // long task (~60ms on a slow CPU) that held back that very paint.
-                            // React sets the same class itself once the route commits.
-                            const row = e.currentTarget
-                            for (const el of row.closest('nav')?.querySelectorAll('.nav-link--active') ?? []) {
-                              el.classList.remove('nav-link--active')
-                            }
-                            row.classList.add('nav-link--active')
-                            // Same page: replace, as <Link> does, so history gains no duplicate.
-                            afterNextPaint(() => navigate(to, { replace: to === location.pathname }))
                           }}
                           className={({ isActive }) =>
                             cn(
@@ -196,7 +179,7 @@ export function DashboardSidebar({
           Log out
         </Button>
       </div>
-    </m.aside>
+    </aside>
     </>
   )
 }
