@@ -3,8 +3,8 @@ import { Link, type LinkProps } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
 
-const cardBase =
-  'rounded border border-border bg-card text-card-foreground transition-[background-color,border-color] duration-100'
+/** Myle card: solid gloss, 22px, soft shadow, specular edge, no border (see `.card` in index.css). */
+const cardBase = 'card text-card-foreground'
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -12,11 +12,7 @@ const Card = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      cardBase,
-      'hover:bg-[color-mix(in_srgb,var(--card)_94%,var(--primary)_6%)]',
-      className,
-    )}
+    className={cn(cardBase, className)}
     {...props}
   />
 ))
@@ -28,13 +24,7 @@ const CardLink = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <Link
     ref={ref}
-    className={cn(
-      cardBase,
-      'block cursor-pointer no-underline',
-      'hover:bg-[color-mix(in_srgb,var(--card)_92%,var(--primary)_8%)] hover:border-border',
-      'active:bg-[color-mix(in_srgb,var(--card)_88%,var(--primary)_12%)]',
-      className,
-    )}
+    className={cn(cardBase, 'card-interactive press block no-underline', className)}
     {...props}
   />
 ))
@@ -46,7 +36,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('px-4 py-3 md:px-5 md:py-4 flex flex-col gap-1', className)}
+    className={cn('flex flex-col gap-1 p-4 sm:p-5', className)}
     {...props}
   />
 ))
@@ -58,7 +48,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn('font-heading text-ds-h3 text-foreground leading-tight', className)}
+    className={cn('font-heading text-base font-semibold leading-tight tracking-tight text-foreground', className)}
     {...props}
   />
 ))
@@ -70,7 +60,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn('text-ds-caption text-muted-foreground leading-normal pt-1', className)}
+    className={cn('text-sm leading-normal text-muted-foreground', className)}
     {...props}
   />
 ))
@@ -80,7 +70,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('px-4 py-3 md:px-5 md:py-4', className)} {...props} />
+  <div ref={ref} className={cn('p-4 sm:p-5', className)} {...props} />
 ))
 CardContent.displayName = 'CardContent'
 
@@ -90,7 +80,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('px-4 py-3 md:px-5 md:py-4 flex items-center gap-3', className)}
+    className={cn('flex items-center gap-3 p-4 sm:p-5', className)}
     {...props}
   />
 ))

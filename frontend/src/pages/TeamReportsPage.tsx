@@ -48,7 +48,7 @@ function MetricCard({
   hint?: string
 }) {
   return (
-    <div className="surface-elevated rounded px-4 py-4">
+    <div className="surface-elevated px-4 py-4">
       <p className="text-ds-micro font-semibold uppercase tracking-[0.2em] text-muted-foreground">
         {label}
       </p>
@@ -87,7 +87,7 @@ function SubmissionCard({ item }: { item: TeamReportItem }) {
     item.calls_made_actual !== item.total_calling || item.payments_actual !== (item.day1_count + item.day2_count + item.day3_count)
 
   return (
-    <article className="surface-elevated rounded p-4 md:hidden">
+    <article className="surface-elevated p-4 md:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -252,7 +252,7 @@ export function TeamReportsPage({ title }: Props) {
               {TILES.map((tile) => (
                 <div
                   key={tile.key}
-                  className="surface-elevated rounded border border-border/60 py-3 text-center"
+                  className="surface-elevated py-3 text-center"
                 >
                   <div className={cn('text-2xl font-bold tabular-nums', tile.color)}>
                     {data.live_summary[tile.key]}

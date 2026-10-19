@@ -5,8 +5,8 @@ import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
 
 /** Android status bar / browser chrome colour — must equal --background in index.css. */
 const THEME_COLOR: Record<'light' | 'dark', string> = {
-  dark: '#111214',
-  light: '#e9edf4',
+  dark: '#07080C',
+  light: '#EEF1F7',
 }
 
 export function ThemeAndFeedbackProvider({ children }: { children: ReactNode }) {

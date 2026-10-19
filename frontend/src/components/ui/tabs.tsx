@@ -39,7 +39,8 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "flex items-center gap-px rounded bg-muted/50 p-0.5 text-muted-foreground",
+      // iOS segmented control: a muted pill track; the active item is a raised pill.
+      "inline-flex max-w-full items-center gap-0.5 rounded-full bg-muted p-1 text-muted-foreground",
       className
     )}
     {...props}
@@ -58,11 +59,11 @@ const TabsTrigger = React.forwardRef<
       ref={ref}
       value={value}
       className={cn(
-        "relative isolate inline-flex items-center justify-center whitespace-nowrap rounded px-2.5 py-1 text-ds-caption font-medium transition-[background-color,color] duration-100",
+        "relative isolate inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-150",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
         "disabled:pointer-events-none disabled:opacity-50",
-        "text-muted-foreground hover:text-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_7%,transparent)]",
-        "data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:hover:bg-transparent",
+        "text-muted-foreground hover:text-foreground",
+        "data-[state=active]:text-foreground",
         className
       )}
       {...props}
@@ -73,7 +74,7 @@ const TabsTrigger = React.forwardRef<
           aria-hidden
           layoutId={`tabs-indicator-${ctx.group}`}
           transition={SPRING.snappy}
-          className="absolute inset-0 -z-10 rounded bg-primary/20"
+          className="control-pill absolute inset-0 -z-10 rounded-full"
         />
       ) : null}
       {children}

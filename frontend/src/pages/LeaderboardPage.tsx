@@ -95,7 +95,7 @@ export function LeaderboardPage({ title }: Props) {
 
           {/* Rest of table */}
           {rest.length > 0 ? (
-            <div className="surface-elevated overflow-x-auto rounded-md p-0 text-sm">
+            <div className="surface-elevated overflow-x-auto p-0 text-sm">
               <table className="w-full min-w-[28rem] border-collapse text-left">
                 <caption className="sr-only">Full leaderboard</caption>
                 <thead>

@@ -4,24 +4,18 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded border px-2 py-0.5 text-ds-caption font-medium transition-colors',
+  // Myle status pill: rounded-full, 20px tall, 11px semibold, tint fill + ink text.
+  'inline-flex h-5 items-center whitespace-nowrap rounded-full border border-transparent px-2 text-ds-micro font-semibold transition-colors',
   {
     variants: {
       variant: {
-        default:
-          'border-transparent bg-muted text-muted-foreground',
-        secondary:
-          'border-transparent bg-secondary text-secondary-foreground',
-        destructive:
-          'border-transparent bg-destructive/20 text-destructive',
-        primary:
-          'border-transparent bg-primary/15 text-primary',
-        success:
-          'border-transparent bg-success/15 text-success',
-        warning:
-          'border-transparent bg-warning/15 text-warning',
-        danger:
-          'border-transparent bg-destructive/15 text-destructive',
+        default: 'bg-muted text-muted-foreground',
+        secondary: 'bg-secondary text-secondary-foreground',
+        destructive: 'bg-destructive/15 text-destructive-ink',
+        primary: 'bg-primary/15 text-accent-foreground',
+        success: 'bg-success/15 text-success-ink',
+        warning: 'bg-warning/15 text-warning-ink',
+        danger: 'bg-destructive/15 text-destructive-ink',
         outline: 'border-border text-foreground',
       },
     },

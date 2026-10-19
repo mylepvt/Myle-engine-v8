@@ -49,7 +49,7 @@ export function ArchivedLeadCard({
   const showMember = role === 'admin' || role === 'leader'
   const memberName = lead.assigned_to_name ?? lead.owner_name ?? 'Unassigned'
   return (
-    <li className="surface-elevated rounded-lg border border-border/50 p-3">
+    <li className="surface-elevated p-3">
       <div className="flex items-start justify-between gap-2">
         <Link
           to={`/dashboard/work/leads/${lead.id}`}

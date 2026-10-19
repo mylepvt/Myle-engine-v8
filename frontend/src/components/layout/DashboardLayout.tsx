@@ -107,6 +107,15 @@ export function DashboardLayout() {
     () => ({ '--keyboard-inset-height': `${keyboardInset}px` }) as CSSProperties,
     [keyboardInset],
   )
+  // Sheets portal to <body>, outside .dashboard-shell, so they need the inset on
+  // <html> too — otherwise a sheet never lifts above the Android keyboard.
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--keyboard-inset-height', `${keyboardInset}px`)
+    return () => {
+      root.style.removeProperty('--keyboard-inset-height')
+    }
+  }, [keyboardInset])
 
   // The header (+ alert banners) and the tab bar float over <main> as translucent
   // chrome, so content scrolls underneath them. Their live heights feed
@@ -300,9 +309,9 @@ export function DashboardLayout() {
   if (showTutorial && completeTutorial.isIdle) {
     return (
       <>
-        <div className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background">
+        <div className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-transparent">
           <div className="flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-            <main data-tour="dashboard" className="content-dashboard-main relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8">
+            <main data-tour="dashboard" className="content-dashboard-main relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-transparent p-4 md:p-6 lg:p-8">
               <Outlet />
             </main>
           </div>
@@ -331,7 +340,7 @@ export function DashboardLayout() {
     <InstallAppGate allowSkip={!mustSetUpApp}>
     <PushNotificationGate allowSkip={!mustSetUpApp}>
     <div
-      className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
+      className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-transparent"
       style={shellStyle}
     >
       <DashboardSidebar
@@ -470,7 +479,7 @@ export function DashboardLayout() {
           ref={setMainEl}
           data-tour="dashboard"
           className={cn(
-            'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background px-4 md:px-6 lg:px-8',
+            'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-transparent px-4 md:px-6 lg:px-8',
             'pb-[calc(var(--chrome-bottom,0px)+1rem)] pt-[calc(var(--chrome-top,48px)+1rem)] md:pb-[calc(var(--chrome-bottom,0px)+1.5rem)] md:pt-[calc(var(--chrome-top,48px)+1.5rem)] lg:pb-[calc(var(--chrome-bottom,0px)+2rem)] lg:pt-[calc(var(--chrome-top,48px)+2rem)]',
             'scroll-pb-[var(--chrome-bottom,0px)] scroll-pt-[var(--chrome-top,48px)] scroll-ios',
           )}

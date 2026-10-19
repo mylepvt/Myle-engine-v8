@@ -136,7 +136,7 @@ export function SalesApprovalsPage({ title }: Props) {
               return (
                 <li
                   key={row.id}
-                  className="surface-elevated flex flex-col gap-3 rounded border border-border/60 p-4 text-sm sm:flex-row sm:items-start sm:justify-between"
+                  className="surface-elevated flex flex-col gap-3 p-4 text-sm sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">

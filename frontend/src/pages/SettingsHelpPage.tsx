@@ -26,7 +26,7 @@ function HelpArticleCard({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <li className="surface-elevated overflow-hidden rounded">
+    <li className="surface-elevated overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -66,7 +66,7 @@ export function SettingsHelpPage({ title }: Props) {
       </div>
 
       {/* Push notifications toggle */}
-      <section className="surface-elevated rounded-xl p-4">
+      <section className="surface-elevated p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />

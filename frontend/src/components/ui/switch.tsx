@@ -45,7 +45,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         className={cn(
           'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-          checked ? 'bg-primary' : 'bg-input',
+          checked ? 'bg-primary' : 'bg-border-strong',
           disabled && 'cursor-not-allowed opacity-50',
           className,
         )}
@@ -56,7 +56,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
           initial={false}
           animate={{ x: checked ? RUN + KNOB - width : 0, width }}
           transition={SPRING.snappy}
-          className="pointer-events-none absolute left-0 top-0 block h-5 rounded-full bg-background shadow-md ring-0"
+          className="pointer-events-none absolute left-0 top-0 block h-5 rounded-full bg-white shadow-md ring-0"
         />
       </button>
     )

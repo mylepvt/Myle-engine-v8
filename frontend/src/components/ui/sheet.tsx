@@ -345,14 +345,16 @@ function SheetSurface({
   return (
     <div
       className={cn(
-        'keyboard-safe-modal fixed inset-0 z-[60] flex items-end justify-center px-2 sm:items-center sm:p-4',
+        // Phones: the sheet is attached to the bottom edge (only the keyboard lifts it);
+        // larger screens: a centred floating dialog.
+        'keyboard-safe-modal fixed inset-0 z-[60] flex items-end justify-center max-sm:!pb-[var(--keyboard-inset-height,0px)] sm:items-center sm:p-4',
         !isPresent && 'pointer-events-none',
       )}
     >
       <m.div
         aria-hidden
-        className="absolute inset-0"
-        style={{ opacity: scrimOpacity, background: 'var(--scrim)' }}
+        className="glass-scrim absolute inset-0"
+        style={{ opacity: scrimOpacity }}
         onClick={dismissible ? () => onCloseRef.current() : undefined}
       />
       <m.div
@@ -375,7 +377,7 @@ function SheetSurface({
               : { opacity: progress }
         }
         className={cn(
-          'keyboard-safe-sheet relative flex w-full flex-col overflow-hidden rounded-4xl border border-border bg-card text-card-foreground shadow-sheet outline-none sm:rounded-3xl',
+          'keyboard-safe-sheet glass-pop relative flex w-full flex-col overflow-hidden rounded-t-sheet text-card-foreground outline-none max-sm:pb-[env(safe-area-inset-bottom)] sm:rounded-sheet',
           SIZE_CLASS[size],
         )}
       >
@@ -385,7 +387,7 @@ function SheetSurface({
             aria-hidden
             className="absolute left-1/2 top-0 z-20 flex h-7 w-24 -translate-x-1/2 cursor-grab touch-none justify-center pt-2 active:cursor-grabbing"
           >
-            <span className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+            <span className="h-1.5 w-10 rounded-full bg-border-strong" />
           </div>
         ) : null}
         <div

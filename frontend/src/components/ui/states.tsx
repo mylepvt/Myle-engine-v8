@@ -1,4 +1,4 @@
-import { Award, Bell, FolderOpen, Inbox, type LucideIcon, Search, TrendingUp, Users, Wallet, Zap } from 'lucide-react'
+import { AlertTriangle, Award, Bell, FolderOpen, Inbox, type LucideIcon, Search, TrendingUp, Users, Wallet, Zap } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -49,16 +49,16 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface/30 px-6 py-10 text-center',
+        'card flex flex-col items-center justify-center px-6 py-10 text-center',
         className,
       )}
     >
       <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
         {React.createElement(icon ?? VARIANT_ICONS[variant], { className: 'size-6', strokeWidth: 1.75, 'aria-hidden': true })}
       </div>
-      <p className="font-heading text-ds-h3 text-foreground">{title}</p>
+      <p className="font-heading text-base font-semibold tracking-tight text-foreground">{title}</p>
       {description ? (
-        <p className="mt-2 max-w-sm text-ds-body text-muted-foreground">
+        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
           {description}
         </p>
       ) : null}
@@ -104,9 +104,9 @@ export function LoadingState({ label, className }: LoadingStateProps) {
       aria-live="polite"
     >
       <span className="sr-only">{label ?? 'Loading…'}</span>
-      <div className="skeleton-shimmer h-8 w-44 rounded-lg bg-foreground/10" />
+      <div className="h-8 w-44 animate-pulse rounded-full bg-muted" />
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="skeleton-shimmer h-20 w-full rounded-xl bg-foreground/10" />
+        <div key={i} className="h-20 w-full animate-pulse rounded-card bg-muted" />
       ))}
     </div>
   )
@@ -130,13 +130,16 @@ export function ErrorState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded border border-destructive/35 bg-destructive/10 px-6 py-8 text-center',
+        'card flex flex-col items-center justify-center px-6 py-8 text-center',
         className,
       )}
       role="alert"
     >
-      <p className="font-medium text-foreground">{title}</p>
-      <p className="mt-2 max-w-md text-ds-body text-muted-foreground">
+      <span className="mb-3 flex size-10 items-center justify-center rounded-full bg-destructive/15 text-destructive-ink">
+        <AlertTriangle className="size-5" strokeWidth={1.9} aria-hidden />
+      </span>
+      <p className="font-heading text-base font-semibold tracking-tight text-foreground">{title}</p>
+      <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
         {message}
       </p>
       {onRetry ? (

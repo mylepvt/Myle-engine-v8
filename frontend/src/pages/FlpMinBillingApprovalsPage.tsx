@@ -98,7 +98,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
               return (
                 <li
                   key={row.lead_id}
-                  className="surface-elevated flex flex-col gap-3 rounded border border-border/60 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  className="surface-elevated flex flex-col gap-3 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -239,7 +239,7 @@ export function FlpMinBillingApprovalsPage({ title }: Props) {
                 return (
                   <li
                     key={`${row.lead_id}-${row.review_action}-${row.reviewed_at}`}
-                    className="surface-elevated flex flex-col gap-3 rounded border border-border/60 p-4 text-sm"
+                    className="surface-elevated flex flex-col gap-3 p-4 text-sm"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-foreground">{row.lead_name}</p>

@@ -42,7 +42,7 @@ export function ConfirmDialog({
 
   return (
     <Sheet open={open} onClose={onCancel} label={title} size="sm" className="p-5 text-sm">
-      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
       {description ? (
         <p className="mt-1.5 text-ds-caption text-muted-foreground">{description}</p>
       ) : null}
