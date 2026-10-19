@@ -1,4 +1,4 @@
-import { type CSSProperties, type FormEvent, type UIEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, type FormEvent, type UIEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AlertTriangle, RefreshCw, WifiOff, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -107,6 +107,28 @@ export function DashboardLayout() {
     () => ({ '--keyboard-inset-height': `${keyboardInset}px` }) as CSSProperties,
     [keyboardInset],
   )
+
+  // The header (+ alert banners) and the tab bar float over <main> as translucent
+  // chrome, so content scrolls underneath them. Their live heights feed
+  // --chrome-top / --chrome-bottom, which pad <main> so nothing hides behind them.
+  const columnRef = useRef<HTMLDivElement>(null)
+  const topChromeRef = useRef<HTMLDivElement>(null)
+  const bottomChromeRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const column = columnRef.current
+    const top = topChromeRef.current
+    const bottom = bottomChromeRef.current
+    if (!column || !top || !bottom) return undefined
+    const sync = () => {
+      column.style.setProperty('--chrome-top', `${top.offsetHeight}px`)
+      column.style.setProperty('--chrome-bottom', `${bottom.offsetHeight}px`)
+    }
+    sync()
+    const observer = new ResizeObserver(sync)
+    observer.observe(top)
+    observer.observe(bottom)
+    return () => observer.disconnect()
+  })
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -312,15 +334,6 @@ export function DashboardLayout() {
       className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-background"
       style={shellStyle}
     >
-      {isMobile && mobileMenuOpen ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-all duration-300 md:hidden"
-          aria-label="Close menu"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      ) : null}
-
       <DashboardSidebar
         sections={sections}
         sidebarOpen={sidebarOpen}
@@ -331,10 +344,19 @@ export function DashboardLayout() {
         onLogout={handleLogout}
       />
 
-      <div className="flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+      <div
+        ref={columnRef}
+        className="relative flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
+      >
+        <div
+          ref={topChromeRef}
+          className={cn(
+            'shell-top-chrome absolute left-[env(safe-area-inset-left,0px)] right-[env(safe-area-inset-right,0px)] top-[env(safe-area-inset-top,0px)] z-30',
+            isMainScrolled && 'shell-top-chrome--scrolled',
+          )}
+        >
         <DashboardHeader
           isMobile={isMobile}
-          isMainScrolled={isMainScrolled}
           sidebarOpen={sidebarOpen}
           mobileMenuOpen={mobileMenuOpen}
           toggleSidebar={toggleSidebar}
@@ -347,7 +369,8 @@ export function DashboardLayout() {
           displayInitial={displayInitial}
         />
 
-        <div className="max-h-[132px] space-y-0 overflow-y-auto">
+        {/* Alerts sit on a solid layer: tinted text over moving content would be unreadable. */}
+        <div className="max-h-[132px] space-y-0 overflow-y-auto bg-background">
         {enrollmentAlert.open && approverForEnroll ? (
           <div
             role="status"
@@ -441,13 +464,15 @@ export function DashboardLayout() {
         ) : null}
 
         </div>
+        </div>
 
         <main
           ref={setMainEl}
           data-tour="dashboard"
           className={cn(
-            'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background p-4 md:p-6 lg:p-8',
-            'scroll-ios',
+            'content-dashboard-main relative min-h-0 min-w-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden bg-background px-4 md:px-6 lg:px-8',
+            'pb-[calc(var(--chrome-bottom,0px)+1rem)] pt-[calc(var(--chrome-top,48px)+1rem)] md:pb-[calc(var(--chrome-bottom,0px)+1.5rem)] md:pt-[calc(var(--chrome-top,48px)+1.5rem)] lg:pb-[calc(var(--chrome-bottom,0px)+2rem)] lg:pt-[calc(var(--chrome-top,48px)+2rem)]',
+            'scroll-pb-[var(--chrome-bottom,0px)] scroll-pt-[var(--chrome-top,48px)] scroll-ios',
           )}
           onScroll={handleMainScroll}
         >
@@ -479,15 +504,17 @@ export function DashboardLayout() {
           </DashboardOutletErrorBoundary>
         </main>
 
-        {shellRole != null ? (
-          <DashboardMobileTabBar
-            role={shellRole}
-            trainingLocked={trainingLocked}
-            onOpenMenu={() => setMobileMenuOpen(true)}
-            keyboardOpen={keyboardOpen}
-            scrolled={isMainScrolled}
-          />
-        ) : null}
+        <div ref={bottomChromeRef} className="pointer-events-none absolute inset-x-0 bottom-0 z-30">
+          {shellRole != null ? (
+            <DashboardMobileTabBar
+              role={shellRole}
+              trainingLocked={trainingLocked}
+              onOpenMenu={() => setMobileMenuOpen(true)}
+              keyboardOpen={keyboardOpen}
+              scrolled={isMainScrolled}
+            />
+          ) : null}
+        </div>
         {debugViewport && viewportDebug ? (
           <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-warning/60 bg-black/80 px-2 py-1 text-ds-micro leading-tight text-warning-ink md:hidden">
             <div>inner:{viewportDebug.innerH} vv:{viewportDebug.vvH} client:{viewportDebug.clientH}</div>

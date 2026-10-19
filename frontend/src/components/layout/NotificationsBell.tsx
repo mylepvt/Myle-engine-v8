@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { AnimatePresence, m } from 'motion/react'
 import {
   Banknote,
   Bell,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
+import { SPRING } from '@/lib/springs'
 import { cn } from '@/lib/utils'
 import { useFlpMinBillingApprovalsPendingQuery, useTeamMembersQuery } from '@/hooks/use-team-query'
 import { useWalletRechargeRequestsQuery } from '@/hooks/use-wallet-recharge-query'
@@ -142,11 +144,18 @@ export function NotificationsBell() {
         ) : null}
       </button>
 
-      {open && createPortal(
-        <div
+      {createPortal(
+        <AnimatePresence>
+        {open ? (
+        // Grows out of the bell (top-right origin) and shrinks back into it.
+        <m.div
           ref={panelRef}
           role="menu"
-          style={{ position: 'fixed', top: pos.top, right: pos.right, maxHeight: 'calc(100vh - 72px)' }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.14, ease: 'easeIn' } }}
+          transition={SPRING.snappy}
+          style={{ position: 'fixed', top: pos.top, right: pos.right, maxHeight: 'calc(100vh - 72px)', transformOrigin: 'top right' }}
           className="z-[60] flex w-72 max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl border border-border/60 bg-popover/95 shadow-xl backdrop-blur-xl"
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-4 py-2.5">
@@ -198,7 +207,9 @@ export function NotificationsBell() {
               </span>
             ) : null}
           </Link>
-        </div>,
+        </m.div>
+        ) : null}
+        </AnimatePresence>,
         document.body,
       )}
     </div>
