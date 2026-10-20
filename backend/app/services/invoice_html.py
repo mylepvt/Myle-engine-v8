@@ -87,7 +87,8 @@ def _type_label(doc_type: str) -> str:
 def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     """The same look as Myle Ledger's invoices (components/InvoicePrintView.tsx there):
     a fixed "paper" palette, brand band, supplier left / document right, a tinted Bill-To
-    panel, clean line items, totals with a gradient Total bar and a signatory line."""
+    panel, clean line items and totals with a gradient Total bar. System-generated, so no
+    signatory line."""
     payload: dict[str, Any] = dict(invoice.payload_json or {})
     # Issued documents render from their own snapshot; older ones fall back to live data.
     buyer = payload.get("buyer") or buyer_snapshot(member)
@@ -130,7 +131,7 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     </header>
     <section class="bill">
       <div>
-        <p class="label">Bill to</p>
+        <p class="label">{"Bill to" if is_tax else "Received from"}</p>
         <p class="name">{display_name}</p>
         {f'<p class="sub">@{esc(un)}</p>' if un else ''}
         {f'<p class="sub">{esc(phone)}</p>' if phone else ''}
@@ -200,7 +201,6 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     <footer class="foot">
       <p class="sys">This is a system-generated document and does not require a signature.<br/>
         {esc(seller["name"])} · GSTIN {esc(seller["gstin"])}</p>
-      <div class="sign"><div class="line"></div><p class="for">For {esc(seller["name"])}</p><p class="sub">Authorised signatory</p></div>
     </footer>
     """
 
@@ -252,11 +252,9 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     .foot { margin-top: 48px; padding-top: 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;
             align-items: flex-end; gap: 24px; break-inside: avoid; }
     .sys { font-size: 11px; line-height: 1.6; color: #94A3B8; }
-    .sign { text-align: right; } .sign .line { height: 40px; width: 12rem; margin-left: auto; margin-bottom: 6px; border-bottom: 1px dashed #CBD5E1; }
-    .for { font-size: 12px; font-weight: 500; }
     @media (max-width: 640px) {
       .inner { padding: 20px; } .head, .bill, .totals, .foot { flex-direction: column; align-items: stretch; }
-      .doc, .bill dl, .sign { text-align: left; } .sign .line { margin-left: 0; } .sum { width: 100%; }
+      .doc, .bill dl { text-align: left; } .sum { width: 100%; }
     }
     @media print {
       html { background: #fff; } body { padding: 0; } .paper { max-width: none; border-radius: 0; box-shadow: none; }
