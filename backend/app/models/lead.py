@@ -55,6 +55,13 @@ class Lead(Base):
         nullable=True,
         comment="Cost in paise (INR) to claim from pool; NULL = free",
     )
+    # Myle Ledger's lead_key for leads that came over the Myle Bridge
+    # (app.services.ledger_bridge); NULL for every other lead.
+    external_ref: Mapped[Optional[str]] = mapped_column(
+        String(200),
+        nullable=True,
+        unique=True,
+    )
     pool_type: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

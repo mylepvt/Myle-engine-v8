@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin_activity,
+    bridge,
     admin_dashboard,
     admin_training,
     admin_contacts,
@@ -101,6 +102,7 @@ api_router.include_router(
 api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(invoices.router, tags=["invoices"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
+api_router.include_router(bridge.router, prefix="/bridge", tags=["bridge"])
 api_router.include_router(lead_bookings.router, prefix="/lead-bookings", tags=["lead-bookings"])
 api_router.include_router(retarget.router, prefix="/retarget", tags=["retarget"])
 api_router.include_router(pending_as.router, prefix="/pending-as", tags=["pending-as"])
