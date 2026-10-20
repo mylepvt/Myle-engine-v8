@@ -17,6 +17,7 @@ import { useOnline } from '@/hooks/use-online'
 import { useAppUpdate } from '@/hooks/use-app-update'
 import { PULL_TRIGGER_PX, usePullToRefresh } from '@/hooks/use-pull-to-refresh'
 import { useRealtimeInvalidation } from '@/hooks/use-realtime-invalidation'
+import { DepositReceiptHost } from '@/components/deposits/LeadDepositPanel'
 import { useWinsToaster } from '@/hooks/use-wins-toaster'
 import { PushNotificationGate } from '@/components/notifications/PushNotificationGate'
 import { useReportDeviceStatus } from '@/hooks/use-report-device-status'
@@ -558,6 +559,7 @@ export function DashboardLayout() {
             <Outlet />
           </DashboardOutletErrorBoundary>
         </main>
+        <DepositReceiptHost />
 
         <div ref={bottomChromeRef} className="pointer-events-none absolute inset-x-0 bottom-0 z-30">
           {shellRole != null ? (

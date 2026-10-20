@@ -50,6 +50,7 @@ from app.schemas.leads import (
 )
 from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierContract
 from app.services.auto_handoff import AutoHandoffService
+from app.services import deposits
 from app.services.enrollment_proof_storage import save_enrollment_proof_bytes
 from app.services.claim_gate import TODAY_WORKING_STATUSES, ensure_claim_allowed, pool_claim_exists
 from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
@@ -960,8 +961,14 @@ class LeadsService:
         user: AuthUser,
         amount_rupees: int,
         screenshot: bytes,
+        payment_mode: str | None = None,
+        payment_ref: str | None = None,
+        paid_at: datetime | None = None,
     ) -> Lead:
-        """Member uploads the enrollment screenshot (₹149–200) → lead goes to the leader's Day 1."""
+        """Member uploads the enrollment screenshot (₹149–200) → lead goes to the leader's Day 1.
+
+        The security deposit receipt is issued in the same transaction; with the deposit gate
+        on (default) the lead's consent and the payment details must be right first."""
         lead = await self._get_lead_or_404(lead_id, for_update=True)
         if lead.deleted_at is not None or lead.archived_at is not None:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Restore the lead first")
@@ -977,6 +984,9 @@ class LeadsService:
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=f"Enrollment amount must be between ₹{ENROLLMENT_MIN_RUPEES} and ₹{ENROLLMENT_MAX_RUPEES}.",
             )
+        await self._issue_deposit_receipt(
+            lead, user=user, amount_rupees=int(amount_rupees), payment_mode=payment_mode, payment_ref=payment_ref, paid_at=paid_at
+        )
         ok, result = await save_enrollment_proof_bytes(session=self._session, data=screenshot, lead_id=lead.id)
         if not ok:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=result)
@@ -1017,6 +1027,45 @@ class LeadsService:
         await self._notifier("leads", "workboard")
         return lead
 
+    async def _issue_deposit_receipt(
+        self,
+        lead: Lead,
+        *,
+        user: AuthUser,
+        amount_rupees: int,
+        payment_mode: str | None,
+        payment_ref: str | None,
+        paid_at: datetime | None,
+    ) -> None:
+        """Gate on: consent + payment details must pass, or the upload is refused.
+        Gate off: a receipt is still issued when they pass; otherwise the upload goes ahead."""
+        if await deposits.gate_enabled(self._session):
+            await deposits.issue_receipt(
+                self._session,
+                lead=lead,
+                amount_cents=amount_rupees * 100,
+                payment_mode=payment_mode or "",
+                payment_ref=payment_ref,
+                paid_at=paid_at,
+                actor_id=user.user_id,
+            )
+            return
+        if not payment_mode:
+            return
+        try:
+            async with self._session.begin_nested():
+                await deposits.issue_receipt(
+                    self._session,
+                    lead=lead,
+                    amount_cents=amount_rupees * 100,
+                    payment_mode=payment_mode,
+                    payment_ref=payment_ref,
+                    paid_at=paid_at,
+                    actor_id=user.user_id,
+                )
+        except HTTPException as exc:
+            logger.info("deposit receipt skipped for lead %s: %s", lead.id, exc.detail)
+
     async def send_back_from_day1(self, *, lead_id: int, user: AuthUser, reason: str | None) -> Lead:
         """Leader/admin rejects the enrollment proof: lead returns to the member, proof cleared."""
         if user.role not in ("leader", "admin"):
@@ -1038,6 +1087,9 @@ class LeadsService:
                 "proof_url": lead.enrollment_proof_url,
                 "returned_to_user_id": member_id,
             },
+        )
+        await deposits.cancel_live_receipt(
+            self._session, lead_id=lead.id, reason=f"Enrollment proof sent back. {reason or ''}".strip(), actor_id=user.user_id
         )
         lead.status = "video_watched"
         _apply_status_side_effects(lead, previous_status="day1", new_status="video_watched", now=now)
@@ -1123,6 +1175,7 @@ class LeadsService:
         if body.name is not None:
             lead.name = body.name.strip()
         if body.status is not None:
+            await deposits.ensure_can_leave_pre_enrollment(self._session, lead=lead, target_status=body.status)
             if user.role != "admin":
                 ok, msg = validate_vl2_status_transition_for_role(
                     current_slug=lead.status,
@@ -1525,6 +1578,7 @@ class LeadsService:
             )
             if not ok:
                 raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=msg)
+        await deposits.ensure_can_leave_pre_enrollment(self._session, lead=lead, target_status=body.target_status)
         now = datetime.now(timezone.utc)
         prev_status = lead.status
         lead.status = body.target_status

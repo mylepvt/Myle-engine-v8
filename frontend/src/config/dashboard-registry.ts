@@ -69,6 +69,7 @@ export type FullUiSurface =
   | { kind: 'activity-log' }
   | { kind: 'wallet' }
   | { kind: 'admin-invoices' }
+  | { kind: 'security-deposits' }
   | { kind: 'wallet-recharge' }
   | { kind: 'wallet-admin' }
   | { kind: 'notice-board' }
@@ -107,6 +108,7 @@ const SECTION_ORDER: { id: string; label: string }[] = [
   { id: 'main', label: '' },
   { id: 'work', label: '' },
   { id: 'finance', label: 'Wallet' },
+  { id: 'deposits', label: 'Deposits' },
   { id: 'team', label: 'Team' },
   { id: 'other', label: 'More' },
   { id: 'system', label: 'System' },
@@ -296,6 +298,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('finance/invoices'),
     surface: 'full',
     ui: { kind: 'admin-invoices' },
+  },
+  {
+    path: 'deposits/receipts',
+    section: { id: 'deposits', label: 'Deposits' },
+    label: 'Security deposits',
+    roles: routeRoles('deposits/receipts'),
+    surface: 'full',
+    ui: { kind: 'security-deposits' },
   },
   {
     path: 'finance/budget-export',

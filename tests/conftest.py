@@ -118,6 +118,17 @@ def _disable_auth_rate_limit_for_tests(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+@pytest.fixture(autouse=True)
+def _deposit_gate_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The security deposit gate (consent + receipt before Day 1) is ON in production; these
+    suites move leads into Day 1+ to test other things. Its own tests: backend/tests/test_deposits.py."""
+
+    async def _off(_session):
+        return False
+
+    monkeypatch.setattr("app.services.deposits.gate_enabled", _off)
+
+
 def get_test_session_factory() -> async_sessionmaker[AsyncSession]:
     """For tests that need to seed/query the same DB as the app override."""
     return _session_factory

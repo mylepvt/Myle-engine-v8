@@ -28,6 +28,7 @@ from app.api.v1 import (
     auth,
     capture_links,
     current_cc,
+    deposits,
     media,
     certificate,
     community,
@@ -101,6 +102,7 @@ api_router.include_router(
 )
 api_router.include_router(wallet.router, prefix="/wallet", tags=["wallet"])
 api_router.include_router(invoices.router, tags=["invoices"])
+api_router.include_router(deposits.router, prefix="/deposits", tags=["deposits"])
 api_router.include_router(lead_pool.router, prefix="/lead-pool", tags=["lead-pool"])
 api_router.include_router(bridge.router, prefix="/bridge", tags=["bridge"])
 api_router.include_router(lead_bookings.router, prefix="/lead-bookings", tags=["lead-bookings"])

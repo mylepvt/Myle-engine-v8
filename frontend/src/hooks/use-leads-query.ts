@@ -925,10 +925,23 @@ export const ENROLLMENT_SENDABLE_STATUSES: readonly string[] = [
 export const ENROLLMENT_MIN_RUPEES = 149
 export const ENROLLMENT_MAX_RUPEES = 200
 
-async function postSendToDay1(leadId: number, amountRupees: number, screenshot: File): Promise<LeadPublic> {
+type SendToDay1Input = {
+  leadId: number
+  amountRupees: number
+  screenshot: File
+  /** Security deposit receipt: payment mode, Transaction ID, when it was paid (ISO). */
+  payment?: { payment_mode: string; payment_ref: string; paid_at: string } | null
+}
+
+async function postSendToDay1({ leadId, amountRupees, screenshot, payment }: SendToDay1Input): Promise<LeadPublic> {
   const fd = new FormData()
   fd.append('amount_rupees', String(amountRupees))
   fd.append('screenshot', screenshot)
+  if (payment) {
+    fd.append('payment_mode', payment.payment_mode)
+    fd.append('payment_ref', payment.payment_ref)
+    fd.append('paid_at', payment.paid_at)
+  }
   const res = await apiFetch(`/api/v1/leads/${leadId}/send-to-day1`, { method: 'POST', body: fd })
   if (!res.ok) await parseError(res)
   return res.json()
@@ -937,8 +950,7 @@ async function postSendToDay1(leadId: number, amountRupees: number, screenshot: 
 export function useSendToDay1Mutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ leadId, amountRupees, screenshot }: { leadId: number; amountRupees: number; screenshot: File }) =>
-      postSendToDay1(leadId, amountRupees, screenshot),
+    mutationFn: postSendToDay1,
     onSuccess: () => invalidateLeadRelated(qc),
   })
 }
