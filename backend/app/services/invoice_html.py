@@ -85,152 +85,194 @@ def _type_label(doc_type: str) -> str:
 
 
 def render_invoice_html(*, invoice: Invoice, member: User) -> str:
+    """The same look as Myle Ledger's invoices (components/InvoicePrintView.tsx there):
+    a fixed "paper" palette, brand band, supplier left / document right, a tinted Bill-To
+    panel, clean line items, totals with a gradient Total bar and a signatory line."""
     payload: dict[str, Any] = dict(invoice.payload_json or {})
     # Issued documents render from their own snapshot; older ones fall back to live data.
     buyer = payload.get("buyer") or buyer_snapshot(member)
     seller = {**SELLER, **(payload.get("seller") or {})}
-    display_name = html.escape(str(buyer.get("name") or f"User #{member.id}"))
+    esc = lambda v: html.escape(str(v))  # noqa: E731
+    display_name = esc(buyer.get("name") or f"User #{member.id}")
     un = str(buyer.get("username") or "")
-    username_line = html.escape(f"@{un}") if un else ""
-    phone_line = html.escape(str(buyer.get("phone") or ""))
-
-    supplier = f"""
-    <div class="block">
-      <div class="doctitle">{_doc_title(invoice.doc_type)}</div>
-      <p><strong>Name:</strong> {html.escape(seller["name"])}</p>
-      <p><strong>GSTIN:</strong> {html.escape(seller["gstin"])}</p>
-      <p><strong>Address:</strong> {html.escape(seller["address"])}</p>
-      <p><strong>State:</strong> {html.escape(seller["state"])} ({html.escape(seller["state_code"])})</p>
-      <p><strong>Constitution:</strong> {html.escape(seller["constitution"])}</p>
-    </div>
-    """
-
-    recipient = f"""
-    <div class="block">
-      <p><strong>Bill To</strong></p>
-      <p><strong>{display_name}</strong></p>
-      {f'<p>{username_line}</p>' if username_line else ''}
-      {f'<p>{phone_line}</p>' if phone_line else ''}
-    </div>
-    """
+    phone = str(buyer.get("phone") or "")
+    fbo = str(buyer.get("fbo_id") or "")
 
     issued = invoice.issued_at
     date_s = str(payload.get("issued_on") or (issued_on_ist(issued) if isinstance(issued, datetime) else issued))
     against = payload.get("against_invoice")
     place = payload.get("place_of_supply")
+    is_tax = invoice.doc_type in ("tax_invoice", "credit_note")
 
-    header_info = f"""
-    <table class="meta">
-      <tr><td><strong>No.</strong></td><td>{html.escape(invoice.invoice_number)}</td></tr>
-      <tr><td><strong>Date of issue</strong></td><td>{html.escape(date_s)}</td></tr>
-      <tr><td><strong>Type</strong></td><td>{html.escape(_type_label(invoice.doc_type))}</td></tr>
-      {f'<tr><td><strong>Against invoice</strong></td><td>{html.escape(str(against))}</td></tr>' if against else ''}
-      {f'<tr><td><strong>Place of supply</strong></td><td>{html.escape(str(place))}</td></tr>' if place else ''}
-    </table>
+    bill_meta = []
+    if against:
+        bill_meta.append(("Against invoice", esc(against)))
+    if place:
+        bill_meta.append(("Place of supply", esc(place)))
+    if is_tax:
+        bill_meta.append(("SAC", "998361"))
+    if fbo:
+        bill_meta.append(("FBO ID", esc(fbo)))
+    meta_html = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in bill_meta)
+
+    header = f"""
+    <header class="head">
+      <div class="supplier">
+        <p class="trade">{esc(seller["name"])}</p>
+        <p class="addr">{esc(seller["address"])}<br/>
+          GSTIN <span class="gstin">{esc(seller["gstin"])}</span> · {esc(seller["state"])} ({esc(seller["state_code"])})</p>
+      </div>
+      <div class="doc">
+        <p class="kind">{_doc_title(invoice.doc_type)}</p>
+        <p class="num">{esc(invoice.invoice_number)}</p>
+        <p class="date">{esc(date_s)}</p>
+      </div>
+    </header>
+    <section class="bill">
+      <div>
+        <p class="label">Bill to</p>
+        <p class="name">{display_name}</p>
+        {f'<p class="sub">@{esc(un)}</p>' if un else ''}
+        {f'<p class="sub">{esc(phone)}</p>' if phone else ''}
+      </div>
+      {f'<dl>{meta_html}</dl>' if meta_html else ''}
+    </section>
     """
 
-    body_main = ""
-    if invoice.doc_type in ("tax_invoice", "credit_note"):
-        lines = payload.get("lines") or []
+    if is_tax:
         rows = []
-        for row in lines:
-            desc = html.escape(str(row.get("description", "")))
-            sac = html.escape(str(row.get("sac", "998361")))
-            qty = html.escape(str(row.get("qty", 1)))
-            unit = html.escape(str(row.get("unit_rate_rupees", "")))
-            amt = html.escape(str(row.get("amount_rupees", "")))
-            ref = html.escape(str(row.get("lead_ref", "")))
+        for i, row in enumerate(payload.get("lines") or [], start=1):
+            ref = esc(row.get("lead_ref", ""))
             rows.append(
-                f"<tr><td>{ref}</td><td>{desc}</td><td>{sac}</td><td class='r'>{qty}</td>"
-                f"<td class='r'>{unit}</td><td class='r'>{amt}</td></tr>"
+                f"<tr><td class='n'>{i}</td>"
+                f"<td><p class='desc'>{esc(row.get('description', ''))}</p>"
+                f"{f'<p class=sub>{ref}</p>' if ref else ''}</td>"
+                f"<td class='r'>{esc(row.get('qty', 1))}</td>"
+                f"<td class='r muted'>₹{esc(row.get('unit_rate_rupees', ''))}</td>"
+                f"<td class='r strong'>₹{esc(row.get('amount_rupees', ''))}</td></tr>"
             )
         sub = float(payload.get("subtotal_rupees", 0))
         tot = float(payload.get("total_rupees", invoice.total_cents / 100.0))
-        words = html.escape(str(payload.get("amount_in_words", _rupees_words_from_cents(invoice.total_cents))))
+        words = esc(payload.get("amount_in_words", _rupees_words_from_cents(invoice.total_cents)))
         if "cgst_rupees" in payload:
             tax_rows = (
-                f"<p><strong>CGST @9%</strong> <span class=\"r\">₹{float(payload['cgst_rupees']):,.2f}</span></p>"
-                f"<p><strong>SGST @9%</strong> <span class=\"r\">₹{float(payload['sgst_rupees']):,.2f}</span></p>"
+                f"<div class='row'><span>CGST @9%</span><span>₹{float(payload['cgst_rupees']):,.2f}</span></div>"
+                f"<div class='row'><span>SGST @9%</span><span>₹{float(payload['sgst_rupees']):,.2f}</span></div>"
             )
         else:
-            tax_rows = f"<p><strong>IGST @18%</strong> <span class=\"r\">₹{float(payload.get('igst_rupees', 0)):,.2f}</span></p>"
+            tax_rows = f"<div class='row'><span>IGST @18%</span><span>₹{float(payload.get('igst_rupees', 0)):,.2f}</span></div>"
         reason = payload.get("reason")
-        reason_html = f"<p><strong>Reason:</strong> {html.escape(str(reason))}</p>" if reason else ""
-        body_main = f"""
-        {reason_html}
-        <h3>Line items</h3>
-        <table class="grid">
-          <thead>
-            <tr>
-              <th>Ref</th><th>Description</th><th>SAC</th><th class='r'>Qty</th>
-              <th class='r'>Unit Rate (₹)</th><th class='r'>Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody>{''.join(rows)}</tbody>
+        body = f"""
+        {f'<p class="reason"><span class="label">Reason</span> {esc(reason)}</p>' if reason else ''}
+        <table class="items">
+          <thead><tr><th class="n">#</th><th>Description</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead>
+          <tbody>{''.join(rows) or '<tr><td colspan="5" class="empty">No line items on file.</td></tr>'}</tbody>
         </table>
-        <div class="taxbox">
-          <p><strong>Subtotal (taxable value)</strong> <span class="r">₹{sub:,.2f}</span></p>
-          {tax_rows}
-          <p class="big"><strong>{"Total Credit" if invoice.doc_type == "credit_note" else "Total Amount"}</strong> <span class="r">₹{tot:,.2f}</span></p>
-          <p class="words"><em>Amount in words:</em> {words}</p>
-        </div>
+        <p class="note">Rate and amount are before GST.</p>
+        <section class="totals">
+          <div class="words"><p class="label">Amount in words</p><p>{words}</p></div>
+          <div class="sum">
+            <div class="row"><span>Taxable value</span><span>₹{sub:,.2f}</span></div>
+            {tax_rows}
+            <div class="total"><span>{"Total credit" if invoice.doc_type == "credit_note" else "Total"}</span><span>₹{tot:,.2f}</span></div>
+          </div>
+        </section>
         """
     else:
-        ref = html.escape(str(payload.get("payment_reference", "")))
-        desc = html.escape(
-            str(
-                payload.get("receipt_description")
-                or "Wallet Recharge — Myle Community Dashboard"
-            )
-        )
-        body_main = f"""
-        <h3>Summary</h3>
-        <table class="grid">
-          <tbody>
-            <tr><td><strong>Description</strong></td><td>{desc}</td></tr>
-            <tr><td><strong>Amount Received</strong></td><td class='r'>{_fmt_inr(invoice.total_cents)}</td></tr>
-            <tr><td><strong>Payment Reference</strong></td><td>{ref}</td></tr>
-            <tr><td><strong>Status</strong></td><td class="paid">PAID</td></tr>
-          </tbody>
+        ref = esc(payload.get("payment_reference", ""))
+        desc = esc(payload.get("receipt_description") or "Wallet Recharge — Myle Community")
+        body = f"""
+        <table class="items">
+          <thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>
+          <tbody><tr><td><p class="desc">{desc}</p>{f'<p class="sub">Payment reference {ref}</p>' if ref else ''}</td>
+            <td class="r strong">{_fmt_inr(invoice.total_cents)}</td></tr></tbody>
         </table>
+        <section class="totals">
+          <div class="words"><p class="label">Amount in words</p><p>{esc(_rupees_words_from_cents(invoice.total_cents))}</p></div>
+          <div class="sum">
+            <div class="row"><span>Status</span><span class="paid">PAID</span></div>
+            <div class="total"><span>Received</span><span>{_fmt_inr(invoice.total_cents)}</span></div>
+          </div>
+        </section>
         """
 
-    footer = """
-    <p class="footer">This is a computer-generated document and does not require a signature.</p>
-    <p class="footer muted">Myle Community — dashboard.mylecommunity.in</p>
+    footer = f"""
+    <footer class="foot">
+      <p class="sys">This is a system-generated document and does not require a signature.<br/>
+        {esc(seller["name"])} · GSTIN {esc(seller["gstin"])}</p>
+      <div class="sign"><div class="line"></div><p class="for">For {esc(seller["name"])}</p><p class="sub">Authorised signatory</p></div>
+    </footer>
     """
 
     css = """
     * { box-sizing: border-box; }
-    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-           color: #111; margin: 0; padding: 24px; background: #fff; }
-    .top { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
-    .block { max-width: 48%; font-size: 13px; line-height: 1.45; }
-    .doctitle { font-size: 18px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.02em; }
-    .meta { width: 100%; font-size: 13px; margin: 20px 0; border-collapse: collapse; }
-    .meta td { padding: 4px 8px; border: 1px solid #ddd; }
-    h3 { font-size: 14px; margin: 20px 0 8px; }
-    .grid { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .grid th, .grid td { border: 1px solid #ccc; padding: 6px 8px; vertical-align: top; }
-    .grid th { background: #f5f5f5; text-align: left; }
-    .r { text-align: right; }
-    .taxbox { margin-top: 16px; max-width: 420px; margin-left: auto; font-size: 13px; }
-    .taxbox p { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0; }
-    .big { font-size: 15px; }
-    .words { display: block !important; margin-top: 10px; font-size: 12px; }
-    .paid { color: #15803d; font-weight: 700; }
-    .footer { text-align: center; font-size: 11px; color: #444; margin-top: 28px; }
-    .muted { color: #666; margin-top: 4px; }
-    @media print { body { padding: 12px; } }
+    html { background: #EEF2F7; }
+    body { margin: 0; padding: 24px 12px; color: #0F172A; -webkit-font-smoothing: antialiased;
+           font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    p { margin: 0; }
+    .paper { max-width: 52rem; margin: 0 auto; background: #fff; border-radius: 20px; overflow: hidden;
+             box-shadow: 0 24px 60px -24px rgba(15,23,42,.35), 0 0 0 1px rgba(15,23,42,.06); }
+    .band { height: 6px; background: linear-gradient(90deg, #1D4ED8, #4F46E5, #0EA5E9); }
+    .inner { padding: 36px; }
+    .head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+    .trade { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+    .addr { margin-top: 2px; max-width: 17rem; font-size: 10px; line-height: 1.45; color: #64748B; }
+    .gstin { font-weight: 500; color: #475569; letter-spacing: .03em; }
+    .doc { text-align: right; flex-shrink: 0; }
+    .kind { font-size: 11px; font-weight: 600; letter-spacing: .18em; color: #1D4ED8; }
+    .num { margin-top: 4px; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .date { margin-top: 2px; color: #64748B; }
+    .bill { margin-top: 28px; display: flex; justify-content: space-between; gap: 32px; background: #F6F8FC; border-radius: 16px; padding: 20px; }
+    .label { font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #94A3B8; }
+    .name { margin-top: 4px; font-size: 15px; font-weight: 600; }
+    .sub { font-size: 12px; color: #64748B; font-variant-numeric: tabular-nums; }
+    .bill dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 12px; text-align: right; align-content: start; }
+    .bill dt { color: #64748B; } .bill dd { margin: 0; font-weight: 500; }
+    .reason { margin-top: 20px; font-size: 13px; }
+    .items { width: 100%; margin-top: 24px; border-collapse: collapse; font-size: 14px; }
+    .items th { padding: 10px 12px 10px 0; text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .12em;
+                text-transform: uppercase; color: #94A3B8; border-bottom: 1px solid #E2E8F0; }
+    .items td { padding: 12px 12px 12px 0; vertical-align: top; border-bottom: 1px solid #EEF2F7; }
+    .items .n { width: 2rem; color: #94A3B8; font-variant-numeric: tabular-nums; }
+    .desc { font-weight: 500; }
+    .r { text-align: right; font-variant-numeric: tabular-nums; } .items th.r, .items td.r { text-align: right; padding-right: 0; padding-left: 12px; }
+    .muted { color: #64748B; } .strong { font-weight: 500; }
+    .empty { text-align: center; color: #94A3B8; padding: 20px 0; }
+    .note { margin-top: 8px; font-size: 11px; color: #94A3B8; }
+    .totals { margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; break-inside: avoid; }
+    .words p:last-child { margin-top: 4px; font-size: 14px; font-weight: 500; line-height: 1.35; }
+    .sum { width: 17rem; flex-shrink: 0; }
+    .row { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font-variant-numeric: tabular-nums; }
+    .row span:first-child { color: #64748B; }
+    .total { margin-top: 8px; display: flex; justify-content: space-between; align-items: center; border-radius: 12px;
+             padding: 12px 16px; color: #fff; background: linear-gradient(90deg, #1D4ED8, #4F46E5); }
+    .total span:first-child { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; opacity: .9; }
+    .total span:last-child { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .paid { color: #15803D; font-weight: 700; }
+    .foot { margin-top: 48px; padding-top: 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;
+            align-items: flex-end; gap: 24px; break-inside: avoid; }
+    .sys { font-size: 11px; line-height: 1.6; color: #94A3B8; }
+    .sign { text-align: right; } .sign .line { height: 40px; width: 12rem; margin-left: auto; margin-bottom: 6px; border-bottom: 1px dashed #CBD5E1; }
+    .for { font-size: 12px; font-weight: 500; }
+    @media (max-width: 640px) {
+      .inner { padding: 20px; } .head, .bill, .totals, .foot { flex-direction: column; align-items: stretch; }
+      .doc, .bill dl, .sign { text-align: left; } .sign .line { margin-left: 0; } .sum { width: 100%; }
+    }
+    @media print {
+      html { background: #fff; } body { padding: 0; } .paper { max-width: none; border-radius: 0; box-shadow: none; }
+      .inner { padding: 24px 0 0; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
     """
 
     return f"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><title>{html.escape(invoice.invoice_number)}</title>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>{esc(invoice.invoice_number)}</title>
 <style>{css}</style></head><body>
-<div class="top">{supplier}{recipient}</div>
-{header_info}
-{body_main}
+<article class="paper"><div class="band"></div><div class="inner">
+{header}
+{body}
 {footer}
+</div></article>
 </body></html>"""
 
 

@@ -21,6 +21,8 @@ export type AuditLogsResponse = {
   page: number
   page_size: number
   pages: number
+  /** Every action in the chosen range with its count (not just this page). */
+  action_counts?: { action: string; count: number }[]
 }
 
 export type AuditLogsParams = {

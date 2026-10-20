@@ -151,14 +151,8 @@ export function AuditLogsPage({ title }: Props) {
 
   const totalPages = data?.pages ?? 1
 
-  // Derive unique actions from current page for filter chips
-  const actionCounts = data?.items.reduce<Record<string, number>>((acc, e) => {
-    acc[e.action] = (acc[e.action] ?? 0) + 1
-    return acc
-  }, {}) ?? {}
-  const topActions = Object.entries(actionCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
+  // Every action in the chosen range, from the server (not just this page's rows).
+  const topActions: [string, number][] = (data?.action_counts ?? []).map((a) => [a.action, a.count])
 
   const filteredItems = useMemo(() => {
     if (!data?.items) return [] as AuditLogEntry[]
