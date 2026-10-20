@@ -9,6 +9,7 @@ a retried or repeated batch adds each lead once.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from typing import Annotated, Any
 
@@ -42,6 +43,13 @@ def _text(value: Any, limit: int) -> str | None:
     return value.strip()[:limit] or None
 
 
+def _age(value: Any) -> int | None:
+    """``leads.age`` is an integer; the Ledger sends text like "19 to 21" — keep the first number."""
+    m = re.search(r"\d+", value) if isinstance(value, str) else None
+    age = int(m.group()) if m else None
+    return age if age is not None and 0 < age < 130 else None
+
+
 def _parse_leads(body: dict[str, Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for raw in (body.get("leads") or [])[:_MAX_LEADS]:
@@ -62,7 +70,7 @@ def _parse_leads(body: dict[str, Any]) -> list[dict[str, Any]]:
                 "name": _text(raw.get("name"), 255) or "Lead",
                 "phone": phone,
                 "city": _text(raw.get("city"), 100),
-                "age": _text(raw.get("age"), 32),
+                "age": _age(raw.get("age")),
                 "gender": _text(raw.get("gender"), 32),
                 "ad_name": _text(raw.get("ad_name"), 255),
                 "submitted_at": submitted,
