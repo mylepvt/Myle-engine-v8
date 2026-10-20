@@ -96,6 +96,7 @@ def _fresh_pool_copy(lead: Lead, admin_user_id: int) -> Lead:
         phone=lead.phone,
         city=lead.city,
         age=lead.age,
+        age_group=lead.age_group,
         gender=lead.gender,
         ad_name=lead.ad_name,
         source=lead.source,

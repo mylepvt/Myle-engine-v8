@@ -527,7 +527,7 @@ export function LeadPoolWorkPage({ title }: Props) {
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           #{l.id} · {statusLabel(l.status)}
                           {l.city ? ` · ${l.city}` : ''}
-                          {l.age != null ? ` · Age ${l.age}` : ''}
+                          {l.age != null ? ` · Age ${l.age}` : l.age_group ? ` · Age ${l.age_group}` : ''}
                           {l.gender ? ` · ${l.gender}` : ''}
                           {l.ad_name ? ` · AD: ${l.ad_name}` : ''}
                         </p>

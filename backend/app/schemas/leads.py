@@ -58,6 +58,7 @@ class LeadPublic(BaseModel):
     email: Optional[str] = None
     city: Optional[str] = None
     age: Optional[int] = None
+    age_group: Optional[str] = None
     gender: Optional[str] = None
     ad_name: Optional[str] = None
     source: Optional[str] = None
