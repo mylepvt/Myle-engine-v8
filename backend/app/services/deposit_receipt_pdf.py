@@ -19,7 +19,7 @@ from reportlab.pdfgen import canvas
 
 from app.models.deposit import DepositReceipt
 from app.services.deposits import (
-    FILL_IN,
+    DEFAULT_SUPPORT_EMAIL,
     NO_SIGNATURE_LINE,
     PURPOSE_LINE,
     REFUND_LINE,
@@ -67,7 +67,7 @@ def _date(value: str | None) -> datetime | None:
 def render_receipt_pdf(receipt: DepositReceipt, *, current_business: dict[str, str]) -> bytes:
     p = receipt.payload_json or {}
     biz_snap = p.get("business") or {}
-    biz = {k: (biz_snap.get(k) or current_business.get(k) or "") for k in ("name", "address", "contact", "operated_by")}
+    biz = {k: (biz_snap.get(k) or current_business.get(k) or "") for k in ("name", "email", "operated_by")}
     payer = p.get("payer") or {}
     consent = p.get("consent") or {}
     rupee_font = _rupee_font()
@@ -93,10 +93,7 @@ def render_receipt_pdf(receipt: DepositReceipt, *, current_business: dict[str, s
     if biz["operated_by"]:
         c.drawString(margin, y, f"Operated by {biz['operated_by']}")
         y -= 11
-    for line in simpleSplit(biz["address"] or f"Address: {FILL_IN}", "Helvetica", 8.5, inner):
-        c.drawString(margin, y, line)
-        y -= 11
-    c.drawString(margin, y, biz["contact"] or f"Contact: {FILL_IN}")
+    c.drawString(margin, y, f"Email: {biz['email'] or DEFAULT_SUPPORT_EMAIL}")
     y -= 14
     c.setStrokeColor(LINE)
     c.setLineWidth(1)

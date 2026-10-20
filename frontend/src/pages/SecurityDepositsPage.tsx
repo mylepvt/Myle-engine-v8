@@ -248,8 +248,7 @@ function SettingsCard() {
   }, [q.data])
 
   if (!draft) return q.isError ? <p className="text-sm text-destructive">{q.error.message}</p> : null
-  const missing = !draft.business_address.trim() || !draft.business_contact.trim()
-  const field = (key: 'business_name' | 'business_address' | 'business_contact' | 'operated_by', label: string, hint?: string) => (
+  const field = (key: 'business_name' | 'support_email' | 'operated_by', label: string, hint?: string) => (
     <label className="block">
       <span className="mb-1 block text-xs text-muted-foreground">{label}</span>
       <input value={draft[key]} onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} className="field-input w-full" />
@@ -276,18 +275,12 @@ function SettingsCard() {
           }}
         />
       </div>
-      {missing ? (
-        <p className="rounded-xl bg-warning/15 px-3 py-2 text-xs text-warning-ink">
-          Receipts show [FILL IN] until the business address and contact are saved.
-        </p>
-      ) : null}
-      {missing || showDetails ? (
+      {showDetails ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             {field('business_name', 'Name on receipt')}
             {field('operated_by', 'Operated by (optional)', 'The registered business name, if you want it on the receipt.')}
-            {field('business_address', 'Address')}
-            {field('business_contact', 'Contact (phone / email)')}
+            {field('support_email', 'Support email', 'The only contact shown on receipts and the lead’s pages.')}
           </div>
           {save.error ? <p className="text-xs text-destructive">{save.error.message}</p> : null}
           <Button
@@ -297,8 +290,7 @@ function SettingsCard() {
             onClick={() =>
               save.mutate({
                 business_name: draft.business_name,
-                business_address: draft.business_address,
-                business_contact: draft.business_contact,
+                support_email: draft.support_email,
                 operated_by: draft.operated_by,
               })
             }
@@ -308,7 +300,7 @@ function SettingsCard() {
         </>
       ) : (
         <button type="button" onClick={() => setShowDetails(true)} className="text-xs text-primary hover:underline">
-          Receipt details: {draft.business_name} · {draft.business_contact} — edit
+          Receipt details: {draft.business_name} · {draft.support_email} — edit
         </button>
       )}
     </div>

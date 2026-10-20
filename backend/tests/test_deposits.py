@@ -141,7 +141,13 @@ async def test_consent_then_payment_then_receipt_then_day1(engine):
 
         # The lead's side: masked number, then their own number unlocks the terms.
         info = (await team.get(f"/api/deposit/consent/{token}")).json()
-        assert info == {"business_name": "Myle Community", "amount_rupees": 196, "masked_phone": "XXXXXX0001", "state": "pending"}
+        assert info == {
+            "business_name": "Myle Community",
+            "support_email": "support@mylecommunity.in",
+            "amount_rupees": 196,
+            "masked_phone": "XXXXXX0001",
+            "state": "pending",
+        }
         assert (await team.post(f"/api/deposit/consent/{token}/verify", json={"phone": "9999999999"})).status_code == 403
         terms = (await team.post(f"/api/deposit/consent/{token}/verify", json={"phone": f"+91 {phone}"})).json()
         assert "Rohit Kumar" in terms["terms_text"] and phone in terms["terms_text"]
@@ -189,8 +195,10 @@ async def test_consent_then_payment_then_receipt_then_day1(engine):
             "This deposit is 100% refundable.",
             "Computer-generated receipt, no signature required.",
             "Myle Community",
+            "Email: support@mylecommunity.in",
         ):
             assert needle in text, needle
+        assert "Address" not in text and "[FILL IN]" not in text
         assert "GST" not in text.upper()
 
     # Consent evidence is sealed and verifiable.
@@ -364,19 +372,23 @@ async def test_manual_generate_receipt_for_an_enrollment_without_one(engine):
 async def test_settings_go_on_new_receipts(engine):
     await _seed(engine)
     async with _as(engine, "admin", 203) as admin:
-        r = await admin.put(
-            "/api/v1/deposits/settings",
-            json={"business_address": "12 Test Road, Jaipur", "business_contact": "+91 90000 00000 · help@myle.test"},
-        )
-        assert r.json()["business_name"] == "Myle Community" and r.json()["business_address"] == "12 Test Road, Jaipur"
+        r = await admin.put("/api/v1/deposits/settings", json={"support_email": "help@myle.test"})
+        assert r.json()["business_name"] == "Myle Community" and r.json()["support_email"] == "help@myle.test"
+        assert (await admin.put("/api/v1/deposits/settings", json={"support_email": "not an email"})).status_code == 422
     phone = "9811100010"
-    async with _as(engine, "team", 201) as team:
-        lead_id = await _lead_at_video_watched(team, phone)
-        await _consent(team, lead_id, phone)
-        assert (await _upload(team, lead_id, ref="102345678901")).status_code == 200
-        receipt = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()["receipt"]
-        text = _pdf_text((await team.get(receipt["pdf_path"])).content)
-        assert "12 Test Road, Jaipur" in text and "help@myle.test" in text and "[FILL IN]" not in text
+    try:
+        async with _as(engine, "team", 201) as team:
+            lead_id = await _lead_at_video_watched(team, phone)
+            await _consent(team, lead_id, phone)
+            assert (await _upload(team, lead_id, ref="102345678901")).status_code == 200
+            receipt = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()["receipt"]
+            text = _pdf_text((await team.get(receipt["pdf_path"])).content)
+            assert "Email: help@myle.test" in text and "support@mylecommunity.in" not in text
+    finally:
+        async with _as(engine, "admin", 203) as admin:
+            # Blank goes back to the default support email.
+            r = await admin.put("/api/v1/deposits/settings", json={"support_email": ""})
+            assert r.json()["support_email"] == "support@mylecommunity.in"
 
 
 async def test_ledger_gets_deposits_on_their_own_queue(engine, monkeypatch):

@@ -77,16 +77,14 @@ class ReceiptList(BaseModel):
 class DepositSettings(BaseModel):
     gate_enabled: bool
     business_name: str
-    business_address: str
-    business_contact: str
+    support_email: str
     operated_by: str
 
 
 class DepositSettingsUpdate(BaseModel):
     gate_enabled: Optional[bool] = None
     business_name: Optional[str] = Field(default=None, max_length=120)
-    business_address: Optional[str] = Field(default=None, max_length=300)
-    business_contact: Optional[str] = Field(default=None, max_length=200)
+    support_email: Optional[str] = Field(default=None, max_length=120, pattern=r"^$|^[^@\s]+@[^@\s]+\.[^@\s]+$")
     operated_by: Optional[str] = Field(default=None, max_length=120)
 
 
@@ -99,6 +97,7 @@ class PhoneIn(BaseModel):
 
 class ConsentLinkInfo(BaseModel):
     business_name: str
+    support_email: str
     amount_rupees: int
     masked_phone: str
     state: str
@@ -123,5 +122,6 @@ class ConsentAccept(BaseModel):
 class ReceiptLinkInfo(BaseModel):
     receipt_number: str
     business_name: str
+    support_email: str
     masked_phone: str
     status: str

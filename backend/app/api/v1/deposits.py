@@ -224,8 +224,7 @@ async def _settings(session: AsyncSession) -> DepositSettings:
     return DepositSettings(
         gate_enabled=await svc.gate_enabled(session),
         business_name=biz["name"],
-        business_address=biz["address"],
-        business_contact=biz["contact"],
+        support_email=biz["email"],
         operated_by=biz["operated_by"],
     )
 
@@ -244,8 +243,7 @@ async def put_settings(body: DepositSettingsUpdate, user: User, session: Session
         {
             svc.SETTING_GATE: None if body.gate_enabled is None else ("1" if body.gate_enabled else "0"),
             svc.SETTING_BUSINESS_NAME: body.business_name,
-            svc.SETTING_BUSINESS_ADDRESS: body.business_address,
-            svc.SETTING_BUSINESS_CONTACT: body.business_contact,
+            svc.SETTING_SUPPORT_EMAIL: body.support_email,
             svc.SETTING_OPERATED_BY: body.operated_by,
         },
     )

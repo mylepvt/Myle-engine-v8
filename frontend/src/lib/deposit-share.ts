@@ -19,10 +19,13 @@ export function depositReceiptUrl(shareToken: string): string {
 
 export function depositConsentMessage(name: string | null | undefined, amountRupees: number, url: string): string {
   return (
-    `Hi ${name || 'there'},\n\n` +
-    `Enrollment ke liye ₹${amountRupees} ki security deposit hai — ye 100% refundable hai, ` +
-    `koi product ya fee nahi hai.\n\n` +
-    `Payment se pehle is link par apna registered mobile number daal kar terms padhiye aur apni consent dijiye:\n${url}`
+    `Hi ${name || 'there'} ji,\n\n` +
+    // emoji-ok: prospect-facing WhatsApp message text
+    `Myle Community mein aapka swagat hai! 🙏\n\n` +
+    `Enrollment confirm karne ke liye ₹${amountRupees} ka ek chhota security deposit hota hai. ` +
+    `Ye poora 100% refundable hai, aap jab chahein wapas le sakte hain.\n\n` +
+    `Payment se pehle bas ek baar is link par details dekh lijiye aur "I Agree" kar dijiye (1 minute lagega):\n${url}\n\n` +
+    `Koi bhi sawaal ho to bejhijhak poochiye.`
   )
 }
 
@@ -33,9 +36,11 @@ export function depositReceiptMessage(
   url: string,
 ): string {
   return (
-    `Hi ${name || 'there'},\n\n` +
-    `Aapki ₹${amountRupees} security deposit ki receipt (${receiptNumber}) ready hai. Ye deposit 100% refundable hai.\n\n` +
-    `Receipt download karne ke liye apna registered mobile number daaliye:\n${url}`
+    `Hi ${name || 'there'} ji,\n\n` +
+    // emoji-ok: prospect-facing WhatsApp message text
+    `Aapka ₹${amountRupees} ka security deposit mil gaya hai, dhanyavaad! 🙏\n\n` +
+    `Aapki receipt (${receiptNumber}) yahan hai, apna mobile number daal kar download kar lijiye:\n${url}\n\n` +
+    `Ye deposit 100% refundable hai.`
   )
 }
 

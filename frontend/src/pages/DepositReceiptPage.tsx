@@ -83,6 +83,12 @@ export function DepositReceiptPage() {
             >
               {busy ? 'Preparing…' : 'Download receipt (PDF)'}
             </button>
+            <p className="text-center text-xs text-muted-foreground">
+              Your deposit is 100% refundable. Questions? Write to{' '}
+              <a href={`mailto:${info.support_email}`} className="text-primary underline-offset-2 hover:underline">
+                {info.support_email}
+              </a>
+            </p>
           </form>
         )}
       </div>

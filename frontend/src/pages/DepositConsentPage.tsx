@@ -66,14 +66,15 @@ export function DepositConsentPage() {
             }}
           >
             <div>
-              <h1 className="text-lg font-semibold text-foreground">Refundable security deposit</h1>
+              <h1 className="text-lg font-semibold text-foreground">Welcome to {info.business_name}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                ₹{info.amount_rupees} · 100% refundable. Please read the terms and give your consent before you pay.
+                Your ₹{info.amount_rupees} enrollment deposit is 100% refundable. Here is how it works, in simple words.
+                It takes less than a minute.
               </p>
             </div>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                Your mobile number (ends with {info.masked_phone.slice(-4)})
+                Enter your mobile number to continue (ends with {info.masked_phone.slice(-4)})
               </span>
               <input
                 required
@@ -106,8 +107,8 @@ export function DepositConsentPage() {
                 <p className="flex items-start gap-2 rounded-xl bg-success/10 p-3 text-sm text-success-ink">
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
                   <span>
-                    You agreed on {formatIst(terms.given_at)} as “{terms.typed_name}”. A record of this consent is saved.
-                    You can close this page.
+                    Thank you, {terms.typed_name}! You agreed on {formatIst(terms.given_at)}. Your deposit is 100%
+                    refundable, and you will get a receipt once you pay. You can close this page.
                   </span>
                 </p>
                 {confirmWithdraw ? (
@@ -179,8 +180,8 @@ export function DepositConsentPage() {
                   {busy ? 'Saving…' : 'I Agree'}
                 </button>
                 <p className="text-xs text-muted-foreground">
-                  We record the time, your mobile number, and this device&apos;s IP address and browser as proof of your
-                  consent.
+                  For your protection, this consent is saved with the date, time and device details, so your deposit and
+                  refund are always on record.
                 </p>
               </form>
             ) : (
@@ -191,6 +192,14 @@ export function DepositConsentPage() {
             {terms.state !== 'pending' && error ? <p className="text-sm text-destructive">{error}</p> : null}
           </div>
         )}
+        {info ? (
+          <p className="border-t border-border pt-3 text-center text-xs text-muted-foreground">
+            Questions? Write to{' '}
+            <a href={`mailto:${info.support_email}`} className="text-primary underline-offset-2 hover:underline">
+              {info.support_email}
+            </a>
+          </p>
+        ) : null}
       </div>
     </div>
   )

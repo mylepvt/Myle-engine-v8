@@ -64,11 +64,11 @@ PAYMENT_MODES: dict[str, str] = {
 
 SETTING_GATE = "deposit.gate_enabled"
 SETTING_BUSINESS_NAME = "deposit.business_name"
-SETTING_BUSINESS_ADDRESS = "deposit.business_address"
-SETTING_BUSINESS_CONTACT = "deposit.business_contact"
+SETTING_SUPPORT_EMAIL = "deposit.support_email"
 SETTING_OPERATED_BY = "deposit.operated_by"
 DEFAULT_BUSINESS_NAME = "Myle Community"
-FILL_IN = "[FILL IN]"
+# The only contact on the receipt and the lead's pages (no address or phone number).
+DEFAULT_SUPPORT_EMAIL = "support@mylecommunity.in"
 
 PURPOSE_LINE = (
     "Refundable security deposit for enrollment. Not a product purchase or service fee, "
@@ -78,27 +78,35 @@ REFUND_LINE = "This deposit is 100% refundable."
 NO_SIGNATURE_LINE = "Computer-generated receipt, no signature required."
 
 TERMS_VERSION = "v1"
-_TERMS_V1 = """REFUNDABLE SECURITY DEPOSIT - CONSENT ({version})
+_TERMS_V1 = """YOUR SECURITY DEPOSIT - SIMPLE AND FULLY REFUNDABLE
 
-I, {name}, mobile {phone}, agree of my own free will to the following:
+Hi {name} (mobile {phone}),
 
-1. I am paying a security deposit of Rs. {amount} ({words}) to {business} for my enrollment.
-2. This deposit is only to confirm that I am serious about enrolling. It is not a product purchase, not a service fee and not an investment, and it is not linked to any other company, product or service.
-3. This deposit is 100% refundable. When I ask for a refund, the full amount will be returned to me.
-4. No income, earnings or returns have been promised to me in exchange for this deposit.
-5. I allow {business} to keep my name, mobile number, city and payment details (payment mode, transaction ID, date) to record this deposit, issue my receipt and process my refund, including in its internal record-keeping (ledger) system. These details will not be used for anything else.
-6. I can withdraw this consent at any time from this same link. If I withdraw, my deposit will be refunded and my enrollment will not continue.
+Thank you for choosing to enroll with {business}. Here is everything about your deposit, in simple words:
+
+1. Amount: you are paying a security deposit of Rs. {amount} ({words}) to {business} for your enrollment.
+2. Why a deposit: it only confirms your enrollment and shows you are serious about joining. It is not a product purchase, not a service fee and not an investment, and it is not linked to any other company, product or service.
+3. 100% refundable: whenever you ask for a refund, the full amount is returned to you.
+4. Clear and honest: no income, earnings or returns have been promised to you in exchange for this deposit.
+5. Your details stay safe: we keep your name, mobile number, city and payment details (payment mode, transaction ID, date) only to record this deposit, send your receipt and process your refund, including in our internal records. We never use them for anything else.
+6. Always your choice: you can withdraw this consent at any time from this same link. If you do, your deposit is refunded and your enrollment does not continue.
+
+By tapping "I Agree", I confirm that I have read the above and I agree of my own free will.
 
 ---
 
-मैं, {name}, मोबाइल {phone}, अपनी मर्ज़ी से इन बातों से सहमत हूँ:
+नमस्ते {name} (मोबाइल {phone}),
 
-1. मैं अपने enrollment के लिए {business} को ₹{amount} ({words}) की security deposit दे रहा/रही हूँ।
-2. यह deposit सिर्फ़ यह पक्का करने के लिए है कि मैं enrollment को लेकर गंभीर हूँ। यह किसी product की खरीद, service fee या investment नहीं है, और किसी दूसरी company, product या service से जुड़ा नहीं है।
-3. यह deposit 100% refundable है। refund माँगने पर पूरी रकम मुझे वापस मिलेगी।
-4. इस deposit के बदले मुझसे किसी income, कमाई या return का वादा नहीं किया गया है।
-5. मैं {business} को अनुमति देता/देती हूँ कि वह मेरा नाम, मोबाइल नंबर, शहर और payment details (payment mode, transaction ID, तारीख) इस deposit का record रखने, receipt देने और refund करने के लिए रखे, अपने internal record (ledger) system में भी। इनका किसी और काम में इस्तेमाल नहीं होगा।
-6. मैं इसी link से कभी भी अपनी सहमति वापस ले सकता/सकती हूँ। सहमति वापस लेने पर मेरी deposit refund होगी और enrollment आगे नहीं बढ़ेगा।
+{business} के साथ जुड़ने के लिए धन्यवाद। आपकी deposit के बारे में सब कुछ, आसान शब्दों में:
+
+1. रकम: आप अपने enrollment के लिए {business} को ₹{amount} ({words}) की security deposit दे रहे हैं।
+2. Deposit क्यों: यह सिर्फ़ आपका enrollment पक्का करती है और दिखाती है कि आप जुड़ने को लेकर गंभीर हैं। यह किसी product की खरीद, service fee या investment नहीं है, और किसी दूसरी company, product या service से जुड़ी नहीं है।
+3. 100% refundable: जब भी आप refund माँगेंगे, पूरी रकम आपको वापस मिलेगी।
+4. साफ़ और ईमानदार: इस deposit के बदले आपसे किसी income, कमाई या return का वादा नहीं किया गया है।
+5. आपकी जानकारी सुरक्षित: आपका नाम, मोबाइल नंबर, शहर और payment details (payment mode, transaction ID, तारीख) हम सिर्फ़ इस deposit का record रखने, आपकी receipt भेजने और refund करने के लिए रखते हैं, अपने internal records में भी। इनका किसी और काम में कभी इस्तेमाल नहीं होता।
+6. फ़ैसला हमेशा आपका: आप इसी link से कभी भी अपनी सहमति वापस ले सकते हैं। ऐसा करने पर आपकी deposit refund होगी और enrollment आगे नहीं बढ़ेगा।
+
+"I Agree" दबाकर मैं पुष्टि करता/करती हूँ कि मैंने ऊपर लिखी बातें पढ़ ली हैं और अपनी मर्ज़ी से सहमत हूँ।
 """
 
 
@@ -186,8 +194,7 @@ async def gate_enabled(session: AsyncSession) -> bool:
 async def business_details(session: AsyncSession) -> dict[str, str]:
     return {
         "name": (await _setting(session, SETTING_BUSINESS_NAME) or "").strip() or DEFAULT_BUSINESS_NAME,
-        "address": (await _setting(session, SETTING_BUSINESS_ADDRESS) or "").strip(),
-        "contact": (await _setting(session, SETTING_BUSINESS_CONTACT) or "").strip(),
+        "email": (await _setting(session, SETTING_SUPPORT_EMAIL) or "").strip() or DEFAULT_SUPPORT_EMAIL,
         "operated_by": (await _setting(session, SETTING_OPERATED_BY) or "").strip(),
     }
 
@@ -208,7 +215,6 @@ async def save_settings(session: AsyncSession, values: dict[str, str | None]) ->
 
 def render_terms(*, name: str, phone: str, amount_rupees: int, business: str) -> str:
     return _TERMS_V1.format(
-        version=TERMS_VERSION,
         name=name,
         phone=phone,
         amount=amount_rupees,

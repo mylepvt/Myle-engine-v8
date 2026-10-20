@@ -48,8 +48,10 @@ def _refuse_staff(request: Request) -> None:
 @router.get("/consent/{token}", response_model=ConsentLinkInfo, include_in_schema=False)
 async def consent_info(token: str, session: Session) -> ConsentLinkInfo:
     c = await svc.consent_by_token(session, token)
+    biz = await svc.business_details(session)
     return ConsentLinkInfo(
-        business_name=(await svc.business_details(session))["name"],
+        business_name=biz["name"],
+        support_email=biz["email"],
         amount_rupees=c.amount_cents // 100,
         masked_phone=svc.mask_phone(c.payer_phone),
         state=svc.consent_state(c),
@@ -106,6 +108,7 @@ async def receipt_info(token: str, session: Session) -> ReceiptLinkInfo:
     return ReceiptLinkInfo(
         receipt_number=r.receipt_number,
         business_name=((r.payload_json or {}).get("business") or {}).get("name") or svc.DEFAULT_BUSINESS_NAME,
+        support_email=((r.payload_json or {}).get("business") or {}).get("email") or svc.DEFAULT_SUPPORT_EMAIL,
         masked_phone=svc.mask_phone(((r.payload_json or {}).get("payer") or {}).get("phone")),
         status=r.status,
     )

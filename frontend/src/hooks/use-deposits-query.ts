@@ -52,8 +52,7 @@ export type LeadDepositState = {
 export type DepositSettings = {
   gate_enabled: boolean
   business_name: string
-  business_address: string
-  business_contact: string
+  support_email: string
   operated_by: string
 }
 
@@ -163,7 +162,13 @@ export async function fetchDepositConsentEvidence(consentId: number): Promise<Re
 /** Public, for the lead's own browser (no login). */
 export const depositPublic = {
   consentInfo: (token: string) =>
-    json<{ business_name: string; amount_rupees: number; masked_phone: string; state: DepositConsent['state'] }>(
+    json<{
+      business_name: string
+      support_email: string
+      amount_rupees: number
+      masked_phone: string
+      state: DepositConsent['state']
+    }>(
       `/api/deposit/consent/${token}`,
     ),
   verify: (token: string, phone: string) =>
@@ -173,7 +178,13 @@ export const depositPublic = {
   withdraw: (token: string, phone: string) =>
     json<ConsentTerms>(`/api/deposit/consent/${token}/withdraw`, { method: 'POST', body: JSON.stringify({ phone }) }),
   receiptInfo: (token: string) =>
-    json<{ receipt_number: string; business_name: string; masked_phone: string; status: DepositReceipt['status'] }>(
+    json<{
+      receipt_number: string
+      business_name: string
+      support_email: string
+      masked_phone: string
+      status: DepositReceipt['status']
+    }>(
       `/api/deposit/receipt/${token}`,
     ),
   receiptPdf: async (token: string, phone: string): Promise<Blob> => {
