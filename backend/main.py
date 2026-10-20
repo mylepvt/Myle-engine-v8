@@ -31,12 +31,13 @@ from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 import app.services.admin_alerts  # noqa: F401 — registers the live admin alert hooks
 from app.services.sheet_sync import run_scheduled_delivery as job_sheet_sync_delivery  # also registers its hooks
+from app.services.ledger_bridge import run_scheduled_delivery as job_ledger_bridge_delivery  # also registers its hooks
 
 import logging as _logging
 
 # Scheduled jobs log one INFO line per run ("morning_plan: targeted=… sent=…"). With no
 # handler on the root logger those were dropped, so they never reached Render's logs.
-for _jobs_logger_name in ("app.services.scheduled_jobs", "app.services.sheet_sync"):
+for _jobs_logger_name in ("app.services.scheduled_jobs", "app.services.sheet_sync", "app.services.ledger_bridge"):
     _jobs_logger = _logging.getLogger(_jobs_logger_name)
     if not _jobs_logger.handlers:
         _h = _logging.StreamHandler()
@@ -266,6 +267,14 @@ async def lifespan(_app: FastAPI):
             job_sheet_sync_delivery,
             CronTrigger(minute="*", timezone="Asia/Kolkata"),
             id="sheet_sync_delivery",
+            replace_existing=True,
+            misfire_grace_time=60,
+            max_instances=1,
+        )
+        _scheduler.add_job(
+            job_ledger_bridge_delivery,
+            CronTrigger(minute="*", timezone="Asia/Kolkata"),
+            id="ledger_bridge_delivery",
             replace_existing=True,
             misfire_grace_time=60,
             max_instances=1,

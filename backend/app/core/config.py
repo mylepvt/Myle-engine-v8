@@ -267,6 +267,18 @@ class Settings(BaseSettings):
         description="Shared secret sent in the webhook body. Server-side only.",
     )
 
+    # --- Myle Bridge (Myle Ledger ⇄ this CRM; app.services.ledger_bridge) ---
+    myle_bridge_secret: str = Field(
+        default="",
+        validation_alias="MYLE_BRIDGE_SECRET",
+        description="Shared HMAC secret with Myle Ledger (32+ chars). Empty = bridge off.",
+    )
+    ledger_bridge_url: str = Field(
+        default="",
+        validation_alias="LEDGER_BRIDGE_URL",
+        description="Myle Ledger base URL, e.g. https://ledger.example.com. Empty = no events sent back.",
+    )
+
     # --- Google Contacts sync (admin: Day 2 prospects → admin's Google / iPhone contacts) ---
     google_contacts_client_id: str = Field(
         default="",

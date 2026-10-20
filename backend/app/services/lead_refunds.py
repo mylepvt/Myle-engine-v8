@@ -18,6 +18,7 @@ from starlette import status as http_status
 from app.models.invoice import Invoice
 from app.models.lead import Lead
 from app.models.wallet_ledger import WalletLedgerEntry
+from app.services import ledger_bridge
 from app.services.invoice_records import create_credit_note
 from app.services.wallet_guard import lock_wallet
 
@@ -159,6 +160,11 @@ async def refund_invoice_leads(
         reason=reason,
         wallet_ledger_entry_id=entries[0].id,
     )
+
+    for lead_id in wanted:
+        lead = await session.get(Lead, lead_id)
+        if lead is not None:
+            ledger_bridge.queue_refund(session, lead, amounts[lead_id])
 
     if return_to_pool:
         now = datetime.now(timezone.utc)
