@@ -582,7 +582,11 @@ def receipt_record(r: DepositReceipt) -> dict[str, Any]:
         "payer_phone": (p.get("payer") or {}).get("phone"),
         "payer_city": (p.get("payer") or {}).get("city"),
         "payment_mode": r.payment_mode,
+        "payment_mode_label": p.get("payment_mode_label") or PAYMENT_MODES.get(r.payment_mode, r.payment_mode),
         "payment_ref": r.payment_ref,
+        "amount_words": p.get("amount_words"),
+        # What the receipt shows as the receiver, so the Ledger's copy reads the same.
+        "business": p.get("business") or {},
         "paid_at": _aware(r.paid_at).isoformat(),
         "issued_at": _aware(r.issued_at).isoformat() if r.issued_at else None,
         "refunded_at": _aware(r.refunded_at).isoformat() if r.refunded_at else None,
