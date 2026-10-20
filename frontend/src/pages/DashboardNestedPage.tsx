@@ -46,6 +46,9 @@ const SettingsAppPage = lazy(() => import('@/pages/SettingsAppPage').then((m) =>
 const SettingsHelpPage = lazy(() => import('@/pages/SettingsHelpPage').then((m) => ({ default: m.SettingsHelpPage })))
 const SettingsOrgTreePage = lazy(() => import('@/pages/SettingsOrgTreePage').then((m) => ({ default: m.SettingsOrgTreePage })))
 const AdminInvoicesPage = lazy(() => import('@/pages/AdminInvoicesPage').then((m) => ({ default: m.AdminInvoicesPage })))
+const SecurityDepositsPage = lazy(() =>
+  import('@/pages/SecurityDepositsPage').then((m) => ({ default: m.SecurityDepositsPage })),
+)
 const DownloadsPage = lazy(() => import('@/pages/DownloadsPage').then((m) => ({ default: m.DownloadsPage })))
 const AuditLogsPage = lazy(() => import('@/pages/AuditLogsPage').then((m) => ({ default: m.AuditLogsPage })))
 
@@ -90,6 +93,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <WalletPage title={title} />
     case 'admin-invoices':
       return <AdminInvoicesPage title={title} />
+    case 'security-deposits':
+      return <SecurityDepositsPage title={title} />
     case 'wallet-recharge':
       return <WalletRechargePage title={title} />
     case 'wallet-admin':

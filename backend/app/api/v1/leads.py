@@ -449,13 +449,19 @@ async def send_to_day1(
     background_tasks: BackgroundTasks,
     amount_rupees: int = Form(..., description="Enrollment amount paid (₹149–200)"),
     screenshot: UploadFile = File(..., description="Enrollment payment screenshot"),
+    payment_mode: Optional[str] = Form(default=None, max_length=24, description="upi | bank_transfer | card | other_online"),
+    payment_ref: Optional[str] = Form(default=None, max_length=64, description="Transaction ID / Payment Ref No."),
+    paid_at: Optional[datetime] = Form(default=None, description="When the deposit was paid"),
 ) -> LeadPublic:
-    """Upload the enrollment screenshot → lead goes to the nearest leader's Day 1."""
+    """Upload the enrollment screenshot → deposit receipt → lead goes to the nearest leader's Day 1."""
     lead = await service.send_to_day1_with_enrollment(
         lead_id=lead_id,
         user=user,
         amount_rupees=amount_rupees,
         screenshot=await screenshot.read(),
+        payment_mode=payment_mode,
+        payment_ref=payment_ref,
+        paid_at=paid_at,
     )
     _send_queued_pushes(background_tasks, service)
     return await service.serialize_lead_public(lead)

@@ -8,7 +8,7 @@ import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const SRC = join(__dirname)
-const ALLOWED = new Set(['lib/enrollment-send.ts'])
+const ALLOWED = new Set(['lib/enrollment-send.ts', 'lib/deposit-share.ts'])
 // Unambiguous Hindi/Hinglish words that never appear in English UI copy.
 const HINGLISH =
   /\b(kariye|kijiye|dijiye|karo|karein|karega|karegi|nahi|nhi|aapka|aapki|aapke|apna|apni|apne|hoga|hogi|chahiye|kuch|mein|kya|milao|chuka|sabko|gaya|gayi|hogaya)\b/i

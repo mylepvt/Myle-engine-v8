@@ -13,7 +13,7 @@ router = APIRouter()
 _APP_NAME = "MYLE"
 _PRODUCT_NAME = "Myle Community"
 _CONTACT_EMAIL = "karanveer125@gmail.com"
-_BASE_URL = "https://new-myle-community.onrender.com"
+_BASE_URL = "https://app.mylecommunity.in"
 _UPDATED_AT = "May 17, 2026"
 
 

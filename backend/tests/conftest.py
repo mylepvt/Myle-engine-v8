@@ -124,3 +124,23 @@ async def anon_client(engine):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides = saved
+
+
+# ── Security deposit gate ─────────────────────────────────────────────────────
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "deposit_gate: run with the security deposit gate ON (production default)")
+
+
+@pytest.fixture(autouse=True)
+def _deposit_gate(request, monkeypatch):
+    """The deposit gate (consent + receipt before Day 1) is ON in production. Older suites
+    walk fresh leads straight into Day 1–3 to test other features, so they run with it off;
+    tests marked ``deposit_gate`` (tests/test_deposits.py) run with it on."""
+    if request.node.get_closest_marker("deposit_gate"):
+        return
+
+    async def _off(_session):
+        return False
+
+    monkeypatch.setattr("app.services.deposits.gate_enabled", _off)

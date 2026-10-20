@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Image as ImageIcon, Undo2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { LeadDepositButton } from '@/components/deposits/LeadDepositPanel'
 import { type LeadPublic, useSendBackFromDay1Mutation } from '@/hooks/use-leads-query'
 
 /** Leader's Day 1 card: the member's enrollment screenshot + "Send back" if it looks wrong. */
@@ -25,6 +26,7 @@ export function EnrollmentProofRow({ lead, canSendBack }: { lead: LeadPublic; ca
         >
           <ImageIcon className="size-3.5" aria-hidden /> View screenshot
         </a>
+        <LeadDepositButton lead={lead} />
         {canSendBack && !confirming ? (
           <button
             type="button"

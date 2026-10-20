@@ -16,6 +16,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.api.deps import get_db
 from app.api.capture_public import router as capture_public_router
+from app.api.deposit_public import router as deposit_public_router
 from app.api.invoice_public import router as invoice_public_router
 from app.api.legal_public import router as legal_public_router
 from app.api.day2_test_public import router as day2_test_public_router
@@ -32,12 +33,13 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 import app.services.admin_alerts  # noqa: F401 — registers the live admin alert hooks
 from app.services.sheet_sync import run_scheduled_delivery as job_sheet_sync_delivery  # also registers its hooks
 from app.services.ledger_bridge import run_scheduled_delivery as job_ledger_bridge_delivery  # also registers its hooks
+from app.services.deposit_ledger import run_scheduled_delivery as job_deposit_ledger_delivery
 
 import logging as _logging
 
 # Scheduled jobs log one INFO line per run ("morning_plan: targeted=… sent=…"). With no
 # handler on the root logger those were dropped, so they never reached Render's logs.
-for _jobs_logger_name in ("app.services.scheduled_jobs", "app.services.sheet_sync", "app.services.ledger_bridge"):
+for _jobs_logger_name in ("app.services.scheduled_jobs", "app.services.sheet_sync", "app.services.ledger_bridge", "app.services.deposit_ledger"):
     _jobs_logger = _logging.getLogger(_jobs_logger_name)
     if not _jobs_logger.handlers:
         _h = _logging.StreamHandler()
@@ -279,6 +281,14 @@ async def lifespan(_app: FastAPI):
             misfire_grace_time=60,
             max_instances=1,
         )
+        _scheduler.add_job(
+            job_deposit_ledger_delivery,
+            CronTrigger(minute="*", timezone="Asia/Kolkata"),
+            id="deposit_ledger_delivery",
+            replace_existing=True,
+            misfire_grace_time=60,
+            max_instances=1,
+        )
         _scheduler.start()
     yield
     if _SCHEDULER_ENABLED:
@@ -309,6 +319,7 @@ app.include_router(legal_public_router)
 app.include_router(day2_test_public_router)
 app.include_router(certificate_verify_public_router)
 app.include_router(capture_public_router)
+app.include_router(deposit_public_router)
 
 _uploads_dir = Path(__file__).resolve().parent / "uploads"
 _uploads_dir.mkdir(exist_ok=True)
