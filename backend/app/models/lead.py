@@ -75,6 +75,8 @@ class Lead(Base):
     email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Why the lead was given free (waived) to a member, e.g. "New joiner"; NULL = paid claim.
+    waived_reason: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     # Age as the form asked it, a range like "19 to 21" (Myle Ledger leads); ``age`` stays empty then.
     age_group: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     gender: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)

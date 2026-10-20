@@ -29,6 +29,7 @@ from app.services.invoice_records import (
     create_payment_receipt_for_recharge,
 )
 from app.services.observation_logger import observe_event
+from app.services import ledger_bridge
 from app.services.push_service import send_push_to_user_bg
 from app.schemas.wallet import (
     WalletAdjustmentCreate,
@@ -329,6 +330,16 @@ async def wallet_create_adjustment(
     _require_admin(user)
     token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
 
+    async def tell_ledger() -> None:
+        # Promo / free credit or another adjustment, for Myle Ledger's CRM accounting.
+        member = await session.get(User, body.user_id)
+        if member is not None:
+            await ledger_bridge.queue_wallet(
+                session, user=member, kind=body.kind, amount_cents=body.amount_cents,
+                ref=f"adjustment:{body.idempotency_key}", note=body.note,
+            )
+            await session.commit()
+
     if token and settings.crm_api_url and settings.crm_internal_secret:
         try:
             async with httpx.AsyncClient(
@@ -349,6 +360,7 @@ async def wallet_create_adjustment(
                 )
                 if r.status_code < 400:
                     crm_data = r.json()
+                    await tell_ledger()
                     return WalletLedgerEntryPublic(
                         id=crm_data.get("id", 0),
                         user_id=body.user_id,
@@ -361,7 +373,9 @@ async def wallet_create_adjustment(
             logger.warning("CRM wallet adjustment failed: %s", exc)
 
     # Fallback: write to FastAPI DB (CRM unreachable)
-    return await _fastapi_wallet_adjustment(body=body, user=user, session=session)
+    entry = await _fastapi_wallet_adjustment(body=body, user=user, session=session)
+    await tell_ledger()
+    return entry
 
 
 # ── Wallet Recharge Requests ─────────────────────────────────────────────────
@@ -557,6 +571,13 @@ async def review_recharge_request(
                 utr_number=recharge.utr_number,
                 wallet_ledger_entry_id=ledger_entry.id,
             )
+            member = await session.get(User, recharge.user_id)
+            if member is not None:
+                # Cash in for Myle Ledger's CRM accounting (Myle Bridge), same transaction.
+                await ledger_bridge.queue_wallet(
+                    session, user=member, kind="recharge", amount_cents=recharge.amount_cents,
+                    ref=f"recharge:{recharge.id}", note=recharge.utr_number,
+                )
 
     await session.commit()
     await session.refresh(recharge)

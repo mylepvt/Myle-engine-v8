@@ -233,3 +233,75 @@ async def test_off_without_secret(Session, monkeypatch):
         lead.status = "lost"
         await s.commit()
     assert await _outbox(Session) == []
+
+
+# ── CRM accounting: free leads and wallet money ──────────────────────────────
+
+
+async def test_free_leads_go_to_the_member_at_no_cost(Session):
+    from app.services.waived_leads import give_free_leads
+
+    async with Session() as s:
+        s.add(User(id=7, email="m7@test.myle", role="team", name="Ravi", fbo_id="F7"))
+        s.add(User(id=1, email="a1@test.myle", role="admin", name="Admin", fbo_id="F1"))
+        for i in (1, 2, 3):
+            s.add(Lead(id=i, name=f"L{i}", created_by_user_id=1, phone=f"91987650000{i}", in_pool=True,
+                       pool_price_cents=4500, external_ref=f"k{i}"))
+        await s.commit()
+
+    async with Session() as s:
+        leads = await give_free_leads(s, admin_id=1, member_id=7, count=2, reason="New joiner")
+    assert [l.id for l in leads] == [1, 2]
+
+    async with Session() as s:
+        lead = await s.get(Lead, 1)
+        assert not lead.in_pool and lead.assigned_to_user_id == 7 and lead.waived_reason == "New joiner"
+        assert (await s.get(Lead, 3)).in_pool
+    events = await _outbox(Session)
+    assert [e["type"] for e in events] == ["lead.claimed", "lead.claimed"]
+    assert events[0]["amount_paise"] == 0 and events[0]["waived_reason"] == "New joiner"
+    assert events[0]["member_id"] == 7 and events[0]["member_name"] == "Ravi"
+
+    async with Session() as s:
+        with pytest.raises(Exception):
+            await give_free_leads(s, admin_id=1, member_id=7, count=1, reason="Because")
+        with pytest.raises(Exception):
+            await give_free_leads(s, admin_id=1, member_id=1, count=1, reason="New joiner")
+
+
+async def test_paid_claim_names_the_member(Session):
+    async with Session() as s:
+        s.add(User(id=7, email="m7@test.myle", role="team", name="Ravi", fbo_id="F7"))
+        s.add(Lead(id=1, name="Asha", created_by_user_id=1, phone="919876500001", in_pool=True,
+                   pool_price_cents=4500, external_ref="k1"))
+        await s.commit()
+    async with Session() as s:
+        await s.get(User, 7)
+        lead = await s.get(Lead, 1)
+        lead.in_pool = False
+        lead.assigned_to_user_id = 7
+        await s.commit()
+    [e] = await _outbox(Session)
+    assert e["amount_paise"] == 4500 and e["member_id"] == 7 and e["member_name"] == "Ravi"
+    assert "waived_reason" not in e
+
+
+async def test_wallet_money_is_queued_once_per_source(Session):
+    async with Session() as s:
+        member = User(id=7, email="m7@test.myle", role="team", name="Ravi", fbo_id="F7")
+        s.add(member)
+        await s.commit()
+        await ledger_bridge.queue_wallet(s, user=member, kind="recharge", amount_cents=50000, ref="recharge:3", note="UTR1")
+        await ledger_bridge.queue_wallet(s, user=member, kind="recharge", amount_cents=50000, ref="recharge:3")
+        await s.commit()
+        await ledger_bridge.queue_wallet(s, user=member, kind="recharge", amount_cents=50000, ref="recharge:3")
+        await ledger_bridge.queue_wallet(s, user=member, kind="promo", amount_cents=20000, ref="adjustment:abc")
+        await ledger_bridge.queue_wallet(s, user=member, kind="bogus", amount_cents=1, ref="x")
+        await ledger_bridge.queue_wallet(s, user=member, kind="adjustment", amount_cents=0, ref="y")
+        await s.commit()
+    events = await _outbox(Session)
+    assert [(e["type"], e["wallet_kind"], e["amount_paise"]) for e in events] == [
+        ("wallet.recharge", "recharge", 50000),
+        ("wallet.credit", "promo", 20000),
+    ]
+    assert events[0]["member_id"] == 7 and events[0]["member_name"] == "Ravi" and events[0]["note"] == "UTR1"

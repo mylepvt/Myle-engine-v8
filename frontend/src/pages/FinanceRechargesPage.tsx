@@ -35,6 +35,7 @@ export function FinanceRechargesPage({ title }: Props) {
   const [amountCents, setAmountCents] = useState('')
   const [memberQuery, setMemberQuery] = useState('')
   const [note, setNote] = useState('')
+  const [promo, setPromo] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const deferredMemberQuery = useDeferredValue(memberQuery)
   const searchActive = memberQuery.trim().length > 0
@@ -66,9 +67,11 @@ export function FinanceRechargesPage({ title }: Props) {
         amount_cents: Math.trunc(cents),
         idempotency_key,
         note: note.trim() || undefined,
+        kind: promo && cents > 0 ? 'promo' : 'adjustment',
       })
       setAmountCents('')
       setNote('')
+      setPromo(false)
     } catch {
       /* surfaced below */
     }
@@ -181,6 +184,21 @@ export function FinanceRechargesPage({ title }: Props) {
             className="w-full input-base px-3 py-2 text-sm disabled:opacity-50"
           />
         </div>
+        <label className="flex items-start gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={promo}
+            onChange={(e) => setPromo(e.target.checked)}
+            disabled={mut.isPending || parsedCents < 0}
+            className="mt-0.5"
+          />
+          <span>
+            Free / promo credit
+            <span className="block text-xs text-muted-foreground">
+              Not paid by the member (new joiner, off-record deal). Myle Ledger books it apart from recharges.
+            </span>
+          </span>
+        </label>
         <Button type="submit" disabled={mut.isPending || !userId || !amountCents}>
           {mut.isPending ? 'Applying…' : 'Review & confirm'}
         </Button>
@@ -206,6 +224,7 @@ export function FinanceRechargesPage({ title }: Props) {
             <div className="mt-3 space-y-2 text-sm">
               <p><span className="text-muted-foreground">User:</span> {memberSelectLabel(selectedMember)}</p>
               <p><span className="text-muted-foreground">Amount:</span> <strong className={parsedCents >= 0 ? 'text-success-ink' : 'text-destructive'}>{parsedCents >= 0 ? '+' : ''}{formatInr(Math.abs(parsedCents))}</strong></p>
+              {promo && parsedCents > 0 ? <p><span className="text-muted-foreground">Type:</span> Free / promo credit</p> : null}
               {note.trim() ? <p><span className="text-muted-foreground">Note:</span> {note.trim()}</p> : null}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">This action cannot be undone. Review carefully before confirming.</p>

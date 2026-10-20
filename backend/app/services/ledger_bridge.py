@@ -121,7 +121,19 @@ def _queue_lead_events(session: SASession, _ctx, _instances) -> None:
             state = inspect(obj)
             pool = state.attrs.in_pool.history
             if _changed(pool) and pool.deleted and pool.deleted[0] and not obj.in_pool:
-                session.add(_event(obj, "lead.claimed", status="claimed", amount_paise=int(obj.pool_price_cents or 0)))
+                waived = bool(obj.waived_reason)
+                session.add(
+                    _event(
+                        obj,
+                        "lead.claimed",
+                        status="claimed",
+                        # A lead given free costs the member nothing.
+                        amount_paise=0 if waived else int(obj.pool_price_cents or 0),
+                        member_id=obj.assigned_to_user_id,
+                        member_name=_member_name(session, obj.assigned_to_user_id),
+                        **({"waived_reason": obj.waived_reason} if waived else {}),
+                    )
+                )
             if _changed(state.attrs.status.history):
                 session.add(
                     _event(
@@ -138,7 +150,61 @@ def _queue_lead_events(session: SASession, _ctx, _instances) -> None:
 def queue_refund(session, lead: Lead, amount_cents: int) -> None:
     """Called by the refund service, inside its transaction."""
     if enabled() and lead.external_ref:
-        session.add(_event(lead, "lead.refunded", status="refunded", amount_paise=-abs(int(amount_cents))))
+        session.add(
+            _event(
+                lead,
+                "lead.refunded",
+                status="refunded",
+                amount_paise=-abs(int(amount_cents)),
+                member_id=lead.owner_user_id or lead.assigned_to_user_id,
+                member_name=_member_name(session, lead.owner_user_id or lead.assigned_to_user_id),
+            )
+        )
+
+
+def _member_name(session, user_id: int | None) -> str | None:
+    """The member's display name; best effort, never fails the caller's save."""
+    if not user_id:
+        return None
+    from app.models.user import User
+
+    try:
+        user = session.identity_map.get(inspect(User).identity_key_from_primary_key((int(user_id),)))
+        if user is not None:
+            return user.name or user.username or user.fbo_id
+        if hasattr(session, "sync_session"):  # an AsyncSession: no blocking read here
+            return None
+        # Inside before_flush autoflush is off, so this reads without recursing.
+        row = session.execute(select(User.name, User.username, User.fbo_id).where(User.id == int(user_id))).first()
+    except Exception:  # noqa: BLE001
+        return None
+    return (row[0] or row[1] or row[2]) if row else None
+
+
+WALLET_KINDS = ("recharge", "promo", "adjustment")
+
+
+async def queue_wallet(session, *, user, kind: str, amount_cents: int, ref: str, note: str | None = None) -> None:
+    """A member's wallet money for Myle Ledger's CRM accounting, inside the caller's
+    transaction: an approved recharge (cash in), a promo / free credit, or another admin
+    adjustment. ``ref`` makes it one event per source row (recharge id, idempotency key)."""
+    if not enabled() or kind not in WALLET_KINDS or not amount_cents:
+        return
+    event_id = hashlib.sha256(f"wallet:{kind}:{ref}".encode()).hexdigest()[:32]
+    # A retried request (same ref) is queued once; a second row would break the caller's save.
+    if (await session.execute(select(LedgerBridgeOutbox.id).where(LedgerBridgeOutbox.event_id == event_id))).first():
+        return
+    payload = {
+        "event_id": event_id,
+        "type": "wallet.credit" if kind != "recharge" else "wallet.recharge",
+        "wallet_kind": kind,
+        "member_id": user.id,
+        "member_name": user.name or user.username or user.fbo_id,
+        "amount_paise": int(amount_cents),
+        "note": (note or "")[:200] or None,
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+    }
+    session.add(LedgerBridgeOutbox(event_id=event_id, payload=payload))
 
 
 # ── delivery ─────────────────────────────────────────────────────────────────
