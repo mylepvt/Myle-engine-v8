@@ -3,7 +3,9 @@
 No user session — the request is signed with ``MYLE_BRIDGE_SECRET``
 (``app.services.ledger_bridge``). Same lead rows as the admin Excel import
 (``lead_pool.import_lead_pool_xlsx``), plus ``external_ref`` = the Ledger's lead key, so
-a retried or repeated batch adds each lead once.
+a retried or repeated batch adds each lead once. A lead whose phone is already in the
+pool from an Excel import (unlinked, unclaimed) is linked to the Ledger instead of added
+again.
 """
 
 from __future__ import annotations
@@ -103,12 +105,48 @@ async def pool_ingest(
             (await session.execute(select(Lead.external_ref).where(Lead.external_ref.in_(refs[i : i + 200])))).scalars()
         )
 
+    # The same person already in the pool from an Excel import (no Ledger
+    # link, nobody has it yet): link that lead instead of adding a twin.
+    fresh = [l for l in leads if l["external_ref"] not in known]
+    phones = sorted({l["phone"] for l in fresh})
+    unlinked: dict[str, Lead] = {}
+    for i in range(0, len(phones), 200):
+        part = phones[i : i + 200]
+        variants = part + [p[2:] for p in part] + ["+" + p for p in part]
+        rows = (
+            await session.execute(
+                select(Lead)
+                .where(
+                    Lead.phone.in_(variants),
+                    Lead.external_ref.is_(None),
+                    Lead.in_pool.is_(True),
+                    Lead.assigned_to_user_id.is_(None),
+                    Lead.deleted_at.is_(None),
+                )
+                .order_by(Lead.id)
+            )
+        ).scalars()
+        for lead in rows:
+            key = normalize_phone(lead.phone)
+            if key and key not in unlinked:
+                unlinked[key] = lead
+
     default_cents = await get_default_pool_price_cents(session)
     created = 0
+    linked = 0
     for row in leads:
         if row["external_ref"] in known:
             continue
         known.add(row["external_ref"])
+        twin = unlinked.pop(row["phone"], None)
+        if twin is not None:
+            twin.external_ref = row["external_ref"]
+            if not twin.age_group and row["age_group"]:
+                twin.age_group = row["age_group"]
+            await session.flush()
+            enqueue_lead_shadow_upsert(session, twin)
+            linked += 1
+            continue
         lead = Lead(
             name=row["name"],
             status="new_lead",
@@ -132,14 +170,14 @@ async def pool_ingest(
         enqueue_lead_shadow_upsert(session, lead)
         created += 1
 
-    if created:
+    if created or linked:
         session.add(
             ActivityLog(
                 user_id=admin_id,
                 action="lead.pool_bridge",
                 entity_type="lead_pool",
                 entity_id=None,
-                meta={"created": created, "batch_id": str(body.get("batch_id") or "")[:64]},
+                meta={"created": created, "linked": linked, "batch_id": str(body.get("batch_id") or "")[:64]},
             )
         )
     await session.commit()
@@ -154,4 +192,10 @@ async def pool_ingest(
             body=f"{created} new leads are in the lead pool. Claim your leads now!",
             url="/dashboard/work/lead-pool",
         )
-    return {"ok": True, "received": len(leads), "created": created, "skipped": len(leads) - created}
+    return {
+        "ok": True,
+        "received": len(leads),
+        "created": created,
+        "linked": linked,
+        "skipped": len(leads) - created - linked,
+    }

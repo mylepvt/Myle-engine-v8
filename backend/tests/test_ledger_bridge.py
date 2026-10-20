@@ -80,7 +80,7 @@ async def test_pool_ingest_adds_each_lead_once(anon_client, engine):
     raw, headers = _signed(batch)
     r = await anon_client.post("/api/v1/bridge/pool-ingest", content=raw, headers=headers)
     assert r.status_code == 200, r.text
-    assert r.json() == {"ok": True, "received": 2, "created": 2, "skipped": 0}
+    assert r.json() == {"ok": True, "received": 2, "created": 2, "linked": 0, "skipped": 0}
 
     raw, headers = _signed(batch)
     r = await anon_client.post("/api/v1/bridge/pool-ingest", content=raw, headers=headers)
@@ -95,6 +95,34 @@ async def test_pool_ingest_adds_each_lead_once(anon_client, engine):
     assert leads[0].age_group == "19 to 21" and leads[0].age is None
     assert leads[1].age_group is None
     assert leads[1].name == "Lead" and leads[1].phone == "919876500002"
+
+
+async def test_pool_ingest_links_an_excel_twin_instead_of_adding_it(anon_client, engine):
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as s:
+        if not (await s.execute(select(User).where(User.role == "admin"))).first():
+            s.add(User(id=9101, email="bridge-admin@test.myle", role="admin", name="bridge_admin", fbo_id="FBRIDGE"))
+        # Same people already uploaded by Excel: one still in the pool, one already claimed.
+        s.add(Lead(name="Excel Asha", created_by_user_id=1, phone="9876500077", in_pool=True))
+        s.add(Lead(name="Excel Ravi", created_by_user_id=1, phone="919876500078", in_pool=False, assigned_to_user_id=7))
+        await s.commit()
+
+    raw, headers = _signed({"leads": [
+        {"myle_lead_id": "twin-k1", "name": "Asha", "phone": "919876500077", "age": "19 to 21"},
+        {"myle_lead_id": "twin-k2", "name": "Ravi", "phone": "919876500078"},
+    ]})
+    r = await anon_client.post("/api/v1/bridge/pool-ingest", content=raw, headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json() == {"ok": True, "received": 2, "created": 1, "linked": 1, "skipped": 0}
+
+    async with factory() as s:
+        asha = (await s.execute(select(Lead).where(Lead.phone.in_(["9876500077", "919876500077"])))).scalars().all()
+        ravi = (await s.execute(select(Lead).where(Lead.phone == "919876500078").order_by(Lead.id))).scalars().all()
+    # Asha: the Excel lead now carries the Ledger link; no second row.
+    assert len(asha) == 1 and asha[0].external_ref == "twin-k1" and asha[0].name == "Excel Asha"
+    assert asha[0].age_group == "19 to 21"
+    # Ravi was already claimed, so the bridged lead is a new pool row.
+    assert [l.external_ref for l in ravi] == [None, "twin-k2"]
 
 
 async def test_pool_ingest_refuses_bad_signature(anon_client):
