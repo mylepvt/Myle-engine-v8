@@ -62,7 +62,8 @@ def _parse_leads(body: dict[str, Any]) -> list[dict[str, Any]]:
                 "name": _text(raw.get("name"), 255) or "Lead",
                 "phone": phone,
                 "city": _text(raw.get("city"), 100),
-                "age": _text(raw.get("age"), 32),
+                # The form asks an age range ("19 to 21"): kept as text, never turned into a number.
+                "age_group": _text(raw.get("age"), 32),
                 "gender": _text(raw.get("gender"), 32),
                 "ad_name": _text(raw.get("ad_name"), 255),
                 "submitted_at": submitted,
@@ -115,7 +116,7 @@ async def pool_ingest(
             assigned_to_user_id=None,
             phone=row["phone"],
             city=row["city"],
-            age=row["age"],
+            age_group=row["age_group"],
             gender=row["gender"],
             ad_name=row["ad_name"],
             source="other",

@@ -70,7 +70,7 @@ async def test_pool_ingest_adds_each_lead_once(anon_client, engine):
     batch = {
         "batch_id": "b1",
         "leads": [
-            {"myle_lead_id": "bridge-k1", "submitted_at": "2026-10-19T10:00:00.000Z", "name": "Asha", "age": "25",
+            {"myle_lead_id": "bridge-k1", "submitted_at": "2026-10-19T10:00:00.000Z", "name": "Asha", "age": "19 to 21",
              "gender": "Female", "phone": "919876500001", "city": "Pune", "ad_name": "G5"},
             {"myle_lead_id": "bridge-k2", "name": "", "phone": "9876500002"},
             {"myle_lead_id": "bridge-bad", "name": "X", "phone": "12345"},
@@ -91,6 +91,9 @@ async def test_pool_ingest_adds_each_lead_once(anon_client, engine):
     assert [l.external_ref for l in leads] == ["bridge-k1", "bridge-k2"]
     assert all(l.in_pool and l.assigned_to_user_id is None for l in leads)
     assert leads[0].phone == "919876500001" and leads[0].ad_name == "G5"
+    # The age range stays as the form asked it; leads.age (a number) stays empty.
+    assert leads[0].age_group == "19 to 21" and leads[0].age is None
+    assert leads[1].age_group is None
     assert leads[1].name == "Lead" and leads[1].phone == "919876500002"
 
 

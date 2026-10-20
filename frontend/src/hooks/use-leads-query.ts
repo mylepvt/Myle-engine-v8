@@ -84,6 +84,7 @@ export type LeadPublic = {
   email: string | null
   city: string | null
   age: number | null
+  age_group?: string | null
   gender: string | null
   ad_name: string | null
   source: string | null
