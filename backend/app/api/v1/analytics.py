@@ -44,13 +44,28 @@ async def analytics_activity_log(
     elif filter_user_id:
         filters.append(ActivityLog.user_id == filter_user_id)
 
-    if filter_action:
-        filters.append(ActivityLog.action == filter_action)
     if filter_entity_type:
         filters.append(ActivityLog.entity_type == filter_entity_type)
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
     filters.append(ActivityLog.created_at >= since)
+
+    # Every action in the range (not just this page), so the filter chips list them all
+    # and keep their counts while one of them is selected.
+    action_counts = [
+        {"action": a, "count": int(n)}
+        for a, n in (
+            await session.execute(
+                select(ActivityLog.action, func.count())
+                .where(and_(*filters))
+                .group_by(ActivityLog.action)
+                .order_by(func.count().desc(), ActivityLog.action)
+            )
+        ).all()
+    ]
+
+    if filter_action:
+        filters.append(ActivityLog.action == filter_action)
 
     where = and_(*filters) if filters else True
 
@@ -98,6 +113,7 @@ async def analytics_activity_log(
         "page": page,
         "page_size": page_size,
         "pages": max(1, (total + page_size - 1) // page_size),
+        "action_counts": action_counts,
     }
 
 
