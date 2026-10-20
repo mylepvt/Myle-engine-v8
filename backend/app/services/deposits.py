@@ -78,9 +78,7 @@ REFUND_LINE = "This deposit is 100% refundable."
 NO_SIGNATURE_LINE = "Computer-generated receipt, no signature required."
 
 TERMS_VERSION = "v1"
-_TERMS_V1 = """YOUR SECURITY DEPOSIT - SIMPLE AND FULLY REFUNDABLE
-
-Hi {name} (mobile {phone}),
+_TERMS_V1 = """Hi {name} (mobile {phone}),
 
 Thank you for choosing to enroll with {business}. Here is everything about your deposit, in simple words:
 
