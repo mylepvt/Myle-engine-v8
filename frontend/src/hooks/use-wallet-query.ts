@@ -53,6 +53,8 @@ export async function postWalletAdjustment(body: {
   amount_cents: number
   idempotency_key: string
   note?: string
+  /** 'promo' = free credit, booked apart from paid recharges in Myle Ledger. */
+  kind?: 'adjustment' | 'promo'
 }): Promise<WalletLedgerEntryPublic> {
   const res = await apiFetch('/api/v1/wallet/adjustments', {
     method: 'POST',

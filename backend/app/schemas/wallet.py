@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -36,6 +36,8 @@ class WalletAdjustmentCreate(BaseModel):
     amount_cents: int
     idempotency_key: str = Field(min_length=8, max_length=128)
     note: Optional[str] = Field(default=None, max_length=512)
+    # "promo" = free / waived credit (Myle Ledger books it apart from paid recharges).
+    kind: Literal["adjustment", "promo"] = "adjustment"
 
 
 # ── Recharge request schemas ─────────────────────────────────────────────────

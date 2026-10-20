@@ -3,6 +3,7 @@
 import logging
 from typing import Annotated
 
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,7 @@ from app.services.lead_pool_defaults import (
 from app.services.lead_pool_import import parse_pool_xlsx_rows
 from app.services.lead_payloads import build_lead_public_payloads
 from app.services.leads_service import LeadsService, get_leads_service
-from app.services.push_service import send_push_to_roles_bg
+from app.services.push_service import send_push_to_roles_bg, send_push_to_user_bg
 from app.services.settings_service import SettingsService
 
 router = APIRouter()
@@ -167,6 +168,39 @@ async def _fulfill_bookings_bg() -> None:
             await fulfill_open_bookings(session)
     except Exception:
         logging.getLogger(__name__).exception("lead booking fulfilment after import failed")
+
+
+class GiveFreeLeadsBody(BaseModel):
+    user_id: int = Field(ge=1)
+    count: int = Field(ge=1, le=50)
+    reason: str = Field(min_length=1, max_length=40)
+    note: str | None = Field(default=None, max_length=60)
+
+
+@router.post("/give-free")
+async def give_free_leads_route(
+    body: GiveFreeLeadsBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, int | str]:
+    """Admin: give a member pool leads free (waived), with a reason. No wallet debit."""
+    _require_admin(user)
+    from app.services.waived_leads import give_free_leads
+
+    leads = await give_free_leads(
+        session, admin_id=user.user_id, member_id=body.user_id, count=body.count, reason=body.reason, note=body.note
+    )
+    await notify_topics("leads")
+    background_tasks.add_task(
+        send_push_to_user_bg,
+        AsyncSessionLocal,
+        body.user_id,
+        title="Free leads for you",
+        body=f"{len(leads)} lead{'s' if len(leads) != 1 else ''} added to your board, free.",
+        url="/dashboard/work/leads",
+    )
+    return {"given": len(leads), "reason": leads[0].waived_reason or body.reason}
 
 
 @router.post("/import", response_model=LeadPoolImportResponse)

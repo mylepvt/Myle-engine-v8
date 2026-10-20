@@ -22,6 +22,7 @@ import {
 } from '@/hooks/use-lead-pool-query'
 import { AdminLeadBookingsCard } from '@/components/leads/AdminLeadBookingsCard'
 import { ClaimGateBanner } from '@/components/leads/ClaimGateBanner'
+import { GiveFreeLeadsCard } from '@/components/leads/GiveFreeLeadsCard'
 import { LeadBookingCard } from '@/components/leads/LeadBookingCard'
 import { LeadContactActions } from '@/components/leads/LeadContactActions'
 import { useWalletMeQuery } from '@/hooks/use-wallet-query'
@@ -259,6 +260,8 @@ export function LeadPoolWorkPage({ title }: Props) {
       ) : null}
 
       {canManagePool ? <AdminLeadBookingsCard /> : null}
+
+      {canManagePool ? <GiveFreeLeadsCard /> : null}
 
       {canManagePool ? (
         <div className="surface-inset space-y-3 p-4 text-sm">
