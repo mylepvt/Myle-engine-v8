@@ -175,6 +175,8 @@ export const depositPublic = {
     json<ConsentTerms>(`/api/deposit/consent/${token}/verify`, { method: 'POST', body: JSON.stringify({ phone }) }),
   accept: (token: string, body: { phone: string; typed_name: string; agreed: boolean; terms_sha256: string }) =>
     json<ConsentTerms>(`/api/deposit/consent/${token}/accept`, { method: 'POST', body: JSON.stringify(body) }),
+  saveEmail: (token: string, phone: string, email: string) =>
+    json<ConsentTerms>(`/api/deposit/consent/${token}/email`, { method: 'POST', body: JSON.stringify({ phone, email }) }),
   withdraw: (token: string, phone: string) =>
     json<ConsentTerms>(`/api/deposit/consent/${token}/withdraw`, { method: 'POST', body: JSON.stringify({ phone }) }),
   receiptInfo: (token: string) =>
@@ -205,4 +207,8 @@ export type ConsentTerms = {
   terms_version: string
   given_at: string | null
   typed_name: string | null
+  email: string | null
+  welcome_email_sent_at: string | null
+  /** Only on the email step: sent | already_sent | saved (kept, but no email went out). */
+  email_result?: 'sent' | 'already_sent' | 'saved' | null
 }

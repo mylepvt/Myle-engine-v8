@@ -279,6 +279,17 @@ class Settings(BaseSettings):
         description="Myle Ledger base URL, e.g. https://ledger.example.com. Empty = no events sent back.",
     )
 
+    # --- Outgoing email (app.services.mailer; GoDaddy Titan: smtp.titan.email, 465 SSL) ---
+    smtp_host: str = Field(default="smtp.titan.email", validation_alias="SMTP_HOST")
+    smtp_port: int = Field(default=465, validation_alias="SMTP_PORT", description="465 = SSL, 587 = STARTTLS.")
+    smtp_user: str = Field(
+        default="",
+        validation_alias="SMTP_USER",
+        description="Mailbox login, e.g. support@mylecommunity.in. Empty = email off (addresses are still saved).",
+    )
+    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    mail_from_name: str = Field(default="Myle Community", validation_alias="MAIL_FROM_NAME")
+
     # --- Google Contacts sync (admin: Day 2 prospects → admin's Google / iPhone contacts) ---
     google_contacts_client_id: str = Field(
         default="",

@@ -77,35 +77,22 @@ PURPOSE_LINE = (
 REFUND_LINE = "This deposit is 100% refundable."
 NO_SIGNATURE_LINE = "Computer-generated receipt, no signature required."
 
-TERMS_VERSION = "v1"
-_TERMS_V1 = """Hi {name} (mobile {phone}),
+TERMS_VERSION = "v2"
+_TERMS_V2 = """{business_upper}
+Security Deposit & Consent Declaration
 
-Thank you for choosing to enroll with {business}. Here is everything about your deposit, in simple words:
+By proceeding with enrollment, you acknowledge and agree that:
 
-1. Amount: you are paying a security deposit of Rs. {amount} ({words}) to {business} for your enrollment.
-2. Why a deposit: it only confirms your enrollment and shows you are serious about joining. It is not a product purchase, not a service fee and not an investment, and it is not linked to any other company, product or service.
-3. 100% refundable: whenever you ask for a refund, the full amount is returned to you.
-4. Clear and honest: no income, earnings or returns have been promised to you in exchange for this deposit.
-5. Your details stay safe: we keep your name, mobile number, city and payment details (payment mode, transaction ID, date) only to record this deposit, send your receipt and process your refund, including in our internal records. We never use them for anything else.
-6. Always your choice: you can withdraw this consent at any time from this same link. If you do, your deposit is refunded and your enrollment does not continue.
+1. Deposit: You are paying ₹{amount} ({formal_words}) solely as a refundable security deposit for enrollment confirmation. It is not a product purchase, service fee, investment, or payment associated with any other company, product, or service.
+2. Refund: The deposit is 100% refundable upon request, without deductions. No income, earnings, profits, or financial returns are promised in exchange for this deposit.
+3. Information: Your name, mobile number, city, and payment details (payment mode, transaction ID, and date) will be used solely to record the deposit, issue receipts, process refunds, and maintain necessary internal records, subject to applicable legal requirements.
+4. Voluntary Consent: Your consent is voluntary and may be withdrawn at any time through the same enrollment link. Upon withdrawal, your enrollment will be discontinued and your full deposit refunded, subject to applicable law.
 
-By tapping "I Agree", I confirm that I have read the above and I agree of my own free will.
-
----
-
-नमस्ते {name} (मोबाइल {phone}),
-
-{business} के साथ जुड़ने के लिए धन्यवाद। आपकी deposit के बारे में सब कुछ, आसान शब्दों में:
-
-1. रकम: आप अपने enrollment के लिए {business} को ₹{amount} ({words}) की security deposit दे रहे हैं।
-2. Deposit क्यों: यह सिर्फ़ आपका enrollment पक्का करती है और दिखाती है कि आप जुड़ने को लेकर गंभीर हैं। यह किसी product की खरीद, service fee या investment नहीं है, और किसी दूसरी company, product या service से जुड़ी नहीं है।
-3. 100% refundable: जब भी आप refund माँगेंगे, पूरी रकम आपको वापस मिलेगी।
-4. साफ़ और ईमानदार: इस deposit के बदले आपसे किसी income, कमाई या return का वादा नहीं किया गया है।
-5. आपकी जानकारी सुरक्षित: आपका नाम, मोबाइल नंबर, शहर और payment details (payment mode, transaction ID, तारीख) हम सिर्फ़ इस deposit का record रखने, आपकी receipt भेजने और refund करने के लिए रखते हैं, अपने internal records में भी। इनका किसी और काम में कभी इस्तेमाल नहीं होता।
-6. फ़ैसला हमेशा आपका: आप इसी link से कभी भी अपनी सहमति वापस ले सकते हैं। ऐसा करने पर आपकी deposit refund होगी और enrollment आगे नहीं बढ़ेगा।
-
-"I Agree" दबाकर मैं पुष्टि करता/करती हूँ कि मैंने ऊपर लिखी बातें पढ़ ली हैं और अपनी मर्ज़ी से सहमत हूँ।
+Declaration: By tapping “I Agree,” you confirm that you have read and understood these terms and voluntarily accept them.
 """
+
+# One welcome email per address, and at most this many in all (the lead may fix a typo).
+WELCOME_EMAIL_MAX_SENDS = 3
 
 
 class DepositError(HTTPException):
@@ -122,8 +109,7 @@ _ONES = (
 _TENS = ("", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety")
 
 
-def rupees_in_words(rupees: int) -> str:
-    """196 → "One Hundred Ninety Six Rupees Only" (deposits are whole rupees, < ₹1,000)."""
+def _number_words(rupees: int, *, hyphen: bool = False) -> str:
     n = int(rupees)
     if not 0 < n < 1000:
         raise ValueError("deposit amount out of range")
@@ -132,10 +118,20 @@ def rupees_in_words(rupees: int) -> str:
         parts.append(f"{_ONES[n // 100]} Hundred")
         n %= 100
     if n >= 20:
-        parts.append(_TENS[n // 10] + (f" {_ONES[n % 10]}" if n % 10 else ""))
+        parts.append(_TENS[n // 10] + (("-" if hyphen else " ") + _ONES[n % 10] if n % 10 else ""))
     elif n:
         parts.append(_ONES[n])
-    return " ".join(parts) + " Rupees Only"
+    return " ".join(parts)
+
+
+def rupees_in_words(rupees: int) -> str:
+    """196 → "One Hundred Ninety Six Rupees Only" (deposits are whole rupees, < ₹1,000)."""
+    return _number_words(rupees) + " Rupees Only"
+
+
+def rupees_in_words_formal(rupees: int) -> str:
+    """149 → "Rupees One Hundred Forty-Nine Only" (the wording in the terms)."""
+    return f"Rupees {_number_words(rupees, hyphen=True)} Only"
 
 
 def phone10(raw: str | None) -> str | None:
@@ -212,12 +208,12 @@ async def save_settings(session: AsyncSession, values: dict[str, str | None]) ->
 
 
 def render_terms(*, name: str, phone: str, amount_rupees: int, business: str) -> str:
-    return _TERMS_V1.format(
-        name=name,
-        phone=phone,
+    # v2 names no one: who agreed (typed name, verified mobile) is on the consent record itself.
+    del name, phone
+    return _TERMS_V2.format(
+        business_upper=business.upper(),
         amount=amount_rupees,
-        words=rupees_in_words(amount_rupees),
-        business=business,
+        formal_words=rupees_in_words_formal(amount_rupees),
     )
 
 
@@ -384,6 +380,44 @@ async def withdraw_consent(
     _log(session, consent.created_by_user_id, "deposit.consent_withdrawn", consent.lead_id, {"consent_id": consent.id, "by": "lead"})
     deposit_ledger.queue(session, "deposit.consent_withdrawn", consent=consent_record(consent))
     return consent
+
+
+async def save_email_and_welcome(session: AsyncSession, *, consent: DepositConsent, email: str) -> str:
+    """The lead's email, given after agreeing; sends the welcome email once per address.
+
+    Returns ``sent``, ``already_sent`` or ``saved`` (email not configured, or the server
+    refused: the address is kept either way). The caller commits.
+    """
+    from app.services import mailer
+    from app.services.welcome_email import render_welcome
+
+    if consent_state(consent) != "given":
+        raise DepositError("Agree to the terms first, then add your email.")
+    email = email.strip().lower()
+    if consent.email == email and consent.welcome_email_sent_at is not None:
+        return "already_sent"
+    consent.email = email
+    lead = await session.get(Lead, consent.lead_id)
+    if lead is not None and not (lead.email or "").strip():
+        lead.email = email
+    if consent.welcome_email_sends >= WELCOME_EMAIL_MAX_SENDS or not mailer.mail_configured():
+        return "saved"
+    biz = await business_details(session)
+    subject, html, text = render_welcome(
+        name=consent.typed_name or consent.payer_name,
+        business=biz["name"],
+        support_email=biz["email"],
+        amount_rupees=consent.amount_cents // 100,
+    )
+    try:
+        await mailer.send_email(to=email, subject=subject, html=html, text=text)
+    except mailer.MailError as e:
+        _log(session, consent.created_by_user_id, "deposit.welcome_email_failed", consent.lead_id, {"consent_id": consent.id, "error": str(e)[:300]})
+        return "saved"
+    consent.welcome_email_sent_at = datetime.now(timezone.utc)
+    consent.welcome_email_sends += 1
+    _log(session, consent.created_by_user_id, "deposit.welcome_email_sent", consent.lead_id, {"consent_id": consent.id})
+    return "sent"
 
 
 def consent_record(c: DepositConsent) -> dict[str, Any]:

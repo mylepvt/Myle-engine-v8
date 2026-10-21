@@ -54,6 +54,10 @@ class DepositConsent(Base):
     withdrawn_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     withdraw_ip: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     withdraw_user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Given by the lead after agreeing; the welcome email goes here (at most WELCOME_EMAIL_MAX_SENDS).
+    email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
+    welcome_email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    welcome_email_sends: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
 
 
 class DepositReceipt(Base):
