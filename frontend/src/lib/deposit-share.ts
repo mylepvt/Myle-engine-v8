@@ -22,8 +22,7 @@ export function depositConsentMessage(name: string | null | undefined, amountRup
     `Hi ${name || 'there'} ji,\n\n` +
     // emoji-ok: prospect-facing WhatsApp message text
     `Myle Community mein aapka swagat hai! 🙏\n\n` +
-    `Enrollment confirm karne ke liye ₹${amountRupees} ka ek chhota security deposit hota hai. ` +
-    `Ye poora 100% refundable hai, aap jab chahein wapas le sakte hain.\n\n` +
+    `Enrollment confirm karne ke liye ₹${amountRupees} ka ek chhota security deposit hota hai.\n\n` +
     `Payment se pehle bas ek baar is link par details dekh lijiye aur "I Agree" kar dijiye (1 minute lagega):\n${url}\n\n` +
     `Koi bhi sawaal ho to bejhijhak poochiye.`
   )
@@ -40,7 +39,7 @@ export function depositReceiptMessage(
     // emoji-ok: prospect-facing WhatsApp message text
     `Aapka ₹${amountRupees} ka security deposit mil gaya hai, dhanyavaad! 🙏\n\n` +
     `Aapki receipt (${receiptNumber}) yahan hai, apna mobile number daal kar download kar lijiye:\n${url}\n\n` +
-    `Ye deposit 100% refundable hai.`
+    `Myle Community family mein aapka swagat hai!`
   )
 }
 

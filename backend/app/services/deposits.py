@@ -71,10 +71,9 @@ DEFAULT_BUSINESS_NAME = "Myle Community"
 DEFAULT_SUPPORT_EMAIL = "support@mylecommunity.in"
 
 PURPOSE_LINE = (
-    "Refundable security deposit for enrollment. Not a product purchase or service fee, "
-    "and not linked to any other service."
+    "Security deposit for enrollment confirmation, refundable as per the deposit terms you agreed to. "
+    "Not a product purchase, service fee or investment, and not linked to any other company, product or service."
 )
-REFUND_LINE = "This deposit is 100% refundable."
 NO_SIGNATURE_LINE = "Computer-generated receipt, no signature required."
 
 TERMS_VERSION = "v2"

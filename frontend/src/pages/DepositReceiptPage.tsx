@@ -55,7 +55,7 @@ export function DepositReceiptPage() {
               <FileText className="mt-1 size-6 shrink-0 text-primary" aria-hidden />
               <div>
                 <p className="text-sm text-muted-foreground">{info.business_name}</p>
-                <h1 className="text-lg font-semibold text-foreground">Refundable Security Deposit Receipt</h1>
+                <h1 className="text-lg font-semibold text-foreground">Security Deposit Receipt</h1>
                 <p className="font-mono text-sm text-muted-foreground">{info.receipt_number}</p>
               </div>
             </div>
@@ -84,7 +84,7 @@ export function DepositReceiptPage() {
               {busy ? 'Preparing…' : 'Download receipt (PDF)'}
             </button>
             <p className="text-center text-xs text-muted-foreground">
-              Your deposit is 100% refundable. Questions? Write to{' '}
+              Questions? Write to{' '}
               <a href={`mailto:${info.support_email}`} className="text-primary underline-offset-2 hover:underline">
                 {info.support_email}
               </a>

@@ -185,20 +185,21 @@ async def test_consent_then_payment_then_receipt_then_day1(engine):
         assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
         text = _pdf_text(pdf.content)
         for needle in (
-            "Refundable Security Deposit Receipt",
+            "Security Deposit Receipt",
             receipt["receipt_number"],
             "Rohit Kumar",
             phone,
             "Jaipur",
             "One Hundred Ninety Six Rupees Only",
             "412345678901",
-            "Not a product purchase or service fee",
-            "This deposit is 100% refundable.",
+            "refundable as per the deposit terms you",
+            "Not a product purchase, service fee or investment",
             "Computer-generated receipt, no signature required.",
             "Myle Community",
             "Email: support@mylecommunity.in",
         ):
             assert needle in text, needle
+        assert "Refundable Security Deposit Receipt" not in text and "100% refundable" not in text
         assert "Address" not in text and "[FILL IN]" not in text
         assert "GST" not in text.upper()
 
