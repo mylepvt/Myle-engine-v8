@@ -122,7 +122,7 @@ export function CtcsLeadCard({
   const showCurrentSectionHint =
     lead.archived_at != null || currentSection.path !== '/dashboard/work/leads'
   const showNextSectionHint = timerEndingSoon && nextSection != null
-  const showSendToDay1 = currentRole !== 'admin' && ENROLLMENT_SENDABLE_STATUSES.includes(lead.status)
+  const showSendToDay1 = ENROLLMENT_SENDABLE_STATUSES.includes(lead.status)
 
   return (
     <div

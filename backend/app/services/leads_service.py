@@ -1020,7 +1020,8 @@ class LeadsService:
         leader_id = await self._handoff_to_leader_day1(lead, actor=user, now=now)
         from app.services.wins import record_win
 
-        if not already_enrolled_before:
+        # Admins can send (e.g. to test a lead) but never get the win; they earn no points either.
+        if not already_enrolled_before and user.role != "admin":
             record_win(self._session, user_id=user.user_id, kind="enrollment")
         lead = await self._commit_with_shadow_upsert(lead)
         self._queue_leader_handoff_push(leader_id, lead, actor_user_id=user.user_id)
