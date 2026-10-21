@@ -104,19 +104,6 @@ def render_welcome(*, name: str, business: str, support_email: str, amount_rupee
     </td></tr>
 
     <tr><td style="padding:28px 32px 0 32px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-        style="background:{_CREAM};border-radius:16px;border:1px solid {_LINE};"><tr><td style="padding:20px 22px;">
-        <div style="font-size:15px;line-height:24px;color:{_INK};font-style:italic;">
-          &ldquo;Alone we can do so little; together we can do so much.&rdquo;
-        </div>
-        <div style="font-size:12px;color:{_GOLD};font-weight:700;padding-top:4px;">HELEN KELLER</div>
-        <div style="font-size:14px;line-height:22px;color:{_MUTED};padding-top:10px;">
-          That is how we work at {biz}. Welcome aboard, {n}. We can't wait to see you grow.
-        </div>
-      </td></tr></table>
-    </td></tr>
-
-    <tr><td style="padding:28px 32px 0 32px;">
       <div style="font-size:15px;line-height:23px;color:{_INK};">With warmth,<br>
         <span style="font-weight:700;color:{_GOLD};">Team {biz}</span></div>
     </td></tr>
