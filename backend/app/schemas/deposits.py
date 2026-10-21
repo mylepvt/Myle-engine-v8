@@ -22,6 +22,17 @@ class ConsentPublic(BaseModel):
     given_at: Optional[datetime] = None
     typed_name: Optional[str] = None
     withdrawn_at: Optional[datetime] = None
+    # Enrollment link (after the member's upload): register | mismatch | done.
+    registration_stage: Optional[str] = None
+    reg_name: Optional[str] = None
+    reg_email: Optional[str] = None
+    reg_phone: Optional[str] = None
+    reg_submitted_at: Optional[datetime] = None
+    match_status: Optional[str] = None
+    match_detail: Optional[str] = None
+    member_proof_url: Optional[str] = None
+    prospect_proof_url: Optional[str] = None
+    welcome_email_sent_at: Optional[datetime] = None
 
 
 class ReceiptPublic(BaseModel):
@@ -114,6 +125,10 @@ class ConsentTerms(BaseModel):
     welcome_email_sent_at: Optional[datetime] = None
     # Only on the email step: sent | already_sent | saved.
     email_result: Optional[str] = None
+    # Enrollment link (after payment): register | mismatch | done; None for a pre-payment link.
+    registration_stage: Optional[str] = None
+    reg_name: Optional[str] = None
+    reg_phone: Optional[str] = None
 
 
 class ConsentEmail(BaseModel):

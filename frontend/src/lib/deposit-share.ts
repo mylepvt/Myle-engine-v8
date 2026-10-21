@@ -28,6 +28,18 @@ export function depositConsentMessage(name: string | null | undefined, amountRup
   )
 }
 
+/** After the payment upload: the prospect agrees and registers on this link. */
+export function depositEnrollmentMessage(name: string | null | undefined, url: string): string {
+  return (
+    `Hi ${name || 'there'} ji,\n\n` +
+    // emoji-ok: prospect-facing WhatsApp message text
+    `Myle Community mein aapka swagat hai! 🙏 Aapka payment mil gaya hai.\n\n` +
+    `Enrollment poora karne ke liye is link par terms dekh kar "I Agree" kijiye, phir apna naam, email, ` +
+    `mobile number aur payment ka screenshot daal dijiye (2 minute lagenge):\n${url}\n\n` +
+    `Uske baad aapke email par aapka welcome aa jaayega.`
+  )
+}
+
 export function depositReceiptMessage(
   name: string | null | undefined,
   amountRupees: number,
@@ -51,6 +63,10 @@ function openWhatsApp(phone: string | null | undefined, text: string): void {
 
 export function shareConsentOnWhatsApp(lead: { name?: string | null; phone?: string | null }, amountRupees: number, token: string) {
   openWhatsApp(lead.phone, depositConsentMessage(lead.name, amountRupees, depositConsentUrl(token)))
+}
+
+export function shareEnrollmentOnWhatsApp(lead: { name?: string | null; phone?: string | null }, token: string) {
+  openWhatsApp(lead.phone, depositEnrollmentMessage(lead.name, depositConsentUrl(token)))
 }
 
 export function shareReceiptOnWhatsApp(receipt: DepositReceipt) {

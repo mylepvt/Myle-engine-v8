@@ -99,6 +99,52 @@ async def _consent(client: AsyncClient, lead_id: int, phone: str, amount: int = 
     return token
 
 
+async def _link_token(client: AsyncClient, lead_id: int) -> str:
+    consent = (await client.get(f"/api/v1/deposits/leads/{lead_id}")).json()["consent"]
+    assert consent and consent["token"], consent
+    return consent["token"]
+
+
+async def _agree(client: AsyncClient, token: str, phone: str, name: str = "Rohit Kumar") -> None:
+    terms = (await client.post(f"/api/deposit/consent/{token}/verify", json={"phone": phone})).json()
+    r = await client.post(
+        f"/api/deposit/consent/{token}/accept",
+        json={"phone": phone, "typed_name": name, "agreed": True, "terms_sha256": terms["terms_sha256"]},
+    )
+    assert r.status_code == 200, r.text
+
+
+async def _register(client: AsyncClient, token: str, phone: str, *, image: bytes = _PNG, name: str = "Rohit Kumar", email: str = "rohit@example.com", active_phone: str | None = None):
+    data = {"phone": phone, "name": name, "email": email, "active_phone": active_phone or phone}
+    return await client.post(
+        f"/api/deposit/consent/{token}/register", data=data, files={"screenshot": ("pay.png", image, "image/png")}
+    )
+
+
+async def _enroll(client: AsyncClient, lead_id: int, phone: str, *, amount: int = 196, mode: str = "upi", ref: str = "412345678901", name: str = "Rohit Kumar") -> dict:
+    """The whole flow: member uploads → prospect agrees → registers with the same screenshot."""
+    r = await _upload(client, lead_id, amount=amount, mode=mode, ref=ref)
+    assert r.status_code == 200, r.text
+    token = await _link_token(client, lead_id)
+    await _agree(client, token, phone, name)
+    r = await _register(client, token, phone, name=name)
+    assert r.status_code == 200, r.text
+    assert r.json()["registration_stage"] == "done", r.json()
+    return r.json()
+
+
+def _other_png() -> bytes:
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (300, 600), "white")
+    d = ImageDraw.Draw(img)
+    for i in range(0, 600, 40):
+        d.rectangle((0, i, 300, i + 20), fill=(i % 255, 40, 200))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def _now_iso(minutes_ago: int = 5) -> str:
     return (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat()
 
@@ -123,20 +169,27 @@ def _pdf_text(data: bytes) -> str:
 # ── the happy path, and every check on the way ───────────────────────────────
 
 
-async def test_consent_then_payment_then_receipt_then_day1(engine):
+async def test_payment_then_link_then_agree_register_and_day1(engine):
     await _seed(engine)
     phone = "9811100001"
     async with _as(engine, "team", 201) as team:
         lead_id = await _lead_at_video_watched(team, phone)
 
-        # No consent → can't enroll.
-        r = await _upload(team, lead_id)
-        assert r.status_code == 400 and "consent" in r.text
+        # Payment details must be right.
+        assert (await _upload(team, lead_id, mode=None)).status_code == 400
+        assert (await _upload(team, lead_id, ref=None)).status_code == 400
+        assert (await _upload(team, lead_id, ref="41234567890")).status_code == 400  # UPI = 12 digits
+        assert (await _upload(team, lead_id, amount=250)).status_code == 400
+        future = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+        assert (await _upload(team, lead_id, paid_at=future)).status_code == 400
 
-        r = await team.post(f"/api/v1/deposits/leads/{lead_id}/consent-link", json={"amount_rupees": 196})
+        # The upload doesn't move the lead: it waits for the prospect.
+        r = await _upload(team, lead_id, ref="4123 4567 8901")
         assert r.status_code == 200, r.text
-        state = r.json()
-        assert state["gate_enabled"] is True and state["consent"]["state"] == "pending"
+        assert r.json()["status"] == "video_watched"
+        state = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()
+        assert state["receipt"] is None
+        assert state["consent"]["state"] == "pending" and state["consent"]["registration_stage"] == "register"
         token = state["consent"]["token"]
 
         # The lead's side: masked number, then their own number unlocks the terms.
@@ -153,7 +206,10 @@ async def test_consent_then_payment_then_receipt_then_day1(engine):
         assert terms["terms_text"].startswith("MYLE COMMUNITY\nSecurity Deposit & Consent Declaration")
         assert "₹196 (Rupees One Hundred Ninety-Six Only)" in terms["terms_text"]
         assert "100% refundable" in terms["terms_text"] and "नमस्ते" not in terms["terms_text"]
-        assert terms["terms_version"] == "v2"
+        assert terms["terms_version"] == "v2" and terms["registration_stage"] == "register"
+
+        # Registering needs the agreement first.
+        assert (await _register(team, token, phone)).status_code == 400
 
         accept = {"phone": phone, "typed_name": "Rohit Kumar", "agreed": True, "terms_sha256": terms["terms_sha256"]}
         assert (await team.post(f"/api/deposit/consent/{token}/accept", json={**accept, "agreed": False})).status_code == 400
@@ -161,21 +217,23 @@ async def test_consent_then_payment_then_receipt_then_day1(engine):
         r = await team.post(f"/api/deposit/consent/{token}/accept", json=accept, headers={"user-agent": "LeadPhone/1.0"})
         assert r.status_code == 200 and r.json()["state"] == "given"
 
-        # Payment details must be right.
-        assert (await _upload(team, lead_id, mode=None)).status_code == 400
-        assert (await _upload(team, lead_id, ref=None)).status_code == 400
-        assert (await _upload(team, lead_id, ref="41234567890")).status_code == 400  # UPI = 12 digits
-        assert (await _upload(team, lead_id, amount=199)).status_code == 400  # agreed to ₹196
-        future = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
-        assert (await _upload(team, lead_id, paid_at=future)).status_code == 400
-
-        r = await _upload(team, lead_id, ref="4123 4567 8901")
+        # The registration form.
+        assert (await _register(team, token, phone, email="nope")).status_code == 422
+        assert (await _register(team, token, "9999999999")).status_code == 403
+        assert (await _register(team, token, phone, active_phone="12")).status_code == 400
+        r = await _register(team, token, phone, active_phone="9822200001")
         assert r.status_code == 200, r.text
-        assert r.json()["status"] == "day1"
+        assert r.json()["registration_stage"] == "done" and r.json()["reg_phone"] == "9822200001"
+        assert (await _register(team, token, phone)).status_code == 409  # already registered
+
+    async with AsyncSession(engine) as s:
+        c = (await s.execute(select(DepositConsent).where(DepositConsent.lead_id == lead_id))).scalars().one()
+        assert c.match_status == "matched" and c.email == "rohit@example.com" and c.completed_at is not None
 
     async with _as(engine, "leader", 202) as leader:
         state = (await leader.get(f"/api/v1/deposits/leads/{lead_id}")).json()
         receipt = state["receipt"]
+        assert (await leader.get(f"/api/v1/leads/{lead_id}")).json()["status"] == "day1"
         assert _RECEIPT_RE.match(receipt["receipt_number"])
         assert receipt["status"] == "held" and receipt["amount_rupees"] == 196
         assert receipt["payment_ref"] == "412345678901" and receipt["lead_city"] == "Jaipur"
@@ -247,8 +305,8 @@ async def test_withdrawn_consent_blocks_and_staff_cannot_agree(engine):
     phone = "9811100004"
     async with _as(engine, "team", 201) as team:
         lead_id = await _lead_at_video_watched(team, phone)
-        r = await team.post(f"/api/v1/deposits/leads/{lead_id}/consent-link", json={"amount_rupees": 150})
-        token = r.json()["consent"]["token"]
+        assert (await _upload(team, lead_id, amount=150, ref="512345678901")).status_code == 200
+        token = await _link_token(team, lead_id)
         terms = (await team.post(f"/api/deposit/consent/{token}/verify", json={"phone": phone})).json()
         body = {"phone": phone, "typed_name": "Rohit", "agreed": True, "terms_sha256": terms["terms_sha256"]}
 
@@ -257,10 +315,12 @@ async def test_withdrawn_consent_blocks_and_staff_cannot_agree(engine):
         assert r.status_code == 403
 
         assert (await team.post(f"/api/deposit/consent/{token}/accept", json=body)).status_code == 200
+        # Staff can't register for the lead either.
+        assert (await team.post(f"/api/deposit/consent/{token}/register", data={}, cookies={"myle_access": "x"})).status_code in (403, 422)
         r = await team.post(f"/api/deposit/consent/{token}/withdraw", json={"phone": phone})
         assert r.status_code == 200 and r.json()["state"] == "withdrawn"
-        r = await _upload(team, lead_id, amount=150, ref="512345678901")
-        assert r.status_code == 400 and "consent" in r.text
+        assert (await _register(team, token, phone)).status_code == 400
+        assert (await team.get(f"/api/v1/leads/{lead_id}")).json()["status"] == "video_watched"
 
 
 async def test_email_after_agreeing_sends_one_welcome_email(engine, monkeypatch):
@@ -325,17 +385,13 @@ async def test_admin_can_send_to_day1_but_gets_no_win(engine):
     async with _as(engine, "admin", 203) as admin:
         # The admin's own test lead, and a team member's lead.
         own = await _lead_at_video_watched(admin, "9811100031", name="Dummy Lead")
-        await _consent(admin, own, "9811100031", amount=149)
-        r = await _upload(admin, own, amount=149, ref="712345678931")
-        assert r.status_code == 200, r.text
-        assert r.json()["status"] == "day1"
+        await _enroll(admin, own, "9811100031", amount=149, ref="712345678931")
+        assert (await admin.get(f"/api/v1/leads/{own}")).json()["status"] == "day1"
     async with _as(engine, "team", 201) as team:
         member_lead = await _lead_at_video_watched(team, "9811100032")
-        await _consent(team, member_lead, "9811100032", amount=149)
     async with _as(engine, "admin", 203) as admin:
-        r = await _upload(admin, member_lead, amount=149, ref="712345678932")
-        assert r.status_code == 200, r.text
-        assert r.json()["status"] == "day1"
+        await _enroll(admin, member_lead, "9811100032", amount=149, ref="712345678932")
+        assert (await admin.get(f"/api/v1/leads/{member_lead}")).json()["status"] == "day1"
     async with AsyncSession(engine) as s:
         assert (await s.execute(select(Win).where(Win.user_id == 203))).scalars().all() == []
 
@@ -374,6 +430,94 @@ async def test_admin_test_email_reports_the_mail_server_answer(engine, monkeypat
         assert r["ok"] is True
 
 
+async def test_mismatched_screenshot_waits_for_a_leader(engine):
+    await _seed(engine)
+    phone = "9811100041"
+    async with _as(engine, "team", 201) as team:
+        lead_id = await _lead_at_video_watched(team, phone)
+        assert (await _upload(team, lead_id, ref="812345678941")).status_code == 200
+        token = await _link_token(team, lead_id)
+        await _agree(team, token, phone)
+        r = await _register(team, token, phone, image=_other_png())
+        assert r.status_code == 200 and r.json()["registration_stage"] == "mismatch"
+        state = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()
+        assert state["receipt"] is None and state["consent"]["match_status"] == "mismatch"
+        assert state["consent"]["prospect_proof_url"] and state["consent"]["member_proof_url"]
+        assert (await team.get(f"/api/v1/leads/{lead_id}")).json()["status"] == "video_watched"
+        # The member can't approve their own upload.
+        assert (await team.post(f"/api/v1/deposits/leads/{lead_id}/approve-registration")).status_code == 403
+        # The prospect may try again with the right screenshot (max 3 tries in all).
+        r = await _register(team, token, phone, image=_other_png())
+        assert r.json()["registration_stage"] == "mismatch"
+
+    # A re-upload replaces the old link; the prospect can't register on it any more.
+    async with _as(engine, "team", 201) as team:
+        other = await _lead_at_video_watched(team, "9811100045")
+        assert (await _upload(team, other, ref="812345678945")).status_code == 200
+        old_token = await _link_token(team, other)
+        await _agree(team, old_token, "9811100045")
+        assert (await _upload(team, other, ref="812345678946")).status_code == 200
+        assert await _link_token(team, other) != old_token
+        assert (await _register(team, old_token, "9811100045")).status_code == 410
+
+    async with _as(engine, "leader", 202) as leader:
+        r = await leader.post(f"/api/v1/deposits/leads/{lead_id}/approve-registration")
+        assert r.status_code == 200, r.text
+        assert r.json()["receipt"]["status"] == "held"
+        assert r.json()["consent"]["match_status"] == "approved"
+        assert (await leader.get(f"/api/v1/leads/{lead_id}")).json()["status"] == "day1"
+        assert (await leader.post(f"/api/v1/deposits/leads/{lead_id}/approve-registration")).status_code == 400
+
+
+async def test_ocr_transaction_id_on_a_different_screenshot_matches(engine, monkeypatch):
+    from app.services import payment_proof_match
+
+    monkeypatch.setattr(payment_proof_match, "_ocr_image_to_text", lambda data: (True, "Paid ₹196 UPI Ref No 8123 4567 8942"))
+    await _seed(engine)
+    phone = "9811100042"
+    async with _as(engine, "team", 201) as team:
+        lead_id = await _lead_at_video_watched(team, phone)
+        assert (await _upload(team, lead_id, ref="812345678942")).status_code == 200
+        token = await _link_token(team, lead_id)
+        await _agree(team, token, phone)
+        r = await _register(team, token, phone, image=_other_png())
+        assert r.json()["registration_stage"] == "done"
+
+    # OCR reads the image but the Transaction ID isn't on it → mismatch, even for a look-alike.
+    monkeypatch.setattr(payment_proof_match, "_ocr_image_to_text", lambda data: (True, "Paid ₹196 UPI Ref No 999999999999"))
+    phone = "9811100043"
+    async with _as(engine, "team", 201) as team:
+        lead_id = await _lead_at_video_watched(team, phone)
+        assert (await _upload(team, lead_id, ref="812345678943")).status_code == 200
+        token = await _link_token(team, lead_id)
+        await _agree(team, token, phone)
+        r = await _register(team, token, phone, image=_other_png())
+        assert r.json()["registration_stage"] == "mismatch"
+
+
+async def test_enrollment_sends_the_premium_welcome_email(engine, monkeypatch):
+    from app.services import mailer
+
+    sent: list[dict] = []
+
+    async def _fake_send(**kw):
+        sent.append(kw)
+
+    monkeypatch.setattr(mailer, "mail_configured", lambda: True)
+    monkeypatch.setattr(mailer, "send_email", _fake_send)
+    await _seed(engine)
+    phone = "9811100044"
+    async with _as(engine, "team", 201) as team:
+        lead_id = await _lead_at_video_watched(team, phone)
+        done = await _enroll(team, lead_id, phone, ref="812345678944")
+        assert done["welcome_email_sent_at"]
+        receipt = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()["receipt"]
+    assert len(sent) == 1 and sent[0]["to"] == "rohit@example.com"
+    assert sent[0]["subject"] == "Welcome to Myle Community, Rohit. Your enrollment is confirmed"
+    assert receipt["receipt_number"] in sent[0]["html"] and "Test leader 202" in sent[0]["html"]
+    assert "refund" not in sent[0]["text"].lower()
+
+
 async def test_wrong_numbers_lock_the_link(engine):
     await _seed(engine)
     async with _as(engine, "team", 201) as team:
@@ -392,13 +536,11 @@ async def test_send_back_cancels_receipt_and_numbers_are_never_reused(engine):
     phone = "9811100006"
     async with _as(engine, "team", 201) as team:
         lead_id = await _lead_at_video_watched(team, phone)
-        await _consent(team, lead_id, phone)
-        assert (await _upload(team, lead_id, ref="612345678901")).status_code == 200
+        await _enroll(team, lead_id, phone, ref="612345678901")
         first = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()["receipt"]["receipt_number"]
 
         # The same Transaction ID can't back a second lead's receipt.
         other = await _lead_at_video_watched(team, "9811100007")
-        await _consent(team, other, "9811100007")
         r = await _upload(team, other, ref="612345678901")
         assert r.status_code == 409 and first in r.text
 
@@ -410,9 +552,8 @@ async def test_send_back_cancels_receipt_and_numbers_are_never_reused(engine):
         assert old.status == "cancelled" and "blurry" in old.cancel_reason
 
     async with _as(engine, "team", 201) as team:
-        # Re-upload (consent still given) gets a NEW number; the cancelled one stays used.
-        r = await _upload(team, lead_id, ref="612345678901")
-        assert r.status_code == 200, r.text
+        # Re-enrollment (new link, agree, register) gets a NEW number; the cancelled one stays used.
+        await _enroll(team, lead_id, phone, ref="612345678901")
         second = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()["receipt"]["receipt_number"]
         assert second != first and int(second.rsplit("-", 1)[1]) > int(first.rsplit("-", 1)[1])
 
@@ -422,8 +563,7 @@ async def test_refund_list_search_and_public_receipt(engine):
     phone = "9811100008"
     async with _as(engine, "team", 201) as team:
         lead_id = await _lead_at_video_watched(team, phone, name="Sunita Devi")
-        await _consent(team, lead_id, phone, amount=200)
-        assert (await _upload(team, lead_id, amount=200, mode="bank_transfer", ref="UTR-HDFC-778899")).status_code == 200
+        await _enroll(team, lead_id, phone, amount=200, mode="bank_transfer", ref="UTR-HDFC-778899", name="Sunita Devi")
         receipt = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()["receipt"]
         assert (await team.get("/api/v1/deposits/receipts")).status_code == 403
         assert (await team.post(f"/api/v1/deposits/receipts/{receipt['receipt_number']}/refund", json={})).status_code in (403, 422)
@@ -492,8 +632,7 @@ async def test_settings_go_on_new_receipts(engine):
     try:
         async with _as(engine, "team", 201) as team:
             lead_id = await _lead_at_video_watched(team, phone)
-            await _consent(team, lead_id, phone)
-            assert (await _upload(team, lead_id, ref="102345678901")).status_code == 200
+            await _enroll(team, lead_id, phone, ref="102345678901")
             receipt = (await team.get(f"/api/v1/deposits/leads/{lead_id}")).json()["receipt"]
             text = _pdf_text((await team.get(receipt["pdf_path"])).content)
             assert "Email: help@myle.test" in text and "support@mylecommunity.in" not in text
@@ -510,8 +649,7 @@ async def test_ledger_gets_deposits_on_their_own_queue(engine, monkeypatch):
     phone = "9811100011"
     async with _as(engine, "team", 201) as team:
         lead_id = await _lead_at_video_watched(team, phone)
-        await _consent(team, lead_id, phone)
-        assert (await _upload(team, lead_id, ref="112345678901")).status_code == 200
+        await _enroll(team, lead_id, phone, ref="112345678901")
 
     async with AsyncSession(engine) as s:
         rows = (await s.execute(select(DepositLedgerOutbox).order_by(DepositLedgerOutbox.id))).scalars().all()
@@ -554,3 +692,34 @@ def test_payment_ref_rules():
     for mode, ref in (("upi", "ABC123456789"), ("upi", ""), ("card", "12"), ("cash", "123456")):
         with pytest.raises(deposits.DepositError):
             deposits.normalize_payment_ref(mode, ref)
+
+
+def test_screenshot_survives_whatsapp_recompression_but_not_a_different_one(monkeypatch):
+    from PIL import Image, ImageDraw
+
+    from app.services import payment_proof_match as m
+
+    monkeypatch.setattr(m, "_ocr_image_to_text", lambda data: (False, ""))  # no OCR on this server
+
+    def shot(seed: int) -> Image.Image:
+        img = Image.new("RGB", (720, 1500), (246, 246, 250))
+        d = ImageDraw.Draw(img)
+        d.rectangle((0, 0, 720, 260), fill=(95, 37, 159))
+        d.ellipse((290, 330, 430, 470), fill=(30, 160, 90))
+        for i in range(14):
+            w = 200 + ((seed * 97 + i * 53) % 420)
+            d.rectangle((60, 540 + i * 62, 60 + w, 566 + i * 62), fill=(60, 60, 70))
+        return img
+
+    def encode(img: Image.Image, fmt: str, **kw) -> bytes:
+        buf = io.BytesIO()
+        img.save(buf, format=fmt, **kw)
+        return buf.getvalue()
+
+    original = encode(shot(1), "PNG")
+    forwarded = encode(shot(1).resize((540, 1125)), "JPEG", quality=55)  # WhatsApp-style
+    different = encode(shot(7), "PNG")
+    member = {"member_sha256": m.sha256_bytes(original), "member_dhash": m.dhash_hex(original), "payment_ref": "412345678901"}
+    assert m.check_match(prospect_image=original, **member).matched
+    assert m.check_match(prospect_image=forwarded, **member).matched
+    assert not m.check_match(prospect_image=different, **member).matched

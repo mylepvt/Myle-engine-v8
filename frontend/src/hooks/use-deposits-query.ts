@@ -14,7 +14,20 @@ export type DepositConsent = {
   given_at: string | null
   typed_name: string | null
   withdrawn_at: string | null
+  /** Enrollment link (sent after the payment upload): register → mismatch | done. */
+  registration_stage: RegistrationStage | null
+  reg_name: string | null
+  reg_email: string | null
+  reg_phone: string | null
+  reg_submitted_at: string | null
+  match_status: 'matched' | 'mismatch' | 'approved' | null
+  match_detail: string | null
+  member_proof_url: string | null
+  prospect_proof_url: string | null
+  welcome_email_sent_at: string | null
 }
+
+export type RegistrationStage = 'register' | 'mismatch' | 'done'
 
 export type DepositReceipt = {
   receipt_number: string
@@ -84,13 +97,20 @@ export const depositKeys = {
   settings: ['deposits', 'settings'] as const,
 }
 
+export function fetchLeadDeposit(leadId: number): Promise<LeadDepositState> {
+  return json<LeadDepositState>(`/api/v1/deposits/leads/${leadId}`)
+}
+
 export function useLeadDepositQuery(leadId: number, enabled = true) {
   return useQuery({
     queryKey: depositKeys.lead(leadId),
-    queryFn: () => json<LeadDepositState>(`/api/v1/deposits/leads/${leadId}`),
+    queryFn: () => fetchLeadDeposit(leadId),
     enabled,
-    // While the lead is reading the consent page, pick up their answer without a reload.
-    refetchInterval: (q) => (q.state.data?.consent?.state === 'pending' ? 8000 : false),
+    // While the prospect is on their link, pick up their answer without a reload.
+    refetchInterval: (q) => {
+      const c = q.state.data?.consent
+      return c && (c.state === 'pending' || c.registration_stage === 'register') ? 8000 : false
+    },
   })
 }
 
@@ -103,6 +123,18 @@ export function useCreateConsentLinkMutation(leadId: number) {
         body: JSON.stringify({ amount_rupees: amountRupees }),
       }),
     onSuccess: (data) => qc.setQueryData(depositKeys.lead(leadId), data),
+  })
+}
+
+/** Leader/admin: the prospect's screenshot didn't match, checked by hand → finish the enrollment. */
+export function useApproveRegistrationMutation(leadId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => json<LeadDepositState>(`/api/v1/deposits/leads/${leadId}/approve-registration`, { method: 'POST' }),
+    onSuccess: (data) => {
+      qc.setQueryData(depositKeys.lead(leadId), data)
+      void qc.invalidateQueries({ queryKey: ['leads'] })
+    },
   })
 }
 
@@ -184,6 +216,20 @@ export const depositPublic = {
     json<ConsentTerms>(`/api/deposit/consent/${token}/accept`, { method: 'POST', body: JSON.stringify(body) }),
   saveEmail: (token: string, phone: string, email: string) =>
     json<ConsentTerms>(`/api/deposit/consent/${token}/email`, { method: 'POST', body: JSON.stringify({ phone, email }) }),
+  register: async (
+    token: string,
+    body: { phone: string; name: string; email: string; active_phone: string; screenshot: File },
+  ): Promise<ConsentTerms> => {
+    const form = new FormData()
+    form.append('phone', body.phone)
+    form.append('name', body.name)
+    form.append('email', body.email)
+    form.append('active_phone', body.active_phone)
+    form.append('screenshot', body.screenshot)
+    const res = await apiFetch(`/api/deposit/consent/${token}/register`, { method: 'POST', body: form })
+    if (!res.ok) await parseError(res)
+    return res.json() as Promise<ConsentTerms>
+  },
   withdraw: (token: string, phone: string) =>
     json<ConsentTerms>(`/api/deposit/consent/${token}/withdraw`, { method: 'POST', body: JSON.stringify({ phone }) }),
   receiptInfo: (token: string) =>
@@ -218,4 +264,8 @@ export type ConsentTerms = {
   welcome_email_sent_at: string | null
   /** Only on the email step: sent | already_sent | saved (kept, but no email went out). */
   email_result?: 'sent' | 'already_sent' | 'saved' | null
+  /** Enrollment link: register → mismatch | done. Null on a pre-payment consent link. */
+  registration_stage?: RegistrationStage | null
+  reg_name?: string | null
+  reg_phone?: string | null
 }

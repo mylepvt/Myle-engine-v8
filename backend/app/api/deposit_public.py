@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from email_validator import EmailNotValidError, validate_email
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -19,6 +20,8 @@ from app.models.deposit import DepositReceipt
 from app.schemas.deposits import ConsentAccept, ConsentEmail, ConsentLinkInfo, ConsentTerms, PhoneIn, ReceiptLinkInfo
 from app.services import deposits as svc
 from app.services.deposit_receipt_pdf import receipt_filename, render_receipt_pdf
+from app.services.enrollment_flow import finish_enrollment, send_queued_pushes
+from app.services.leads_service import get_leads_service
 from app.services.prospect_links import is_staff_browser
 
 router = APIRouter(prefix="/api/deposit", tags=["deposit-public"])
@@ -27,6 +30,7 @@ Session = Annotated[AsyncSession, Depends(get_db)]
 
 
 def _terms(c, email_result: str | None = None) -> ConsentTerms:
+    # A registered prospect's own details come back so the page can greet them.
     return ConsentTerms(
         state=svc.consent_state(c),
         terms_text=c.terms_text,
@@ -37,6 +41,9 @@ def _terms(c, email_result: str | None = None) -> ConsentTerms:
         email=c.email,
         welcome_email_sent_at=c.welcome_email_sent_at,
         email_result=email_result,
+        registration_stage=svc.registration_stage(c),
+        reg_name=c.reg_name,
+        reg_phone=c.reg_phone,
     )
 
 
@@ -94,6 +101,41 @@ async def consent_email(token: str, body: ConsentEmail, request: Request, sessio
     result = await svc.save_email_and_welcome(session, consent=c, email=str(body.email))
     await session.commit()
     return _terms(c, result)
+
+
+@router.post("/consent/{token}/register", response_model=ConsentTerms, include_in_schema=False)
+async def consent_register(
+    token: str,
+    request: Request,
+    session: Session,
+    background_tasks: BackgroundTasks,
+    phone: str = Form(..., max_length=32, description="The registered mobile this link was sent to"),
+    name: str = Form(..., max_length=200),
+    email: str = Form(..., max_length=320),
+    active_phone: str = Form(..., max_length=32),
+    screenshot: UploadFile = File(...),
+) -> ConsentTerms:
+    """The prospect's registration after agreeing: their details + payment screenshot.
+    A match with the upline's screenshot finishes the enrollment and sends the welcome email."""
+    _refuse_staff(request)
+    try:
+        clean_email = validate_email(email.strip(), check_deliverability=False).normalized
+    except EmailNotValidError:
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid email address.")
+    c = await svc.consent_by_token(session, token, for_update=True)
+    await svc.check_consent_phone(session, c, phone)
+    matched = await svc.submit_registration(
+        session, consent=c, name=name, email=clean_email, active_phone=active_phone, screenshot=await screenshot.read()
+    )
+    await session.commit()
+    if matched:
+        service, _ = await finish_enrollment(session, c)
+    else:
+        service = get_leads_service(session)
+        await service.queue_registration_mismatch_pushes(c, c.payer_name)
+    send_queued_pushes(background_tasks, service)
+    await session.refresh(c)
+    return _terms(c)
 
 
 @router.post("/consent/{token}/withdraw", response_model=ConsentTerms, include_in_schema=False)

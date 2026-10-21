@@ -310,7 +310,11 @@ export function CtcsLeadCard({
         {/* Primary next step gets its own full-width row — easy to tap, never crowds the icons. */}
         {showSendToDay1 || lead.status === 'converted' ? (
           <div className="mt-2 flex flex-col gap-1.5">
-            {showSendToDay1 ? <SendToDay1Button lead={lead} className="h-10 w-full justify-center text-sm" /> : null}
+            {showSendToDay1 ? <SendToDay1Button
+                lead={lead}
+                canApprove={currentRole === 'leader' || currentRole === 'admin'}
+                className="h-10 w-full justify-center text-sm"
+              /> : null}
             {lead.status === 'converted' ? (
               <RegisterLinkButton lead={lead} className="h-10 w-full justify-center text-sm" />
             ) : null}

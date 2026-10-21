@@ -58,6 +58,24 @@ class DepositConsent(Base):
     email: Mapped[Optional[str]] = mapped_column(String(320), nullable=True)
     welcome_email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     welcome_email_sends: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    # Enrollment link (sent after the member uploads the payment): the member's payment
+    # details and screenshot fingerprint, then the prospect's registration and the cross-check.
+    payment_mode: Mapped[Optional[str]] = mapped_column(String(24), nullable=True)
+    payment_ref: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    member_proof_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    member_proof_sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    member_proof_dhash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    reg_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    reg_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    reg_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reg_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    prospect_proof_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # matched | mismatch | approved (a leader/admin checked a mismatch by hand)
+    match_status: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    match_detail: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    approved_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class DepositReceipt(Base):

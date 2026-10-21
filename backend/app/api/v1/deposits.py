@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -30,6 +30,7 @@ from app.schemas.deposits import (
     RefundCreate,
 )
 from app.services import deposits as svc
+from app.services.enrollment_flow import finish_enrollment, send_queued_pushes
 from app.services.deposit_receipt_pdf import receipt_filename, render_receipt_pdf
 from app.services.lead_scope import user_can_access_lead, user_can_mutate_lead
 
@@ -63,16 +64,28 @@ async def _lead(session: AsyncSession, user: AuthUser, lead_id: int, *, mutate: 
 
 def consent_public(c: DepositConsent) -> ConsentPublic:
     state = svc.consent_state(c)
+    stage = svc.registration_stage(c)
     return ConsentPublic(
         id=c.id,
         state=state,
         amount_rupees=c.amount_cents // 100,
-        token=c.token if state == "pending" else None,
+        # An enrollment link stays shareable until the prospect has registered.
+        token=c.token if state == "pending" or (state == "given" and stage in ("register", "mismatch")) else None,
         created_at=c.created_at,
         expires_at=c.expires_at,
         given_at=c.given_at,
         typed_name=c.typed_name,
         withdrawn_at=c.withdrawn_at,
+        registration_stage=stage,
+        reg_name=c.reg_name,
+        reg_email=c.email,
+        reg_phone=c.reg_phone,
+        reg_submitted_at=c.reg_submitted_at,
+        match_status=c.match_status,
+        match_detail=c.match_detail,
+        member_proof_url=c.member_proof_url,
+        prospect_proof_url=c.prospect_proof_url,
+        welcome_email_sent_at=c.welcome_email_sent_at,
     )
 
 
@@ -137,6 +150,27 @@ async def create_consent_link(lead_id: int, body: ConsentLinkCreate, user: User,
     lead = await _lead(session, user, lead_id, mutate=True, for_update=True)
     await svc.create_consent_link(session, lead=lead, amount_rupees=body.amount_rupees, actor_id=user.user_id)
     await session.commit()
+    return await _state(session, lead)
+
+
+@router.post("/leads/{lead_id}/approve-registration", response_model=LeadDepositState)
+async def approve_registration(lead_id: int, user: User, session: Session, background_tasks: BackgroundTasks) -> LeadDepositState:
+    """Leader/admin: the prospect's screenshot didn't match, but they checked it by hand."""
+    if user.role not in ("leader", "admin"):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Only a leader or admin can approve this.")
+    lead = await _lead(session, user, lead_id, mutate=True)
+    consent = await svc.latest_consent(session, lead.id)
+    if consent is None or svc.registration_stage(consent) != "mismatch" or consent.reg_submitted_at is None:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="There is no registration waiting for a check.")
+    if svc.consent_state(consent) != "given":
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="The prospect has withdrawn their consent.")
+    consent.match_status = "approved"
+    consent.approved_by_user_id = user.user_id
+    consent.match_detail = f"Checked and approved by {user.display_name or user.username or 'a leader'}."[:300]
+    service, result = await finish_enrollment(session, consent)
+    send_queued_pushes(background_tasks, service)
+    if result != "done":
+        raise HTTPException(status_code=http_status.HTTP_409_CONFLICT, detail=consent.match_detail or "Couldn't finish the enrollment.")
     return await _state(session, lead)
 
 

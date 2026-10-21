@@ -182,6 +182,12 @@ export default {
         },
         /* Prospect-facing "private room" pages (watch, Day 1/2/6, enrollment) —
            always dark navy regardless of the app theme. */
+        // Myle crest (logo gold on near-black): the prospect's enrollment-confirmed card.
+        crest: {
+          night: '#15110A',
+          gold: '#D4AD57',
+          sand: '#CFC4AD',
+        },
         room: {
           base: '#040915',
           surface: '#0A1120',
