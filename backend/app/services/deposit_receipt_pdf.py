@@ -1,4 +1,4 @@
-"""Refundable Security Deposit Receipt — A5 portrait PDF (reads well on a phone).
+"""Security Deposit Receipt — A5 portrait PDF (reads well on a phone).
 
 Drawn from the receipt's frozen ``payload_json``; only business details that were blank
 when it was issued fall back to today's settings (then ``[FILL IN]``). No GST anywhere.
@@ -22,7 +22,6 @@ from app.services.deposits import (
     DEFAULT_SUPPORT_EMAIL,
     NO_SIGNATURE_LINE,
     PURPOSE_LINE,
-    REFUND_LINE,
     fmt_ist,
 )
 
@@ -35,7 +34,7 @@ GREEN_BG = HexColor("#e8f3ec")
 AMBER = HexColor("#9a6700")
 RED = HexColor("#b42318")
 
-TITLE = "Refundable Security Deposit Receipt"
+TITLE = "Security Deposit Receipt"
 STATUS_LABEL = {"held": "HELD", "refunded": "REFUNDED", "cancelled": "CANCELLED"}
 STATUS_COLOR = {"held": GREEN, "refunded": AMBER, "cancelled": RED}
 
@@ -159,7 +158,7 @@ def render_receipt_pdf(receipt: DepositReceipt, *, current_business: dict[str, s
     c.roundRect(margin, y - box_h, inner, box_h, 8, stroke=0, fill=1)
     c.setFillColor(MUTED)
     c.setFont("Helvetica", 8.5)
-    c.drawString(margin + 12, y - 15, "Amount received (refundable security deposit)")
+    c.drawString(margin + 12, y - 15, "Amount received (security deposit)")
     c.setFillColor(GREEN)
     c.setFont(rupee_font or "Helvetica-Bold", 22)
     c.drawString(margin + 12, y - 38, amount_text)
@@ -179,11 +178,7 @@ def render_receipt_pdf(receipt: DepositReceipt, *, current_business: dict[str, s
     for line in simpleSplit(PURPOSE_LINE, "Helvetica", 9, inner):
         c.drawString(margin, y, line)
         y -= 11.5
-    y -= 4
-    c.setFont("Helvetica-Bold", 9)
-    c.setFillColor(GREEN)
-    c.drawString(margin, y, REFUND_LINE)
-    y -= 15
+    y -= 10
 
     if status == "refunded":
         c.setFillColor(AMBER)

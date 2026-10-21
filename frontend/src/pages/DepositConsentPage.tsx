@@ -72,7 +72,7 @@ export function DepositConsentPage() {
             <div>
               <h1 className="text-lg font-semibold text-foreground">Welcome to {info.business_name}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your ₹{info.amount_rupees} enrollment deposit is 100% refundable. Please read the terms on the next step
+                Your enrollment starts here. Please read the ₹{info.amount_rupees} security deposit terms on the next step
                 before you agree. It takes less than a minute.
               </p>
             </div>
@@ -111,8 +111,8 @@ export function DepositConsentPage() {
                 <p className="flex items-start gap-2 rounded-xl bg-success/10 p-3 text-sm text-success-ink">
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
                   <span>
-                    Thank you, {terms.typed_name}! You agreed on {formatIst(terms.given_at)}. Your deposit is 100%
-                    refundable, and you will get a receipt once you pay. You can close this page.
+                    Thank you, {terms.typed_name}! You agreed on {formatIst(terms.given_at)}. You will get a receipt
+                    once you pay. You can close this page.
                   </span>
                 </p>
                 {terms.email && !editEmail ? (
@@ -237,8 +237,8 @@ export function DepositConsentPage() {
                   {busy ? 'Saving…' : 'I Agree'}
                 </button>
                 <p className="text-xs text-muted-foreground">
-                  For your protection, this consent is saved with the date, time and device details, so your deposit and
-                  refund are always on record.
+                  For your protection, this consent is saved with the date, time and device details, so your deposit is
+                  always on record.
                 </p>
               </form>
             ) : (
