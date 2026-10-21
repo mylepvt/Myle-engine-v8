@@ -95,6 +95,8 @@ Declaration: By tapping “I Agree,” you confirm that you have read and unders
 
 # One welcome email per address, and at most this many in all (the lead may fix a typo).
 WELCOME_EMAIL_MAX_SENDS = 3
+# The prospect may re-upload a screenshot that didn't match, this many times in all.
+MAX_REGISTRATION_ATTEMPTS = 3
 
 
 class DepositError(HTTPException):
@@ -308,6 +310,120 @@ async def create_consent_link(session: AsyncSession, *, lead: Lead, amount_rupee
     return consent
 
 
+async def create_enrollment_link(
+    session: AsyncSession,
+    *,
+    lead: Lead,
+    amount_rupees: int,
+    actor_id: int,
+    payment_mode: str,
+    payment_ref: str,
+    paid_at: datetime,
+    proof_url: str,
+    proof_bytes: bytes,
+) -> DepositConsent:
+    """After the member uploads the payment: the link the prospect opens to agree and register."""
+    from app.services.payment_proof_match import dhash_hex, sha256_bytes
+
+    # A new upload replaces an earlier enrollment link the prospect agreed to but didn't finish.
+    for old in (
+        await session.execute(
+            select(DepositConsent).where(
+                DepositConsent.lead_id == lead.id,
+                DepositConsent.status == "given",
+                DepositConsent.member_proof_url.is_not(None),
+                DepositConsent.completed_at.is_(None),
+            )
+        )
+    ).scalars():
+        old.status = "replaced"
+    consent = await create_consent_link(session, lead=lead, amount_rupees=amount_rupees, actor_id=actor_id)
+    consent.payment_mode = payment_mode
+    consent.payment_ref = payment_ref
+    consent.paid_at = paid_at
+    consent.member_proof_url = proof_url
+    consent.member_proof_sha256 = sha256_bytes(proof_bytes)
+    consent.member_proof_dhash = dhash_hex(proof_bytes)
+    return consent
+
+
+def is_enrollment_link(c: DepositConsent) -> bool:
+    return bool(c.member_proof_url)
+
+
+def registration_stage(c: DepositConsent) -> str | None:
+    """For an enrollment link: register | mismatch | done (None for a pre-payment consent link)."""
+    if not is_enrollment_link(c):
+        return None
+    if c.completed_at is not None:
+        return "done"
+    if c.match_status == "mismatch":
+        return "mismatch"
+    return "register"
+
+
+async def submit_registration(
+    session: AsyncSession,
+    *,
+    consent: DepositConsent,
+    name: str,
+    email: str,
+    active_phone: str,
+    screenshot: bytes,
+) -> bool:
+    """The prospect's registration form. Saves it and cross-checks the screenshot; True = matched.
+    The caller completes the enrollment on a match (and commits either way)."""
+    from app.services.enrollment_proof_storage import save_enrollment_proof_bytes
+    from app.services.payment_proof_match import check_match
+
+    if not is_enrollment_link(consent):
+        raise DepositError("This link is not an enrollment link.")
+    state = consent_state(consent)
+    if state == "replaced":
+        raise DepositError("This link was replaced by a newer one. Open the latest link your team sent you.", http_status.HTTP_410_GONE)
+    if state != "given":
+        raise DepositError("Agree to the terms first.")
+    if consent.completed_at is not None:
+        raise DepositError("You are already registered.", http_status.HTTP_409_CONFLICT)
+    if consent.reg_attempts >= MAX_REGISTRATION_ATTEMPTS:
+        raise DepositError("Your payment is being checked by your team. You will get an email once it is confirmed.", http_status.HTTP_429_TOO_MANY_REQUESTS)
+    clean = re.sub(r"\s+", " ", name or "").strip()
+    if len(clean) < 2:
+        raise DepositError("Type your full name.")
+    phone = phone10(active_phone)
+    if not phone:
+        raise DepositError("Enter a 10-digit mobile number.")
+    ok, url = await save_enrollment_proof_bytes(session=session, data=screenshot, lead_id=consent.lead_id)
+    if not ok:
+        raise DepositError(url)
+
+    consent.reg_name = clean[:200]
+    consent.email = email.strip().lower()
+    consent.reg_phone = phone
+    consent.reg_submitted_at = datetime.now(timezone.utc)
+    consent.reg_attempts += 1
+    consent.prospect_proof_url = url
+    result = check_match(
+        prospect_image=screenshot,
+        member_sha256=consent.member_proof_sha256,
+        member_dhash=consent.member_proof_dhash,
+        payment_ref=consent.payment_ref,
+    )
+    consent.match_status = "matched" if result.matched else "mismatch"
+    consent.match_detail = result.detail[:300]
+    lead = await session.get(Lead, consent.lead_id)
+    if lead is not None and not (lead.email or "").strip():
+        lead.email = consent.email
+    _log(
+        session,
+        consent.created_by_user_id,
+        "deposit.registration_submitted",
+        consent.lead_id,
+        {"consent_id": consent.id, "match": consent.match_status, "detail": consent.match_detail},
+    )
+    return result.matched
+
+
 async def consent_by_token(session: AsyncSession, token: str, *, for_update: bool = False) -> DepositConsent:
     stmt = select(DepositConsent).where(DepositConsent.token == (token or "").strip())
     if for_update:
@@ -390,9 +506,6 @@ async def save_email_and_welcome(session: AsyncSession, *, consent: DepositConse
     Returns ``sent``, ``already_sent`` or ``saved`` (email not configured, or the server
     refused: the address is kept either way). The caller commits.
     """
-    from app.services import mailer
-    from app.services.welcome_email import render_welcome
-
     if consent_state(consent) != "given":
         raise DepositError("Agree to the terms first, then add your email.")
     email = email.strip().lower()
@@ -402,20 +515,37 @@ async def save_email_and_welcome(session: AsyncSession, *, consent: DepositConse
     lead = await session.get(Lead, consent.lead_id)
     if lead is not None and not (lead.email or "").strip():
         lead.email = email
-    if consent.welcome_email_sends >= WELCOME_EMAIL_MAX_SENDS:
+    return await deliver_welcome(session, consent=consent)
+
+
+async def deliver_welcome(
+    session: AsyncSession,
+    *,
+    consent: DepositConsent,
+    receipt_number: str | None = None,
+    leader_name: str | None = None,
+) -> str:
+    """Send the welcome email to ``consent.email``: ``sent`` or ``saved`` (not sent; logged)."""
+    from app.services import mailer
+    from app.services.welcome_email import render_welcome
+
+    if not consent.email or consent.welcome_email_sends >= WELCOME_EMAIL_MAX_SENDS:
         return "saved"
     if not mailer.mail_configured():
         logger.warning("welcome email not sent for consent %s: SMTP_USER / SMTP_PASSWORD not set", consent.id)
         return "saved"
     biz = await business_details(session)
     subject, html, text = render_welcome(
-        name=consent.typed_name or consent.payer_name,
+        name=consent.reg_name or consent.typed_name or consent.payer_name,
         business=biz["name"],
         support_email=biz["email"],
         amount_rupees=consent.amount_cents // 100,
+        receipt_number=receipt_number,
+        enrolled_on=fmt_ist(consent.completed_at).split(",")[0] if consent.completed_at else None,
+        leader_name=leader_name,
     )
     try:
-        await mailer.send_email(to=email, subject=subject, html=html, text=text)
+        await mailer.send_email(to=consent.email, subject=subject, html=html, text=text)
     except mailer.MailError as e:
         _log(session, consent.created_by_user_id, "deposit.welcome_email_failed", consent.lead_id, {"consent_id": consent.id, "error": str(e)[:300]})
         return "saved"
@@ -486,7 +616,19 @@ async def allocate_receipt_number(session: AsyncSession) -> str:
     return f"MYLE-DEP-{year}-{seq:04d}"
 
 
-def _check_paid_at(paid_at: datetime | None) -> datetime:
+async def ensure_payment_ref_unused(session: AsyncSession, ref: str) -> None:
+    clash = (
+        await session.execute(
+            select(DepositReceipt.receipt_number).where(
+                DepositReceipt.payment_ref == ref, DepositReceipt.status != "cancelled"
+            )
+        )
+    ).scalar_one_or_none()
+    if clash:
+        raise DepositError(f"This Transaction ID is already on receipt {clash}.", http_status.HTTP_409_CONFLICT)
+
+
+def check_paid_at(paid_at: datetime | None) -> datetime:
     if paid_at is None:
         raise DepositError("Enter the date and time of the payment.")
     paid = _aware(paid_at)
@@ -522,16 +664,8 @@ async def issue_receipt(
             f"The lead agreed to ₹{consent.amount_cents // 100}, not ₹{rupees}. Send a new consent link for ₹{rupees}."
         )
     ref = normalize_payment_ref(payment_mode, payment_ref)
-    paid = _check_paid_at(paid_at)
-    clash = (
-        await session.execute(
-            select(DepositReceipt.receipt_number).where(
-                DepositReceipt.payment_ref == ref, DepositReceipt.status != "cancelled"
-            )
-        )
-    ).scalar_one_or_none()
-    if clash:
-        raise DepositError(f"This Transaction ID is already on receipt {clash}.", http_status.HTTP_409_CONFLICT)
+    paid = check_paid_at(paid_at)
+    await ensure_payment_ref_unused(session, ref)
 
     number = await allocate_receipt_number(session)
     business = await business_details(session)

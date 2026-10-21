@@ -1,15 +1,168 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { CheckCircle2, Mail, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Clock, Crown, Mail, ShieldCheck } from 'lucide-react'
 
 import { type ConsentTerms, depositPublic } from '@/hooks/use-deposits-query'
 import { formatIst } from '@/lib/deposits'
 
 type Info = Awaited<ReturnType<typeof depositPublic.consentInfo>>
 
+function WithdrawConsent({ busy, onWithdraw }: { busy: boolean; onWithdraw: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  if (!confirming) {
+    return (
+      <button type="button" onClick={() => setConfirming(true)} className="text-sm text-muted-foreground underline">
+        Withdraw consent
+      </button>
+    )
+  }
+  return (
+    <div className="space-y-2 rounded-xl bg-destructive/10 p-3 text-sm">
+      <p className="text-foreground">Withdraw your consent? Your deposit will be refunded and your enrollment will not continue.</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onWithdraw}
+          className="rounded-full bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground disabled:opacity-50"
+        >
+          {busy ? 'Saving…' : 'Yes, withdraw'}
+        </button>
+        <button type="button" onClick={() => setConfirming(false)} className="px-3 py-2 text-sm text-muted-foreground">
+          Keep my consent
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** After agreeing on an enrollment link: name, email, active mobile and the payment screenshot. */
+function RegistrationStep({
+  token,
+  phone,
+  terms,
+  onSaved,
+}: {
+  token: string
+  phone: string
+  terms: ConsentTerms
+  onSaved: (t: ConsentTerms) => void
+}) {
+  const [name, setName] = useState(terms.reg_name ?? terms.typed_name ?? '')
+  const [email, setEmail] = useState(terms.email ?? '')
+  const [activePhone, setActivePhone] = useState(terms.reg_phone ?? phone.replace(/\D/g, '').slice(-10))
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (terms.registration_stage === 'done') {
+    const first = (terms.reg_name ?? terms.typed_name ?? '').split(' ')[0]
+    return (
+      <div className="space-y-3 rounded-2xl bg-crest-night p-5 text-center text-white">
+        <Crown className="mx-auto size-7 text-crest-gold" aria-hidden />
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-crest-gold">Enrollment confirmed</p>
+        <p className="font-serif text-2xl">Welcome{first ? `, ${first}` : ''}</p>
+        <p className="text-sm text-crest-sand">
+          You are now a member of Myle Community.{' '}
+          {terms.welcome_email_sent_at
+            ? `Your welcome email is on its way to ${terms.email}. Check your inbox (and spam folder).`
+            : `Your welcome email will reach ${terms.email} shortly.`}
+        </p>
+      </div>
+    )
+  }
+
+  const emailOk = /^\S+@\S+\.\S+$/.test(email.trim())
+  const phoneOk = activePhone.replace(/\D/g, '').length >= 10
+  return (
+    <form
+      className="space-y-3 rounded-2xl border border-border p-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!file) return
+        setError(null)
+        setBusy(true)
+        depositPublic
+          .register(token, { phone, name: name.trim(), email: email.trim(), active_phone: activePhone, screenshot: file })
+          .then(onSaved)
+          .catch((err: Error) => setError(err.message))
+          .finally(() => setBusy(false))
+      }}
+    >
+      {terms.registration_stage === 'mismatch' ? (
+        <p className="flex items-start gap-2 rounded-xl bg-warning/15 p-3 text-sm text-foreground">
+          <Clock className="mt-0.5 size-4 shrink-0 text-warning-ink" aria-hidden />
+          <span>
+            We&apos;re checking your payment with your team. If you uploaded a different screenshot by mistake,
+            upload the same one you sent them below. Otherwise you will get your welcome email once it is confirmed.
+          </span>
+        </p>
+      ) : (
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <CheckCircle2 className="size-4 text-success-ink" aria-hidden /> Thank you, you agreed. One last step
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Fill in your details and upload your payment screenshot to complete your enrollment.
+          </p>
+        </div>
+      )}
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted-foreground">Full name</span>
+        <input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="field-input" />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted-foreground">Email address</span>
+        <input
+          required
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="field-input"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted-foreground">Active mobile number (WhatsApp)</span>
+        <input
+          required
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={activePhone}
+          onChange={(e) => setActivePhone(e.target.value)}
+          placeholder="10-digit mobile number"
+          className="field-input"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted-foreground">Payment screenshot</span>
+        <input
+          required
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="block w-full text-sm text-foreground"
+        />
+      </label>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <button
+        type="submit"
+        disabled={busy || name.trim().length < 2 || !emailOk || !phoneOk || !file}
+        className="btn-primary w-full rounded-full py-3 text-sm font-semibold disabled:opacity-50"
+      >
+        {busy ? 'Checking…' : 'Complete my enrollment'}
+      </button>
+    </form>
+  )
+}
+
 /**
  * The lead's own page (no login): confirm their mobile, read the deposit terms, agree.
- * Consent can be withdrawn later from the same link.
+ * On an enrollment link (sent after the payment) they then register; a matching payment
+ * screenshot confirms the enrollment. Consent can be withdrawn later from the same link.
  */
 export function DepositConsentPage() {
   const { token = '' } = useParams<{ token: string }>()
@@ -21,7 +174,6 @@ export function DepositConsentPage() {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmWithdraw, setConfirmWithdraw] = useState(false)
   const [email, setEmail] = useState('')
   const [editEmail, setEditEmail] = useState(false)
 
@@ -102,11 +254,25 @@ export function DepositConsentPage() {
           </form>
         ) : (
           <div className="space-y-4">
-            <div className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-sm leading-relaxed text-foreground">
-              {terms.terms_text}
-            </div>
+            {terms.state === 'pending' ? (
+              <div className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-sm leading-relaxed text-foreground">
+                {terms.terms_text}
+              </div>
+            ) : (
+              <details className="rounded-xl bg-muted p-3 text-sm text-foreground">
+                <summary className="cursor-pointer font-medium">Deposit terms you agreed to</summary>
+                <div className="mt-2 whitespace-pre-wrap leading-relaxed">{terms.terms_text}</div>
+              </details>
+            )}
 
-            {terms.state === 'given' ? (
+            {terms.state === 'given' && terms.registration_stage ? (
+              <div className="space-y-3">
+                <RegistrationStep token={token} phone={phone} terms={terms} onSaved={setTerms} />
+                {terms.registration_stage !== 'done' ? (
+                  <WithdrawConsent busy={busy} onWithdraw={() => void run(() => depositPublic.withdraw(token, phone))} />
+                ) : null}
+              </div>
+            ) : terms.state === 'given' ? (
               <div className="space-y-3">
                 <p className="flex items-start gap-2 rounded-xl bg-success/10 p-3 text-sm text-success-ink">
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -168,30 +334,7 @@ export function DepositConsentPage() {
                     </button>
                   </form>
                 )}
-                {confirmWithdraw ? (
-                  <div className="space-y-2 rounded-xl bg-destructive/10 p-3 text-sm">
-                    <p className="text-foreground">
-                      Withdraw your consent? Your deposit will be refunded and your enrollment will not continue.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void run(() => depositPublic.withdraw(token, phone))}
-                        className="rounded-full bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground disabled:opacity-50"
-                      >
-                        {busy ? 'Saving…' : 'Yes, withdraw'}
-                      </button>
-                      <button type="button" onClick={() => setConfirmWithdraw(false)} className="px-3 py-2 text-sm text-muted-foreground">
-                        Keep my consent
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => setConfirmWithdraw(true)} className="text-sm text-muted-foreground underline">
-                    Withdraw consent
-                  </button>
-                )}
+                <WithdrawConsent busy={busy} onWithdraw={() => void run(() => depositPublic.withdraw(token, phone))} />
               </div>
             ) : terms.state === 'withdrawn' ? (
               <p className="rounded-xl bg-muted p-3 text-sm text-foreground">

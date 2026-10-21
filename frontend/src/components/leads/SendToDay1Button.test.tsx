@@ -43,19 +43,30 @@ function renderButton() {
   )
 }
 
+const waitingLink = {
+  id: 1,
+  state: 'given',
+  amount_rupees: 196,
+  token: 'tok123',
+  created_at: '2026-10-20T05:00:00Z',
+  expires_at: '2026-10-22T05:00:00Z',
+  given_at: '2026-10-20T05:10:00Z',
+  typed_name: 'Rohit',
+  withdrawn_at: null,
+  registration_stage: 'register',
+  reg_name: null,
+  reg_email: null,
+  reg_phone: null,
+  reg_submitted_at: null,
+  match_status: null,
+  match_detail: null,
+  member_proof_url: '/api/v1/media/enrollment-proofs/a.png',
+  prospect_proof_url: null,
+  welcome_email_sent_at: null,
+}
+
 describe('SendToDay1Button', () => {
   it('opens its form over the whole screen, not trapped inside the blurred card', async () => {
-    depositState.consent = {
-      id: 1,
-      state: 'given',
-      amount_rupees: 196,
-      token: null,
-      created_at: '2026-10-20T05:00:00Z',
-      expires_at: '2026-10-22T05:00:00Z',
-      given_at: '2026-10-20T05:10:00Z',
-      typed_name: 'Rohit',
-      withdrawn_at: null,
-    }
     const { container } = renderButton()
     fireEvent.click(screen.getByRole('button', { name: /Send to Day 1/ }))
     const dialog = screen.getByRole('dialog', { name: 'Send to Day 1' })
@@ -64,14 +75,35 @@ describe('SendToDay1Button', () => {
     expect(dialog.closest('.fixed')?.parentElement).toBe(document.body)
     expect(container.contains(dialog)).toBe(false)
     expect(await screen.findByText('Payment screenshot')).toBeTruthy()
-    expect(screen.getByText('UPI Ref No. / UTR (12 digits)')).toBeTruthy()
-    expect(screen.getByText('Consent given for ₹196')).toBeTruthy()
   })
 
-  it('asks for the lead’s consent first — no upload until they agree', async () => {
+  it('takes the payment first — no consent step before the upload', async () => {
     renderButton()
     fireEvent.click(screen.getByRole('button', { name: /Send to Day 1/ }))
-    expect(await screen.findByText(/Send consent link on WhatsApp/)).toBeTruthy()
+    expect(await screen.findByText('Payment screenshot')).toBeTruthy()
+    expect(screen.getByText('UPI Ref No. / UTR (12 digits)')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Upload & send link' })).toBeTruthy()
+    expect(screen.queryByText(/Send consent link on WhatsApp/)).toBeNull()
+  })
+
+  it('shows the link waiting on the prospect, with send again and upload again', async () => {
+    depositState.consent = waitingLink
+    renderButton()
+    fireEvent.click(screen.getByRole('button', { name: /Send to Day 1/ }))
+    expect(await screen.findByText('Rohit agreed, waiting for the registration form')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Send link again/ })).toBeTruthy()
     expect(screen.queryByText('Payment screenshot')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Upload again' }))
+    expect(screen.getByText('Payment screenshot')).toBeTruthy()
+  })
+
+  it('a mismatch shows both screenshots; only a leader gets the approve button', async () => {
+    depositState.consent = { ...waitingLink, registration_stage: 'mismatch', match_status: 'mismatch', match_detail: 'Transaction ID not found', prospect_proof_url: '/b.png' }
+    renderButton()
+    fireEvent.click(screen.getByRole('button', { name: /Send to Day 1/ }))
+    expect(await screen.findByText(/Screenshot didn/)).toBeTruthy()
+    expect(screen.getByText('Transaction ID not found')).toBeTruthy()
+    expect(screen.getByText(/Prospect.s screenshot/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /approve enrollment/ })).toBeNull()
   })
 })

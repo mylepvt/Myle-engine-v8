@@ -30,6 +30,7 @@ from app.core.stage_pricing import (
 from app.core.realtime_hub import notify_topics
 from app.core.time_ist import IST
 from app.models.activity_log import ActivityLog
+from app.models.deposit import DepositConsent, DepositReceipt
 from app.models.follow_up import FollowUp
 from app.models.lead import Lead
 from app.models.user import User
@@ -965,10 +966,11 @@ class LeadsService:
         payment_ref: str | None = None,
         paid_at: datetime | None = None,
     ) -> Lead:
-        """Member uploads the enrollment screenshot (₹149–200) → lead goes to the leader's Day 1.
+        """Member uploads the enrollment screenshot (₹149–200).
 
-        The security deposit receipt is issued in the same transaction; with the deposit gate
-        on (default) the lead's consent and the payment details must be right first."""
+        Deposit gate on (default): the lead stays here and gets an enrollment link; it goes to
+        the leader's Day 1 only after the prospect agrees, registers and their screenshot
+        matches (``complete_prospect_enrollment``). Gate off: straight to Day 1, as before."""
         lead = await self._get_lead_or_404(lead_id, for_update=True)
         if lead.deleted_at is not None or lead.archived_at is not None:
             raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Restore the lead first")
@@ -983,6 +985,16 @@ class LeadsService:
             raise HTTPException(
                 status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=f"Enrollment amount must be between ₹{ENROLLMENT_MIN_RUPEES} and ₹{ENROLLMENT_MAX_RUPEES}.",
+            )
+        if await deposits.gate_enabled(self._session):
+            return await self._start_prospect_registration(
+                lead,
+                user=user,
+                amount_rupees=int(amount_rupees),
+                screenshot=screenshot,
+                payment_mode=payment_mode,
+                payment_ref=payment_ref,
+                paid_at=paid_at,
             )
         await self._issue_deposit_receipt(
             lead, user=user, amount_rupees=int(amount_rupees), payment_mode=payment_mode, payment_ref=payment_ref, paid_at=paid_at
@@ -1027,6 +1039,106 @@ class LeadsService:
         self._queue_leader_handoff_push(leader_id, lead, actor_user_id=user.user_id)
         await self._notifier("leads", "workboard")
         return lead
+
+    async def _start_prospect_registration(
+        self,
+        lead: Lead,
+        *,
+        user: AuthUser,
+        amount_rupees: int,
+        screenshot: bytes,
+        payment_mode: str | None,
+        payment_ref: str | None,
+        paid_at: datetime | None,
+    ) -> Lead:
+        """Payment checked and saved; the prospect gets the link to agree and register."""
+        ref = deposits.normalize_payment_ref(payment_mode or "", payment_ref)
+        paid = deposits.check_paid_at(paid_at)
+        await deposits.ensure_payment_ref_unused(self._session, ref)
+        ok, result = await save_enrollment_proof_bytes(session=self._session, data=screenshot, lead_id=lead.id)
+        if not ok:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail=result)
+        consent = await deposits.create_enrollment_link(
+            self._session,
+            lead=lead,
+            amount_rupees=amount_rupees,
+            actor_id=user.user_id,
+            payment_mode=payment_mode or "",
+            payment_ref=ref,
+            paid_at=paid,
+            proof_url=result,
+            proof_bytes=screenshot,
+        )
+        now = datetime.now(timezone.utc)
+        lead.enrollment_amount_cents = amount_rupees * 100
+        lead.enrollment_proof_url = result
+        lead.enrollment_proof_uploaded_at = now
+        lead.enrollment_proof_by_user_id = user.user_id
+        lead.last_action_at = now
+        await self._repository.add_lead_activity(
+            user_id=user.user_id,
+            action="lead.enrollment_proof_uploaded",
+            lead_id=lead.id,
+            meta={
+                "amount_cents": lead.enrollment_amount_cents,
+                "proof_url": result,
+                "from_status": lead.status,
+                "awaiting_prospect": True,
+                "consent_id": consent.id,
+            },
+        )
+        lead = await self._commit_with_shadow_upsert(lead)
+        await self._notifier("leads", "workboard")
+        return lead
+
+    async def complete_prospect_enrollment(self, *, consent: DepositConsent, actor: AuthUser) -> tuple[Lead, DepositReceipt, int | None]:
+        """Prospect agreed, registered and the screenshot matched (or a leader approved it):
+        receipt → leader's Day 1 → win. Returns (lead, receipt, leader id). Caller sends the email."""
+        lead = await self._get_lead_or_404(consent.lead_id, for_update=True)
+        if lead.status not in ENROLLMENT_SENDABLE_STATUSES:
+            raise HTTPException(status_code=http_status.HTTP_409_CONFLICT, detail="This lead has already moved on.")
+        # A re-enrollment after a send-back (its receipt was cancelled) doesn't post a second win.
+        enrolled_before = (
+            await self._session.execute(select(DepositReceipt.id).where(DepositReceipt.lead_id == lead.id).limit(1))
+        ).scalar_one_or_none() is not None
+        receipt = await deposits.issue_receipt(
+            self._session,
+            lead=lead,
+            amount_cents=consent.amount_cents,
+            payment_mode=consent.payment_mode or "",
+            payment_ref=consent.payment_ref,
+            paid_at=consent.paid_at,
+            actor_id=consent.created_by_user_id,
+        )
+        now = datetime.now(timezone.utc)
+        consent.completed_at = now
+        leader_id = await self._handoff_to_leader_day1(lead, actor=actor, now=now)
+        from app.services.wins import record_win
+
+        if not enrolled_before and actor.role != "admin":
+            record_win(self._session, user_id=actor.user_id, kind="enrollment")
+        lead = await self._commit_with_shadow_upsert(lead)
+        self._queue_leader_handoff_push(leader_id, lead, actor_user_id=actor.user_id)
+        await self._notifier("leads", "workboard")
+        return lead, receipt, leader_id
+
+    async def queue_registration_mismatch_pushes(self, consent: DepositConsent, lead_name: str) -> None:
+        """Screenshot didn't match: tell the member who uploaded it and their leader."""
+        member_id = consent.created_by_user_id
+        targets = {member_id} if member_id else set()
+        if member_id:
+            leader = await self._nearest_leader(member_id)
+            if leader is not None:
+                targets.add(leader[0])
+        for uid in targets:
+            self.queued_pushes.append(
+                (
+                    uid,
+                    "Payment screenshot didn't match",
+                    f"{lead_name}: the screenshot the prospect uploaded doesn't match the enrollment payment. Check it.",
+                    "/dashboard/work/leads?tab=today",
+                )
+            )
 
     async def _issue_deposit_receipt(
         self,
