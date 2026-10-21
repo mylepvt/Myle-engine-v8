@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -40,6 +41,8 @@ from app.models.app_setting import AppSetting
 from app.models.deposit import DepositConsent, DepositReceipt
 from app.models.lead import Lead
 from app.services import deposit_ledger
+
+logger = logging.getLogger(__name__)
 
 MIN_RUPEES = 149
 MAX_RUPEES = 200
@@ -399,7 +402,10 @@ async def save_email_and_welcome(session: AsyncSession, *, consent: DepositConse
     lead = await session.get(Lead, consent.lead_id)
     if lead is not None and not (lead.email or "").strip():
         lead.email = email
-    if consent.welcome_email_sends >= WELCOME_EMAIL_MAX_SENDS or not mailer.mail_configured():
+    if consent.welcome_email_sends >= WELCOME_EMAIL_MAX_SENDS:
+        return "saved"
+    if not mailer.mail_configured():
+        logger.warning("welcome email not sent for consent %s: SMTP_USER / SMTP_PASSWORD not set", consent.id)
         return "saved"
     biz = await business_details(session)
     subject, html, text = render_welcome(

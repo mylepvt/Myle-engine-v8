@@ -155,6 +155,13 @@ export function useSaveDepositSettingsMutation() {
   })
 }
 
+export type MailTestResult = { ok: boolean; detail: string; smtp_host: string; smtp_port: number; sender: string }
+
+/** Admin: send the welcome email to an address now; returns what the mail server said. */
+export async function sendDepositTestEmail(to: string): Promise<MailTestResult> {
+  return json<MailTestResult>('/api/v1/deposits/test-email', { method: 'POST', body: JSON.stringify({ to }) })
+}
+
 export async function fetchDepositConsentEvidence(consentId: number): Promise<Record<string, unknown>> {
   return json<Record<string, unknown>>(`/api/v1/deposits/consents/${consentId}/evidence`)
 }

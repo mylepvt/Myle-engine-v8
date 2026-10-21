@@ -134,3 +134,15 @@ class ReceiptLinkInfo(BaseModel):
     support_email: str
     masked_phone: str
     status: str
+
+
+class MailTestIn(BaseModel):
+    to: EmailStr
+
+
+class MailTestResult(BaseModel):
+    ok: bool
+    detail: str
+    smtp_host: str
+    smtp_port: int
+    sender: str
