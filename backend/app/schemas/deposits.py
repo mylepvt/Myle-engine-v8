@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class ConsentLinkCreate(BaseModel):
@@ -110,6 +110,15 @@ class ConsentTerms(BaseModel):
     terms_version: str
     given_at: Optional[datetime] = None
     typed_name: Optional[str] = None
+    email: Optional[str] = None
+    welcome_email_sent_at: Optional[datetime] = None
+    # Only on the email step: sent | already_sent | saved.
+    email_result: Optional[str] = None
+
+
+class ConsentEmail(BaseModel):
+    phone: str = Field(..., max_length=32)
+    email: EmailStr
 
 
 class ConsentAccept(BaseModel):

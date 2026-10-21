@@ -16,7 +16,7 @@ from starlette import status as http_status
 
 from app.api.deps import get_db
 from app.models.deposit import DepositReceipt
-from app.schemas.deposits import ConsentAccept, ConsentLinkInfo, ConsentTerms, PhoneIn, ReceiptLinkInfo
+from app.schemas.deposits import ConsentAccept, ConsentEmail, ConsentLinkInfo, ConsentTerms, PhoneIn, ReceiptLinkInfo
 from app.services import deposits as svc
 from app.services.deposit_receipt_pdf import receipt_filename, render_receipt_pdf
 from app.services.prospect_links import is_staff_browser
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/deposit", tags=["deposit-public"])
 Session = Annotated[AsyncSession, Depends(get_db)]
 
 
-def _terms(c) -> ConsentTerms:
+def _terms(c, email_result: str | None = None) -> ConsentTerms:
     return ConsentTerms(
         state=svc.consent_state(c),
         terms_text=c.terms_text,
@@ -34,6 +34,9 @@ def _terms(c) -> ConsentTerms:
         terms_version=c.terms_version,
         given_at=c.given_at,
         typed_name=c.typed_name,
+        email=c.email,
+        welcome_email_sent_at=c.welcome_email_sent_at,
+        email_result=email_result,
     )
 
 
@@ -81,6 +84,16 @@ async def consent_accept(token: str, body: ConsentAccept, request: Request, sess
     )
     await session.commit()
     return _terms(c)
+
+
+@router.post("/consent/{token}/email", response_model=ConsentTerms, include_in_schema=False)
+async def consent_email(token: str, body: ConsentEmail, request: Request, session: Session) -> ConsentTerms:
+    _refuse_staff(request)
+    c = await svc.consent_by_token(session, token, for_update=True)
+    await svc.check_consent_phone(session, c, body.phone)
+    result = await svc.save_email_and_welcome(session, consent=c, email=str(body.email))
+    await session.commit()
+    return _terms(c, result)
 
 
 @router.post("/consent/{token}/withdraw", response_model=ConsentTerms, include_in_schema=False)

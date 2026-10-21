@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { CheckCircle2, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Mail, ShieldCheck } from 'lucide-react'
 
 import { type ConsentTerms, depositPublic } from '@/hooks/use-deposits-query'
 import { formatIst } from '@/lib/deposits'
@@ -22,6 +22,8 @@ export function DepositConsentPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmWithdraw, setConfirmWithdraw] = useState(false)
+  const [email, setEmail] = useState('')
+  const [editEmail, setEditEmail] = useState(false)
 
   useEffect(() => {
     depositPublic
@@ -30,13 +32,15 @@ export function DepositConsentPage() {
       .catch((e: Error) => setLoadError(e.message))
   }, [token])
 
-  async function run(fn: () => Promise<ConsentTerms>) {
+  async function run(fn: () => Promise<ConsentTerms>): Promise<boolean> {
     setError(null)
     setBusy(true)
     try {
       setTerms(await fn())
+      return true
     } catch (e) {
       setError((e as Error).message)
+      return false
     } finally {
       setBusy(false)
     }
@@ -68,8 +72,8 @@ export function DepositConsentPage() {
             <div>
               <h1 className="text-lg font-semibold text-foreground">Welcome to {info.business_name}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your ₹{info.amount_rupees} enrollment deposit is 100% refundable. Here is how it works, in simple words.
-                It takes less than a minute.
+                Your ₹{info.amount_rupees} enrollment deposit is 100% refundable. Please read the terms on the next step
+                before you agree. It takes less than a minute.
               </p>
             </div>
             <label className="block">
@@ -111,6 +115,59 @@ export function DepositConsentPage() {
                     refundable, and you will get a receipt once you pay. You can close this page.
                   </span>
                 </p>
+                {terms.email && !editEmail ? (
+                  <p className="flex items-start gap-2 rounded-xl bg-primary/10 p-3 text-sm text-foreground">
+                    <Mail className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                    <span>
+                      {terms.welcome_email_sent_at
+                        ? `Your welcome email is on its way to ${terms.email}. Check your inbox (and spam folder).`
+                        : `We saved your email ${terms.email}. Your welcome email will follow.`}{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail(terms.email ?? '')
+                          setEditEmail(true)
+                        }}
+                        className="text-primary underline-offset-2 hover:underline"
+                      >
+                        Change
+                      </button>
+                    </span>
+                  </p>
+                ) : (
+                  <form
+                    className="space-y-2 rounded-xl border border-border p-3"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void run(() => depositPublic.saveEmail(token, phone, email.trim())).then((ok) => ok && setEditEmail(false))
+                    }}
+                  >
+                    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Mail className="size-4 text-primary" aria-hidden />
+                      Get your welcome email
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Add your email and we&apos;ll send you a welcome note with everything about your next steps.
+                    </p>
+                    <input
+                      required
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="field-input"
+                    />
+                    <button
+                      type="submit"
+                      disabled={busy || !/^\S+@\S+\.\S+$/.test(email.trim())}
+                      className="btn-primary w-full rounded-full py-2.5 text-sm font-semibold disabled:opacity-50"
+                    >
+                      {busy ? 'Sending…' : 'Send my welcome email'}
+                    </button>
+                  </form>
+                )}
                 {confirmWithdraw ? (
                   <div className="space-y-2 rounded-xl bg-destructive/10 p-3 text-sm">
                     <p className="text-foreground">

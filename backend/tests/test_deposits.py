@@ -150,9 +150,10 @@ async def test_consent_then_payment_then_receipt_then_day1(engine):
         }
         assert (await team.post(f"/api/deposit/consent/{token}/verify", json={"phone": "9999999999"})).status_code == 403
         terms = (await team.post(f"/api/deposit/consent/{token}/verify", json={"phone": f"+91 {phone}"})).json()
-        assert "Rohit Kumar" in terms["terms_text"] and phone in terms["terms_text"]
-        assert "One Hundred Ninety Six Rupees Only" in terms["terms_text"]
-        assert "100% refundable" in terms["terms_text"]
+        assert terms["terms_text"].startswith("MYLE COMMUNITY\nSecurity Deposit & Consent Declaration")
+        assert "₹196 (Rupees One Hundred Ninety-Six Only)" in terms["terms_text"]
+        assert "100% refundable" in terms["terms_text"] and "नमस्ते" not in terms["terms_text"]
+        assert terms["terms_version"] == "v2"
 
         accept = {"phone": phone, "typed_name": "Rohit Kumar", "agreed": True, "terms_sha256": terms["terms_sha256"]}
         assert (await team.post(f"/api/deposit/consent/{token}/accept", json={**accept, "agreed": False})).status_code == 400
@@ -259,6 +260,61 @@ async def test_withdrawn_consent_blocks_and_staff_cannot_agree(engine):
         assert r.status_code == 200 and r.json()["state"] == "withdrawn"
         r = await _upload(team, lead_id, amount=150, ref="512345678901")
         assert r.status_code == 400 and "consent" in r.text
+
+
+async def test_email_after_agreeing_sends_one_welcome_email(engine, monkeypatch):
+    from app.services import mailer
+
+    sent: list[dict] = []
+
+    async def _fake_send(**kw):
+        sent.append(kw)
+
+    monkeypatch.setattr(mailer, "mail_configured", lambda: True)
+    monkeypatch.setattr(mailer, "send_email", _fake_send)
+    await _seed(engine)
+    phone = "9811100021"
+    async with _as(engine, "team", 201) as team:
+        lead_id = await _lead_at_video_watched(team, phone)
+        r = await team.post(f"/api/v1/deposits/leads/{lead_id}/consent-link", json={"amount_rupees": 149})
+        token = r.json()["consent"]["token"]
+        url = f"/api/deposit/consent/{token}/email"
+
+        # Not before agreeing; and the registered mobile is checked.
+        assert (await team.post(url, json={"phone": phone, "email": "rohit@example.com"})).status_code == 400
+        terms = (await team.post(f"/api/deposit/consent/{token}/verify", json={"phone": phone})).json()
+        body = {"phone": phone, "typed_name": "Rohit Kumar", "agreed": True, "terms_sha256": terms["terms_sha256"]}
+        assert (await team.post(f"/api/deposit/consent/{token}/accept", json=body)).status_code == 200
+        assert (await team.post(url, json={"phone": "9999999999", "email": "rohit@example.com"})).status_code == 403
+        assert (await team.post(url, json={"phone": phone, "email": "not-an-email"})).status_code == 422
+        assert (await team.post(url, json={"phone": phone, "email": "r@x.com"}, cookies={"myle_access": "x"})).status_code == 403
+
+        r = await team.post(url, json={"phone": phone, "email": " Rohit@Example.com "})
+        assert r.status_code == 200, r.text
+        assert r.json()["email_result"] == "sent" and r.json()["email"] == "rohit@example.com"
+        assert r.json()["welcome_email_sent_at"]
+        assert sent[0]["to"] == "rohit@example.com" and sent[0]["subject"] == "Welcome to Myle Community, Rohit!"
+        assert "₹149" in sent[0]["html"] and "100% refundable" in sent[0]["text"]
+
+        # Same address again: no second email. A corrected address gets one.
+        assert (await team.post(url, json={"phone": phone, "email": "rohit@example.com"})).json()["email_result"] == "already_sent"
+        assert (await team.post(url, json={"phone": phone, "email": "rohit.k@example.com"})).json()["email_result"] == "sent"
+        assert len(sent) == 2
+        lead = (await team.get(f"/api/v1/leads/{lead_id}")).json()
+        assert lead["email"] == "rohit@example.com"  # the lead keeps the first address given
+
+
+async def test_email_is_saved_when_mail_is_not_configured(engine, monkeypatch):
+    from app.services import mailer
+
+    monkeypatch.setattr(mailer, "mail_configured", lambda: False)
+    await _seed(engine)
+    phone = "9811100022"
+    async with _as(engine, "team", 201) as team:
+        lead_id = await _lead_at_video_watched(team, phone)
+        token = await _consent(team, lead_id, phone, amount=149)
+        r = await team.post(f"/api/deposit/consent/{token}/email", json={"phone": phone, "email": "a@example.com"})
+        assert r.status_code == 200 and r.json()["email_result"] == "saved" and r.json()["welcome_email_sent_at"] is None
 
 
 async def test_wrong_numbers_lock_the_link(engine):
@@ -431,6 +487,8 @@ def test_amount_in_words():
     assert deposits.rupees_in_words(149) == "One Hundred Forty Nine Rupees Only"
     assert deposits.rupees_in_words(200) == "Two Hundred Rupees Only"
     assert deposits.rupees_in_words(110) == "One Hundred Ten Rupees Only"
+    assert deposits.rupees_in_words_formal(149) == "Rupees One Hundred Forty-Nine Only"
+    assert deposits.rupees_in_words_formal(160) == "Rupees One Hundred Sixty Only"
 
 
 def test_payment_ref_rules():
