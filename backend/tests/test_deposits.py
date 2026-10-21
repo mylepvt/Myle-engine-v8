@@ -318,6 +318,28 @@ async def test_email_is_saved_when_mail_is_not_configured(engine, monkeypatch):
         assert r.status_code == 200 and r.json()["email_result"] == "saved" and r.json()["welcome_email_sent_at"] is None
 
 
+async def test_admin_can_send_to_day1_but_gets_no_win(engine):
+    from app.models.win import Win
+
+    await _seed(engine)
+    async with _as(engine, "admin", 203) as admin:
+        # The admin's own test lead, and a team member's lead.
+        own = await _lead_at_video_watched(admin, "9811100031", name="Dummy Lead")
+        await _consent(admin, own, "9811100031", amount=149)
+        r = await _upload(admin, own, amount=149, ref="712345678931")
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "day1"
+    async with _as(engine, "team", 201) as team:
+        member_lead = await _lead_at_video_watched(team, "9811100032")
+        await _consent(team, member_lead, "9811100032", amount=149)
+    async with _as(engine, "admin", 203) as admin:
+        r = await _upload(admin, member_lead, amount=149, ref="712345678932")
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "day1"
+    async with AsyncSession(engine) as s:
+        assert (await s.execute(select(Win).where(Win.user_id == 203))).scalars().all() == []
+
+
 async def test_wrong_numbers_lock_the_link(engine):
     await _seed(engine)
     async with _as(engine, "team", 201) as team:
