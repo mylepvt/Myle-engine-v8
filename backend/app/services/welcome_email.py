@@ -1,7 +1,8 @@
 """The welcome email a lead gets after agreeing to the deposit terms and giving their email.
 
 Table layout with inline styles only, so it renders the same in Gmail, Outlook and phone
-mail apps. Every value is HTML-escaped. It promises nothing beyond the deposit terms.
+mail apps. Every value is HTML-escaped. It promises nothing beyond the deposit terms, and
+leaves the refund to the terms the lead already agreed to.
 """
 
 from __future__ import annotations
@@ -75,20 +76,9 @@ def render_welcome(*, name: str, business: str, support_email: str, amount_rupee
       </div>
     </td></tr>
 
-    <tr><td style="background:#ffffff;padding:32px 32px 14px 32px;">
+    <tr><td style="background:#ffffff;padding:32px 32px 18px 32px;">
       <div style="font-size:19px;font-weight:700;color:{_INK};padding-bottom:20px;">What happens next</div>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">{steps}</table>
-    </td></tr>
-
-    <tr><td style="background:#ffffff;padding:0 32px 32px 32px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
-        style="background:#eef6ff;border-radius:16px;"><tr><td style="padding:18px 20px;">
-        <div style="font-size:15px;font-weight:600;color:{_INK};">&#128737;&#65039; Your ₹{amount_rupees} deposit is 100% refundable</div>
-        <div style="font-size:14px;line-height:21px;color:{_MUTED};padding-top:6px;">
-          Ask for a refund any time and the full amount comes back to you. You can also view or withdraw
-          your consent from the same link you got on WhatsApp.
-        </div>
-      </td></tr></table>
     </td></tr>
 
     <tr><td style="background:#ffffff;border-radius:0 0 24px 24px;border-top:1px solid #e8e8ed;padding:24px 32px;text-align:center;">
@@ -97,7 +87,7 @@ def render_welcome(*, name: str, business: str, support_email: str, amount_rupee
     </td></tr>
 
     <tr><td style="padding:20px 16px 0 16px;text-align:center;font-size:12px;line-height:18px;color:#86868b;">
-      You got this email because you gave it on your {biz} enrollment page.<br>&copy; {biz}
+      &copy; {biz}
     </td></tr>
 
   </table>
@@ -112,8 +102,6 @@ def render_welcome(*, name: str, business: str, support_email: str, amount_rupee
         f"2. Pay your deposit and get your receipt: after your Rs. {amount_rupees} deposit is paid, "
         "your official receipt comes to you on WhatsApp.\n"
         "3. Your journey begins: the person who invited you will guide you through every next step.\n\n"
-        f"Your Rs. {amount_rupees} deposit is 100% refundable. Ask for a refund any time and the full amount "
-        "comes back to you. You can also view or withdraw your consent from the same link you got on WhatsApp.\n\n"
         f"Questions? Reply to this email or write to {support_email}.\n\n"
         f"{business}\n"
     )
