@@ -293,8 +293,8 @@ async def test_email_after_agreeing_sends_one_welcome_email(engine, monkeypatch)
         assert r.status_code == 200, r.text
         assert r.json()["email_result"] == "sent" and r.json()["email"] == "rohit@example.com"
         assert r.json()["welcome_email_sent_at"]
-        assert sent[0]["to"] == "rohit@example.com" and sent[0]["subject"] == "Welcome to Myle Community, Rohit!"
-        assert "₹149" in sent[0]["html"] and "refund" not in sent[0]["text"].lower()
+        assert sent[0]["to"] == "rohit@example.com" and sent[0]["subject"] == "Welcome to the Myle Community family, Rohit!"
+        assert "3 days of guided training" in sent[0]["html"] and "refund" not in sent[0]["text"].lower()
 
         # Same address again: no second email. A corrected address gets one.
         assert (await team.post(url, json={"phone": phone, "email": "rohit@example.com"})).json()["email_result"] == "already_sent"
