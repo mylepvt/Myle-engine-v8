@@ -12,6 +12,8 @@ import {
   type DepositReceipt,
   type DepositSettings,
   fetchDepositConsentEvidence,
+  type MailTestResult,
+  sendDepositTestEmail,
   useDepositReceiptsQuery,
   useDepositSettingsQuery,
   useRefundDepositMutation,
@@ -275,6 +277,7 @@ function SettingsCard() {
           }}
         />
       </div>
+      <TestEmailRow />
       {showDetails ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -304,5 +307,55 @@ function SettingsCard() {
         </button>
       )}
     </div>
+  )
+}
+
+function TestEmailRow() {
+  const [to, setTo] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<MailTestResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <form
+      className="space-y-2 border-t border-border pt-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        setBusy(true)
+        setError(null)
+        setResult(null)
+        sendDepositTestEmail(to.trim())
+          .then(setResult)
+          .catch((err: Error) => setError(err.message))
+          .finally(() => setBusy(false))
+      }}
+    >
+      <p className="font-medium text-foreground">Welcome email</p>
+      <p className="text-xs text-muted-foreground">
+        Send the welcome email to yourself to check that email works from this server.
+      </p>
+      <div className="flex gap-2">
+        <input
+          required
+          type="email"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder="you@example.com"
+          className="field-input min-w-0 flex-1"
+        />
+        <Button type="submit" size="sm" disabled={busy || !to.trim()}>
+          {busy ? 'Sending…' : 'Send test email'}
+        </Button>
+      </div>
+      {result ? (
+        <p className={`text-xs ${result.ok ? 'text-success-ink' : 'text-destructive'}`}>
+          {result.detail}
+          <span className="block text-muted-foreground">
+            Server: {result.smtp_host}:{result.smtp_port} · From: {result.sender || 'not set'}
+          </span>
+        </p>
+      ) : null}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </form>
   )
 }

@@ -7,6 +7,7 @@ sender. With no credentials, ``mail_configured()`` is False and callers just ski
 from __future__ import annotations
 
 import asyncio
+import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -14,7 +15,9 @@ from email.utils import formataddr, make_msgid
 
 from app.core.config import settings
 
-SMTP_TIMEOUT_SECONDS = 20
+logger = logging.getLogger(__name__)
+
+SMTP_TIMEOUT_SECONDS = 12
 
 
 class MailError(Exception):
@@ -52,11 +55,29 @@ def _send_sync(msg: EmailMessage) -> None:
             smtp.send_message(msg)
 
 
+def explain(e: Exception) -> str:
+    """A plain reason for an admin, from the SMTP / network error."""
+    if isinstance(e, smtplib.SMTPAuthenticationError):
+        return "The mail server refused the login. Check SMTP_USER and SMTP_PASSWORD (the mailbox password)."
+    if isinstance(e, (TimeoutError, ConnectionRefusedError)) or "timed out" in str(e).lower() or "unreachable" in str(e).lower():
+        return (
+            f"Could not reach {settings.smtp_host}:{settings.smtp_port}. The server's network is blocking mail ports "
+            "(Render free instances block 25/465/587); a paid instance or an HTTP email service is needed."
+        )
+    if isinstance(e, smtplib.SMTPRecipientsRefused):
+        return "The mail server refused this recipient address."
+    if isinstance(e, smtplib.SMTPSenderRefused):
+        return "The mail server refused the sender. SMTP_USER must be the mailbox address itself."
+    return f"{type(e).__name__}: {e}"
+
+
 async def send_email(*, to: str, subject: str, html: str, text: str) -> None:
     """Send one email. Raises ``MailError`` when it isn't configured or the server refuses."""
     if not mail_configured():
-        raise MailError("Email is not configured.")
+        raise MailError("Email is off: SMTP_USER or SMTP_PASSWORD is not set on this server.")
     try:
         await asyncio.to_thread(_send_sync, _build(to, subject, html, text))
     except (smtplib.SMTPException, OSError) as e:
-        raise MailError(str(e)) from e
+        reason = explain(e)
+        logger.warning("email to %s failed: %s", to, reason)
+        raise MailError(reason) from e

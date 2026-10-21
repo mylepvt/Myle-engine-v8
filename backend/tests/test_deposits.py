@@ -340,6 +340,40 @@ async def test_admin_can_send_to_day1_but_gets_no_win(engine):
         assert (await s.execute(select(Win).where(Win.user_id == 203))).scalars().all() == []
 
 
+async def test_admin_test_email_reports_the_mail_server_answer(engine, monkeypatch):
+    import smtplib
+
+    from app.services import mailer
+
+    await _seed(engine)
+    async with _as(engine, "team", 201) as team:
+        assert (await team.post("/api/v1/deposits/test-email", json={"to": "a@example.com"})).status_code == 403
+    async with _as(engine, "admin", 203) as admin:
+        monkeypatch.setattr(mailer, "mail_configured", lambda: False)
+        r = (await admin.post("/api/v1/deposits/test-email", json={"to": "a@example.com"})).json()
+        assert r["ok"] is False and "SMTP_PASSWORD" in r["detail"]
+
+        monkeypatch.setattr(mailer, "mail_configured", lambda: True)
+
+        def _blocked(msg):
+            raise TimeoutError("timed out")
+
+        monkeypatch.setattr(mailer, "_send_sync", _blocked)
+        r = (await admin.post("/api/v1/deposits/test-email", json={"to": "a@example.com"})).json()
+        assert r["ok"] is False and "blocking mail ports" in r["detail"]
+
+        def _bad_login(msg):
+            raise smtplib.SMTPAuthenticationError(535, b"auth failed")
+
+        monkeypatch.setattr(mailer, "_send_sync", _bad_login)
+        r = (await admin.post("/api/v1/deposits/test-email", json={"to": "a@example.com"})).json()
+        assert r["ok"] is False and "refused the login" in r["detail"]
+
+        monkeypatch.setattr(mailer, "_send_sync", lambda msg: None)
+        r = (await admin.post("/api/v1/deposits/test-email", json={"to": "a@example.com"})).json()
+        assert r["ok"] is True
+
+
 async def test_wrong_numbers_lock_the_link(engine):
     await _seed(engine)
     async with _as(engine, "team", 201) as team:

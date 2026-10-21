@@ -22,6 +22,8 @@ from app.schemas.deposits import (
     DepositSettings,
     DepositSettingsUpdate,
     LeadDepositState,
+    MailTestIn,
+    MailTestResult,
     ReceiptCreate,
     ReceiptList,
     ReceiptPublic,
@@ -249,3 +251,21 @@ async def put_settings(body: DepositSettingsUpdate, user: User, session: Session
     )
     await session.commit()
     return await _settings(session)
+
+
+@router.post("/test-email", response_model=MailTestResult)
+async def send_test_email(body: MailTestIn, user: User, session: Session) -> MailTestResult:
+    """Admin: send the welcome email to an address now and report exactly what the mail server said."""
+    _require_admin(user)
+    from app.core.config import settings
+    from app.services import mailer
+    from app.services.welcome_email import render_welcome
+
+    biz = await svc.business_details(session)
+    subject, html, text = render_welcome(name="there", business=biz["name"], support_email=biz["email"], amount_rupees=svc.MIN_RUPEES)
+    meta = {"smtp_host": settings.smtp_host, "smtp_port": settings.smtp_port, "sender": settings.smtp_user.strip()}
+    try:
+        await mailer.send_email(to=str(body.to), subject=f"[Test] {subject}", html=html, text=text)
+    except mailer.MailError as e:
+        return MailTestResult(ok=False, detail=str(e), **meta)
+    return MailTestResult(ok=True, detail=f"Sent to {body.to}. Check the inbox and the spam folder.", **meta)
