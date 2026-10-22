@@ -271,6 +271,8 @@ async def _fastapi_wallet_adjustment(
                 user_id=body.user_id,
                 amount_cents=body.amount_cents,
                 wallet_ledger_entry_id=entry.id,
+                note=body.note,
+                free=body.kind == "promo",
             )
         await session.commit()
         await session.refresh(entry)
@@ -692,15 +694,26 @@ async def review_free_recharge_request(
         if existing is None:
             # "Promo: …" so Myle Ledger books it as free credit, not cash (ledger_sync.wallet_kind).
             note = f"Promo: free recharge #{row.id} — {row.reason}"[:512]
-            session.add(
-                WalletLedgerEntry(
-                    user_id=row.user_id,
-                    amount_cents=row.amount_cents,
-                    currency="INR",
-                    note=note,
-                    idempotency_key=idem_key,
-                    created_by_user_id=user.user_id,
-                )
+            entry = WalletLedgerEntry(
+                user_id=row.user_id,
+                amount_cents=row.amount_cents,
+                currency="INR",
+                note=note,
+                idempotency_key=idem_key,
+                created_by_user_id=user.user_id,
+            )
+            session.add(entry)
+            await session.flush()
+            leader = await session.get(User, row.requested_by_user_id)
+            await create_payment_receipt_for_positive_adjustment(
+                session,
+                user_id=row.user_id,
+                amount_cents=row.amount_cents,
+                wallet_ledger_entry_id=entry.id,
+                note=row.reason,
+                free=True,
+                reference=f"Free recharge #{row.id}"
+                + (f" · asked by {display_name_from_user(leader) or leader.fbo_id}" if leader is not None else ""),
             )
             member = await session.get(User, row.user_id)
             if member is not None:

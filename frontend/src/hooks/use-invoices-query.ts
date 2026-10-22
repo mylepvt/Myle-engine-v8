@@ -11,6 +11,8 @@ export type InvoiceListItem = {
   total_cents: number
   currency: string
   issued_at: string
+  /** Receipts only: what the money was. */
+  receipt_type?: 'paid_recharge' | 'free_credit' | 'admin_credit' | null
 }
 
 export type InvoiceListResponse = {

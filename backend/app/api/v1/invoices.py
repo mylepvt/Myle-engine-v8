@@ -26,7 +26,7 @@ from app.schemas.invoices import (
     InvoiceRefundBody,
     InvoiceRefundResult,
 )
-from app.services.invoice_html import render_invoice_html
+from app.services.invoice_html import receipt_type, render_invoice_html
 from app.services.lead_refunds import invoice_lead_ids, refund_invoice_leads, refunded_lead_ids
 
 router = APIRouter()
@@ -150,6 +150,7 @@ async def list_invoices(
             total_cents=inv.total_cents,
             currency=inv.currency,
             issued_at=inv.issued_at,
+            receipt_type=receipt_type(inv, inv.payload_json or {}) if inv.doc_type == "payment_receipt" else None,
         )
         for inv, mem in rows
     ]

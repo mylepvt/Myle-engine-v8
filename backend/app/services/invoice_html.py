@@ -84,6 +84,47 @@ def _type_label(doc_type: str) -> str:
     return _LABELS.get(doc_type, "Payment Receipt")
 
 
+# What a payment receipt is for: money paid in, free (promo) credit, or an admin credit.
+RECEIPT_TYPES: dict[str, dict[str, str]] = {
+    "paid_recharge": {
+        "title": "PAYMENT RECEIPT",
+        "party": "Received from",
+        "stamp": "PAID RECHARGE",
+        "status": "PAID",
+        "total": "Received",
+        "desc": "Wallet Recharge — Myle Community",
+    },
+    "free_credit": {
+        "title": "CREDIT RECEIPT",
+        "party": "Credited to",
+        "stamp": "FREE CREDIT · NOT PAID",
+        "status": "FREE",
+        "total": "Credited",
+        "desc": "Free wallet credit — not paid by the member",
+    },
+    "admin_credit": {
+        "title": "CREDIT RECEIPT",
+        "party": "Credited to",
+        "stamp": "ADMIN CREDIT",
+        "status": "CREDITED",
+        "total": "Credited",
+        "desc": "Wallet credit by admin",
+    },
+}
+
+
+def receipt_type(invoice: Invoice, payload: dict[str, Any]) -> str:
+    """Stored on receipts issued since this was added; older ones are told apart by their link."""
+    kind = payload.get("receipt_type")
+    if kind in RECEIPT_TYPES:
+        return kind
+    if invoice.wallet_recharge_id is not None:
+        return "paid_recharge"
+    if str(payload.get("payment_reference") or "").lower().startswith("admin"):
+        return "admin_credit"
+    return "paid_recharge"
+
+
 def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     """The same look as Myle Ledger's invoices (components/InvoicePrintView.tsx there):
     a fixed "paper" palette, brand band, supplier left / document right, a tinted Bill-To
@@ -104,6 +145,8 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     against = payload.get("against_invoice")
     place = payload.get("place_of_supply")
     is_tax = invoice.doc_type in ("tax_invoice", "credit_note")
+    rtype = None if is_tax else receipt_type(invoice, payload)
+    rinfo = RECEIPT_TYPES[rtype] if rtype else None
 
     bill_meta = []
     if against:
@@ -124,14 +167,15 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
           GSTIN <span class="gstin">{esc(seller["gstin"])}</span> · {esc(seller["state"])} ({esc(seller["state_code"])})</p>
       </div>
       <div class="doc">
-        <p class="kind">{_doc_title(invoice.doc_type)}</p>
+        <p class="kind">{rinfo["title"] if rinfo else _doc_title(invoice.doc_type)}</p>
         <p class="num">{esc(invoice.invoice_number)}</p>
         <p class="date">{esc(date_s)}</p>
+        {f'<p class="stamp stamp-{rtype}">{rinfo["stamp"]}</p>' if rinfo else ''}
       </div>
     </header>
     <section class="bill">
       <div>
-        <p class="label">{"Bill to" if is_tax else "Received from"}</p>
+        <p class="label">{"Bill to" if is_tax else rinfo["party"]}</p>
         <p class="name">{display_name}</p>
         {f'<p class="sub">@{esc(un)}</p>' if un else ''}
         {f'<p class="sub">{esc(phone)}</p>' if phone else ''}
@@ -181,7 +225,7 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
         """
     else:
         ref = esc(payload.get("payment_reference", ""))
-        desc = esc(payload.get("receipt_description") or "Wallet Recharge — Myle Community")
+        desc = esc(payload.get("receipt_description") or rinfo["desc"])
         body = f"""
         <table class="items">
           <thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>
@@ -189,10 +233,13 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
             <td class="r strong">{_fmt_inr(invoice.total_cents)}</td></tr></tbody>
         </table>
         <section class="totals">
-          <div class="words"><p class="label">Amount in words</p><p>{esc(_rupees_words_from_cents(invoice.total_cents))}</p></div>
+          <div class="words">
+            <p class="label">Amount in words</p><p>{esc(_rupees_words_from_cents(invoice.total_cents))}</p>
+            <div class="seal seal-{rtype}">{rinfo["stamp"]}</div>
+          </div>
           <div class="sum">
-            <div class="row"><span>Status</span><span class="paid">PAID</span></div>
-            <div class="total"><span>Received</span><span>{_fmt_inr(invoice.total_cents)}</span></div>
+            <div class="row"><span>Status</span><span class="status-{rtype}">{rinfo["status"]}</span></div>
+            <div class="total total-{rtype}"><span>{rinfo["total"]}</span><span>{_fmt_inr(invoice.total_cents)}</span></div>
           </div>
         </section>
         """
@@ -240,7 +287,7 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
     .empty { text-align: center; color: #94A3B8; padding: 20px 0; }
     .note { margin-top: 8px; font-size: 11px; color: #94A3B8; }
     .totals { margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; break-inside: avoid; }
-    .words p:last-child { margin-top: 4px; font-size: 14px; font-weight: 500; line-height: 1.35; }
+    .words p:nth-of-type(2) { margin-top: 4px; font-size: 14px; font-weight: 500; line-height: 1.35; }
     .sum { width: 17rem; flex-shrink: 0; }
     .row { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font-variant-numeric: tabular-nums; }
     .row span:first-child { color: #64748B; }
@@ -248,7 +295,19 @@ def render_invoice_html(*, invoice: Invoice, member: User) -> str:
              padding: 12px 16px; color: #fff; background: linear-gradient(90deg, #1D4ED8, #4F46E5); }
     .total span:first-child { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; opacity: .9; }
     .total span:last-child { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .paid { color: #15803D; font-weight: 700; }
+    .paid, .status-paid_recharge { color: #15803D; font-weight: 700; }
+    .status-free_credit { color: #B45309; font-weight: 700; }
+    .status-admin_credit { color: #475569; font-weight: 700; }
+    .total-free_credit { background: linear-gradient(90deg, #B45309, #D97706); }
+    .total-admin_credit { background: linear-gradient(90deg, #334155, #475569); }
+    .stamp { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; font-size: 10.5px;
+             font-weight: 700; letter-spacing: .12em; }
+    .stamp-paid_recharge { color: #15803D; background: #DCFCE7; }
+    .stamp-free_credit { color: #B45309; background: #FEF3C7; }
+    .stamp-admin_credit { color: #334155; background: #E2E8F0; }
+    .seal { display: inline-block; margin-top: 16px; padding: 6px 14px; border: 2px solid currentColor; border-radius: 8px;
+            font-size: 12px; font-weight: 800; letter-spacing: .16em; transform: rotate(-4deg); opacity: .85; }
+    .seal-paid_recharge { color: #15803D; } .seal-free_credit { color: #B45309; } .seal-admin_credit { color: #475569; }
     .foot { margin-top: 48px; padding-top: 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between;
             align-items: flex-end; gap: 24px; break-inside: avoid; }
     .sys { font-size: 11px; line-height: 1.6; color: #94A3B8; }
