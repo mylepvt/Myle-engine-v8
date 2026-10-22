@@ -15,8 +15,16 @@ function formatMoney(cents: number, currency: string) {
   return `${currency} ${major.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function typeLabel(t: string) {
-  return t === 'tax_invoice' ? 'Tax Invoice' : t === 'credit_note' ? 'Credit Note' : 'Payment Receipt'
+const RECEIPT_LABELS: Record<string, string> = {
+  paid_recharge: 'Receipt · Paid recharge',
+  free_credit: 'Receipt · Free credit',
+  admin_credit: 'Receipt · Admin credit',
+}
+
+function typeLabel(t: string, receiptType?: string | null) {
+  if (t === 'tax_invoice') return 'Tax Invoice'
+  if (t === 'credit_note') return 'Credit Note'
+  return (receiptType && RECEIPT_LABELS[receiptType]) || 'Payment Receipt'
 }
 
 export function AdminInvoicesPage({ title }: Props) {
@@ -208,7 +216,7 @@ export function AdminInvoicesPage({ title }: Props) {
                     </p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {typeLabel(row.doc_type)} · {new Date(row.issued_at).toLocaleString()}
+                    {typeLabel(row.doc_type, row.receipt_type)} · {new Date(row.issued_at).toLocaleString()}
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <InvoiceDownloadLink
@@ -264,7 +272,7 @@ export function AdminInvoicesPage({ title }: Props) {
                           <span className="ml-1 text-xs text-muted-foreground">@{row.member_username}</span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2">{typeLabel(row.doc_type)}</td>
+                      <td className="px-3 py-2">{typeLabel(row.doc_type, row.receipt_type)}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{formatMoney(row.total_cents, row.currency)}</td>
                       <td className="max-w-[12rem] px-3 py-2 align-top">
                         <InvoiceDownloadLink

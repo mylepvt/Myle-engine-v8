@@ -53,6 +53,7 @@ async def create_payment_receipt_for_recharge(
     payload = {
         **(await _issue_snapshot(session, user_id)),
         "payment_reference": (utr_number or "").strip() or "—",
+        "receipt_type": "paid_recharge",
     }
     inv = Invoice(
         invoice_number=invn,
@@ -69,13 +70,26 @@ async def create_payment_receipt_for_recharge(
     return inv
 
 
+def clean_note(note: Optional[str]) -> Optional[str]:
+    """The admin's note as typed — without the "Promo:" tag added for Myle Ledger."""
+    text = (note or "").strip()
+    if text.lower().startswith("promo:"):
+        text = text[6:].strip()
+    return text or None
+
+
 async def create_payment_receipt_for_positive_adjustment(
     session: AsyncSession,
     *,
     user_id: int,
     amount_cents: int,
     wallet_ledger_entry_id: int,
+    note: Optional[str] = None,
+    free: bool = False,
+    reference: Optional[str] = None,
 ) -> Optional[Invoice]:
+    """Receipt for money an admin put in a wallet. ``free`` = promo / free credit (nothing
+    was paid), stamped apart from paid recharges; the admin's note is the description."""
     existing = await session.execute(
         select(Invoice).where(Invoice.wallet_ledger_entry_id == wallet_ledger_entry_id)
     )
@@ -84,9 +98,12 @@ async def create_payment_receipt_for_positive_adjustment(
     invn = await allocate_invoice_number(session, "payment_receipt")
     payload = {
         **(await _issue_snapshot(session, user_id)),
-        "payment_reference": "Admin Adjustment",
-        "receipt_description": "Administrative wallet credit — Myle Community Dashboard",
+        "payment_reference": reference or ("Free credit" if free else "Admin adjustment"),
+        "receipt_type": "free_credit" if free else "admin_credit",
     }
+    text = clean_note(note)
+    if text:
+        payload["receipt_description"] = text[:300]
     inv = Invoice(
         invoice_number=invn,
         doc_type="payment_receipt",

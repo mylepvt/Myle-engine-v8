@@ -17,6 +17,8 @@ class InvoiceListItem(BaseModel):
     total_cents: int
     currency: str
     issued_at: datetime
+    # Receipts only: "paid_recharge" | "free_credit" | "admin_credit".
+    receipt_type: Optional[str] = None
 
 
 class InvoiceListResponse(BaseModel):
