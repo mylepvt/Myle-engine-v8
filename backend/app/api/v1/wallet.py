@@ -6,8 +6,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +14,6 @@ from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.core.auth_cookies import display_name_from_user
-from app.core.auth_cookie import MYLE_ACCESS_COOKIE
 from app.core.config import settings
 from app.core.realtime_hub import notify_topics
 from app.db.session import AsyncSessionLocal
@@ -224,39 +222,6 @@ async def wallet_ledger(
     return WalletLedgerListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
-async def _sync_adjustment_to_crm(
-    *,
-    user_id: int,
-    amount_cents: int,
-    idempotency_key: str,
-    note: str | None,
-    internal_secret: str,
-    crm_api_url: str,
-) -> None:
-    """Background task: mirror a wallet adjustment to CRM's /wallet/credit endpoint."""
-    try:
-        async with httpx.AsyncClient(
-            base_url=crm_api_url,
-            timeout=httpx.Timeout(10.0),
-        ) as client:
-            r = await client.post(
-                "/api/v1/wallet/credit",
-                json={
-                    "userId": user_id,
-                    "amountCents": amount_cents,
-                    "idempotencyKey": idempotency_key,
-                    "note": note,
-                },
-                headers={"x-internal-secret": internal_secret},
-            )
-            if r.status_code >= 400:
-                logger.warning(
-                    "CRM wallet sync failed (HTTP %s): %s", r.status_code, r.text[:200]
-                )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("CRM wallet sync error for idempotency_key %s: %s", idempotency_key, exc)
-
-
 async def _fastapi_wallet_adjustment(
     *,
     body: WalletAdjustmentCreate,
@@ -288,7 +253,8 @@ async def _fastapi_wallet_adjustment(
         amount_cents=body.amount_cents,
         currency="INR",
         idempotency_key=body.idempotency_key,
-        note=body.note,
+        # Myle Ledger tells promo credit apart from other adjustments by this prefix (ledger_sync.wallet_kind).
+        note=f"Promo: {body.note or ''}".strip()[:512] if body.kind == "promo" and not (body.note or "").lower().startswith("promo") else body.note,
         created_by_user_id=user.user_id,
     )
     session.add(entry)
@@ -321,60 +287,24 @@ async def _fastapi_wallet_adjustment(
 @router.post("/adjustments", response_model=WalletLedgerEntryPublic, status_code=http_status.HTTP_201_CREATED)
 async def wallet_create_adjustment(
     body: WalletAdjustmentCreate,
-    request: Request,
-    background_tasks: BackgroundTasks,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> WalletLedgerEntryPublic:
-    """Admin-only wallet adjustment — single writer is CRM."""
+    """Admin-only wallet adjustment, written to the member's wallet here (``wallet_ledger_entries``).
+
+    It used to go to the crm-api microservice first, which credits the wallet of whoever's
+    token it gets (the admin), in its own table: the member saw nothing, and neither did
+    Finance → Budget export or Myle Ledger. One wallet, one place."""
     _require_admin(user)
-    token = request.cookies.get(MYLE_ACCESS_COOKIE, "")
-
-    async def tell_ledger() -> None:
-        # Promo / free credit or another adjustment, for Myle Ledger's CRM accounting.
-        member = await session.get(User, body.user_id)
-        if member is not None:
-            await ledger_bridge.queue_wallet(
-                session, user=member, kind=body.kind, amount_cents=body.amount_cents,
-                ref=f"adjustment:{body.idempotency_key}", note=body.note,
-            )
-            await session.commit()
-
-    if token and settings.crm_api_url and settings.crm_internal_secret:
-        try:
-            async with httpx.AsyncClient(
-                base_url=settings.crm_api_url,
-                timeout=httpx.Timeout(10.0),
-            ) as client:
-                r = await client.post(
-                    "/api/v1/wallet/credit",
-                    json={
-                        "amountCents": body.amount_cents,
-                        "idempotencyKey": body.idempotency_key,
-                        "note": body.note,
-                    },
-                    headers={
-                        "Authorization": f"Bearer {token}",
-                        "x-internal-secret": settings.crm_internal_secret,
-                    },
-                )
-                if r.status_code < 400:
-                    crm_data = r.json()
-                    await tell_ledger()
-                    return WalletLedgerEntryPublic(
-                        id=crm_data.get("id", 0),
-                        user_id=body.user_id,
-                        amount_cents=body.amount_cents,
-                        currency="INR",
-                        note=body.note,
-                        created_at=crm_data.get("createdAt", ""),
-                    )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("CRM wallet adjustment failed: %s", exc)
-
-    # Fallback: write to FastAPI DB (CRM unreachable)
     entry = await _fastapi_wallet_adjustment(body=body, user=user, session=session)
-    await tell_ledger()
+    # Promo / free credit or another adjustment, for Myle Ledger's CRM accounting.
+    member = await session.get(User, body.user_id)
+    if member is not None:
+        await ledger_bridge.queue_wallet(
+            session, user=member, kind=body.kind, amount_cents=body.amount_cents,
+            ref=f"adjustment:{body.idempotency_key}", note=body.note,
+        )
+        await session.commit()
     return entry
 
 

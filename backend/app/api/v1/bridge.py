@@ -6,6 +6,9 @@ No user session — the request is signed with ``MYLE_BRIDGE_SECRET``
 a retried or repeated batch adds each lead once. A lead whose phone is already in the
 pool from an Excel import (unlinked, unclaimed) is linked to the Ledger instead of added
 again.
+
+``POST /ledger-sync`` goes the other way: the Ledger reads this CRM's books page by page
+(``app.services.ledger_sync``).
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ from app.db.session import AsyncSessionLocal
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
-from app.services import ledger_bridge
+from app.services import ledger_bridge, ledger_sync
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
 from app.services.lead_pool_defaults import get_default_pool_price_cents
 from app.services.push_service import send_push_to_roles_bg
@@ -199,3 +202,24 @@ async def pool_ingest(
         "linked": linked,
         "skipped": len(leads) - created - linked,
     }
+
+
+@router.post("/ledger-sync")
+async def ledger_sync_page(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, Any]:
+    """Myle Ledger reads one page of this CRM's books (members, wallet, recharges,
+    invoices) to show them read-only there (``app.services.ledger_sync``)."""
+    raw = await request.body()
+    if len(raw) > 10_000 or not ledger_bridge.verify(
+        request.headers.get("x-myle-timestamp"), request.headers.get("x-myle-signature"), raw
+    ):
+        raise HTTPException(status_code=http_status.HTTP_401_UNAUTHORIZED, detail="Bad signature")
+    try:
+        parsed = ledger_sync.parse_request(json.loads(raw))
+    except ValueError:
+        parsed = None
+    if parsed is None:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Bad request")
+    return await ledger_sync.read_page(session, *parsed)
