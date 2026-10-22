@@ -48,6 +48,9 @@ async function fetchWalletLedger(userId: number | null): Promise<WalletLedgerLis
   return res.json()
 }
 
+/** Past this the request is treated as lost (deploy restart, dropped connection). */
+const ADJUSTMENT_TIMEOUT_MS = 25_000
+
 export async function postWalletAdjustment(body: {
   user_id: number
   amount_cents: number
@@ -56,11 +59,23 @@ export async function postWalletAdjustment(body: {
   /** 'promo' = free credit, booked apart from paid recharges in Myle Ledger. */
   kind?: 'adjustment' | 'promo'
 }): Promise<WalletLedgerEntryPublic> {
-  const res = await apiFetch('/api/v1/wallet/adjustments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), ADJUSTMENT_TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await apiFetch('/api/v1/wallet/adjustments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    })
+  } catch {
+    throw new Error(
+      'The server did not answer. Check Recent ledger lines above — pressing Confirm again is safe, it will not add twice.',
+    )
+  } finally {
+    clearTimeout(timer)
+  }
   if (!res.ok) await parseError(res)
   return res.json()
 }

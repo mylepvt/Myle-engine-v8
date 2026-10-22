@@ -19,6 +19,39 @@ function memberSelectLabel(m: TeamMemberPublic): string {
   return `${display} · ${m.fbo_id} (${m.role})`
 }
 
+const PENDING_KEY = 'wallet-adjustment-pending'
+
+function newKey(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `recharge-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+/**
+ * The same adjustment (member, amount, type, note) keeps one idempotency key until it
+ * succeeds — also across an app reload — so pressing Confirm again after a hang or a
+ * dropped connection can never credit or debit twice.
+ */
+function keyFor(fingerprint: string): string {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(PENDING_KEY) || 'null') as { fp: string; key: string } | null
+    if (saved && saved.fp === fingerprint) return saved.key
+    const key = newKey()
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify({ fp: fingerprint, key }))
+    return key
+  } catch {
+    return newKey()
+  }
+}
+
+function clearPendingKey() {
+  try {
+    sessionStorage.removeItem(PENDING_KEY)
+  } catch {
+    /* storage blocked: nothing to clear */
+  }
+}
+
 function formatInr(cents: number): string {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -37,6 +70,7 @@ export function FinanceRechargesPage({ title }: Props) {
   const [note, setNote] = useState('')
   const [promo, setPromo] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [done, setDone] = useState('')
   const deferredMemberQuery = useDeferredValue(memberQuery)
   const searchActive = memberQuery.trim().length > 0
   const filteredMembers = members.data
@@ -57,18 +91,21 @@ export function FinanceRechargesPage({ title }: Props) {
     const uid = Number(userId)
     const cents = Number(amountCents)
     if (!Number.isFinite(uid) || uid < 1 || !Number.isFinite(cents)) return
-    const idempotency_key =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `recharge-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const amount = Math.trunc(cents)
+    const kind = promo && cents > 0 ? 'promo' : 'adjustment'
+    const trimmed = note.trim()
+    const who = selectedMember ? memberSelectLabel(selectedMember) : `User #${uid}`
+    setDone('')
     try {
       await mut.mutateAsync({
         user_id: uid,
-        amount_cents: Math.trunc(cents),
-        idempotency_key,
-        note: note.trim() || undefined,
-        kind: promo && cents > 0 ? 'promo' : 'adjustment',
+        amount_cents: amount,
+        idempotency_key: keyFor(JSON.stringify([uid, amount, kind, trimmed])),
+        note: trimmed || undefined,
+        kind,
       })
+      clearPendingKey()
+      setDone(`${amount >= 0 ? 'Credited' : 'Debited'} ${formatInr(Math.abs(amount))} ${amount >= 0 ? 'to' : 'from'} ${who}${kind === 'promo' ? ' (free credit)' : ''}.`)
       setAmountCents('')
       setNote('')
       setPromo(false)
@@ -207,7 +244,11 @@ export function FinanceRechargesPage({ title }: Props) {
             {mut.error instanceof Error ? mut.error.message : 'Request failed'}
           </p>
         ) : null}
-        {mut.isSuccess ? <p className="text-xs text-success-ink">Ledger line recorded.</p> : null}
+        {mut.isSuccess && done ? (
+          <p className="text-xs text-success-ink" role="status">
+            {done}
+          </p>
+        ) : null}
       </form>
 
       {showConfirm && selectedMember ? (
