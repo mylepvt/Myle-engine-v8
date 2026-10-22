@@ -53,6 +53,7 @@ from app.services.leads_contracts import LeadsRepositoryContract, TopicNotifierC
 from app.services.auto_handoff import AutoHandoffService
 from app.services import deposits
 from app.services.enrollment_proof_storage import save_enrollment_proof_bytes
+from app.services.lead_claim_records import record_claim
 from app.services.claim_gate import TODAY_WORKING_STATUSES, ensure_claim_allowed, pool_claim_exists
 from app.services.crm_outbox import crm_shadow_stage_for_lead, enqueue_lead_shadow_delete, enqueue_lead_shadow_upsert
 from app.services.observation_logger import (
@@ -587,6 +588,7 @@ class LeadsService:
             lead_id=lead_id,
             meta={"price_cents": price},
         )
+        record_claim(self._session, user_id=user.user_id, lead_id=lead_id, price_cents=price)
         lead = await self._commit_with_shadow_upsert(lead)
         await self._notifier("leads", "wallet")
         return lead
@@ -703,6 +705,7 @@ class LeadsService:
                 lead_id=lead.id,
                 meta={"price_cents": price, "batch_claim_count": len(leads), **({"source": source} if source else {})},
             )
+            record_claim(self._session, user_id=user.user_id, lead_id=lead.id, price_cents=price, source=source)
             await self._session.flush()
             enqueue_lead_shadow_upsert(self._session, lead)
             claimed.append(lead)

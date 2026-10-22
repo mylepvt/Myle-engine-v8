@@ -284,3 +284,194 @@ async def member_detail(session: AsyncSession, member: User) -> dict[str, Any]:
             for l in leads
         ],
     }
+
+
+# ── Leads taken: paid vs free, per member and overall (lead_claim_records) ───
+
+PERIODS = ("today", "7d", "30d", "month", "all")
+SOURCE_LABELS = {
+    "pool": "Bought from pool",
+    "booking": "Bought (booking)",
+    "free_pool": "Free from pool",
+    "admin_gift": "Given free by admin",
+}
+
+
+def period_start(period: str, now: datetime | None = None) -> datetime | None:
+    """Start of the period in UTC (IST calendar days); None = all time."""
+    from datetime import timedelta, timezone
+
+    from app.core.time_ist import IST
+
+    today = ist_day_start_utc(now)
+    if period == "today":
+        return today
+    if period == "7d":
+        return today - timedelta(days=6)
+    if period == "30d":
+        return today - timedelta(days=29)
+    if period == "month":
+        ist = (now or datetime.now(timezone.utc)).astimezone(IST)
+        return ist.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    return None
+
+
+def _ist_day(ts: datetime) -> str:
+    from datetime import timezone
+
+    from app.core.time_ist import IST
+
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(IST).date().isoformat()
+
+
+def _blank() -> dict[str, Any]:
+    return {
+        "taken": 0,
+        "paid": 0,
+        "paid_cents": 0,
+        "refunded": 0,
+        "refund_cents": 0,
+        "free": 0,
+        "free_admin": 0,
+        "free_pool": 0,
+        "first_at": None,
+        "last_at": None,
+        "days": set(),
+    }
+
+
+def _add(agg: dict[str, Any], r: Any) -> None:
+    agg["taken"] += 1
+    if r.kind == "paid":
+        agg["paid"] += 1
+        agg["paid_cents"] += int(r.price_cents or 0)
+        if r.refunded_at is not None:
+            agg["refunded"] += 1
+            agg["refund_cents"] += int(r.refund_cents or 0)
+    else:
+        agg["free"] += 1
+        agg["free_admin" if r.source == "admin_gift" else "free_pool"] += 1
+    if agg["first_at"] is None or r.claimed_at < agg["first_at"]:
+        agg["first_at"] = r.claimed_at
+    if agg["last_at"] is None or r.claimed_at > agg["last_at"]:
+        agg["last_at"] = r.claimed_at
+    agg["days"].add(_ist_day(r.claimed_at))
+
+
+def _finish(agg: dict[str, Any]) -> dict[str, Any]:
+    days = agg.pop("days")
+    agg["active_days"] = len(days)
+    agg["net_paid_cents"] = agg["paid_cents"] - agg["refund_cents"]
+    return agg
+
+
+async def claims_report(session: AsyncSession, leader_id: int, period: str) -> dict[str, Any]:
+    from app.models.lead_claim_record import LeadClaimRecord
+
+    ids = await team_user_ids(session, leader_id)
+    users = (
+        await session.execute(select(User).where(User.id.in_(ids), ~User.fbo_id.startswith(PURGED_FBO_PREFIX)))
+    ).scalars().all()
+    start = period_start(period)
+
+    q = select(LeadClaimRecord).where(LeadClaimRecord.user_id.in_(ids))
+    if start is not None:
+        q = q.where(LeadClaimRecord.claimed_at >= start)
+    records = (await session.execute(q)).scalars().all()
+
+    credit_q = select(WalletLedgerEntry.user_id, func.sum(WalletLedgerEntry.amount_cents)).where(
+        WalletLedgerEntry.user_id.in_(ids),
+        func.lower(func.coalesce(WalletLedgerEntry.note, "")).like("promo%"),
+        WalletLedgerEntry.amount_cents > 0,
+    )
+    if start is not None:
+        credit_q = credit_q.where(WalletLedgerEntry.created_at >= start)
+    credit = {int(u): int(s or 0) for u, s in (await session.execute(credit_q.group_by(WalletLedgerEntry.user_id))).all()}
+
+    per: dict[int, dict[str, Any]] = defaultdict(_blank)
+    overall = _blank()
+    by_day: dict[str, dict[str, int]] = defaultdict(lambda: {"paid": 0, "free": 0})
+    for r in records:
+        _add(per[r.user_id], r)
+        _add(overall, r)
+        by_day[_ist_day(r.claimed_at)][r.kind if r.kind in ("paid", "free") else "free"] += 1
+
+    members = []
+    for u in users:
+        row = _finish(per[u.id]) if u.id in per else _finish(_blank())
+        members.append(
+            {
+                "user_id": u.id,
+                "name": display_name_from_user(u) or u.fbo_id,
+                "fbo_id": u.fbo_id,
+                "role": u.role,
+                "is_me": u.id == leader_id,
+                "state": _member_state(u),
+                "free_credit_cents": credit.get(u.id, 0),
+                **row,
+            }
+        )
+    members.sort(key=lambda m: (-m["taken"], m["name"].lower()))
+    totals = _finish(overall)
+    totals["members_taking"] = sum(1 for m in members if m["taken"])
+    totals["free_credit_cents"] = sum(credit.values())
+    return {
+        "period": period,
+        "since": start,
+        "totals": totals,
+        "members": members,
+        "days": [{"date": d, **v} for d, v in sorted(by_day.items(), reverse=True)],
+    }
+
+
+async def member_claims(session: AsyncSession, member: User, period: str) -> dict[str, Any]:
+    from app.models.lead_claim_record import LeadClaimRecord
+
+    start = period_start(period)
+    q = (
+        select(LeadClaimRecord, Lead.name, Lead.status)
+        .outerjoin(Lead, Lead.id == LeadClaimRecord.lead_id)
+        .where(LeadClaimRecord.user_id == member.id)
+        .order_by(LeadClaimRecord.claimed_at.desc(), LeadClaimRecord.id.desc())
+        .limit(1000)
+    )
+    if start is not None:
+        q = q.where(LeadClaimRecord.claimed_at >= start)
+    rows = (await session.execute(q)).all()
+    giver_ids = {r.given_by_user_id for r, _, _ in rows if r.given_by_user_id}
+    givers = (
+        {
+            u.id: display_name_from_user(u) or u.fbo_id
+            for u in (await session.execute(select(User).where(User.id.in_(giver_ids)))).scalars()
+        }
+        if giver_ids
+        else {}
+    )
+    agg = _blank()
+    for r, _, _ in rows:
+        _add(agg, r)
+    return {
+        "period": period,
+        "summary": _finish(agg),
+        "claims": [
+            {
+                "id": r.id,
+                "lead_id": r.lead_id,
+                "lead_name": name or f"Lead #{r.lead_id}",
+                "status_label": status_label(st) if st else None,
+                "kind": r.kind,
+                "source": r.source,
+                "source_label": SOURCE_LABELS.get(r.source, r.source),
+                "price_cents": r.price_cents,
+                "reason": r.reason,
+                "given_by": givers.get(r.given_by_user_id or 0),
+                "claimed_at": r.claimed_at,
+                "day": _ist_day(r.claimed_at),
+                "refunded": r.refunded_at is not None,
+                "refund_cents": r.refund_cents,
+            }
+            for r, name, st in rows
+        ],
+    }

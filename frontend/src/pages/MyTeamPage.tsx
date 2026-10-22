@@ -1,7 +1,8 @@
 import { useDeferredValue, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronRight, Gift, Phone } from 'lucide-react'
 
+import { LeadsTakenReport } from '@/components/team/LeadsTakenReport'
 import { Button } from '@/components/ui/button'
 import { ListSearchInput } from '@/components/ui/list-search-input'
 import { Sheet } from '@/components/ui/sheet'
@@ -329,6 +330,8 @@ function MemberDetail({ m, order }: { m: MyTeamMember; order: StatusCount[] }) {
 /** Leader: everyone under them — wallet, recharges and leads — in plain numbers. */
 export function MyTeamPage({ title }: Props) {
   const team = useMyTeamQuery()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const view = searchParams.get('view') === 'leads' ? 'leads' : 'team'
   const [query, setQuery] = useState('')
   const deferred = useDeferredValue(query)
   const [sort, setSort] = useState<SortKey>('name')
@@ -363,97 +366,112 @@ export function MyTeamPage({ title }: Props) {
       <div>
         <h1 className="text-ds-h2">{title}</h1>
         <p className="text-sm text-muted-foreground">
-          Everyone under you, with their wallet, recharges and leads. Tap a person to see everything.
+          Everyone under you: wallet, recharges, and the leads they took — paid and free. Tap a person to see everything.
         </p>
       </div>
 
-      {team.isPending ? (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20" />
-            ))}
-          </div>
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-28 w-full" />
-        </div>
-      ) : null}
-      {team.isError ? <ErrorState title="Could not load your team" message={team.error.message} onRetry={() => void team.refetch()} /> : null}
-
-      {data ? (
-        <>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            <Stat
-              label="People"
-              value={String(data.totals.members)}
-              hint={data.totals.active_members !== data.totals.members ? `${data.totals.active_members} active` : 'all active'}
-            />
-            <Stat
-              label="Team wallet"
-              value={formatInr(data.totals.wallet_cents)}
-              hint={`${formatInr(data.totals.recharged_cents)} recharged in all`}
-            />
-            <Stat label="Leads with team" value={String(data.totals.leads_active)} />
-            <Stat label="Taken today" value={String(data.totals.leads_claimed_today)} />
-          </div>
-
-          {data.me ? (
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium text-foreground">You</h2>
-              <PersonCard m={data.me} isMe onOpen={() => data.me && openPerson(data.me)} />
-            </section>
-          ) : null}
-
-          <section className="space-y-2">
-            <h2 className="text-sm font-medium text-foreground">Team leads by stage</h2>
-            <p className="text-xs text-muted-foreground">Tap a stage to see who has leads there.</p>
-            <StageChips counts={order} active={stage} onPick={setStage} />
-          </section>
-
-          <section className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <ListSearchInput
-                value={query}
-                onValueChange={setQuery}
-                placeholder="Search name, FBO ID or phone"
-                aria-label="Search your team"
-                wrapperClassName="w-full sm:flex-1"
-              />
-              <div className="flex gap-1" role="group" aria-label="Sort">
-                {SORTS.map((s) => (
-                  <button
-                    key={s.value}
-                    type="button"
-                    aria-pressed={sort === s.value}
-                    onClick={() => setSort(s.value)}
-                    className={cn(
-                      'press rounded-full px-3 py-1.5 text-sm font-medium',
-                      sort === s.value ? 'control-pill' : 'bg-muted text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {s.label}
-                  </button>
+      <Tabs value={view} onValueChange={(next) => setSearchParams(next === 'leads' ? { view: 'leads' } : {}, { replace: true })}>
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1">
+          <TabsTrigger value="team" className="min-h-9">
+            Team
+          </TabsTrigger>
+          <TabsTrigger value="leads" className="min-h-9">
+            Leads report
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="team" className="mt-4 space-y-5 md:space-y-6">
+          {team.isPending ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20" />
                 ))}
               </div>
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-28 w-full" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {people.length === data.members.length
-                ? `${people.length} people`
-                : `${people.length} of ${data.members.length} people`}
-              {stageRow ? ` with leads in ${stageRow.label}` : ''}
-            </p>
-            {data.members.length === 0 ? <InlineEmpty>No one is under you yet.</InlineEmpty> : null}
-            {data.members.length > 0 && people.length === 0 ? <InlineEmpty>No one matches.</InlineEmpty> : null}
-            <ul className="space-y-2">
-              {people.map((m) => (
-                <li key={m.user_id}>
-                  <PersonCard m={m} stage={stageRow} onOpen={() => openPerson(m)} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        </>
-      ) : null}
+          ) : null}
+          {team.isError ? <ErrorState title="Could not load your team" message={team.error.message} onRetry={() => void team.refetch()} /> : null}
+
+          {data ? (
+            <>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Stat
+                  label="People"
+                  value={String(data.totals.members)}
+                  hint={data.totals.active_members !== data.totals.members ? `${data.totals.active_members} active` : 'all active'}
+                />
+                <Stat
+                  label="Team wallet"
+                  value={formatInr(data.totals.wallet_cents)}
+                  hint={`${formatInr(data.totals.recharged_cents)} recharged in all`}
+                />
+                <Stat label="Leads with team" value={String(data.totals.leads_active)} />
+                <Stat label="Taken today" value={String(data.totals.leads_claimed_today)} />
+              </div>
+
+              {data.me ? (
+                <section className="space-y-2">
+                  <h2 className="text-sm font-medium text-foreground">You</h2>
+                  <PersonCard m={data.me} isMe onOpen={() => data.me && openPerson(data.me)} />
+                </section>
+              ) : null}
+
+              <section className="space-y-2">
+                <h2 className="text-sm font-medium text-foreground">Team leads by stage</h2>
+                <p className="text-xs text-muted-foreground">Tap a stage to see who has leads there.</p>
+                <StageChips counts={order} active={stage} onPick={setStage} />
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <ListSearchInput
+                    value={query}
+                    onValueChange={setQuery}
+                    placeholder="Search name, FBO ID or phone"
+                    aria-label="Search your team"
+                    wrapperClassName="w-full sm:flex-1"
+                  />
+                  <div className="flex gap-1" role="group" aria-label="Sort">
+                    {SORTS.map((s) => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        aria-pressed={sort === s.value}
+                        onClick={() => setSort(s.value)}
+                        className={cn(
+                          'press rounded-full px-3 py-1.5 text-sm font-medium',
+                          sort === s.value ? 'control-pill' : 'bg-muted text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {people.length === data.members.length
+                    ? `${people.length} people`
+                    : `${people.length} of ${data.members.length} people`}
+                  {stageRow ? ` with leads in ${stageRow.label}` : ''}
+                </p>
+                {data.members.length === 0 ? <InlineEmpty>No one is under you yet.</InlineEmpty> : null}
+                {data.members.length > 0 && people.length === 0 ? <InlineEmpty>No one matches.</InlineEmpty> : null}
+                <ul className="space-y-2">
+                  {people.map((m) => (
+                    <li key={m.user_id}>
+                      <PersonCard m={m} stage={stageRow} onOpen={() => openPerson(m)} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </>
+          ) : null}
+        </TabsContent>
+        <TabsContent value="leads" className="mt-4">
+          <LeadsTakenReport />
+        </TabsContent>
+      </Tabs>
 
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} labelledBy="my-team-member-title" size="lg" className="p-5">
         {open ? <MemberDetail m={open} order={order} /> : null}
