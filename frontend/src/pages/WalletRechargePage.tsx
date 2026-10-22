@@ -1,8 +1,11 @@
 import { type FormEvent, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FreeRechargeRequestCard } from '@/components/wallet/FreeRechargeRequestCard'
+import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { InvoiceDownloadLink } from '@/components/wallet/InvoiceDownloadLink'
 import {
   useCreateRechargeRequestMutation,
@@ -40,6 +43,10 @@ export function WalletRechargePage({ title }: Props) {
   const requestsQuery = useWalletRechargeRequestsQuery()
   const instructionsQuery = useWalletRechargeInstructionsQuery()
   const createMut = useCreateRechargeRequestMutation()
+  const { serverRole } = useDashboardShellRole()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const isLeader = serverRole === 'leader'
+  const kind = isLeader && searchParams.get('free') === '1' ? 'free' : 'paid'
 
   const [amount, setAmount] = useState('')
   const [utr, setUtr] = useState('')
@@ -81,12 +88,8 @@ export function WalletRechargePage({ title }: Props) {
     }
   }
 
-  return (
-    <div className="max-w-2xl space-y-4 md:space-y-6">
-      <Link to="/dashboard/finance/wallet" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        ← Wallet
-      </Link>
-      <h1 className="text-ds-h2">{title}</h1>
+  const paid = (
+    <>
       <p className="text-sm text-muted-foreground">
         Submit your wallet recharge request below. An admin will review and credit your balance.
       </p>
@@ -270,6 +273,38 @@ export function WalletRechargePage({ title }: Props) {
           </ul>
         ) : null}
       </div>
+    </>
+  )
+
+  return (
+    <div className="max-w-2xl space-y-4 md:space-y-6">
+      <Link to="/dashboard/finance/wallet" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        ← Wallet
+      </Link>
+      <h1 className="text-ds-h2">{title}</h1>
+      {isLeader ? (
+        <Tabs
+          value={kind}
+          onValueChange={(next) => setSearchParams(next === 'free' ? { free: '1' } : {}, { replace: true })}
+        >
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1">
+            <TabsTrigger value="paid" className="min-h-9">
+              Paid recharge
+            </TabsTrigger>
+            <TabsTrigger value="free" className="min-h-9">
+              Free recharge
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="paid" className="mt-4 space-y-4 md:space-y-6">
+            {paid}
+          </TabsContent>
+          <TabsContent value="free" className="mt-4">
+            <FreeRechargeRequestCard initialMemberId={searchParams.get('member') ?? undefined} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        paid
+      )}
     </div>
   )
 }

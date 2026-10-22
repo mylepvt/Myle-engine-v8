@@ -15,6 +15,7 @@ import {
   Settings,
   Shield,
   Users,
+  UsersRound,
   Wallet,
 } from 'lucide-react'
 
@@ -41,6 +42,7 @@ const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'finance/recharge-request',
   'system/training',
   'other/daily-report',
+  'team/my-team',
   'team/current-cc',
   'team/flp-min-billing',
   'system/lead-control',
@@ -58,6 +60,7 @@ const PATH_ICONS: Partial<Record<string, LucideIcon>> = {
   'finance/recharge-request': Wallet,
   'system/training': GraduationCap,
   'other/daily-report': ClipboardList,
+  'team/my-team': UsersRound,
   'team/current-cc': Activity,
   'team/flp-min-billing': ClipboardCheck,
   'system/lead-control': Shield,

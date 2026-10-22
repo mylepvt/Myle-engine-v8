@@ -16,6 +16,7 @@ from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
 from app.models.user import User
 from app.services.crm_outbox import enqueue_lead_shadow_upsert
+from app.services.lead_claim_records import record_claim
 
 REASONS = ("New joiner", "Off-record deal", "Other")
 MAX_COUNT = 50
@@ -64,6 +65,7 @@ async def give_free_leads(
         lead.last_action_at = now
         await session.flush()
         enqueue_lead_shadow_upsert(session, lead)
+        record_claim(session, user_id=member.id, lead_id=lead.id, price_cents=0, reason=label, given_by_user_id=admin_id)
 
     session.add(
         ActivityLog(

@@ -20,6 +20,7 @@ from app.models.lead import Lead
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.services import ledger_bridge
 from app.services.invoice_records import create_credit_note
+from app.services.lead_claim_records import mark_refunded
 from app.services.wallet_guard import lock_wallet
 
 _LEAD_REF = re.compile(r"#(\d+)")
@@ -166,6 +167,7 @@ async def refund_invoice_leads(
         lead = await session.get(Lead, lead_id)
         if lead is not None:
             ledger_bridge.queue_refund(session, lead, amounts[lead_id])
+        await mark_refunded(session, user_id=inv.user_id, lead_id=lead_id, refund_cents=amounts[lead_id])
 
     if return_to_pool:
         now = datetime.now(timezone.utc)

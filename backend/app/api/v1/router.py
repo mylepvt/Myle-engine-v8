@@ -43,6 +43,7 @@ from app.api.v1 import (
     hello,
     lead_bookings,
     lead_pool,
+    my_team,
     leads,
     meta,
     notifications,
@@ -86,6 +87,7 @@ api_router.include_router(hello.router, prefix="/hello", tags=["hello"])
 api_router.include_router(leads.router, prefix="/leads", tags=["leads"])
 api_router.include_router(leads.watch_router, tags=["watch"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])
+api_router.include_router(my_team.router, prefix="/team/my-team", tags=["team"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(skill_training.router, prefix="/system", tags=["skills-training"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

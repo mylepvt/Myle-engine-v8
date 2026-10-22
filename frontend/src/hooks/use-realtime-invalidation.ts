@@ -46,6 +46,7 @@ function applyTopics(qc: QueryClient, topics: string[]) {
   }
   if (t.has('leads')) {
     void qc.invalidateQueries({ queryKey: ['control-room'] })
+    void qc.invalidateQueries({ queryKey: ['my-team'] })
     void qc.invalidateQueries({ queryKey: ['leads'] })
     void qc.invalidateQueries({ queryKey: ['wins'] })
     void qc.invalidateQueries({ queryKey: ['workboard'] })
@@ -73,6 +74,8 @@ function applyTopics(qc: QueryClient, topics: string[]) {
   }
   if (t.has('wallet')) {
     void qc.invalidateQueries({ queryKey: ['wallet'] })
+    void qc.invalidateQueries({ queryKey: ['wallet-free-recharge-requests'] })
+    void qc.invalidateQueries({ queryKey: ['my-team'] })
   }
   if (t.has('enroll')) {
     void qc.invalidateQueries({ queryKey: ['enroll'] })

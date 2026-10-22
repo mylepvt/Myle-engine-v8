@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
+import { MemberPicker, type PickableMember } from '@/components/team/MemberPicker'
 import { useTeamMembersQuery } from '@/hooks/use-team-query'
 import { apiFetch } from '@/lib/api'
 
@@ -19,7 +20,15 @@ export function GiveFreeLeadsCard() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
-  const eligible = (members.data?.items ?? []).filter((m) => m.role === 'leader' || m.role === 'team')
+  const eligible: PickableMember[] = (members.data?.items ?? [])
+    .filter((m) => m.role === 'leader' || m.role === 'team')
+    .map((m) => ({
+      id: m.id,
+      name: (m.name && m.name.trim()) || m.username || m.email,
+      fbo_id: m.fbo_id,
+      detail: m.upline_name ? `${m.role} · under ${m.upline_name}` : m.role,
+      search: [m.email, m.username, m.upline_fbo_id],
+    }))
 
   async function submit() {
     setBusy(true)
@@ -60,21 +69,14 @@ export function GiveFreeLeadsCard() {
           kept on each lead and Myle Ledger books them apart from paid claims.
         </p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_6rem_10rem]">
-        <NativeSelect
-          aria-label="Member"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          disabled={busy || members.isPending}
-          className="w-full input-base px-3 py-2 text-sm disabled:opacity-50"
-        >
-          <option value="">{members.isPending ? 'Loading members…' : 'Select member…'}</option>
-          {eligible.map((m) => (
-            <option key={m.id} value={m.id}>
-              {(m.name && m.name.trim()) || m.username || m.email} · {m.fbo_id}
-            </option>
-          ))}
-        </NativeSelect>
+      <MemberPicker
+        members={eligible}
+        value={userId}
+        onChange={setUserId}
+        loading={members.isPending}
+        disabled={busy}
+      />
+      <div className="grid grid-cols-[6rem_1fr] gap-2">
         <input
           aria-label="Number of leads"
           type="number"

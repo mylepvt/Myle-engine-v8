@@ -60,6 +60,7 @@ export type FullUiSurface =
   | { kind: 'lead-pool' }
   | { kind: 'recycle-bin' }
   | { kind: 'team-members' }
+  | { kind: 'my-team' }
   | { kind: 'team-approvals' }
   | { kind: 'flp-min-billing' }
   | { kind: 'sales-approvals' }
@@ -199,6 +200,14 @@ export const DASHBOARD_ROUTE_DEFS: DashboardRouteDef[] = [
     roles: routeRoles('team/members'),
     surface: 'full',
     ui: { kind: 'team-members' },
+  },
+  {
+    path: 'team/my-team',
+    section: { id: 'team', label: 'Team' },
+    label: 'My Team',
+    roles: routeRoles('team/my-team'),
+    surface: 'full',
+    ui: { kind: 'my-team' },
   },
   {
     path: 'team/reports',
