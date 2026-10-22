@@ -122,3 +122,87 @@ export function useReviewRechargeRequestMutation() {
     onSuccess: () => invalidateRechargeAndWallet(qc),
   })
 }
+
+// ── Free recharge requests (leader asks for self / own team, admin decides) ──
+
+export type FreeRecharge = {
+  id: number
+  user_id: number
+  member_name?: string | null
+  member_fbo_id?: string | null
+  requested_by_user_id: number
+  requested_by_name?: string | null
+  amount_cents: number
+  reason: string
+  status: string
+  admin_note: string | null
+  reviewed_by_user_id: number | null
+  reviewed_by_name?: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
+export type FreeRechargeCreate = {
+  user_id: number
+  amount_cents: number
+  reason: string
+  idempotency_key?: string
+}
+
+async function fetchFreeRecharges(): Promise<{ items: FreeRecharge[]; total: number }> {
+  const res = await apiFetch('/api/v1/wallet/free-recharge-requests?limit=100')
+  if (!res.ok) await parseError(res)
+  return res.json()
+}
+
+export function useFreeRechargeRequestsQuery(enabled = true) {
+  return useQuery({
+    queryKey: ['wallet-free-recharge-requests'],
+    queryFn: fetchFreeRecharges,
+    enabled,
+  })
+}
+
+export function useCreateFreeRechargeMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: FreeRechargeCreate): Promise<FreeRecharge> => {
+      const res = await apiFetch('/api/v1/wallet/free-recharge-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) await parseError(res)
+      return res.json()
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['wallet-free-recharge-requests'] })
+      void qc.invalidateQueries({ queryKey: ['my-team'] })
+    },
+  })
+}
+
+export function useReviewFreeRechargeMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number
+      body: { status: 'approved' | 'rejected'; admin_note?: string }
+    }): Promise<FreeRecharge> => {
+      const res = await apiFetch(`/api/v1/wallet/free-recharge-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) await parseError(res)
+      return res.json()
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['wallet-free-recharge-requests'] })
+      void qc.invalidateQueries({ queryKey: ['wallet'] })
+    },
+  })
+}

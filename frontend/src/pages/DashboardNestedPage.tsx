@@ -21,6 +21,7 @@ const LeadGenPage = lazy(() => import('@/pages/LeadGenPage').then((m) => ({ defa
 const LeadPoolWorkPage = lazy(() => import('@/pages/LeadPoolWorkPage').then((m) => ({ default: m.LeadPoolWorkPage })))
 const RecycleBinWorkPage = lazy(() => import('@/pages/RecycleBinWorkPage').then((m) => ({ default: m.RecycleBinWorkPage })))
 const TeamApprovalsPage = lazy(() => import('@/pages/TeamApprovalsPage').then((m) => ({ default: m.TeamApprovalsPage })))
+const MyTeamPage = lazy(() => import('@/pages/MyTeamPage').then((m) => ({ default: m.MyTeamPage })))
 const TeamMembersPage = lazy(() => import('@/pages/TeamMembersPage').then((m) => ({ default: m.TeamMembersPage })))
 const FlpMinBillingApprovalsPage = lazy(() => import('@/pages/FlpMinBillingApprovalsPage').then((m) => ({ default: m.FlpMinBillingApprovalsPage })))
 const SalesApprovalsPage = lazy(() => import('@/pages/SalesApprovalsPage').then((m) => ({ default: m.SalesApprovalsPage })))
@@ -77,6 +78,8 @@ function renderFullUi(ui: FullUiSurface, title: string) {
       return <RecycleBinWorkPage title={title} />
     case 'team-members':
       return <TeamMembersPage title={title} />
+    case 'my-team':
+      return <MyTeamPage title={title} />
     case 'team-approvals':
       return <TeamApprovalsPage title={title} />
     case 'flp-min-billing':

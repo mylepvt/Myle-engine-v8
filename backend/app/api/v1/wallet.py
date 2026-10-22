@@ -17,10 +17,12 @@ from app.core.auth_cookies import display_name_from_user
 from app.core.config import settings
 from app.core.realtime_hub import notify_topics
 from app.db.session import AsyncSessionLocal
+from app.models.free_recharge_request import FreeRechargeRequest
 from app.models.invoice import Invoice
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.services.downline import is_user_in_downline_of
 from app.services.wallet_guard import lock_wallet, wallet_balance_cents
 from app.services.invoice_records import (
     create_payment_receipt_for_positive_adjustment,
@@ -30,6 +32,9 @@ from app.services.observation_logger import observe_event
 from app.services import ledger_bridge
 from app.services.push_service import send_push_to_user_bg
 from app.schemas.wallet import (
+    FreeRechargeCreate,
+    FreeRechargeListResponse,
+    FreeRechargePublic,
     WalletAdjustmentCreate,
     WalletLedgerEntryPublic,
     WalletLedgerListResponse,
@@ -525,3 +530,198 @@ async def review_recharge_request(
             url="/dashboard/work/lead-pool",
         )
     return await _wallet_recharge_public_response(session, recharge)
+
+
+# ── Free Recharge Requests (leader asks, admin decides) ──────────────────────
+
+
+async def _free_recharge_public(
+    session: AsyncSession, rows: list[FreeRechargeRequest]
+) -> list[FreeRechargePublic]:
+    umeta = await _user_display_by_ids(
+        session,
+        [
+            *(r.user_id for r in rows),
+            *(r.requested_by_user_id for r in rows),
+            *(r.reviewed_by_user_id for r in rows if r.reviewed_by_user_id is not None),
+        ],
+    )
+    return [
+        FreeRechargePublic.model_validate(r).model_copy(
+            update={
+                "member_name": umeta.get(r.user_id, (None, None))[0],
+                "member_fbo_id": umeta.get(r.user_id, (None, None))[1],
+                "requested_by_name": umeta.get(r.requested_by_user_id, (None, None))[0],
+                "reviewed_by_name": umeta.get(r.reviewed_by_user_id or 0, (None, None))[0],
+            }
+        )
+        for r in rows
+    ]
+
+
+@router.post(
+    "/free-recharge-requests",
+    response_model=FreeRechargePublic,
+    status_code=http_status.HTTP_201_CREATED,
+)
+async def create_free_recharge_request(
+    body: FreeRechargeCreate,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> FreeRechargePublic:
+    """Leader: ask admin to credit free (promo) money to themselves or someone in their own
+    team (their downline). Nobody else's team. Admin approves or rejects."""
+    if user.role != "leader":
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Only leaders can ask for a free recharge.",
+        )
+    if body.idempotency_key is not None:
+        hit = (
+            await session.execute(
+                select(FreeRechargeRequest).where(
+                    FreeRechargeRequest.idempotency_key == body.idempotency_key,
+                    FreeRechargeRequest.requested_by_user_id == user.user_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if hit is not None:
+            return (await _free_recharge_public(session, [hit]))[0]
+
+    target = await session.get(User, body.user_id)
+    if target is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Member not found")
+    if body.user_id != user.user_id and not await is_user_in_downline_of(session, body.user_id, user.user_id):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="You can ask for a free recharge only for yourself or your own team.",
+        )
+
+    row = FreeRechargeRequest(
+        user_id=body.user_id,
+        requested_by_user_id=user.user_id,
+        amount_cents=body.amount_cents,
+        reason=body.reason,
+        idempotency_key=body.idempotency_key,
+        status="pending",
+    )
+    session.add(row)
+    try:
+        await session.commit()
+        await session.refresh(row)
+    except IntegrityError:
+        await session.rollback()
+        if body.idempotency_key is None:
+            raise
+        row = (
+            await session.execute(
+                select(FreeRechargeRequest).where(FreeRechargeRequest.idempotency_key == body.idempotency_key)
+            )
+        ).scalar_one()
+    observe_event(event_type="wallet.free_recharge_request", source="wallet_api",
+                  request_id=row.id, user_id=row.user_id, requested_by=user.user_id,
+                  amount_cents=row.amount_cents)
+    await notify_topics("wallet")
+    return (await _free_recharge_public(session, [row]))[0]
+
+
+@router.get("/free-recharge-requests", response_model=FreeRechargeListResponse)
+async def list_free_recharge_requests(
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
+    offset: int = Query(default=0, ge=0),
+    status: Optional[str] = Query(default=None, max_length=20, description="Filter by status"),
+) -> FreeRechargeListResponse:
+    """Admin sees all; others see the ones they asked for and the ones made for them."""
+    from sqlalchemy import or_
+
+    where = []
+    if user.role != "admin":
+        where.append(
+            or_(
+                FreeRechargeRequest.requested_by_user_id == user.user_id,
+                FreeRechargeRequest.user_id == user.user_id,
+            )
+        )
+    if status is not None and status.strip():
+        where.append(FreeRechargeRequest.status == status.strip())
+
+    total = int(
+        (await session.execute(select(func.count()).select_from(FreeRechargeRequest).where(*where))).scalar_one()
+    )
+    rows = (
+        await session.execute(
+            select(FreeRechargeRequest)
+            .where(*where)
+            .order_by(FreeRechargeRequest.created_at.desc(), FreeRechargeRequest.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).scalars().all()
+    items = await _free_recharge_public(session, list(rows))
+    return FreeRechargeListResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.patch("/free-recharge-requests/{request_id}", response_model=FreeRechargePublic)
+async def review_free_recharge_request(
+    request_id: int,
+    body: WalletRechargeReview,
+    background_tasks: BackgroundTasks,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> FreeRechargePublic:
+    """Admin-only: approve (credits the member's wallet as promo money) or reject. Idempotent."""
+    _require_admin(user)
+    row = await session.get(FreeRechargeRequest, request_id)
+    if row is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Free recharge request not found")
+    if row.status in {"approved", "rejected"}:
+        return (await _free_recharge_public(session, [row]))[0]
+
+    row.status = body.status
+    row.admin_note = body.admin_note
+    row.reviewed_by_user_id = user.user_id
+    row.reviewed_at = datetime.now(timezone.utc)
+
+    if body.status == "approved":
+        idem_key = f"free_recharge_{row.id}"
+        existing = (
+            await session.execute(select(WalletLedgerEntry.id).where(WalletLedgerEntry.idempotency_key == idem_key))
+        ).scalar_one_or_none()
+        if existing is None:
+            # "Promo: …" so Myle Ledger books it as free credit, not cash (ledger_sync.wallet_kind).
+            note = f"Promo: free recharge #{row.id} — {row.reason}"[:512]
+            session.add(
+                WalletLedgerEntry(
+                    user_id=row.user_id,
+                    amount_cents=row.amount_cents,
+                    currency="INR",
+                    note=note,
+                    idempotency_key=idem_key,
+                    created_by_user_id=user.user_id,
+                )
+            )
+            member = await session.get(User, row.user_id)
+            if member is not None:
+                await ledger_bridge.queue_wallet(
+                    session, user=member, kind="promo", amount_cents=row.amount_cents,
+                    ref=f"free_recharge:{row.id}", note=row.reason,
+                )
+
+    await session.commit()
+    await session.refresh(row)
+    observe_event(event_type="wallet.free_recharge_review", source="wallet_api",
+                  request_id=row.id, status=body.status,
+                  user_id=row.user_id, amount_cents=row.amount_cents)
+    await notify_topics("wallet", "leads")
+    if body.status == "approved":
+        background_tasks.add_task(
+            send_push_to_user_bg,
+            AsyncSessionLocal,
+            row.user_id,
+            title="Free recharge added",
+            body=f"₹{row.amount_cents / 100:,.2f} free credit is in your wallet. You can claim leads.",
+            url="/dashboard/work/lead-pool",
+        )
+    return (await _free_recharge_public(session, [row]))[0]

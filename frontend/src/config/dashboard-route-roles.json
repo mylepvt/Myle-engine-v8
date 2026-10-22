@@ -10,6 +10,7 @@
   "work/lead-pool-admin": ["admin"],
   "work/recycle-bin": ["admin", "leader", "team"],
   "team/members": ["admin"],
+  "team/my-team": ["leader"],
   "team/current-cc": ["admin", "leader", "team"],
   "team/reports": ["admin", "leader"],
   "team/approvals": ["admin"],

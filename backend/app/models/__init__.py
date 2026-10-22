@@ -25,6 +25,7 @@ from app.models.legacy_row_snapshot import LegacyRowSnapshot
 from app.models.user import User
 from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.wallet_recharge import WalletRecharge
+from app.models.free_recharge_request import FreeRechargeRequest
 from app.models.push_job_run import PushJobRun
 from app.models.user_device_status import UserDeviceStatus
 from app.models.win import Win, WinCheer
@@ -77,6 +78,7 @@ __all__ = [
     "User",
     "WalletLedgerEntry",
     "WalletRecharge",
+    "FreeRechargeRequest",
     "PushJobRun",
     "UserDeviceStatus",
     "Win",
