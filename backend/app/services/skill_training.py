@@ -1,27 +1,75 @@
-"""Skills & Personal Development training — a light, non-blocking 7-day track.
+"""Personal Development & Skills Academy — Level 2 of the learning journey.
 
-Opens only after a member has unlocked the app (onboarding training done or not
-required). One day unlocks per calendar day (IST): Day N opens the day after
-Day N-1 was marked done. Completion is a single "done" click — no notes, no
-quiz — and nothing here feeds discipline / compliance rules; it is tracking only.
+Level 1 is the mandatory 7-day onboarding (``training_videos``). The academy
+opens only once onboarding is verified complete on the server
+(``training_status`` ``completed``, i.e. all days done + test / certificate, or an
+admin-granted ``not_required``). The rule is the same for team members and
+leaders — the leader role is never a bypass.
+
+On the final onboarding day a teaser may show; that trigger is deliberately
+separate from the unlock, so reaching Day 7 never opens the academy by itself.
+
+Lessons sit in six fixed categories, always in the order of ``CATEGORIES``. A
+lesson is done when the member marks it complete after the recording is up; a
+lesson flagged ``practice_required`` also needs a written practice answer.
+Nothing here feeds discipline / compliance rules — it is tracking only.
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser
 from app.core.auth_cookies import display_name_from_user
-from app.core.time_ist import IST, today_ist
-from app.models.skill_training import SkillTrainingProgress, SkillTrainingVideo
+from app.models.skill_training import SkillLesson, SkillLessonProgress
 from app.models.user import User
 from app.services.training_overview import _scope_users
+from app.services.training_surface import build_training_surface
 
-SKILL_TRAINING_DAYS = 7
 _FINISHED_ONBOARDING = frozenset({"completed", "not_required"})
+
+PRACTICE_MIN_CHARS = 20
+PRACTICE_MAX_CHARS = 4000
+
+CATEGORIES: tuple[dict, ...] = (
+    {
+        "key": "process",
+        "title": "Process Mastery",
+        "purpose": "Understand the full business workflow — from lead to closing.",
+    },
+    {
+        "key": "invitation",
+        "title": "Invitation",
+        "purpose": "Start conversations and arrange a meeting.",
+    },
+    {
+        "key": "follow_up",
+        "title": "Follow-up",
+        "purpose": "Guide an interested prospect at the right pace.",
+    },
+    {
+        "key": "bond_creation",
+        "title": "Bond Creation",
+        "purpose": "Build trust, listening skills and genuine relationships.",
+    },
+    {
+        "key": "mistakes",
+        "title": "Mistakes — Do's & Don'ts",
+        "purpose": "Avoid common mistakes and keep every conversation professional.",
+    },
+    {
+        "key": "closing",
+        "title": "Closing",
+        "purpose": "Guide prospects toward an informed decision.",
+    },
+)
+CATEGORY_KEYS: tuple[str, ...] = tuple(c["key"] for c in CATEGORIES)
+
+Status = Literal["not_started", "in_progress", "completed"]
 
 
 def youtube_embed_url(raw: str) -> str:
@@ -39,163 +87,226 @@ def youtube_embed_url(raw: str) -> str:
     return f"https://www.youtube.com/embed/{vid_id}?{params}"
 
 
+def _is_admin(user: User) -> bool:
+    return (user.role or "").strip().lower() == "admin"
+
+
 def skill_training_available(user: User) -> bool:
-    """Admins always (to manage content); others only once the app is unlocked."""
-    role = (user.role or "").strip().lower()
-    if role == "admin":
+    """Admins always (to manage content); leaders and team only after verified onboarding."""
+    if _is_admin(user):
         return True
-    if role not in ("leader", "team"):
+    if (user.role or "").strip().lower() not in ("leader", "team"):
         return False
     if user.training_required:
         return False
     return (user.training_status or "").strip().lower() in _FINISHED_ONBOARDING
 
 
-def _completion_day(progress: SkillTrainingProgress) -> date:
-    value = progress.completed_at
-    if value.tzinfo is None:
-        return value.date()
-    return value.astimezone(IST).date()
+def _status(done: int, total: int) -> Status:
+    if done <= 0:
+        return "not_started"
+    if total > 0 and done >= total:
+        return "completed"
+    return "in_progress"
 
 
-def _day_states(
-    day_numbers: list[int],
-    progress_by_day: dict[int, SkillTrainingProgress],
-    today: date,
-) -> dict[int, tuple[bool, date | None]]:
-    """(unlocked, unlocks_on) per day. Day N needs Day N-1 done on an earlier IST day."""
-    states: dict[int, tuple[bool, date | None]] = {}
-    previous: int | None = None
-    for day in day_numbers:
-        if day in progress_by_day:
-            states[day] = (True, None)
-        elif previous is None:
-            states[day] = (True, None)
-        else:
-            prev_progress = progress_by_day.get(previous)
-            if prev_progress is None:
-                states[day] = (False, None)
-            else:
-                opens_on = _completion_day(prev_progress) + timedelta(days=1)
-                states[day] = (today >= opens_on, opens_on if today < opens_on else None)
-        previous = day
-    return states
+async def _onboarding_summary(session: AsyncSession, user: User, available: bool) -> dict:
+    """Level 1 progress for the Growth Journey header plus the Day 7 teaser trigger."""
+    surface = await build_training_surface(session, int(user.id))
+    catalog = [int(v.day_number) for v in surface.videos]
+    done_days = {int(p.day_number) for p in surface.progress if p.completed}
+    completed_days = sum(1 for d in catalog if d in done_days)
+    total_days = len(catalog)
+    all_days_done = total_days > 0 and completed_days >= total_days
+    final_day_open = bool(surface.videos) and surface.videos[-1].unlocked
 
-
-async def _load_progress(session: AsyncSession, user_id: int) -> dict[int, SkillTrainingProgress]:
-    rows = (
-        await session.execute(
-            select(SkillTrainingProgress).where(SkillTrainingProgress.user_id == user_id)
-        )
-    ).scalars().all()
-    return {int(p.day_number): p for p in rows}
-
-
-async def build_skill_training_surface(
-    session: AsyncSession,
-    user: User,
-    *,
-    today: date | None = None,
-) -> dict:
-    current_day = today or today_ist()
-    videos = (
-        await session.execute(select(SkillTrainingVideo).order_by(SkillTrainingVideo.day_number.asc()))
-    ).scalars().all()
-    available = skill_training_available(user)
-    progress_by_day = await _load_progress(session, int(user.id)) if available else {}
-    states = _day_states([int(v.day_number) for v in videos], progress_by_day, current_day)
-    is_admin = (user.role or "").strip().lower() == "admin"
-
-    days = []
-    for v in videos:
-        unlocked, opens_on = states[int(v.day_number)]
-        if is_admin:
-            unlocked, opens_on = True, None
-        done = progress_by_day.get(int(v.day_number))
-        days.append(
-            {
-                "day_number": int(v.day_number),
-                "title": v.title,
-                "has_video": bool(v.youtube_url),
-                "youtube_url": v.youtube_url if is_admin else None,
-                "unlocked": bool(available and unlocked),
-                "unlocks_on": opens_on.isoformat() if available and opens_on else None,
-                "completed": done is not None,
-                "completed_at": done.completed_at.isoformat() if done else None,
-            }
-        )
+    if available:
+        status: Status = "completed"
+    else:
+        status = "in_progress" if completed_days > 0 else "not_started"
     return {
-        "available": available,
-        "total_days": len(days),
-        "completed_days": sum(1 for d in days if d["completed"]),
-        "days": days,
+        "status": status,
+        "total_days": total_days,
+        "completed_days": completed_days,
+        "current_day": next((d for d in catalog if d not in done_days), None),
+        # Every day is ticked but the test / certificate is still pending.
+        "awaiting_certification": all_days_done and not available,
+        # Teaser only — never an unlock. Shows once the final day is open.
+        "teaser": (not available) and final_day_open and not _is_admin(user),
     }
 
 
-async def mark_skill_day_done(
+async def _load_lessons(session: AsyncSession) -> list[SkillLesson]:
+    rows = (
+        await session.execute(select(SkillLesson).order_by(SkillLesson.position.asc(), SkillLesson.id.asc()))
+    ).scalars().all()
+    order = {key: i for i, key in enumerate(CATEGORY_KEYS)}
+    return sorted(
+        (r for r in rows if r.category in order),
+        key=lambda r: (order[r.category], r.position, r.id),
+    )
+
+
+async def _load_progress(session: AsyncSession, user_id: int) -> dict[int, SkillLessonProgress]:
+    rows = (
+        await session.execute(select(SkillLessonProgress).where(SkillLessonProgress.user_id == user_id))
+    ).scalars().all()
+    return {int(p.lesson_id): p for p in rows}
+
+
+async def build_skill_training_surface(session: AsyncSession, user: User) -> dict:
+    available = skill_training_available(user)
+    is_admin = _is_admin(user)
+    lessons = await _load_lessons(session)
+    progress = await _load_progress(session, int(user.id)) if available else {}
+    onboarding = await _onboarding_summary(session, user, available)
+
+    categories = []
+    next_lesson_id: int | None = None
+    for number, meta in enumerate(CATEGORIES, start=1):
+        own = [l for l in lessons if l.category == meta["key"]]
+        rows = []
+        for index, lesson in enumerate(own, start=1):
+            done = progress.get(int(lesson.id))
+            if available and done is None and lesson.youtube_url and next_lesson_id is None:
+                next_lesson_id = int(lesson.id)
+            rows.append(
+                {
+                    "id": int(lesson.id),
+                    "number": index,
+                    "position": int(lesson.position),
+                    "title": lesson.title,
+                    "description": lesson.description,
+                    "duration_minutes": lesson.duration_minutes,
+                    "practice_task": lesson.practice_task,
+                    "practice_required": bool(lesson.practice_required),
+                    "has_video": bool(lesson.youtube_url),
+                    "youtube_url": lesson.youtube_url if is_admin else None,
+                    "completed": done is not None,
+                    "completed_at": done.completed_at.isoformat() if done else None,
+                    "practice_response": done.practice_response if done else None,
+                }
+            )
+        completed = sum(1 for r in rows if r["completed"])
+        categories.append(
+            {
+                **meta,
+                "number": number,
+                "total_lessons": len(rows),
+                "completed_lessons": completed,
+                "status": _status(completed, len(rows)),
+                # Locked: only the outline (title, purpose, count) — no lesson content.
+                "lessons": rows if available else [],
+            }
+        )
+
+    total = sum(c["total_lessons"] for c in categories)
+    completed_total = sum(c["completed_lessons"] for c in categories)
+    return {
+        "available": available,
+        "status": _status(completed_total, total) if available else "not_started",
+        "total_lessons": total,
+        "completed_lessons": completed_total,
+        "next_lesson_id": next_lesson_id,
+        "onboarding": onboarding,
+        "categories": categories,
+    }
+
+
+async def complete_skill_lesson(
     session: AsyncSession,
     user: User,
-    day_number: int,
+    lesson_id: int,
     *,
+    practice_response: str | None = None,
     now: datetime | None = None,
 ) -> None:
-    """Raise ``ValueError`` with a member-facing message when the day can't be completed."""
+    """Mark a lesson done (or update its practice answer).
+
+    Raises ``LookupError`` for an unknown lesson and ``ValueError`` with a
+    member-facing message when the lesson can't be completed yet.
+    """
     if not skill_training_available(user):
-        raise ValueError("Skills training opens after you finish onboarding training")
-    video = (
+        raise ValueError("Skills Academy opens after you complete all 7 onboarding days")
+    lesson = await session.get(SkillLesson, lesson_id)
+    if lesson is None or lesson.category not in CATEGORY_KEYS:
+        raise LookupError("Lesson not found")
+    if not lesson.youtube_url:
+        raise ValueError("This lesson's recording has not been added yet")
+
+    answer = (practice_response or "").strip() or None
+    if answer is not None and len(answer) > PRACTICE_MAX_CHARS:
+        raise ValueError(f"Keep your practice answer under {PRACTICE_MAX_CHARS} characters")
+    if lesson.practice_required and (answer is None or len(answer) < PRACTICE_MIN_CHARS):
+        raise ValueError(
+            f"Write your practice answer (at least {PRACTICE_MIN_CHARS} characters) to complete this lesson"
+        )
+
+    existing = (
         await session.execute(
-            select(SkillTrainingVideo).where(SkillTrainingVideo.day_number == day_number)
+            select(SkillLessonProgress).where(
+                SkillLessonProgress.user_id == int(user.id),
+                SkillLessonProgress.lesson_id == lesson_id,
+            )
         )
     ).scalar_one_or_none()
-    if video is None:
-        raise LookupError("Training day not found")
-    progress_by_day = await _load_progress(session, int(user.id))
-    if day_number in progress_by_day:
+    if existing is not None:
+        # Completion is permanent; a member may only refine their practice answer.
+        if answer is not None:
+            existing.practice_response = answer
+            await session.commit()
         return
-    moment = now or datetime.now(timezone.utc)
-    day_numbers = list(
-        (await session.execute(select(SkillTrainingVideo.day_number).order_by(SkillTrainingVideo.day_number.asc())))
-        .scalars()
-        .all()
+    session.add(
+        SkillLessonProgress(
+            user_id=int(user.id),
+            lesson_id=lesson_id,
+            practice_response=answer,
+            completed_at=now or datetime.now(timezone.utc),
+        )
     )
-    unlocked, opens_on = _day_states(
-        [int(d) for d in day_numbers],
-        progress_by_day,
-        moment.astimezone(IST).date(),
-    )[day_number]
-    if not unlocked:
-        if opens_on is not None:
-            raise ValueError(f"Day {day_number} opens on {opens_on.strftime('%d %b %Y')}")
-        raise ValueError("Finish the previous day first")
-    session.add(SkillTrainingProgress(user_id=int(user.id), day_number=day_number, completed_at=moment))
     await session.commit()
 
 
 async def get_skill_training_overview(session: AsyncSession, *, actor: AuthUser) -> dict:
     """Admin → all members; leader → downline. Tracking only."""
     users = [u for u in await _scope_users(session, actor) if u.role in ("leader", "team")]
-    total = (
-        await session.execute(select(func.count()).select_from(SkillTrainingVideo))
-    ).scalar() or 0
+    lessons = await _load_lessons(session)
+    category_of = {int(l.id): l.category for l in lessons}
+    totals = {key: 0 for key in CATEGORY_KEYS}
+    for l in lessons:
+        totals[l.category] += 1
+
     user_ids = [int(u.id) for u in users]
-    done_map: dict[int, tuple[int, object]] = {}
-    if user_ids:
+    per_user: dict[int, dict] = {}
+    if user_ids and category_of:
         rows = (
             await session.execute(
                 select(
-                    SkillTrainingProgress.user_id,
-                    func.count(),
-                    func.max(SkillTrainingProgress.completed_at),
+                    SkillLessonProgress.user_id,
+                    SkillLessonProgress.lesson_id,
+                    SkillLessonProgress.practice_response,
+                    SkillLessonProgress.completed_at,
+                ).where(
+                    SkillLessonProgress.user_id.in_(user_ids),
+                    SkillLessonProgress.lesson_id.in_(list(category_of)),
                 )
-                .where(SkillTrainingProgress.user_id.in_(user_ids))
-                .group_by(SkillTrainingProgress.user_id)
             )
         ).all()
-        done_map = {int(uid): (int(count), last) for uid, count, last in rows}
+        for uid, lesson_id, answer, at in rows:
+            entry = per_user.setdefault(
+                int(uid),
+                {"by_category": {k: 0 for k in CATEGORY_KEYS}, "practice": 0, "last": None},
+            )
+            entry["by_category"][category_of[int(lesson_id)]] += 1
+            if answer:
+                entry["practice"] += 1
+            if entry["last"] is None or at > entry["last"]:
+                entry["last"] = at
 
     members = []
     for u in users:
-        count, last = done_map.get(int(u.id), (0, None))
+        entry = per_user.get(int(u.id))
+        by_category = entry["by_category"] if entry else {k: 0 for k in CATEGORY_KEYS}
         members.append(
             {
                 "user_id": int(u.id),
@@ -203,9 +314,18 @@ async def get_skill_training_overview(session: AsyncSession, *, actor: AuthUser)
                 "fbo_id": u.fbo_id,
                 "role": u.role,
                 "available": skill_training_available(u),
-                "completed_days": count,
-                "last_completed_at": last.isoformat() if last else None,
+                "completed_lessons": sum(by_category.values()),
+                "practice_submitted": entry["practice"] if entry else 0,
+                "by_category": by_category,
+                "last_completed_at": entry["last"].isoformat() if entry and entry["last"] else None,
             }
         )
-    members.sort(key=lambda m: (not m["available"], -m["completed_days"], m["name"] or ""))
-    return {"total_days": int(total), "members": members}
+    members.sort(key=lambda m: (not m["available"], -m["completed_lessons"], m["name"] or ""))
+    return {
+        "total_lessons": len(lessons),
+        "categories": [
+            {"key": c["key"], "number": i, "title": c["title"], "total_lessons": totals[c["key"]]}
+            for i, c in enumerate(CATEGORIES, start=1)
+        ],
+        "members": members,
+    }

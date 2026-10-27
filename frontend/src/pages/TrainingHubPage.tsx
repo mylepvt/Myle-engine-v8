@@ -1,4 +1,4 @@
-import { ChevronDown, GraduationCap, Lock, Sprout } from 'lucide-react'
+import { CheckCircle2, ChevronDown, GraduationCap, Lock, Sprout } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { SkillsTrainingPanel } from '@/components/training/SkillsTrainingPanel'
@@ -6,7 +6,7 @@ import { TrainingProgramPanel } from '@/components/training/TrainingProgramPanel
 import { Badge } from '@/components/ui/badge'
 import { ErrorState, LoadingState } from '@/components/ui/states'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
-import { useSkillsTrainingQuery } from '@/hooks/use-skills-training-query'
+import { useSkillsTrainingQuery, type SkillTrainingSurface } from '@/hooks/use-skills-training-query'
 import { useSystemSurfaceQuery } from '@/hooks/use-system-surface-query'
 import { cn } from '@/lib/utils'
 
@@ -94,9 +94,102 @@ function TrainingSection({
   )
 }
 
+function JourneyStep({
+  level,
+  title,
+  detail,
+  done,
+  locked,
+}: {
+  level: number
+  title: string
+  detail: string
+  done: boolean
+  locked: boolean
+}) {
+  return (
+    <li className="flex items-start gap-3">
+      <span
+        className={cn(
+          'flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+          done ? 'bg-success/15 text-success-ink' : locked ? 'bg-muted text-muted-foreground' : 'bg-primary/15 text-primary',
+        )}
+      >
+        {done ? <CheckCircle2 className="size-4" /> : locked ? <Lock className="size-3.5" /> : level}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">
+          Level {level} · {title}
+        </span>
+        <span className="block text-sm text-muted-foreground">{detail}</span>
+      </span>
+    </li>
+  )
+}
+
+/** Screen A — where the member is on the learning journey and what to do next. */
+function GrowthJourney({
+  skills,
+  onboardingDone,
+  doneDays,
+  totalDays,
+}: {
+  skills: SkillTrainingSurface | undefined
+  onboardingDone: boolean
+  doneDays: number
+  totalDays: number
+}) {
+  const ob = skills?.onboarding
+  const completed = ob?.completed_days ?? doneDays
+  const total = ob?.total_days || totalDays || 7
+  const unlocked = onboardingDone
+  const nextLesson = skills?.categories.flatMap((c) => c.lessons).find((l) => l.id === skills.next_lesson_id)
+
+  let next: string
+  if (!unlocked) {
+    if (ob?.awaiting_certification) next = 'Pass the onboarding test to unlock the Skills Academy.'
+    else if (ob?.current_day) next = `Continue onboarding — Day ${ob.current_day} of ${total}.`
+    else next = 'Continue your onboarding training.'
+  } else if (nextLesson) next = `${nextLesson.title} — your next lesson.`
+  else if (skills && skills.total_lessons > 0 && skills.status === 'completed') next = 'Every lesson done — keep applying them in the field.'
+  else next = 'New lessons are on the way.'
+
+  return (
+    <section className="surface-elevated space-y-4 px-5 py-4">
+      <h2 className="font-semibold text-foreground">Your Growth Journey</h2>
+      <ol className="space-y-3">
+        <JourneyStep
+          level={1}
+          title="Onboarding Foundation"
+          detail={unlocked ? 'Completed' : `${completed} of ${total} days completed`}
+          done={unlocked}
+          locked={false}
+        />
+        <JourneyStep
+          level={2}
+          title="Skills Academy"
+          detail={
+            unlocked
+              ? skills && skills.total_lessons > 0
+                ? `${skills.completed_lessons} of ${skills.total_lessons} lessons completed`
+                : 'Unlocked'
+              : `Complete all ${total} onboarding days to unlock.`
+          }
+          done={!!skills && skills.total_lessons > 0 && skills.status === 'completed'}
+          locked={!unlocked}
+        />
+      </ol>
+      <p className="rounded-lg bg-primary/[0.06] px-3 py-2 text-sm text-foreground">
+        <span className="font-medium">Next: </span>
+        {next}
+      </p>
+    </section>
+  )
+}
+
 /**
- * Single Training home: 7-day onboarding (required to unlock the app) and the
- * post-unlock Personal Development & Skills track, as two collapsible sections.
+ * Single Training home: the Growth Journey summary, 7-day onboarding (required to
+ * unlock the app) and the post-onboarding Skills Academy, as two collapsible sections.
  * Whichever one the member should work on now starts expanded.
  */
 export function TrainingHubPage({ title }: Props) {
@@ -105,7 +198,10 @@ export function TrainingHubPage({ title }: Props) {
   const skills = useSkillsTrainingQuery()
 
   const statusLc = (me?.training_status ?? '').toLowerCase()
-  const onboardingDone = me?.training_required !== true || statusLc === 'completed'
+  // The server's verdict wins once loaded; `me` only covers the first paint.
+  const onboardingDone = skills.data
+    ? skills.data.onboarding.status === 'completed'
+    : me?.training_required !== true || statusLc === 'completed'
 
   const onboardingData = onboarding.data && 'videos' in onboarding.data ? onboarding.data : null
   const onboardingTotal = onboardingData?.videos.length ?? 0
@@ -116,12 +212,16 @@ export function TrainingHubPage({ title }: Props) {
   else if (onboardingTotal > 0) onboardingBadge = { label: `${onboardingDoneDays}/${onboardingTotal} days`, variant: 'warning' }
   else onboardingBadge = { label: 'In progress', variant: 'warning' }
 
+  const skillsOpen = onboardingDone
+  const teaser = skills.data?.onboarding.teaser === true
+
   let skillsBadge: { label: string; variant: BadgeVariant }
-  if (skills.data && !skills.data.available) skillsBadge = { label: 'Locked', variant: 'secondary' }
-  else if (skills.data && skills.data.total_days > 0)
+  if (skills.data && !skills.data.available)
+    skillsBadge = teaser ? { label: 'Almost there', variant: 'primary' } : { label: 'Locked', variant: 'secondary' }
+  else if (skills.data && skills.data.total_lessons > 0)
     skillsBadge = {
-      label: `${skills.data.completed_days}/${skills.data.total_days} done`,
-      variant: skills.data.completed_days >= skills.data.total_days ? 'success' : 'primary',
+      label: `${skills.data.completed_lessons}/${skills.data.total_lessons} done`,
+      variant: skills.data.status === 'completed' ? 'success' : 'primary',
     }
   else skillsBadge = { label: 'Coming soon', variant: 'secondary' }
 
@@ -131,10 +231,17 @@ export function TrainingHubPage({ title }: Props) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {onboardingDone
-            ? 'Your onboarding is complete. Keep growing with the personal development lessons below.'
+            ? 'Your onboarding is complete. Keep growing with the Skills Academy below.'
             : 'Finish the 7-day onboarding to unlock the full app.'}
         </p>
       </div>
+
+      <GrowthJourney
+        skills={skills.data}
+        onboardingDone={onboardingDone}
+        doneDays={onboardingDoneDays}
+        totalDays={onboardingTotal}
+      />
 
       <TrainingSection
         id="onboarding"
@@ -157,11 +264,17 @@ export function TrainingHubPage({ title }: Props) {
 
       <TrainingSection
         id="skills"
-        icon={onboardingDone ? <Sprout className="size-5" /> : <Lock className="size-5" />}
-        title="Personal Development & Skills"
-        subtitle={onboardingDone ? 'One new lesson each day — watch alongside your work' : 'Unlocks after onboarding'}
+        icon={skillsOpen ? <Sprout className="size-5" /> : <Lock className="size-5" />}
+        title="Personal Development & Skills Academy"
+        subtitle={
+          skillsOpen
+            ? 'Six skill areas — learn, practise, apply'
+            : teaser
+              ? 'Your next level is near — finish onboarding to unlock'
+              : 'Unlocks after all 7 onboarding days'
+        }
         badge={skillsBadge}
-        defaultOpen={onboardingDone}
+        defaultOpen={skillsOpen || teaser}
       >
         <SkillsTrainingPanel />
       </TrainingSection>

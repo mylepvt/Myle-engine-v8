@@ -1,7 +1,8 @@
-"""Post-unlock "Skills & Personal Development" training track.
+"""Post-onboarding "Personal Development & Skills Academy".
 
 Separate from the 7-day onboarding catalog (``training_videos``) so adding
-skills lessons never changes what a new member must finish to unlock the app.
+academy lessons never changes what a new member must finish to unlock the app.
+Lessons belong to one of six fixed categories (see ``app.services.skill_training``).
 """
 
 from __future__ import annotations
@@ -9,19 +10,27 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
 
-class SkillTrainingVideo(Base):
-    __tablename__ = "skill_training_videos"
+class SkillLesson(Base):
+    __tablename__ = "skill_lessons"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    day_number: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     youtube_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    duration_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    practice_task: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # When on, the lesson only counts as done once the member submits a practice answer.
+    practice_required: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -29,10 +38,10 @@ class SkillTrainingVideo(Base):
     )
 
 
-class SkillTrainingProgress(Base):
-    __tablename__ = "skill_training_progress"
+class SkillLessonProgress(Base):
+    __tablename__ = "skill_lesson_progress"
     __table_args__ = (
-        UniqueConstraint("user_id", "day_number", name="uq_skill_training_progress_user_day"),
+        UniqueConstraint("user_id", "lesson_id", name="uq_skill_lesson_progress_user_lesson"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -42,5 +51,10 @@ class SkillTrainingProgress(Base):
         nullable=False,
         index=True,
     )
-    day_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    lesson_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("skill_lessons.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    practice_response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

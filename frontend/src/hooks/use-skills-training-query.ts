@@ -5,24 +5,58 @@ import { messageFromApiErrorPayload } from '@/lib/http-error-message'
 
 const BASE = '/api/v1/system/skills-training'
 
-export type SkillTrainingDay = {
-  day_number: number
+export type TrainingStatus = 'not_started' | 'in_progress' | 'completed'
+
+export type SkillLesson = {
+  id: number
+  /** 1-based number within its category ("Video 02 of 05"). */
+  number: number
+  position: number
   title: string
+  description: string | null
+  duration_minutes: number | null
+  practice_task: string | null
+  practice_required: boolean
   has_video: boolean
   /** Only returned for admins (content editing). */
   youtube_url: string | null
-  unlocked: boolean
-  /** ISO date (IST) when a locked day opens, if it is waiting on the calendar. */
-  unlocks_on: string | null
   completed: boolean
   completed_at: string | null
+  practice_response: string | null
+}
+
+export type SkillCategory = {
+  key: string
+  /** Fixed order 1–6: Process, Invitation, Follow-up, Bond Creation, Mistakes, Closing. */
+  number: number
+  title: string
+  purpose: string
+  total_lessons: number
+  completed_lessons: number
+  status: TrainingStatus
+  /** Empty while the academy is locked — only the outline is shown. */
+  lessons: SkillLesson[]
+}
+
+export type OnboardingSummary = {
+  status: TrainingStatus
+  total_days: number
+  completed_days: number
+  current_day: number | null
+  /** All days ticked; the test / certificate is still pending. */
+  awaiting_certification: boolean
+  /** Final onboarding day is open — show the next-level preview. Never an unlock. */
+  teaser: boolean
 }
 
 export type SkillTrainingSurface = {
   available: boolean
-  total_days: number
-  completed_days: number
-  days: SkillTrainingDay[]
+  status: TrainingStatus
+  total_lessons: number
+  completed_lessons: number
+  next_lesson_id: number | null
+  onboarding: OnboardingSummary
+  categories: SkillCategory[]
 }
 
 export type SkillTrainingMember = {
@@ -31,13 +65,27 @@ export type SkillTrainingMember = {
   fbo_id: string
   role: string
   available: boolean
-  completed_days: number
+  completed_lessons: number
+  practice_submitted: number
+  by_category: Record<string, number>
   last_completed_at: string | null
 }
 
 export type SkillTrainingOverview = {
-  total_days: number
+  total_lessons: number
+  categories: { key: string; number: number; title: string; total_lessons: number }[]
   members: SkillTrainingMember[]
+}
+
+export type SkillLessonInput = {
+  category?: string
+  position?: number
+  title?: string
+  description?: string
+  youtube_url?: string
+  duration_minutes?: number | null
+  practice_task?: string
+  practice_required?: boolean
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -52,6 +100,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const SURFACE_KEY = ['system', 'skills-training'] as const
 const PROGRESS_KEY = ['system', 'skills-training', 'progress'] as const
+
+const json = (method: string, body: unknown): RequestInit => ({
+  method,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+})
 
 export function useSkillsTrainingQuery() {
   return useQuery({
@@ -70,11 +124,14 @@ export function useSkillsTrainingProgressQuery(enabled: boolean) {
   })
 }
 
-export function useMarkSkillDayDoneMutation() {
+export function useCompleteSkillLessonMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (dayNumber: number) =>
-      request<SkillTrainingSurface>(`${BASE}/days/${dayNumber}/done`, { method: 'POST' }),
+    mutationFn: ({ lessonId, practiceResponse }: { lessonId: number; practiceResponse?: string }) =>
+      request<SkillTrainingSurface>(
+        `${BASE}/lessons/${lessonId}/complete`,
+        json('POST', { practice_response: practiceResponse?.trim() || null }),
+      ),
     onSuccess: (data) => {
       queryClient.setQueryData(SURFACE_KEY, data)
       void queryClient.invalidateQueries({ queryKey: PROGRESS_KEY })
@@ -82,15 +139,10 @@ export function useMarkSkillDayDoneMutation() {
   })
 }
 
-export function useSaveSkillDayMutation() {
+function useLessonAdminMutation<V>(fn: (vars: V) => Promise<unknown>) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ dayNumber, title, youtubeUrl }: { dayNumber: number; title: string; youtubeUrl: string }) =>
-      request(`${BASE}/admin/day/${dayNumber}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, youtube_url: youtubeUrl }),
-      }),
+    mutationFn: fn,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SURFACE_KEY })
       void queryClient.invalidateQueries({ queryKey: PROGRESS_KEY })
@@ -98,6 +150,20 @@ export function useSaveSkillDayMutation() {
   })
 }
 
-export function skillDayEmbedUrl(dayNumber: number): string {
-  return `${BASE}/days/${dayNumber}/embed`
+export function useCreateSkillLessonMutation() {
+  return useLessonAdminMutation((input: SkillLessonInput) => request(`${BASE}/admin/lessons`, json('POST', input)))
+}
+
+export function useUpdateSkillLessonMutation() {
+  return useLessonAdminMutation(({ id, ...input }: SkillLessonInput & { id: number }) =>
+    request(`${BASE}/admin/lessons/${id}`, json('PUT', input)),
+  )
+}
+
+export function useDeleteSkillLessonMutation() {
+  return useLessonAdminMutation((id: number) => request(`${BASE}/admin/lessons/${id}`, { method: 'DELETE' }))
+}
+
+export function skillLessonEmbedUrl(lessonId: number): string {
+  return `${BASE}/lessons/${lessonId}/embed`
 }

@@ -1,4 +1,4 @@
-"""Skills & Personal Development training (post-unlock, non-blocking)."""
+"""Personal Development & Skills Academy (post-onboarding, non-blocking)."""
 
 from __future__ import annotations
 
@@ -7,18 +7,20 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
 
 from app.api.deps import AuthUser, get_db, require_auth_user
-from app.models.skill_training import SkillTrainingProgress, SkillTrainingVideo
+from app.models.skill_training import SkillLesson, SkillLessonProgress
 from app.models.user import User
 from app.services.skill_training import (
-    SKILL_TRAINING_DAYS,
+    CATEGORY_KEYS,
+    PRACTICE_MAX_CHARS,
     build_skill_training_surface,
+    complete_skill_lesson,
     get_skill_training_overview,
-    mark_skill_day_done,
+    skill_training_available,
     youtube_embed_url,
 )
 
@@ -45,15 +47,22 @@ async def skills_training(
     return await build_skill_training_surface(session, await _load_user(session, user))
 
 
-@router.post("/skills-training/days/{day_number}/done")
-async def skills_training_mark_done(
-    day_number: int,
+class CompleteLessonBody(BaseModel):
+    practice_response: Optional[str] = Field(default=None, max_length=PRACTICE_MAX_CHARS)
+
+
+@router.post("/skills-training/lessons/{lesson_id}/complete")
+async def skills_training_complete_lesson(
+    lesson_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
+    body: Optional[CompleteLessonBody] = None,
 ) -> dict:
     row = await _load_user(session, user)
     try:
-        await mark_skill_day_done(session, row, day_number)
+        await complete_skill_lesson(
+            session, row, lesson_id, practice_response=body.practice_response if body else None
+        )
     except LookupError as exc:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
@@ -61,26 +70,18 @@ async def skills_training_mark_done(
     return await build_skill_training_surface(session, row)
 
 
-@router.get("/skills-training/days/{day_number}/embed")
+@router.get("/skills-training/lessons/{lesson_id}/embed")
 async def skills_training_embed(
-    day_number: int,
+    lesson_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> RedirectResponse:
-    """Auth-gated YouTube embed redirect — only for days the caller has unlocked."""
+    """Auth-gated YouTube embed redirect — only once the academy is unlocked for the caller."""
     row = await _load_user(session, user)
-    surface = await build_skill_training_surface(session, row)
-    day = next((d for d in surface["days"] if d["day_number"] == day_number), None)
-    if day is None or not day["unlocked"]:
+    lesson = await session.get(SkillLesson, lesson_id)
+    if not skill_training_available(row) or lesson is None or not lesson.youtube_url:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video not available")
-    video = (
-        await session.execute(
-            select(SkillTrainingVideo).where(SkillTrainingVideo.day_number == day_number)
-        )
-    ).scalar_one_or_none()
-    if video is None or not video.youtube_url:
-        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video not available")
-    return RedirectResponse(url=youtube_embed_url(video.youtube_url), status_code=302)
+    return RedirectResponse(url=youtube_embed_url(lesson.youtube_url), status_code=302)
 
 
 @router.get("/skills-training/progress")
@@ -93,49 +94,102 @@ async def skills_training_progress(
     return await get_skill_training_overview(session, actor=user)
 
 
-class SkillDayBody(BaseModel):
+class LessonBody(BaseModel):
+    category: Optional[str] = Field(default=None, max_length=32)
+    position: Optional[int] = Field(default=None, ge=1, le=99)
     title: Optional[str] = Field(default=None, max_length=255)
+    description: Optional[str] = Field(default=None, max_length=4000)
     youtube_url: Optional[str] = Field(default=None, max_length=500)
+    duration_minutes: Optional[int] = Field(default=None, ge=0, le=600)
+    practice_task: Optional[str] = Field(default=None, max_length=4000)
+    practice_required: Optional[bool] = None
 
 
-@router.put("/skills-training/admin/day/{day_number}")
-async def admin_put_skill_day(
-    day_number: int,
-    body: SkillDayBody,
+def _admin_lesson(row: SkillLesson) -> dict:
+    return {
+        "id": int(row.id),
+        "category": row.category,
+        "position": int(row.position),
+        "title": row.title,
+        "description": row.description,
+        "youtube_url": row.youtube_url,
+        "duration_minutes": row.duration_minutes,
+        "practice_task": row.practice_task,
+        "practice_required": bool(row.practice_required),
+    }
+
+
+def _apply(row: SkillLesson, body: LessonBody) -> None:
+    fields = body.model_fields_set
+    if body.title is not None and body.title.strip():
+        row.title = body.title.strip()
+    if body.position is not None:
+        row.position = body.position
+    for name in ("description", "youtube_url", "practice_task"):
+        if name in fields:
+            value = getattr(body, name)
+            setattr(row, name, (value or "").strip() or None)
+    if "duration_minutes" in fields:
+        row.duration_minutes = body.duration_minutes or None
+    if body.practice_required is not None:
+        row.practice_required = body.practice_required
+
+
+@router.post("/skills-training/admin/lessons", status_code=http_status.HTTP_201_CREATED)
+async def admin_create_lesson(
+    body: LessonBody,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    """Admin: create or update one skills-training day (title + YouTube link)."""
+    """Admin: add a lesson to a category (appended at the end unless a position is given)."""
     _require_admin(user)
-    if not 1 <= day_number <= SKILL_TRAINING_DAYS:
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail=f"Day must be between 1 and {SKILL_TRAINING_DAYS}",
-        )
-    row = (
+    if body.category not in CATEGORY_KEYS:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Unknown category")
+    if not (body.title or "").strip():
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Title is required")
+    last = (
         await session.execute(
-            select(SkillTrainingVideo).where(SkillTrainingVideo.day_number == day_number)
+            select(func.max(SkillLesson.position)).where(SkillLesson.category == body.category)
         )
-    ).scalar_one_or_none()
-    if row is None:
-        row = SkillTrainingVideo(day_number=day_number, title=f"Day {day_number}")
-        session.add(row)
-    if body.title is not None and body.title.strip():
-        row.title = body.title.strip()
-    if body.youtube_url is not None:
-        row.youtube_url = body.youtube_url.strip() or None
+    ).scalar()
+    row = SkillLesson(category=body.category, position=int(last or 0) + 1, title=body.title.strip())
+    _apply(row, body)
+    session.add(row)
     await session.commit()
-    return {"day_number": day_number, "title": row.title, "youtube_url": row.youtube_url}
+    return _admin_lesson(row)
 
 
-@router.delete("/skills-training/admin/day/{day_number}", status_code=http_status.HTTP_204_NO_CONTENT)
-async def admin_delete_skill_day(
-    day_number: int,
+@router.put("/skills-training/admin/lessons/{lesson_id}")
+async def admin_update_lesson(
+    lesson_id: int,
+    body: LessonBody,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    _require_admin(user)
+    row = await session.get(SkillLesson, lesson_id)
+    if row is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+    if body.category is not None:
+        if body.category not in CATEGORY_KEYS:
+            raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Unknown category")
+        row.category = body.category
+    _apply(row, body)
+    await session.commit()
+    return _admin_lesson(row)
+
+
+@router.delete("/skills-training/admin/lessons/{lesson_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def admin_delete_lesson(
+    lesson_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
+    """Admin: remove a lesson (members' completions of it go with it)."""
     _require_admin(user)
-    await session.execute(delete(SkillTrainingProgress).where(SkillTrainingProgress.day_number == day_number))
-    await session.execute(delete(SkillTrainingVideo).where(SkillTrainingVideo.day_number == day_number))
+    row = await session.get(SkillLesson, lesson_id)
+    if row is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Lesson not found")
+    await session.execute(delete(SkillLessonProgress).where(SkillLessonProgress.lesson_id == lesson_id))
+    await session.delete(row)
     await session.commit()
-

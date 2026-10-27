@@ -41,7 +41,7 @@ from app.models.app_setting import AppSetting
 from app.models.training_question import TrainingQuestion
 from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.training_day_note import TrainingDayNote
-from app.models.skill_training import SkillTrainingProgress, SkillTrainingVideo
+from app.models.skill_training import SkillLesson, SkillLessonProgress
 from app.models.download import Download
 from app.models.user_presence_session import UserPresenceSession
 from app.models.verification_task import VerificationTask
@@ -100,8 +100,8 @@ __all__ = [
     "TrainingQuestion",
     "TrainingTestAttempt",
     "TrainingDayNote",
-    "SkillTrainingVideo",
-    "SkillTrainingProgress",
+    "SkillLesson",
+    "SkillLessonProgress",
     "Download",
     "UserPresenceSession",
     "VerificationTask",
