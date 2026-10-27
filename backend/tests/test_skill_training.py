@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import importlib.util
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from httpx import AsyncClient
 from sqlalchemy import delete
@@ -15,6 +17,14 @@ from app.models.user import User
 from app.services.skill_training import CATEGORY_KEYS, youtube_embed_url
 
 BASE = "/api/v1/system/skills-training"
+_SEED_MIGRATION = Path(__file__).resolve().parents[1] / "alembic/versions/20261027_0100_skills_academy.py"
+
+
+def _migration_seed() -> dict[str, list[str]]:
+    spec = importlib.util.spec_from_file_location("skills_academy_migration", _SEED_MIGRATION)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.SEED
 TEAM, LEADER, ADMIN = 201, 202, 203
 
 
@@ -69,7 +79,9 @@ async def _lesson_id(engine, title: str) -> int:
 
 
 def _lessons(body: dict) -> list[dict]:
-    return [l for c in body["categories"] for l in c["lessons"]]
+    """Every lesson in the payload — Personal Development first, then the academy."""
+    cats = [body["personal_development"], *body["academy"]["categories"]]
+    return [l for c in cats for l in c["lessons"]]
 
 
 # ── Unlock gate (acceptance criteria) ─────────────────────────────────────────
@@ -84,10 +96,10 @@ async def test_new_user_onboarding_open_skills_locked(engine, team_client: Async
     assert body["onboarding"]["current_day"] == 1
     assert body["onboarding"]["teaser"] is False
     # Locked preview: the outline in the fixed order, but no lesson content.
-    # No Personal Development lessons yet → members only see the six numbered categories.
-    assert [c["key"] for c in body["categories"]] == list(CATEGORY_KEYS[1:])
-    assert [c["number"] for c in body["categories"]] == [1, 2, 3, 4, 5, 6]
-    assert body["categories"][1]["total_lessons"] == 2
+    academy = body["academy"]["categories"]
+    assert [c["key"] for c in academy] == list(CATEGORY_KEYS[1:])
+    assert [c["number"] for c in academy] == [1, 2, 3, 4, 5, 6]
+    assert academy[1]["total_lessons"] == 2
     assert _lessons(body) == []
 
 
@@ -151,9 +163,9 @@ async def test_same_rule_for_leader(engine, leader_client: AsyncClient):
 async def test_unlocked_academy_lists_lessons_in_category_order(engine, team_client: AsyncClient):
     await _reset(engine, status="completed", required=False, done_days=7)
     body = (await team_client.get(BASE)).json()
-    assert body["status"] == "not_started"
-    assert body["total_lessons"] == 5
-    invitation = body["categories"][1]
+    assert body["academy"]["status"] == "not_started"
+    assert body["academy"]["total_lessons"] == 5
+    invitation = body["academy"]["categories"][1]
     assert [l["title"] for l in invitation["lessons"]] == ["Who to invite", "Create curiosity"]
     assert [l["number"] for l in invitation["lessons"]] == [1, 2]
     assert all(l["youtube_url"] is None for l in _lessons(body))  # links stay server-side
@@ -168,8 +180,8 @@ async def test_complete_lesson_persists_and_advances(engine, team_client: AsyncC
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["completed_lessons"] == 1
-    assert body["status"] == "in_progress"
-    assert body["categories"][0]["status"] == "completed"
+    assert body["academy"]["status"] == "in_progress"
+    assert body["academy"]["categories"][0]["status"] == "completed"
     assert body["next_lesson_id"] == await _lesson_id(engine, "Who to invite")
 
     # Logout / login: progress is server-side, a fresh request still sees it.
@@ -206,30 +218,62 @@ async def test_practice_required_lesson_needs_an_answer(engine, team_client: Asy
     assert done["practice_response"] == answer
 
 
-async def test_personal_development_lessons_list_first(engine, team_client: AsyncClient):
-    """Lessons carried over from the earlier day-by-day track sit above the six categories."""
+async def test_personal_development_is_a_separate_track(engine, team_client: AsyncClient):
+    """Lessons carried over from the earlier day-by-day track stay out of the academy."""
     await _reset(engine, status="completed", required=False, done_days=7)
     async with AsyncSession(engine, expire_on_commit=False) as s:
-        pd = SkillLesson(category="personal_development", position=1, title="Time management", youtube_url="https://youtu.be/pd1")
+        pd = SkillLesson(category="personal_development", position=1, title="THE RESET", youtube_url="https://youtu.be/pd1")
         s.add(pd)
         await s.flush()
         s.add(SkillLessonProgress(user_id=TEAM, lesson_id=pd.id, completed_at=datetime.now(timezone.utc)))
         await s.commit()
 
     body = (await team_client.get(BASE)).json()
-    first = body["categories"][0]
-    assert first["key"] == "personal_development"
-    assert first["number"] is None
-    assert first["lessons"][0]["title"] == "Time management"
-    assert first["lessons"][0]["completed"] is True
-    assert [c["number"] for c in body["categories"][1:]] == [1, 2, 3, 4, 5, 6]
-    assert body["completed_lessons"] == 1
+    personal = body["personal_development"]
+    assert personal["number"] is None
+    assert personal["lessons"][0]["title"] == "THE RESET"
+    assert (personal["total_lessons"], personal["completed_lessons"], personal["status"]) == (1, 1, "completed")
+    assert all(c["key"] != "personal_development" for c in body["academy"]["categories"])
+    assert (body["academy"]["total_lessons"], body["academy"]["completed_lessons"]) == (5, 0)
+    assert (body["total_lessons"], body["completed_lessons"]) == (6, 1)
+
+
+async def test_full_catalog_is_5_personal_plus_29_academy(engine, team_client: AsyncClient):
+    """The shipped seed + the five carried-over videos give the required 34-lesson structure."""
+    await _reset(engine, status="completed", required=False, done_days=7)
+    seed = _migration_seed()
+    pd_titles = ["THE RESET", "THE RESET PART 2ND", "Reaction to Direction", "Communication and Bonding", "Invitation Training 1"]
+    async with AsyncSession(engine, expire_on_commit=False) as s:
+        await s.execute(delete(SkillLesson))
+        for pos, title in enumerate(pd_titles, start=1):
+            s.add(SkillLesson(category="personal_development", position=pos, title=title, youtube_url=f"https://youtu.be/pd{pos}"))
+        for category, titles in seed.items():
+            for pos, title in enumerate(titles, start=1):
+                s.add(SkillLesson(category=category, position=pos, title=title))
+        await s.commit()
+
+    body = (await team_client.get(BASE)).json()
+    assert [l["title"] for l in body["personal_development"]["lessons"]] == pd_titles
+    academy = body["academy"]["categories"]
+    assert [(c["title"], c["total_lessons"]) for c in academy] == [
+        ("Process Mastery", 4),
+        ("Invitation", 5),
+        ("Follow-up", 5),
+        ("Bond Creation", 5),
+        ("Mistakes — Do's & Don'ts", 5),
+        ("Closing", 5),
+    ]
+    assert body["personal_development"]["total_lessons"] == 5
+    assert body["academy"]["total_lessons"] == 29
+    assert body["total_lessons"] == 34
 
 
 async def test_admin_sees_empty_personal_development_to_add_lessons(engine, admin_client: AsyncClient):
     await _reset(engine, status="completed", required=False, done_days=7)
     body = (await admin_client.get(BASE)).json()
-    assert [c["key"] for c in body["categories"]] == list(CATEGORY_KEYS)
+    assert body["personal_development"]["key"] == "personal_development"
+    assert body["personal_development"]["total_lessons"] == 0
+    assert [c["key"] for c in body["academy"]["categories"]] == list(CATEGORY_KEYS[1:])
 
 
 # ── Permissions ───────────────────────────────────────────────────────────────
@@ -255,6 +299,9 @@ async def test_leader_sees_downline_progress(engine, leader_client):
     assert [c["key"] for c in overview["categories"]] == list(CATEGORY_KEYS)
     member = next(m for m in overview["members"] if m["user_id"] == TEAM)
     assert member["completed_lessons"] == 1
+    assert (member["personal_development_completed"], member["academy_completed"]) == (0, 1)
+    assert overview["personal_development_total"] == 0
+    assert overview["academy_total"] == 5
     assert member["practice_submitted"] == 1
     assert member["by_category"]["closing"] == 1
     assert all(m["user_id"] != ADMIN for m in overview["members"])

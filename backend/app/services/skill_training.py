@@ -9,9 +9,14 @@ leaders — the leader role is never a bypass.
 On the final onboarding day a teaser may show; that trigger is deliberately
 separate from the unlock, so reaching Day 7 never opens the academy by itself.
 
-Lessons sit in fixed categories, always in the order of ``CATEGORIES``: the
-Personal Development lessons (carried over from the earlier day-by-day track,
-unnumbered) followed by the six numbered skill categories. A
+Two separate tracks share the same lesson tables and unlock rule:
+
+- **Personal Development** — one unnumbered category, the lessons carried over
+  from the earlier day-by-day track.
+- **Skills Academy** — six numbered categories, always in the order of
+  ``CATEGORIES``.
+
+The surface returns them as separate blocks with their own progress. A
 lesson is done when the member marks it complete after the recording is up; a
 lesson flagged ``practice_required`` also needs a written practice answer.
 Nothing here feeds discipline / compliance rules — it is tracking only.
@@ -82,6 +87,7 @@ CATEGORIES: tuple[dict, ...] = (
     },
 )
 CATEGORY_KEYS: tuple[str, ...] = tuple(c["key"] for c in CATEGORIES)
+PERSONAL_DEVELOPMENT = "personal_development"
 
 Status = Literal["not_started", "in_progress", "completed"]
 
@@ -176,16 +182,11 @@ async def build_skill_training_surface(session: AsyncSession, user: User) -> dic
     onboarding = await _onboarding_summary(session, user, available)
 
     categories = []
-    next_lesson_id: int | None = None
     for meta in CATEGORIES:
         own = [l for l in lessons if l.category == meta["key"]]
-        if meta["number"] is None and not own and not is_admin:
-            continue  # unnumbered extras only show once they have lessons
         rows = []
         for index, lesson in enumerate(own, start=1):
             done = progress.get(int(lesson.id))
-            if available and done is None and lesson.youtube_url and next_lesson_id is None:
-                next_lesson_id = int(lesson.id)
             rows.append(
                 {
                     "id": int(lesson.id),
@@ -215,16 +216,48 @@ async def build_skill_training_surface(session: AsyncSession, user: User) -> dic
             }
         )
 
-    total = sum(c["total_lessons"] for c in categories)
-    completed_total = sum(c["completed_lessons"] for c in categories)
+    personal = next(c for c in categories if c["key"] == PERSONAL_DEVELOPMENT)
+    academy = [c for c in categories if c["key"] != PERSONAL_DEVELOPMENT]
+    pd_block = _section([personal], available)
+    academy_block = _section(academy, available)
+    total = pd_block["total_lessons"] + academy_block["total_lessons"]
+    completed_total = pd_block["completed_lessons"] + academy_block["completed_lessons"]
     return {
         "available": available,
-        "status": _status(completed_total, total) if available else "not_started",
         "total_lessons": total,
         "completed_lessons": completed_total,
-        "next_lesson_id": next_lesson_id,
+        # Overall next step: Personal Development first, then the academy.
+        "next_lesson_id": pd_block["next_lesson_id"] or academy_block["next_lesson_id"],
         "onboarding": onboarding,
-        "categories": categories,
+        "personal_development": {**personal, "next_lesson_id": pd_block["next_lesson_id"]},
+        "academy": {
+            "status": academy_block["status"],
+            "total_lessons": academy_block["total_lessons"],
+            "completed_lessons": academy_block["completed_lessons"],
+            "next_lesson_id": academy_block["next_lesson_id"],
+            "categories": academy,
+        },
+    }
+
+
+def _section(categories: list[dict], available: bool) -> dict:
+    """Totals + first open lesson (with a recording) across a group of categories."""
+    total = sum(c["total_lessons"] for c in categories)
+    completed = sum(c["completed_lessons"] for c in categories)
+    next_lesson_id = next(
+        (
+            l["id"]
+            for c in categories
+            for l in c["lessons"]
+            if available and not l["completed"] and l["has_video"]
+        ),
+        None,
+    )
+    return {
+        "status": _status(completed, total) if available else "not_started",
+        "total_lessons": total,
+        "completed_lessons": completed,
+        "next_lesson_id": next_lesson_id,
     }
 
 
@@ -242,7 +275,7 @@ async def complete_skill_lesson(
     member-facing message when the lesson can't be completed yet.
     """
     if not skill_training_available(user):
-        raise ValueError("Skills Academy opens after you complete all 7 onboarding days")
+        raise ValueError("Personal Development and Skills Academy open after you complete all 7 onboarding days")
     lesson = await session.get(SkillLesson, lesson_id)
     if lesson is None or lesson.category not in CATEGORY_KEYS:
         raise LookupError("Lesson not found")
@@ -330,6 +363,8 @@ async def get_skill_training_overview(session: AsyncSession, *, actor: AuthUser)
                 "role": u.role,
                 "available": skill_training_available(u),
                 "completed_lessons": sum(by_category.values()),
+                "personal_development_completed": by_category[PERSONAL_DEVELOPMENT],
+                "academy_completed": sum(v for k, v in by_category.items() if k != PERSONAL_DEVELOPMENT),
                 "practice_submitted": entry["practice"] if entry else 0,
                 "by_category": by_category,
                 "last_completed_at": entry["last"].isoformat() if entry and entry["last"] else None,
@@ -338,6 +373,8 @@ async def get_skill_training_overview(session: AsyncSession, *, actor: AuthUser)
     members.sort(key=lambda m: (not m["available"], -m["completed_lessons"], m["name"] or ""))
     return {
         "total_lessons": len(lessons),
+        "personal_development_total": totals[PERSONAL_DEVELOPMENT],
+        "academy_total": len(lessons) - totals[PERSONAL_DEVELOPMENT],
         "categories": [
             {"key": c["key"], "number": c["number"], "title": c["title"], "total_lessons": totals[c["key"]]}
             for c in CATEGORIES

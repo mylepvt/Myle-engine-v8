@@ -1,7 +1,7 @@
-import { CheckCircle2, ChevronDown, GraduationCap, Lock, Sprout } from 'lucide-react'
+import { CheckCircle2, ChevronDown, GraduationCap, Lock, Sparkles, Sprout } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
-import { SkillsTrainingPanel } from '@/components/training/SkillsTrainingPanel'
+import { PersonalDevelopmentPanel, SkillsAcademyPanel } from '@/components/training/SkillsAcademyPanels'
 import { TrainingProgramPanel } from '@/components/training/TrainingProgramPanel'
 import { Badge } from '@/components/ui/badge'
 import { ErrorState, LoadingState } from '@/components/ui/states'
@@ -95,13 +95,13 @@ function TrainingSection({
 }
 
 function JourneyStep({
-  level,
+  step,
   title,
   detail,
   done,
   locked,
 }: {
-  level: number
+  step: number
   title: string
   detail: string
   done: boolean
@@ -115,17 +115,25 @@ function JourneyStep({
           done ? 'bg-success/15 text-success-ink' : locked ? 'bg-muted text-muted-foreground' : 'bg-primary/15 text-primary',
         )}
       >
-        {done ? <CheckCircle2 className="size-4" /> : locked ? <Lock className="size-3.5" /> : level}
+        {done ? <CheckCircle2 className="size-4" /> : locked ? <Lock className="size-3.5" /> : step}
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-foreground">
-          Level {level} · {title}
-        </span>
+        <span className="block text-sm font-medium text-foreground">{title}</span>
         <span className="block text-sm text-muted-foreground">{detail}</span>
       </span>
     </li>
   )
 }
+
+type Progress = { total_lessons: number; completed_lessons: number }
+
+function lessonsDetail(unlocked: boolean, track: Progress | undefined, lockedText: string): string {
+  if (!unlocked) return lockedText
+  if (!track || track.total_lessons === 0) return 'Unlocked'
+  return `${track.completed_lessons} of ${track.total_lessons} lessons completed`
+}
+
+const isDone = (t: Progress | undefined) => !!t && t.total_lessons > 0 && t.completed_lessons >= t.total_lessons
 
 /** Screen A — where the member is on the learning journey and what to do next. */
 function GrowthJourney({
@@ -143,15 +151,20 @@ function GrowthJourney({
   const completed = ob?.completed_days ?? doneDays
   const total = ob?.total_days || totalDays || 7
   const unlocked = onboardingDone
-  const nextLesson = skills?.categories.flatMap((c) => c.lessons).find((l) => l.id === skills.next_lesson_id)
+  const pd = skills?.personal_development
+  const academy = skills?.academy
+  const lessons = [...(pd?.lessons ?? []), ...(academy?.categories.flatMap((c) => c.lessons) ?? [])]
+  const nextLesson = lessons.find((l) => l.id === skills?.next_lesson_id)
+  const lockedText = `Complete all ${total} onboarding days to unlock.`
 
   let next: string
   if (!unlocked) {
-    if (ob?.awaiting_certification) next = 'Pass the onboarding test to unlock the Skills Academy.'
+    if (ob?.awaiting_certification) next = 'Pass the onboarding test to unlock Personal Development and the Skills Academy.'
     else if (ob?.current_day) next = `Continue onboarding — Day ${ob.current_day} of ${total}.`
     else next = 'Continue your onboarding training.'
   } else if (nextLesson) next = `${nextLesson.title} — your next lesson.`
-  else if (skills && skills.total_lessons > 0 && skills.status === 'completed') next = 'Every lesson done — keep applying them in the field.'
+  else if (skills && skills.total_lessons > 0 && skills.completed_lessons >= skills.total_lessons)
+    next = 'Every lesson done — keep applying them in the field.'
   else next = 'New lessons are on the way.'
 
   return (
@@ -159,23 +172,24 @@ function GrowthJourney({
       <h2 className="font-semibold text-foreground">Your Growth Journey</h2>
       <ol className="space-y-3">
         <JourneyStep
-          level={1}
-          title="Onboarding Foundation"
+          step={1}
+          title="7-Day Onboarding"
           detail={unlocked ? 'Completed' : `${completed} of ${total} days completed`}
           done={unlocked}
           locked={false}
         />
         <JourneyStep
-          level={2}
+          step={2}
+          title="Personal Development"
+          detail={lessonsDetail(unlocked, pd, lockedText)}
+          done={isDone(pd)}
+          locked={!unlocked}
+        />
+        <JourneyStep
+          step={3}
           title="Skills Academy"
-          detail={
-            unlocked
-              ? skills && skills.total_lessons > 0
-                ? `${skills.completed_lessons} of ${skills.total_lessons} lessons completed`
-                : 'Unlocked'
-              : `Complete all ${total} onboarding days to unlock.`
-          }
-          done={!!skills && skills.total_lessons > 0 && skills.status === 'completed'}
+          detail={lessonsDetail(unlocked, academy, lockedText)}
+          done={isDone(academy)}
           locked={!unlocked}
         />
       </ol>
@@ -187,10 +201,20 @@ function GrowthJourney({
   )
 }
 
+function trackBadge(unlocked: boolean, track: Progress | undefined, lockedBadge: { label: string; variant: BadgeVariant }) {
+  if (!unlocked) return lockedBadge
+  if (!track || track.total_lessons === 0) return { label: 'Coming soon', variant: 'secondary' as BadgeVariant }
+  return {
+    label: `${track.completed_lessons}/${track.total_lessons} done`,
+    variant: (isDone(track) ? 'success' : 'primary') as BadgeVariant,
+  }
+}
+
 /**
- * Single Training home: the Growth Journey summary, 7-day onboarding (required to
- * unlock the app) and the post-onboarding Skills Academy, as two collapsible sections.
- * Whichever one the member should work on now starts expanded.
+ * Single Training home: the Growth Journey summary, then three separate collapsible
+ * sections — 7-day onboarding (required to unlock the app, open anytime to revise),
+ * Personal Development and the Skills Academy. Whichever one the member should
+ * work on now starts expanded.
  */
 export function TrainingHubPage({ title }: Props) {
   const { data: me } = useAuthMeQuery()
@@ -212,18 +236,18 @@ export function TrainingHubPage({ title }: Props) {
   else if (onboardingTotal > 0) onboardingBadge = { label: `${onboardingDoneDays}/${onboardingTotal} days`, variant: 'warning' }
   else onboardingBadge = { label: 'In progress', variant: 'warning' }
 
-  const skillsOpen = onboardingDone
+  const unlocked = onboardingDone
   const teaser = skills.data?.onboarding.teaser === true
-
-  let skillsBadge: { label: string; variant: BadgeVariant }
-  if (skills.data && !skills.data.available)
-    skillsBadge = teaser ? { label: 'Almost there', variant: 'primary' } : { label: 'Locked', variant: 'secondary' }
-  else if (skills.data && skills.data.total_lessons > 0)
-    skillsBadge = {
-      label: `${skills.data.completed_lessons}/${skills.data.total_lessons} done`,
-      variant: skills.data.status === 'completed' ? 'success' : 'primary',
-    }
-  else skillsBadge = { label: 'Coming soon', variant: 'secondary' }
+  const pd = skills.data?.personal_development
+  const academy = skills.data?.academy
+  const locked = { label: 'Locked', variant: 'secondary' as BadgeVariant }
+  const pdBadge = trackBadge(unlocked, pd, locked)
+  const academyBadge = trackBadge(unlocked, academy, teaser ? { label: 'Almost there', variant: 'primary' } : locked)
+  // Work on Personal Development until it's done, then the academy.
+  const pdOpen = unlocked && !!pd && pd.total_lessons > 0 && !isDone(pd)
+  const academyOpen = (unlocked && !pdOpen) || teaser
+  // Section open state is read once; wait for the server's answer before picking a default.
+  const sectionKey = skills.data ? 'ready' : 'loading'
 
   return (
     <div className="max-w-4xl space-y-4">
@@ -231,7 +255,7 @@ export function TrainingHubPage({ title }: Props) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {onboardingDone
-            ? 'Your onboarding is complete. Keep growing with the Skills Academy below.'
+            ? 'Your onboarding is complete. Keep growing with Personal Development and the Skills Academy below.'
             : 'Finish the 7-day onboarding to unlock the full app.'}
         </p>
       </div>
@@ -263,20 +287,33 @@ export function TrainingHubPage({ title }: Props) {
       </TrainingSection>
 
       <TrainingSection
-        id="skills"
-        icon={skillsOpen ? <Sprout className="size-5" /> : <Lock className="size-5" />}
-        title="Personal Development & Skills Academy"
+        key={`personal-${sectionKey}`}
+        id="personal-development"
+        icon={unlocked ? <Sprout className="size-5" /> : <Lock className="size-5" />}
+        title="Personal Development"
+        subtitle={unlocked ? 'Mindset, habits and personal growth' : 'Unlocks after all 7 onboarding days'}
+        badge={pdBadge}
+        defaultOpen={pdOpen}
+      >
+        <PersonalDevelopmentPanel />
+      </TrainingSection>
+
+      <TrainingSection
+        key={`academy-${sectionKey}`}
+        id="skills-academy"
+        icon={unlocked ? <Sparkles className="size-5" /> : <Lock className="size-5" />}
+        title="Skills Academy"
         subtitle={
-          skillsOpen
-            ? 'Personal development and six skill areas — learn, practise, apply'
+          unlocked
+            ? 'Six skill areas — learn, practise, apply'
             : teaser
               ? 'Your next level is near — finish onboarding to unlock'
               : 'Unlocks after all 7 onboarding days'
         }
-        badge={skillsBadge}
-        defaultOpen={skillsOpen || teaser}
+        badge={academyBadge}
+        defaultOpen={academyOpen}
       >
-        <SkillsTrainingPanel />
+        <SkillsAcademyPanel />
       </TrainingSection>
     </div>
   )
