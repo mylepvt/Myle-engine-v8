@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Clock, Lock, PenLine, PlayCircle, Plus, Rocket, Trash2, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Clock, Lock, PenLine, PlayCircle, Plus, Rocket, Sprout, Trash2, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +25,15 @@ import { cn } from '@/lib/utils'
 const PRACTICE_MIN_CHARS = 20
 
 const pad = (n: number) => String(n).padStart(2, '0')
+
+/** "01"–"06" for the skill categories; Personal Development has no number. */
+function CategoryNumber({ number }: { number: number | null }) {
+  return number === null ? (
+    <Sprout className="size-4 shrink-0 text-primary" aria-hidden />
+  ) : (
+    <span className="font-mono text-sm text-muted-foreground">{pad(number)}</span>
+  )
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -72,7 +81,7 @@ function LockedPreview({ data }: { data: SkillTrainingSurface }) {
       <ol className="space-y-2">
         {data.categories.map((c) => (
           <li key={c.key} className="surface-inset flex items-center gap-3 px-4 py-3 opacity-80">
-            <span className="font-mono text-sm text-muted-foreground">{pad(c.number)}</span>
+            <CategoryNumber number={c.number} />
             <span className="min-w-0 flex-1">
               <span className="block font-medium text-foreground">{c.title}</span>
               <span className="block truncate text-xs text-muted-foreground">{c.purpose}</span>
@@ -158,7 +167,7 @@ function CategorySection({
         aria-expanded={open}
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
       >
-        <span className="font-mono text-sm text-muted-foreground">{pad(category.number)}</span>
+        <CategoryNumber number={category.number} />
         <span className="min-w-0 flex-1">
           <span className="block font-medium text-foreground">{category.title}</span>
           <span className="block truncate text-xs text-muted-foreground">{category.purpose}</span>
@@ -511,7 +520,7 @@ function AdminLessonManager({ data }: { data: SkillTrainingSurface }) {
         {data.categories.map((c) => (
           <div key={c.key} className="space-y-2">
             <p className="text-sm font-semibold text-foreground">
-              {pad(c.number)} · {c.title}
+              {c.number === null ? c.title : `${pad(c.number)} · ${c.title}`}
             </p>
             {c.lessons.map((l) =>
               editing === `lesson-${l.id}` ? (

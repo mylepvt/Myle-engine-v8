@@ -27,8 +27,11 @@ export type SkillLesson = {
 
 export type SkillCategory = {
   key: string
-  /** Fixed order 1–6: Process, Invitation, Follow-up, Bond Creation, Mistakes, Closing. */
-  number: number
+  /**
+   * Fixed order 1–6: Process, Invitation, Follow-up, Bond Creation, Mistakes, Closing.
+   * `null` for the unnumbered Personal Development lessons listed before them.
+   */
+  number: number | null
   title: string
   purpose: string
   total_lessons: number
@@ -73,7 +76,7 @@ export type SkillTrainingMember = {
 
 export type SkillTrainingOverview = {
   total_lessons: number
-  categories: { key: string; number: number; title: string; total_lessons: number }[]
+  categories: { key: string; number: number | null; title: string; total_lessons: number }[]
   members: SkillTrainingMember[]
 }
 
