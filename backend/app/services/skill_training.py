@@ -9,7 +9,9 @@ leaders — the leader role is never a bypass.
 On the final onboarding day a teaser may show; that trigger is deliberately
 separate from the unlock, so reaching Day 7 never opens the academy by itself.
 
-Lessons sit in six fixed categories, always in the order of ``CATEGORIES``. A
+Lessons sit in fixed categories, always in the order of ``CATEGORIES``: the
+Personal Development lessons (carried over from the earlier day-by-day track,
+unnumbered) followed by the six numbered skill categories. A
 lesson is done when the member marks it complete after the recording is up; a
 lesson flagged ``practice_required`` also needs a written practice answer.
 Nothing here feeds discipline / compliance rules — it is tracking only.
@@ -37,32 +39,44 @@ PRACTICE_MAX_CHARS = 4000
 
 CATEGORIES: tuple[dict, ...] = (
     {
+        "key": "personal_development",
+        "number": None,
+        "title": "Personal Development",
+        "purpose": "Mindset, habits and personal growth.",
+    },
+    {
         "key": "process",
+        "number": 1,
         "title": "Process Mastery",
         "purpose": "Understand the full business workflow — from lead to closing.",
     },
     {
         "key": "invitation",
+        "number": 2,
         "title": "Invitation",
         "purpose": "Start conversations and arrange a meeting.",
     },
     {
         "key": "follow_up",
+        "number": 3,
         "title": "Follow-up",
         "purpose": "Guide an interested prospect at the right pace.",
     },
     {
         "key": "bond_creation",
+        "number": 4,
         "title": "Bond Creation",
         "purpose": "Build trust, listening skills and genuine relationships.",
     },
     {
         "key": "mistakes",
+        "number": 5,
         "title": "Mistakes — Do's & Don'ts",
         "purpose": "Avoid common mistakes and keep every conversation professional.",
     },
     {
         "key": "closing",
+        "number": 6,
         "title": "Closing",
         "purpose": "Guide prospects toward an informed decision.",
     },
@@ -163,8 +177,10 @@ async def build_skill_training_surface(session: AsyncSession, user: User) -> dic
 
     categories = []
     next_lesson_id: int | None = None
-    for number, meta in enumerate(CATEGORIES, start=1):
+    for meta in CATEGORIES:
         own = [l for l in lessons if l.category == meta["key"]]
+        if meta["number"] is None and not own and not is_admin:
+            continue  # unnumbered extras only show once they have lessons
         rows = []
         for index, lesson in enumerate(own, start=1):
             done = progress.get(int(lesson.id))
@@ -191,7 +207,6 @@ async def build_skill_training_surface(session: AsyncSession, user: User) -> dic
         categories.append(
             {
                 **meta,
-                "number": number,
                 "total_lessons": len(rows),
                 "completed_lessons": completed,
                 "status": _status(completed, len(rows)),
@@ -324,8 +339,8 @@ async def get_skill_training_overview(session: AsyncSession, *, actor: AuthUser)
     return {
         "total_lessons": len(lessons),
         "categories": [
-            {"key": c["key"], "number": i, "title": c["title"], "total_lessons": totals[c["key"]]}
-            for i, c in enumerate(CATEGORIES, start=1)
+            {"key": c["key"], "number": c["number"], "title": c["title"], "total_lessons": totals[c["key"]]}
+            for c in CATEGORIES
         ],
         "members": members,
     }

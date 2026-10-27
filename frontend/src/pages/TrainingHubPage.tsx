@@ -268,7 +268,7 @@ export function TrainingHubPage({ title }: Props) {
         title="Personal Development & Skills Academy"
         subtitle={
           skillsOpen
-            ? 'Six skill areas — learn, practise, apply'
+            ? 'Personal development and six skill areas — learn, practise, apply'
             : teaser
               ? 'Your next level is near — finish onboarding to unlock'
               : 'Unlocks after all 7 onboarding days'

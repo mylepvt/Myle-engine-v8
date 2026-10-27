@@ -84,7 +84,8 @@ async def test_new_user_onboarding_open_skills_locked(engine, team_client: Async
     assert body["onboarding"]["current_day"] == 1
     assert body["onboarding"]["teaser"] is False
     # Locked preview: the outline in the fixed order, but no lesson content.
-    assert [c["key"] for c in body["categories"]] == list(CATEGORY_KEYS)
+    # No Personal Development lessons yet → members only see the six numbered categories.
+    assert [c["key"] for c in body["categories"]] == list(CATEGORY_KEYS[1:])
     assert [c["number"] for c in body["categories"]] == [1, 2, 3, 4, 5, 6]
     assert body["categories"][1]["total_lessons"] == 2
     assert _lessons(body) == []
@@ -203,6 +204,32 @@ async def test_practice_required_lesson_needs_an_answer(engine, team_client: Asy
     done = next(l for l in _lessons(r.json()) if l["id"] == lesson)
     assert done["completed"] is True
     assert done["practice_response"] == answer
+
+
+async def test_personal_development_lessons_list_first(engine, team_client: AsyncClient):
+    """Lessons carried over from the earlier day-by-day track sit above the six categories."""
+    await _reset(engine, status="completed", required=False, done_days=7)
+    async with AsyncSession(engine, expire_on_commit=False) as s:
+        pd = SkillLesson(category="personal_development", position=1, title="Time management", youtube_url="https://youtu.be/pd1")
+        s.add(pd)
+        await s.flush()
+        s.add(SkillLessonProgress(user_id=TEAM, lesson_id=pd.id, completed_at=datetime.now(timezone.utc)))
+        await s.commit()
+
+    body = (await team_client.get(BASE)).json()
+    first = body["categories"][0]
+    assert first["key"] == "personal_development"
+    assert first["number"] is None
+    assert first["lessons"][0]["title"] == "Time management"
+    assert first["lessons"][0]["completed"] is True
+    assert [c["number"] for c in body["categories"][1:]] == [1, 2, 3, 4, 5, 6]
+    assert body["completed_lessons"] == 1
+
+
+async def test_admin_sees_empty_personal_development_to_add_lessons(engine, admin_client: AsyncClient):
+    await _reset(engine, status="completed", required=False, done_days=7)
+    body = (await admin_client.get(BASE)).json()
+    assert [c["key"] for c in body["categories"]] == list(CATEGORY_KEYS)
 
 
 # ── Permissions ───────────────────────────────────────────────────────────────

@@ -195,6 +195,27 @@ describe('TrainingHubPage', () => {
     expect(screen.getByText('Invitation · Video 02 of 02')).toBeTruthy()
   })
 
+  it('lists the earlier Personal Development lessons first, without a number', () => {
+    mockMe.mockReturnValue({ data: { role: 'team', training_required: false, training_status: 'completed' } })
+    const pd: SkillCategory = {
+      key: 'personal_development',
+      number: null,
+      title: 'Personal Development',
+      purpose: 'Mindset, habits and personal growth.',
+      total_lessons: 1,
+      completed_lessons: 1,
+      status: 'completed',
+      lessons: [lesson(1, 1, 'Time management', { completed: true })],
+    }
+    mockSkills.mockReturnValue(skills({ total_lessons: 1, completed_lessons: 1, categories: [pd, ...categories()] }))
+    render(<TrainingHubPage title="Training" />)
+    const titles = screen.getAllByText(/^(Personal Development|Process Mastery|Closing)$/)
+    expect(titles.map((t) => t.textContent)).toEqual(['Personal Development', 'Process Mastery', 'Closing'])
+    expect(screen.queryByText('00')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Personal Development Mindset/ }))
+    expect(screen.getByText('Time management')).toBeTruthy()
+  })
+
   it('shows the lesson editor to admins', () => {
     mockMe.mockReturnValue({ data: { role: 'admin', training_required: false, training_status: 'not_required' } })
     mockSkills.mockReturnValue(skills({}))
