@@ -80,7 +80,7 @@ export type FullUiSurface =
   | { kind: 'settings' }
   | { kind: 'leaderboard' }
   | { kind: 'live-session' }
-  /** Single Training home: 7-day onboarding + Personal Development & Skills (collapsible). */
+  /** Single Training home: Growth Journey, 7-day onboarding + Skills Academy (collapsible). */
   | { kind: 'training-hub' }
   | { kind: 'downloads' }
   | { kind: 'budget-export' }
