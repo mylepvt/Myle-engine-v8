@@ -29,7 +29,7 @@ export type SkillCategory = {
   key: string
   /**
    * Fixed order 1–6: Process, Invitation, Follow-up, Bond Creation, Mistakes, Closing.
-   * `null` for the unnumbered Personal Development lessons listed before them.
+   * `null` for Personal Development, which is a separate, unnumbered track.
    */
   number: number | null
   title: string
@@ -52,14 +52,30 @@ export type OnboardingSummary = {
   teaser: boolean
 }
 
-export type SkillTrainingSurface = {
-  available: boolean
+export type PersonalDevelopmentTrack = SkillCategory & {
+  next_lesson_id: number | null
+}
+
+export type SkillsAcademyTrack = {
   status: TrainingStatus
   total_lessons: number
   completed_lessons: number
   next_lesson_id: number | null
-  onboarding: OnboardingSummary
+  /** The six numbered categories, always in order. */
   categories: SkillCategory[]
+}
+
+export type SkillTrainingSurface = {
+  available: boolean
+  /** Personal Development + Skills Academy together. */
+  total_lessons: number
+  completed_lessons: number
+  /** Overall next step: Personal Development first, then the academy. */
+  next_lesson_id: number | null
+  onboarding: OnboardingSummary
+  /** Separate track, listed on its own — not part of the academy. */
+  personal_development: PersonalDevelopmentTrack
+  academy: SkillsAcademyTrack
 }
 
 export type SkillTrainingMember = {
@@ -69,6 +85,8 @@ export type SkillTrainingMember = {
   role: string
   available: boolean
   completed_lessons: number
+  personal_development_completed: number
+  academy_completed: number
   practice_submitted: number
   by_category: Record<string, number>
   last_completed_at: string | null
@@ -76,6 +94,8 @@ export type SkillTrainingMember = {
 
 export type SkillTrainingOverview = {
   total_lessons: number
+  personal_development_total: number
+  academy_total: number
   categories: { key: string; number: number | null; title: string; total_lessons: number }[]
   members: SkillTrainingMember[]
 }
