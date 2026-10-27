@@ -1,10 +1,9 @@
 """Skills Academy: six ordered categories of lessons (replaces the 7-day skills drip)
 
 Lessons are seeded with the planned topics and no recording; admins add the
-YouTube links, descriptions and practice tasks from the Training page. Lessons
-already added to the old day-by-day track (``skill_training_videos``) are carried
-over into the "Personal Development" category with their links and every
-member's completions. The old tables are left in place, unused.
+YouTube links, descriptions and practice tasks from the Training page. The old
+``skill_training_videos`` / ``skill_training_progress`` tables are left in place
+(unused) so no admin-entered links are lost.
 
 Revision ID: 20261027_0100
 Revises: 20261022_0300
@@ -94,25 +93,6 @@ def upgrade() -> None:
         sa.UniqueConstraint("user_id", "lesson_id", name="uq_skill_lesson_progress_user_lesson"),
     )
     op.create_index("ix_skill_lesson_progress_user_id", "skill_lesson_progress", ["user_id"])
-
-    # Carry the earlier day-by-day lessons (and who finished them) across.
-    op.execute(
-        """
-        INSERT INTO skill_lessons (category, position, title, youtube_url, practice_required)
-        SELECT 'personal_development', day_number, title, youtube_url, false
-        FROM skill_training_videos
-        ORDER BY day_number
-        """
-    )
-    op.execute(
-        """
-        INSERT INTO skill_lesson_progress (user_id, lesson_id, completed_at)
-        SELECT p.user_id, l.id, p.completed_at
-        FROM skill_training_progress p
-        JOIN skill_lessons l
-          ON l.category = 'personal_development' AND l.position = p.day_number
-        """
-    )
 
     op.bulk_insert(
         lessons,
