@@ -43,6 +43,7 @@ from app.models.training_test_attempt import TrainingTestAttempt
 from app.models.training_day_note import TrainingDayNote
 from app.models.skill_training import SkillLesson, SkillLessonProgress
 from app.models.download import Download
+from app.models.daily_text import DailyText
 from app.models.user_presence_session import UserPresenceSession
 from app.models.verification_task import VerificationTask
 from app.models.task_assignment import TaskAssignment
@@ -102,6 +103,7 @@ __all__ = [
     "TrainingDayNote",
     "SkillLesson",
     "SkillLessonProgress",
+    "DailyText",
     "Download",
     "UserPresenceSession",
     "VerificationTask",

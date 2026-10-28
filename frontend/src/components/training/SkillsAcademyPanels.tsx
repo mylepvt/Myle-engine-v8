@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Clock, Lock, PenLine, PlayCircle, Plus, Rocket, Sprout, Trash2, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -357,9 +358,13 @@ function Track({
     () => categories.flatMap((c) => c.lessons.map((lesson) => ({ category: c, lesson }))),
     [categories],
   )
-  const [lessonId, setLessonId] = useState<number | null>(null)
+  // `?lesson=<id>` (from the Library) opens that lesson straight away.
+  const [searchParams] = useSearchParams()
+  const linkedId = Number(searchParams.get('lesson'))
+  const linked = ordered.some((x) => x.lesson.id === linkedId) ? linkedId : null
+  const [lessonId, setLessonId] = useState<number | null>(linked)
   const [openCategories, setOpenCategories] = useState<Set<string>>(() => {
-    const nextCat = ordered.find((x) => x.lesson.id === nextLessonId)?.category.key
+    const nextCat = ordered.find((x) => x.lesson.id === (linked ?? nextLessonId))?.category.key
     return new Set(nextCat ? [nextCat] : [])
   })
 

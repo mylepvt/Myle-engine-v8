@@ -28,7 +28,7 @@ const ASSIGNEE_PALETTE = ['bg-info', 'bg-pink-500', 'bg-violet-500', 'bg-cyan-50
 
 /** Compact status pill (NativeSelect): truncating label, chevron, native picker on tap. */
 const statusPill =
-  'h-9 rounded-full bg-muted pl-2.5 text-ds-caption font-medium leading-none text-foreground'
+  'h-9 rounded-lg bg-muted pl-2.5 text-ds-caption font-medium leading-none text-foreground'
 
 function statusDotClass(status: string): string {
   if (status === 'contacted') return 'bg-warning'
@@ -177,9 +177,9 @@ export function CtcsLeadCard({
         </div>
 
         {/* Lead status + call status: two equal halves, never clipped. */}
-        <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-2xl bg-muted p-1">
+        <div className="mb-2 grid grid-cols-2 gap-1.5 rounded-lg bg-muted p-1">
           {pipelineReadonly ? (
-            <div className="flex h-9 min-w-0 items-center gap-1.5 rounded-full bg-muted px-2.5">
+            <div className="flex h-9 min-w-0 items-center gap-1.5 rounded-lg bg-muted px-2.5">
               <span className={cn('size-1.5 shrink-0 rounded-full', statusDotClass(lead.status))} aria-hidden />
               <span className="truncate text-ds-caption text-foreground">
                 {LEAD_STATUS_OPTIONS.find((o) => o.value === lead.status)?.label ?? lead.status}

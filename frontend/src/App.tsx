@@ -7,7 +7,14 @@ import { InstallAppBanner } from '@/components/pwa/InstallAppBanner'
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DASHBOARD_HUB_PATHS } from '@/config/dashboard-tabs'
+import { HomeDailyCard } from '@/components/dashboard/HomeDailyCard'
+import { HomeLearningSections } from '@/components/home/HomeLearningSections'
+import { HomeTodayStrip } from '@/components/home/HomeTodayStrip'
+import { HomeWorkSection } from '@/components/home/HomeWorkSection'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
+import { DailyTextPage } from '@/pages/DailyTextPage'
+import { LibraryPage } from '@/pages/LibraryPage'
+import { MeetingsPage } from '@/pages/MeetingsPage'
 import { TabHubPage } from '@/pages/TabHubPage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -86,9 +93,22 @@ export function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<DashboardHomePage />} />
+            <Route
+              index
+              element={
+                <>
+                  <HomeDailyCard />
+                  <HomeTodayStrip />
+                  <HomeLearningSections />
+                  <HomeWorkSection>
+                    <DashboardHomePage />
+                  </HomeWorkSection>
+                </>
+              }
+            />
+            <Route path="daily-text" element={<DailyTextPage />} />
             {DASHBOARD_HUB_PATHS.map((hub) => (
-              <Route key={hub} path={hub} element={<TabHubPage hub={hub} />} />
+              <Route key={hub} path={hub} element={hub === 'library' ? <LibraryPage /> : hub === 'meetings' ? <MeetingsPage /> : <TabHubPage hub={hub} />} />
             ))}
             <Route
               path="*"

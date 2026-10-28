@@ -56,12 +56,9 @@ const PATH_TAB: Record<string, DashboardTabId> = {
   'settings/org-tree': 'learning',
 }
 
-/** Section headings on each hub, in order. Work keeps the registry's own sections. */
-const HUB_SECTIONS: Record<Exclude<DashboardHubId, 'work'>, { label: string; paths: string[] }[]> = {
-  library: [
-    { label: 'Training', paths: ['system/training', 'system/training-progress'] },
-    { label: 'Publications', paths: ['other/downloads'] },
-  ],
+/** Section headings on each hub, in order. Work keeps the registry's own sections; Library has its own page;
+ * Meetings lists these rows under its week view. */
+const HUB_SECTIONS: Record<Exclude<DashboardHubId, 'work' | 'library'>, { label: string; paths: string[] }[]> = {
   meetings: [
     { label: 'Live', paths: ['other/live-session'] },
     { label: 'Daily', paths: ['other/daily-report', 'other/notice-board'] },
@@ -81,6 +78,11 @@ const WORK_SECTION_LABEL: Record<string, string> = {
   system: 'Admin',
 }
 
+/** Screens with their own route outside the registry: which tab they sit under, and their title. */
+export const EXTRA_PAGES: Record<string, { tab: DashboardTabId; title: string }> = {
+  'daily-text': { tab: 'home', title: 'Daily Text' },
+}
+
 export function tabForRegistryPath(path: string): DashboardTabId {
   return PATH_TAB[path] ?? 'work'
 }
@@ -91,6 +93,8 @@ export function activeTabForPathname(pathname: string): DashboardTabId {
   if (rel === '') return 'home'
   const hub = DASHBOARD_HUB_PATHS.find((h) => rel === h)
   if (hub) return hub
+  const extra = EXTRA_PAGES[rel.split('/')[0]]
+  if (extra) return extra.tab
   // Longest registry path that prefixes the location, e.g. work/leads/42 → work/leads.
   let best = ''
   for (const { path } of DASHBOARD_ROUTE_DEFS) {
@@ -102,7 +106,7 @@ export function activeTabForPathname(pathname: string): DashboardTabId {
 }
 
 /** Rows for a hub page, filtered to what this role may open. */
-export function hubSections(hub: DashboardHubId, role: Role): DashboardNavSection[] {
+export function hubSections(hub: Exclude<DashboardHubId, 'library'>, role: Role): DashboardNavSection[] {
   const visible = filterDashboardNav(role)
   if (hub === 'work') {
     return visible

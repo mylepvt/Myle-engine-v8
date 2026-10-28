@@ -1,5 +1,6 @@
 import { CheckCircle2, ChevronDown, GraduationCap, Lock, Sparkles, Sprout } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { PersonalDevelopmentPanel, SkillsAcademyPanel } from '@/components/training/SkillsAcademyPanels'
 import { TrainingProgramPanel } from '@/components/training/TrainingProgramPanel'
@@ -41,6 +42,7 @@ function TrainingSection({
   subtitle,
   badge,
   defaultOpen,
+  forceOpen = false,
   children,
 }: {
   id: string
@@ -49,9 +51,15 @@ function TrainingSection({
   subtitle: string
   badge: { label: string; variant: BadgeVariant }
   defaultOpen: boolean
+  /** Open regardless of the remembered state (a lesson was linked into this section). */
+  forceOpen?: boolean
   children: ReactNode
 }) {
-  const [open, setOpen] = useState(() => readSaved()[id] ?? defaultOpen)
+  const [open, setOpen] = useState(() => forceOpen || (readSaved()[id] ?? defaultOpen))
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (forceOpen) ref.current?.scrollIntoView({ block: 'start' })
+  }, [forceOpen])
   const toggle = () => {
     setOpen((cur) => {
       saveOpen(id, !cur)
@@ -60,7 +68,7 @@ function TrainingSection({
   }
 
   return (
-    <section className="surface-elevated overflow-hidden">
+    <section ref={ref} className="surface-elevated scroll-mt-4 overflow-hidden">
       <button
         type="button"
         onClick={toggle}
@@ -248,6 +256,11 @@ export function TrainingHubPage({ title }: Props) {
   const academyOpen = (unlocked && !pdOpen) || teaser
   // Section open state is read once; wait for the server's answer before picking a default.
   const sectionKey = skills.data ? 'ready' : 'loading'
+  // A lesson linked from the Library opens its section.
+  const [searchParams] = useSearchParams()
+  const linkedLesson = Number(searchParams.get('lesson'))
+  const pdLinked = !!pd?.lessons.some((l) => l.id === linkedLesson)
+  const academyLinked = !!academy?.categories.some((c) => c.lessons.some((l) => l.id === linkedLesson))
 
   return (
     <div className="max-w-4xl space-y-4">
@@ -294,6 +307,7 @@ export function TrainingHubPage({ title }: Props) {
         subtitle={unlocked ? 'Mindset, habits and personal growth' : 'Unlocks after all 7 onboarding days'}
         badge={pdBadge}
         defaultOpen={pdOpen}
+        forceOpen={pdLinked}
       >
         <PersonalDevelopmentPanel />
       </TrainingSection>
@@ -312,6 +326,7 @@ export function TrainingHubPage({ title }: Props) {
         }
         badge={academyBadge}
         defaultOpen={academyOpen}
+        forceOpen={academyLinked}
       >
         <SkillsAcademyPanel />
       </TrainingSection>

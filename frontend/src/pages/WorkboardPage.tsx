@@ -4,7 +4,6 @@ import { Day3SlotTimer } from '@/components/leads/Day3SlotTimer'
 import { buildLiveSessionMessage, extractPasscode } from '@/lib/live-session-message'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useLatestValue } from '@/hooks/use-latest-value'
-import { useGoBack } from '@/hooks/use-go-back'
 import {
   ArrowLeftRight,
   Check,
@@ -1676,7 +1675,6 @@ function AdminView({ cols, pm, patchBusyLeadId, search, nowMs, allowStageAdvance
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export function WorkboardPage({ title }: Props) {
-  const goBack = useGoBack()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
@@ -1726,7 +1724,6 @@ export function WorkboardPage({ title }: Props) {
     <div className="space-y-4 pb-20 md:pb-10">
       {/* Header */}
       <div className="space-y-1">
-        <button type="button" onClick={goBack} className="text-ds-caption text-muted-foreground hover:text-foreground">← Back</button>
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-ds-h1">{title}</h1>
           <Button type="button" size="sm" asChild>

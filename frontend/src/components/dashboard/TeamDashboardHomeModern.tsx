@@ -10,29 +10,15 @@ import { CommunityLiveCard } from '@/components/community/CommunityLiveCard'
 import { RewardsCard } from '@/components/rewards/RewardsCard'
 import { LevelCard } from '@/components/rewards/LevelCard'
 import { Card, CardContent } from '@/components/ui/card'
-import type { HomeQuickAction } from '@/config/dashboard-home-actions'
 import type { LeadPublic } from '@/hooks/use-leads-query'
-import type { TeamTodayStats } from '@/hooks/use-team-today-stats-query'
 import { stageBadgeClass } from '@/lib/stage-colors'
 import { cn, formatRelativeTimeShort } from '@/lib/utils'
 
-
-
 type Props = {
   sessionReady: boolean
-  firstName: string
-  today: TeamTodayStats | undefined
   recentLeads: LeadPublic[]
   handedOffLeads: LeadPublic[]
   handedOffPending: boolean
-  quickActions: HomeQuickAction[]
-}
-
-function greetingForCurrentTime() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 17) return 'Good afternoon'
-  return 'Good evening'
 }
 
 function humanizeStatus(status: string) {
@@ -43,82 +29,13 @@ function humanizeStatus(status: string) {
 
 export function TeamDashboardHomeModern({
   sessionReady,
-  firstName,
-  today,
   recentLeads,
   handedOffLeads,
   handedOffPending,
-  quickActions,
 }: Props) {
-  const topActions = quickActions.slice(0, 4)
-  const primaryAction = topActions[0]
-  const secondaryActions = topActions.slice(1, 4)
-  const greeting = greetingForCurrentTime()
-
+  // Today's numbers and the top shortcuts live at the top of Home (HomeTodayStrip).
   return (
     <div className="mx-auto w-full max-w-[430px] space-y-4 pb-2 md:max-w-3xl">
-      {/* Myle home header on theme tokens: greeting over the name, KPI cards, then actions. */}
-      <section className="space-y-3">
-        <div className="px-0.5">
-          <p className="text-sm text-muted-foreground">{greeting}</p>
-          <h1 className="mt-0.5 text-ds-h1 text-foreground">{firstName}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Keep fresh leads moving, close follow-ups faster, and stay on the
-            proof-ready queue.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: "Today's leads", value: today?.claimed_today ?? 0 },
-            { label: 'Calls', value: today?.calls_today ?? 0 },
-            { label: 'Min. FLP billed', value: today?.flp_min_billing_today ?? 0 },
-          ].map((kpi) => (
-            <div key={kpi.label} className="card flex flex-col justify-between p-3 sm:p-4">
-              {/* Wraps to two lines on narrow phones rather than truncating. */}
-              <p className="text-xs leading-snug text-muted-foreground sm:text-sm">{kpi.label}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{kpi.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {primaryAction ? (
-          <Link
-            to={primaryAction.to}
-            className="btn-primary press group flex h-14 items-center justify-between gap-3 rounded-full pl-5 pr-2"
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="sr-only">Primary action:</span>
-              <primaryAction.Icon className="size-4 shrink-0" aria-hidden />
-              <span className="truncate text-sm font-semibold">{primaryAction.label}</span>
-            </span>
-            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:translate-x-0.5">
-              <ArrowRight className="size-4" aria-hidden />
-            </span>
-          </Link>
-        ) : null}
-
-        {secondaryActions.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {secondaryActions.map((action) => (
-              <Link
-                key={action.path}
-                to={action.to}
-                className="btn-secondary press inline-flex min-h-[42px] items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold"
-              >
-                <action.Icon className="size-3.5 shrink-0 text-primary" aria-hidden />
-                <span>{action.label}</span>
-                {action.badgeCount != null ? (
-                  <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-ds-micro text-primary">
-                    {action.badgeCount}
-                  </span>
-                ) : null}
-              </Link>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
       <LevelCard />
 
       <RewardsCard />

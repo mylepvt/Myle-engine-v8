@@ -15,7 +15,7 @@ const rowClass =
   'jw-row press flex min-h-16 items-center gap-4 px-4 py-3 text-left text-ds-body text-foreground'
 
 /** A tab's root screen: bold section headings over grids of flat rows, one per screen. */
-export function TabHubPage({ hub }: { hub: DashboardHubId }) {
+export function TabHubPage({ hub }: { hub: Exclude<DashboardHubId, 'library' | 'meetings'> }) {
   const { role } = useDashboardShellRole()
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)

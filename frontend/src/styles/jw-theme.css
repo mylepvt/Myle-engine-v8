@@ -131,6 +131,12 @@ body {
   font-weight: 600;
 }
 
+/* ── Home daily card: full-width band under the title bar ── */
+.jw-daily {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+}
+
 /* ── Flat list row (hub screens) ─────────────────────────── */
 .jw-row {
   background: var(--row-bg);
@@ -138,4 +144,31 @@ body {
 }
 .jw-row:hover {
   background: var(--row-bg-hover);
+}
+
+/* ── Flat controls ───────────────────────────────────────── */
+/* Solid fills, no gloss or glow. */
+.btn-primary,
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary);
+  box-shadow: none;
+}
+.btn-destructive,
+.btn-destructive:hover:not(:disabled) {
+  background: var(--destructive);
+  box-shadow: none;
+}
+.nav-link[data-active='true'],
+.nav-link--active,
+.control-pill {
+  box-shadow: none;
+}
+
+/* Pill-shaped controls inside the app become squared-off buttons, chips and
+   fields. Switches keep their round track; dots, avatars and bars are not
+   controls and stay round. `.input-base` wrappers hold search fields. */
+.dashboard-shell :is(button, a, input, select, textarea, [role='button'], [role='tab']).rounded-full:not([role='switch']),
+.dashboard-shell .input-base.rounded-full,
+.dashboard-shell .nav-link {
+  border-radius: var(--radius);
 }

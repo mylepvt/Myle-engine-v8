@@ -31,7 +31,6 @@ import { getHomeQuickActions } from '@/config/dashboard-home-actions'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useHandedOffLeadsQuery } from '@/hooks/use-handed-off-leads-query'
-import { useTeamTodayStatsQuery } from '@/hooks/use-team-today-stats-query'
 import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { LEAD_STATUS_OPTIONS, type LeadPublic, type LeadStatus, usePatchLeadMutation } from '@/hooks/use-leads-query'
 import { useWorkboardQuery } from '@/hooks/use-workboard-query'
@@ -172,7 +171,6 @@ export function DashboardHomePage() {
 
   const wb = useWorkboardQuery(sessionReady)
   /** Legacy team dashboard had no follow-up queue in nav; skip API for team. */
-  const teamToday = useTeamTodayStatsQuery(sessionReady && role === 'team')
   const handedOffLeads = useHandedOffLeadsQuery(sessionReady && role === 'team')
   const pool = useLeadPoolQuery(sessionReady && role === 'admin')
   const pingLogin = usePingLoginMutation()
@@ -207,12 +205,9 @@ export function DashboardHomePage() {
     return (
       <TeamDashboardHomeModern
         sessionReady={sessionReady}
-        firstName={firstName}
-        today={teamToday.data}
         recentLeads={recentLeads}
         handedOffLeads={handedOffLeads.data ?? []}
         handedOffPending={handedOffLeads.isPending}
-        quickActions={quickActions}
       />
     )
   }

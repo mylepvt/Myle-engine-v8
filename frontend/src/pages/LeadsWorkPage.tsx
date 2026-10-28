@@ -1,6 +1,5 @@
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useGoBack } from '@/hooks/use-go-back'
 import { Filter, Mail, MapPin, Phone, Plus, Search, Share2, Upload, UserPlus, X } from 'lucide-react'
 
 import { NativeSelect } from '@/components/ui/native-select'
@@ -79,7 +78,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
   const leadsListMode = listMode === 'archived' ? 'archived' : 'active'
   const { role, serverRole } = useDashboardShellRole()
   const surfaceRole = resolveDashboardSurfaceRole(role, serverRole)
-  const goBack = useGoBack()
   const [searchParams] = useSearchParams()
   const qParam = searchParams.get('q') ?? ''
   const stageParam = searchParams.get('stage') ?? ''
@@ -367,9 +365,6 @@ export function LeadsWorkPage({ title, listMode = 'active' }: Props) {
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto min-h-[50dvh] max-w-[430px] pb-8 text-foreground md:max-w-[480px]">
         {/* Toolbar sits on the ambient backdrop: a search pill and icon pills, no slab. */}
-        <div className="px-4 py-1.5">
-          <button type="button" onClick={goBack} className="text-sm text-primary underline-offset-2 hover:underline">← Back</button>
-        </div>
         <div className="px-4 pb-2 pt-1">
           <div className="flex flex-wrap items-center gap-2">
             <div className="input-base flex h-11 min-w-0 basis-full items-center gap-2 rounded-full px-3.5 min-[360px]:basis-0 min-[360px]:flex-1">

@@ -1,6 +1,7 @@
 import { type ReactNode, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { CONTENT_VIDEO_LABELS } from '@/config/content-links'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import {
@@ -90,11 +91,6 @@ function FileTypeBadge({ mime }: { mime: string }) {
   )
 }
 
-const CONTENT_VIDEO_LABELS: Array<{ key: string; label: string }> = [
-  { key: 'content.esbi_model', label: 'ESBI Model Video' },
-  { key: 'content.power_of_network', label: 'Power of Network Video' },
-  { key: 'content.manik_expose', label: 'Expose Video (Manik Aggarwal)' },
-]
 
 
 export function DownloadsPage({ title }: Props) {
