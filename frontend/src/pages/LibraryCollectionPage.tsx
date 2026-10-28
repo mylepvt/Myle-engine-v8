@@ -1,5 +1,5 @@
 import { Navigate, useParams } from 'react-router-dom'
-import { Lock, PlayCircle, Video } from 'lucide-react'
+import { Lock, PlayCircle } from 'lucide-react'
 
 import { Rail, Tile } from '@/components/library/MediaRail'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -45,16 +45,8 @@ export function LibraryCollectionPage() {
               wide
               to={item.to}
               href={item.href}
-              thumb={item.thumb}
-              icon={
-                item.locked ? (
-                  <Lock className="size-8" strokeWidth={1.25} />
-                ) : item.href ? (
-                  <Video className="size-9" strokeWidth={1.25} />
-                ) : (
-                  <PlayCircle className="size-9" strokeWidth={1.25} />
-                )
-              }
+              topic={item.topic}
+              locked={item.locked}
               badge={item.badge}
               done={item.done}
               caption={item.caption}

@@ -8,21 +8,17 @@ import {
   Headphones,
   Lock,
   Settings2,
-  Sparkles,
-  Sprout,
-  Video,
-  type LucideIcon,
 } from 'lucide-react'
 
-import { Cover } from '@/components/library/MediaRail'
+import { TopicArt } from '@/components/library/MediaRail'
 import { ErrorState } from '@/components/ui/states'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { getDownloadFileUrl, useDownloadsQuery, type DownloadItem } from '@/hooks/use-downloads-query'
-import { useLibraryCollections, type LibraryCollection } from '@/hooks/use-library-collections'
+import { useLibraryCollections } from '@/hooks/use-library-collections'
 import { useTrainingQuery } from '@/hooks/use-training-query'
 import { apiUrl } from '@/lib/api'
-import { downloadCoverUrl } from '@/lib/media'
+import { documentTopicKey } from '@/lib/topics'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -105,11 +101,7 @@ function Publications() {
               disabled={!item.available}
               onClick={() => open(item)}
             >
-              <Cover
-                thumb={item.available ? downloadCoverUrl(item) : null}
-                icon={<FileText className="size-9" strokeWidth={1.25} />}
-                className="aspect-[3/4] w-full"
-              />
+              <TopicArt topic={documentTopicKey(item)} className="aspect-[3/4] w-full" />
               <span className="mt-1.5 line-clamp-2 text-ds-caption leading-snug text-foreground">{item.title}</span>
               <span className="block truncate text-ds-micro text-muted-foreground">
                 {item.available ? formatSize(item.file_size) : 'File missing'}
@@ -122,14 +114,7 @@ function Publications() {
   )
 }
 
-const COLLECTION_ICONS: Record<LibraryCollection['id'], LucideIcon> = {
-  onboarding: GraduationCap,
-  'personal-development': Sprout,
-  academy: Sparkles,
-  prospect: Video,
-}
-
-/** Video tab: one wide banner tile per collection — name on the left, a picture fading in on the right. */
+/** Video tab: one wide banner tile per collection — name on the left, its topic art fading in on the right. */
 function VideoCollections() {
   const { collections, isPending, error, refetch } = useLibraryCollections()
   if (isPending) return <Loading />
@@ -138,16 +123,14 @@ function VideoCollections() {
   return (
     <ul className="grid grid-cols-1 gap-[3px] sm:grid-cols-2 lg:grid-cols-3">
       {collections.map((c) => {
-        const Icon = COLLECTION_ICONS[c.id]
         const items = c.sections.flatMap((s) => s.items)
-        const thumb = items.find((i) => i.thumb)?.thumb
         const done = items.filter((i) => i.done).length
         const meta = c.note ?? (items.length > 0 ? `${items.length} videos${done ? ` · ${done} done` : ''}` : undefined)
         return (
           <li key={c.id}>
             <Link to={`/dashboard/library/${c.id}`} className="jw-row press relative flex h-24 items-center overflow-hidden md:h-28">
               <span className="absolute inset-y-0 right-0 flex w-1/2 items-center justify-center">
-                <Cover thumb={thumb} icon={<Icon className="size-14 text-primary/40" strokeWidth={1} aria-hidden />} className="size-full" />
+                <TopicArt topic={c.topic} iconClassName="size-14" className="size-full" />
                 <span className="jw-fade-left absolute inset-0" aria-hidden />
               </span>
               <span className="relative z-10 min-w-0 max-w-[65%] px-4">
