@@ -8,6 +8,8 @@ import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DASHBOARD_HUB_PATHS } from '@/config/dashboard-tabs'
 import { HomeDailyCard } from '@/components/dashboard/HomeDailyCard'
+import { HomeLearningSections } from '@/components/home/HomeLearningSections'
+import { HomeWorkSection } from '@/components/home/HomeWorkSection'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import { MeetingsPage } from '@/pages/MeetingsPage'
@@ -94,7 +96,10 @@ export function App() {
               element={
                 <>
                   <HomeDailyCard />
-                  <DashboardHomePage />
+                  <HomeLearningSections />
+                  <HomeWorkSection>
+                    <DashboardHomePage />
+                  </HomeWorkSection>
                 </>
               }
             />
