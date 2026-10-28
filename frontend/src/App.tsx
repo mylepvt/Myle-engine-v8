@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DASHBOARD_HUB_PATHS } from '@/config/dashboard-tabs'
 import { HomeDailyCard } from '@/components/dashboard/HomeDailyCard'
 import { HomeLearningSections } from '@/components/home/HomeLearningSections'
+import { HomeTodayStrip } from '@/components/home/HomeTodayStrip'
 import { HomeWorkSection } from '@/components/home/HomeWorkSection'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
 import { LibraryPage } from '@/pages/LibraryPage'
@@ -96,6 +97,7 @@ export function App() {
               element={
                 <>
                   <HomeDailyCard />
+                  <HomeTodayStrip />
                   <HomeLearningSections />
                   <HomeWorkSection>
                     <DashboardHomePage />

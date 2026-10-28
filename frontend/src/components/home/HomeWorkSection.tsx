@@ -39,7 +39,7 @@ export function HomeWorkSection({ children }: { children: ReactNode }) {
       >
         <span>
           <span className="block text-ds-h3 font-semibold text-foreground">My Work Dashboard</span>
-          <span className="block text-ds-caption text-muted-foreground">Today's numbers, wins, leaderboard and tasks</span>
+          <span className="block text-ds-caption text-muted-foreground">Wins, leaderboard, earnings and today's leads</span>
         </span>
         <ChevronDown className={cn('size-5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
