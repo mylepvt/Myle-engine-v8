@@ -166,8 +166,9 @@ body {
 
 /* Pill-shaped controls inside the app become squared-off buttons, chips and
    fields. Switches keep their round track; dots, avatars and bars are not
-   controls and stay round. */
+   controls and stay round. `.input-base` wrappers hold search fields. */
 .dashboard-shell :is(button, a, input, select, textarea, [role='button'], [role='tab']).rounded-full:not([role='switch']),
+.dashboard-shell .input-base.rounded-full,
 .dashboard-shell .nav-link {
   border-radius: var(--radius);
 }
