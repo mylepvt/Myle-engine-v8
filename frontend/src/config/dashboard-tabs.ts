@@ -91,7 +91,8 @@ export function tabForRegistryPath(path: string): DashboardTabId {
 export function activeTabForPathname(pathname: string): DashboardTabId {
   const rel = pathname.replace(/^\/dashboard\/?/, '').replace(/\/$/, '')
   if (rel === '') return 'home'
-  const hub = DASHBOARD_HUB_PATHS.find((h) => rel === h)
+  // A hub and the screens under it (library/<collection>) belong to that hub's tab.
+  const hub = DASHBOARD_HUB_PATHS.find((h) => rel === h || rel.startsWith(`${h}/`))
   if (hub) return hub
   const extra = EXTRA_PAGES[rel.split('/')[0]]
   if (extra) return extra.tab

@@ -1,22 +1,24 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  CheckCircle2,
   ChevronRight,
   CloudOff,
   FileText,
   GraduationCap,
   Headphones,
   Lock,
-  PlayCircle,
   Settings2,
+  Sparkles,
+  Sprout,
+  Video,
+  type LucideIcon,
 } from 'lucide-react'
 
 import { ErrorState } from '@/components/ui/states'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { getDownloadFileUrl, useDownloadsQuery, type DownloadItem } from '@/hooks/use-downloads-query'
-import { useSkillsTrainingQuery, type SkillCategory } from '@/hooks/use-skills-training-query'
+import { useLibraryCollections, type LibraryCollection } from '@/hooks/use-library-collections'
 import { useTrainingQuery } from '@/hooks/use-training-query'
 import { apiUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -29,7 +31,6 @@ const TABS = [
 ] as const
 type TabId = (typeof TABS)[number]['id']
 
-const TRAINING = '/dashboard/system/training'
 const rowClass = 'jw-row flex min-h-16 w-full items-center gap-4 px-4 py-3 text-left'
 
 function formatSize(bytes: number) {
@@ -107,83 +108,50 @@ function Publications() {
   )
 }
 
-function LessonRows({ categories, locked }: { categories: SkillCategory[]; locked: boolean }) {
-  return categories.map((c) =>
-    c.lessons.length > 0 ? (
-      c.lessons.map((l) => (
-        <li key={l.id}>
-          <Link to={`${TRAINING}?lesson=${l.id}`} className={cn(rowClass, 'press')}>
-            <RowBody
-              icon={<PlayCircle className="size-7" strokeWidth={1.25} />}
-              title={l.title}
-              meta={[categories.length > 1 ? c.title : null, `Lesson ${l.number}`, l.duration_minutes ? `${l.duration_minutes} min` : null]
-                .filter(Boolean)
-                .join(' · ')}
-              trailing={l.completed ? <CheckCircle2 className="size-5 shrink-0 text-success-ink" aria-label="Completed" /> : undefined}
-            />
-          </Link>
-        </li>
-      ))
-    ) : (
-      <li key={c.key}>
-        <Link to={TRAINING} className={cn(rowClass, 'press')}>
-          <RowBody
-            icon={locked ? <Lock className="size-6" strokeWidth={1.25} /> : <PlayCircle className="size-7" strokeWidth={1.25} />}
-            title={c.title}
-            meta={locked ? 'Unlocks after the 7-day onboarding' : 'Lessons coming soon'}
-          />
-        </Link>
-      </li>
-    ),
-  )
+const COLLECTION_ICONS: Record<LibraryCollection['id'], LucideIcon> = {
+  onboarding: GraduationCap,
+  'personal-development': Sprout,
+  academy: Sparkles,
+  prospect: Video,
 }
 
-function Video() {
-  const onboarding = useTrainingQuery()
-  const skills = useSkillsTrainingQuery()
-  if (onboarding.isPending || skills.isPending) return <Loading />
-  if (onboarding.isError) {
-    return <ErrorState title="Could not load training" message={onboarding.error.message} onRetry={() => void onboarding.refetch()} />
-  }
-  const done = new Set(onboarding.data.progress.filter((p) => p.completed).map((p) => p.day_number))
-  const days = [...onboarding.data.videos].sort((a, b) => a.day_number - b.day_number)
-  const locked = skills.data ? !skills.data.available : true
+/** Video tab: one wide banner tile per collection — name on the left, a picture fading in on the right. */
+function VideoCollections() {
+  const { collections, isPending, error, refetch } = useLibraryCollections()
+  if (isPending) return <Loading />
+  if (error && collections.length === 0) return <ErrorState title="Could not load videos" message={error.message} onRetry={refetch} />
 
   return (
-    <div className="space-y-8">
-      <Section title="7-Day Onboarding">
-        {days.map((v) => (
-          <li key={v.day_number}>
-            <Link to={TRAINING} className={cn(rowClass, 'press')}>
-              <RowBody
-                icon={v.unlocked === false ? <Lock className="size-6" strokeWidth={1.25} /> : <GraduationCap className="size-7" strokeWidth={1.25} />}
-                title={v.title}
-                meta={`Day ${v.day_number}${v.unlocked === false ? ' · Locked' : ''}`}
-                trailing={done.has(v.day_number) ? <CheckCircle2 className="size-5 shrink-0 text-success-ink" aria-label="Completed" /> : undefined}
-              />
+    <ul className="grid grid-cols-1 gap-[3px] sm:grid-cols-2 lg:grid-cols-3">
+      {collections.map((c) => {
+        const Icon = COLLECTION_ICONS[c.id]
+        const items = c.sections.flatMap((s) => s.items)
+        const thumb = items.find((i) => i.thumb)?.thumb
+        const done = items.filter((i) => i.done).length
+        const meta = c.note ?? (items.length > 0 ? `${items.length} videos${done ? ` · ${done} done` : ''}` : undefined)
+        return (
+          <li key={c.id}>
+            <Link to={`/dashboard/library/${c.id}`} className="jw-row press relative flex h-24 items-center overflow-hidden md:h-28">
+              <span className="absolute inset-y-0 right-0 flex w-1/2 items-center justify-center">
+                {thumb ? (
+                  <img src={thumb} alt="" loading="lazy" className="size-full object-cover" />
+                ) : (
+                  <Icon className="size-14 text-primary/40" strokeWidth={1} aria-hidden />
+                )}
+                <span className="jw-fade-left absolute inset-0" aria-hidden />
+              </span>
+              <span className="relative z-10 min-w-0 max-w-[65%] px-4">
+                <span className="flex items-center gap-1.5 text-ds-h3 font-semibold text-foreground">
+                  {c.locked ? <Lock className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
+                  <span className="truncate">{c.title}</span>
+                </span>
+                {meta ? <span className="block truncate text-ds-caption text-muted-foreground">{meta}</span> : null}
+              </span>
             </Link>
           </li>
-        ))}
-      </Section>
-      {skills.data ? (
-        <>
-          <Section title="Personal Development">
-            <LessonRows categories={[skills.data.personal_development]} locked={locked} />
-          </Section>
-          {locked ? (
-            <Section title="Skills Academy">
-              <LessonRows categories={skills.data.academy.categories} locked />
-            </Section>
-          ) : (
-            skills.data.academy.categories.map((c) => (
-              <Section key={c.key} title={c.number ? `${c.number}. ${c.title}` : c.title}>
-                <LessonRows categories={[c]} locked={false} />
-              </Section>
-            ))
-          )}
-        </>
-      ) : null}
-    </div>
+        )
+      })}
+    </ul>
   )
 }
 
@@ -242,7 +210,7 @@ export function LibraryPage() {
       </div>
 
       {tab === 'publications' ? <Publications /> : null}
-      {tab === 'video' ? <Video /> : null}
+      {tab === 'video' ? <VideoCollections /> : null}
       {tab === 'audio' ? <Audio /> : null}
       {tab === 'downloaded' ? (
         <Empty

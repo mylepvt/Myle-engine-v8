@@ -172,3 +172,8 @@ body {
 .dashboard-shell .nav-link {
   border-radius: var(--radius);
 }
+
+/* Library collection banner: the picture fades into the row colour on its left edge. */
+.jw-fade-left {
+  background: linear-gradient(to right, var(--row-bg) 0%, color-mix(in srgb, var(--row-bg) 40%, transparent) 45%, transparent 100%);
+}

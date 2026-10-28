@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, FileText, GraduationCap, Megaphone, PlayCircle, Video } from 'lucide-react'
+import { FileText, GraduationCap, Megaphone, PlayCircle, Video } from 'lucide-react'
 
+import { Rail, Tile } from '@/components/library/MediaRail'
 import { CONTENT_VIDEO_LABELS } from '@/config/content-links'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
@@ -9,79 +10,13 @@ import { getDownloadFileUrl, useDownloadsQuery } from '@/hooks/use-downloads-que
 import { useNoticeBoardQuery } from '@/hooks/use-notice-board-query'
 import { useSkillsTrainingQuery, type SkillLesson } from '@/hooks/use-skills-training-query'
 import { useTrainingQuery } from '@/hooks/use-training-query'
-import { extractYouTubeId } from '@/lib/youtube'
-
-const TRAINING = '/dashboard/system/training'
-
-function thumbFor(url: string | null | undefined): string | null {
-  const id = url ? extractYouTubeId(url) : null
-  return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : null
-}
-
-/** "Day 3 · Prospecting", unless the title already names its day. */
-function dayCaption(day: number, title: string): string {
-  return /^day\s*\d/i.test(title.trim()) ? title : `Day ${day} · ${title}`
-}
+import { TRAINING_PATH as TRAINING, dayCaption, thumbFor } from '@/lib/media'
 
 function ago(iso: string): string {
   const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000)
   if (days <= 0) return 'Today'
   if (days === 1) return 'Yesterday'
   return `${days} days ago`
-}
-
-function Rail({ title, more, children }: { title: string; more?: { to: string; label: string }; children: ReactNode }) {
-  return (
-    <section className="space-y-2.5">
-      <div className="flex items-end justify-between gap-3">
-        <h2 className="text-ds-h2 font-bold text-foreground">{title}</h2>
-        {more ? (
-          <Link to={more.to} className="text-sm text-primary hover:opacity-80">
-            {more.label}
-          </Link>
-        ) : null}
-      </div>
-      <ul className="no-scrollbar -mx-4 flex gap-[3px] overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">{children}</ul>
-    </section>
-  )
-}
-
-/** Square thumbnail tile with a caption underneath. */
-function Tile({ to, href, thumb, icon, badge, done, caption }: {
-  to?: string
-  href?: string
-  thumb?: string | null
-  icon: ReactNode
-  badge?: string
-  done?: boolean
-  caption: string
-}) {
-  const body = (
-    <>
-      <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-card text-foreground/70">
-        {thumb ? <img src={thumb} alt="" loading="lazy" className="size-full object-cover" /> : icon}
-        {badge ? (
-          <span className="absolute left-1 top-1 bg-black/70 px-1 text-ds-micro font-medium text-white">▶ {badge}</span>
-        ) : null}
-        {done ? <CheckCircle2 className="absolute bottom-1 right-1 size-4 text-success-ink" aria-label="Completed" /> : null}
-      </span>
-      <span className="mt-1.5 line-clamp-2 text-ds-caption leading-snug text-foreground">{caption}</span>
-    </>
-  )
-  const cls = 'press block w-[112px] shrink-0 md:w-[128px]'
-  return (
-    <li className="shrink-0">
-      {href ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
-          {body}
-        </a>
-      ) : (
-        <Link to={to ?? TRAINING} className={cls}>
-          {body}
-        </Link>
-      )}
-    </li>
-  )
 }
 
 /** Wide card: thumbnail on the left, kind / title / meta on the right. */
