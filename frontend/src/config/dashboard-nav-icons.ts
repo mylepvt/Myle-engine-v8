@@ -4,6 +4,7 @@ import {
   Banknote,
   CalendarClock,
   CheckSquare,
+  ClipboardCheck,
   ClipboardList,
   FileBarChart,
   FileDown,
@@ -14,6 +15,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   ListFilter,
+  Magnet,
   Megaphone,
   Network,
   Receipt,
@@ -22,9 +24,11 @@ import {
   Trash2,
   Trophy,
   Users,
+  UserRound,
   UsersRound,
   Video,
   Wallet,
+  WalletCards,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -61,6 +65,11 @@ const BY_PATH: Record<string, LucideIcon> = {
   'settings/app': Settings,
   'settings/help': HelpCircle,
   'settings/org-tree': Network,
+  'settings/profile': UserRound,
+  'work/lead-gen': Magnet,
+  'team/current-cc': ClipboardCheck,
+  'finance/recharge-admin': WalletCards,
+  'finance/recharge-request': WalletCards,
 }
 
 export function getDashboardNavIcon(path: string): LucideIcon {
