@@ -56,7 +56,8 @@ const PATH_TAB: Record<string, DashboardTabId> = {
   'settings/org-tree': 'learning',
 }
 
-/** Section headings on each hub, in order. Work keeps the registry's own sections; Library has its own page. */
+/** Section headings on each hub, in order. Work keeps the registry's own sections; Library has its own page;
+ * Meetings lists these rows under its week view. */
 const HUB_SECTIONS: Record<Exclude<DashboardHubId, 'work' | 'library'>, { label: string; paths: string[] }[]> = {
   meetings: [
     { label: 'Live', paths: ['other/live-session'] },

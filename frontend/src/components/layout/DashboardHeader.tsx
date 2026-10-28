@@ -6,6 +6,7 @@ import { NotificationsBell } from '@/components/layout/NotificationsBell'
 import { ShellHeaderFeedbackControls } from '@/components/layout/ShellHeaderFeedbackControls'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
+import { useGoBack } from '@/hooks/use-go-back'
 import { useNoticeBoardUnread } from '@/hooks/use-notice-board-unread'
 import { useShellPreviewStore } from '@/stores/shell-preview-store'
 import { cn } from '@/lib/utils'
@@ -14,13 +15,23 @@ import type { Role } from '@/types/role'
 type Props = {
   title: string
   subtitle?: string
-  /** Where the back chevron goes; omitted on a tab's own root screen. */
+  /** Where the back chevron goes when there is no in-app history; omitted on a tab's own root screen. */
   backTo?: string
   trainingLocked: boolean
 }
 
 const iconButton =
   'press relative flex size-10 items-center justify-center text-primary transition-opacity hover:opacity-80'
+
+/** Back to the previous screen, or to the tab's root when the page was opened directly. */
+function BackButton({ fallback }: { fallback: string }) {
+  const goBack = useGoBack(fallback)
+  return (
+    <button type="button" onClick={goBack} className={iconButton} aria-label="Back">
+      <ChevronLeft className="size-6" strokeWidth={1.6} />
+    </button>
+  )
+}
 
 /** Flat title bar: back on the left, centred title + subtitle, outline icons on the right. */
 export function DashboardHeader({ title, subtitle, backTo, trainingLocked }: Props) {
@@ -34,11 +45,7 @@ export function DashboardHeader({ title, subtitle, backTo, trainingLocked }: Pro
   return (
     <header className="jw-header relative z-20 grid h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2">
       <div className="flex min-w-0 items-center gap-1">
-        {backTo ? (
-          <Link to={backTo} className={iconButton} aria-label="Back">
-            <ChevronLeft className="size-6" strokeWidth={1.6} />
-          </Link>
-        ) : null}
+        {backTo ? <BackButton fallback={backTo} /> : null}
         {serverRole === 'admin' ? (
           <>
             <label htmlFor="header-view-as" className="sr-only">

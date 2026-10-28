@@ -10,6 +10,7 @@ import { DASHBOARD_HUB_PATHS } from '@/config/dashboard-tabs'
 import { HomeDailyCard } from '@/components/dashboard/HomeDailyCard'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
 import { LibraryPage } from '@/pages/LibraryPage'
+import { MeetingsPage } from '@/pages/MeetingsPage'
 import { TabHubPage } from '@/pages/TabHubPage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -98,7 +99,7 @@ export function App() {
               }
             />
             {DASHBOARD_HUB_PATHS.map((hub) => (
-              <Route key={hub} path={hub} element={hub === 'library' ? <LibraryPage /> : <TabHubPage hub={hub} />} />
+              <Route key={hub} path={hub} element={hub === 'library' ? <LibraryPage /> : hub === 'meetings' ? <MeetingsPage /> : <TabHubPage hub={hub} />} />
             ))}
             <Route
               path="*"
