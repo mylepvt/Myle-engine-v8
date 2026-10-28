@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from app.services.skill_training import (
     skill_training_available,
     youtube_embed_url,
 )
+from app.services.media_covers import fetch_youtube_thumbnail, youtube_video_id
 
 router = APIRouter()
 
@@ -82,6 +83,24 @@ async def skills_training_embed(
     if not skill_training_available(row) or lesson is None or not lesson.youtube_url:
         raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Video not available")
     return RedirectResponse(url=youtube_embed_url(lesson.youtube_url), status_code=302)
+
+
+@router.get("/skills-training/lessons/{lesson_id}/thumbnail")
+async def skills_training_thumbnail(
+    lesson_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """The lesson video's YouTube thumbnail, fetched server-side so the link stays hidden."""
+    row = await _load_user(session, user)
+    lesson = await session.get(SkillLesson, lesson_id)
+    video_id = youtube_video_id(lesson.youtube_url) if lesson else None
+    if not skill_training_available(row) or video_id is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="No thumbnail")
+    data = await fetch_youtube_thumbnail(video_id)
+    if data is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="No thumbnail")
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @router.get("/skills-training/progress")

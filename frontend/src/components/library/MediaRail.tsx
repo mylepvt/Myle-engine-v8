@@ -1,9 +1,26 @@
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 
 import { TRAINING_PATH } from '@/lib/media'
 import { cn } from '@/lib/utils'
+
+/** A picture box: the cover when it loads, otherwise the icon on a soft accent wash. */
+export function Cover({ thumb, icon, className }: { thumb?: string | null; icon: ReactNode; className?: string }) {
+  const [broken, setBroken] = useState(false)
+  const show = Boolean(thumb) && !broken
+  return (
+    <span
+      className={cn(
+        'relative flex items-center justify-center overflow-hidden text-foreground/70',
+        show ? 'bg-card' : 'jw-cover-fallback',
+        className,
+      )}
+    >
+      {show ? <img src={thumb!} alt="" loading="lazy" onError={() => setBroken(true)} className="size-full object-cover" /> : icon}
+    </span>
+  )
+}
 
 /** A titled row of tiles that scrolls sideways, edge to edge. */
 export function Rail({ title, more, children }: { title: string; more?: { to: string; label: string }; children: ReactNode }) {
@@ -35,13 +52,8 @@ export function Tile({ to, href, thumb, icon, badge, done, caption, wide = false
 }) {
   const body = (
     <>
-      <span
-        className={cn(
-          'relative flex w-full items-center justify-center overflow-hidden bg-card text-foreground/70',
-          wide ? 'aspect-video' : 'aspect-square',
-        )}
-      >
-        {thumb ? <img src={thumb} alt="" loading="lazy" className="size-full object-cover" /> : icon}
+      <span className="relative block w-full">
+        <Cover thumb={thumb} icon={icon} className={cn('w-full', wide ? 'aspect-video' : 'aspect-square')} />
         {badge ? (
           <span className="absolute left-1 top-1 bg-black/70 px-1 text-ds-micro font-medium text-white">▶ {badge}</span>
         ) : null}

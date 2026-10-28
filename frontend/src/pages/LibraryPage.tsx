@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { Cover } from '@/components/library/MediaRail'
 import { ErrorState } from '@/components/ui/states'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
@@ -21,6 +22,7 @@ import { getDownloadFileUrl, useDownloadsQuery, type DownloadItem } from '@/hook
 import { useLibraryCollections, type LibraryCollection } from '@/hooks/use-library-collections'
 import { useTrainingQuery } from '@/hooks/use-training-query'
 import { apiUrl } from '@/lib/api'
+import { downloadCoverUrl } from '@/lib/media'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -92,19 +94,31 @@ function Publications() {
     a.click()
   }
   return (
-    <Section title="Documents">
-      {data.map((item) => (
-        <li key={item.id}>
-          <button type="button" className={cn(rowClass, 'press')} disabled={!item.available} onClick={() => open(item)}>
-            <RowBody
-              icon={<FileText className="size-7" strokeWidth={1.25} />}
-              title={item.title}
-              meta={item.available ? [formatSize(item.file_size), item.description].filter(Boolean).join(' · ') : 'File missing — ask admin to re-upload'}
-            />
-          </button>
-        </li>
-      ))}
-    </Section>
+    <section className="space-y-3">
+      <h2 className="text-ds-h2 font-bold text-foreground">Documents</h2>
+      <ul className="grid grid-cols-3 gap-x-[3px] gap-y-4 sm:grid-cols-4 lg:grid-cols-6">
+        {data.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              className="press block w-full text-left disabled:opacity-50"
+              disabled={!item.available}
+              onClick={() => open(item)}
+            >
+              <Cover
+                thumb={item.available ? downloadCoverUrl(item) : null}
+                icon={<FileText className="size-9" strokeWidth={1.25} />}
+                className="aspect-[3/4] w-full"
+              />
+              <span className="mt-1.5 line-clamp-2 text-ds-caption leading-snug text-foreground">{item.title}</span>
+              <span className="block truncate text-ds-micro text-muted-foreground">
+                {item.available ? formatSize(item.file_size) : 'File missing'}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -133,11 +147,7 @@ function VideoCollections() {
           <li key={c.id}>
             <Link to={`/dashboard/library/${c.id}`} className="jw-row press relative flex h-24 items-center overflow-hidden md:h-28">
               <span className="absolute inset-y-0 right-0 flex w-1/2 items-center justify-center">
-                {thumb ? (
-                  <img src={thumb} alt="" loading="lazy" className="size-full object-cover" />
-                ) : (
-                  <Icon className="size-14 text-primary/40" strokeWidth={1} aria-hidden />
-                )}
+                <Cover thumb={thumb} icon={<Icon className="size-14 text-primary/40" strokeWidth={1} aria-hidden />} className="size-full" />
                 <span className="jw-fade-left absolute inset-0" aria-hidden />
               </span>
               <span className="relative z-10 min-w-0 max-w-[65%] px-4">

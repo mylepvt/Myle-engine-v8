@@ -3,7 +3,7 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { useSkillsTrainingQuery, type SkillCategory } from '@/hooks/use-skills-training-query'
 import { useTrainingQuery } from '@/hooks/use-training-query'
-import { TRAINING_PATH, dayCaption, thumbFor } from '@/lib/media'
+import { TRAINING_PATH, dayCaption, lessonThumbUrl, thumbFor, trainingDayThumbUrl } from '@/lib/media'
 
 export type LibraryItem = {
   key: string
@@ -41,7 +41,7 @@ function lessonItems(category: SkillCategory): LibraryItem[] {
     key: `l${l.id}`,
     caption: l.title,
     to: `${TRAINING_PATH}?lesson=${l.id}`,
-    thumb: thumbFor(l.youtube_url),
+    thumb: l.has_video ? lessonThumbUrl(l.id) : null,
     badge: l.duration_minutes ? `${l.duration_minutes} min` : undefined,
     done: l.completed,
   }))
@@ -70,7 +70,7 @@ export function useLibraryCollections() {
             key: `d${v.day_number}`,
             caption: dayCaption(v.day_number, v.title),
             to: TRAINING_PATH,
-            thumb: v.unlocked === false ? null : thumbFor(v.youtube_url),
+            thumb: v.unlocked === false || v.has_video === false ? null : trainingDayThumbUrl(v.day_number),
             done: done.has(v.day_number),
             locked: v.unlocked === false,
           })),

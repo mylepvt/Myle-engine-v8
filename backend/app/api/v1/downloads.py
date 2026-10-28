@@ -13,7 +13,9 @@ from pathlib import Path
 from urllib.parse import quote
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select, desc
@@ -22,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.download import Download
+from app.services.media_covers import cache_drop, cache_get, cache_put, render_cover
 from app.services.r2_storage import delete_from_r2, presign_get_url, r2_enabled, upload_to_r2
 
 router = APIRouter()
@@ -181,6 +184,48 @@ async def serve_download_file(
     )
 
 
+_COVER_HEADERS = {"Cache-Control": "private, max-age=86400"}
+
+
+async def _file_bytes(row: Download) -> bytes | None:
+    """The stored file's bytes wherever it lives (Postgres, R2 or legacy disk), or None."""
+    if row.file_path == _DB_PATH:
+        return row.content
+    key = _r2_key(row)
+    if key is not None:
+        url = await presign_get_url(key=key, expires_seconds=120)
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                res = await client.get(url)
+        except httpx.HTTPError:
+            return None
+        return res.content if res.status_code == 200 else None
+    path = Path(row.file_path)
+    return path.read_bytes() if path.exists() else None
+
+
+@router.get("/{download_id}/cover", response_model=None)
+async def download_cover(
+    download_id: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Small JPEG cover: a PDF's first page or a resized image. 404 for other file types."""
+    _ = user
+    cache_key = f"dl:{download_id}"
+    hit, cover = cache_get(cache_key)
+    if not hit:
+        row = await db.get(Download, download_id, options=[undefer(Download.content)])
+        if not row:
+            raise HTTPException(status_code=404, detail="File not found.")
+        data = await _file_bytes(row)
+        cover = await run_in_threadpool(render_cover, data, row.mime_type, row.filename) if data else None
+        cache_put(cache_key, cover)
+    if cover is None:
+        raise HTTPException(status_code=404, detail="No cover for this file.")
+    return Response(content=cover, media_type="image/jpeg", headers=_COVER_HEADERS)
+
+
 @router.delete("/{download_id}", status_code=204)
 async def delete_download(
     download_id: int,
@@ -204,3 +249,4 @@ async def delete_download(
 
     await db.delete(row)
     await db.commit()
+    cache_drop(f"dl:{download_id}")
