@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
 
 import { getHomeQuickActions } from '@/config/dashboard-home-actions'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
@@ -8,9 +7,8 @@ import { useLeadPoolQuery } from '@/hooks/use-lead-pool-query'
 import { useTeamTodayStatsQuery } from '@/hooks/use-team-today-stats-query'
 
 /**
- * First thing on Home: today's numbers (team), the main shortcut as a full-width
- * bar, then the next three shortcuts as tiles. Same data and shortcuts the role
- * dashboard showed; nothing new is counted.
+ * First thing on Home: today's numbers (team), then three shortcut tiles. Same
+ * data and shortcuts the role dashboard showed; nothing new is counted.
  */
 export function HomeTodayStrip() {
   const { role } = useDashboardShellRole()
@@ -20,8 +18,10 @@ export function HomeTodayStrip() {
   const pool = useLeadPoolQuery(sessionReady && role === 'admin')
 
   if (role == null) return null
-  const actions = getHomeQuickActions(role, { poolTotal: pool.data?.total ?? 0 }).slice(0, 4)
-  const [primary, ...secondary] = actions
+  // Calling Board has its own place in the Work tab, so Home skips it.
+  const shortcuts = getHomeQuickActions(role, { poolTotal: pool.data?.total ?? 0 })
+    .filter((a) => a.path !== 'work/leads')
+    .slice(0, 3)
   const kpis =
     role === 'team'
       ? [
@@ -48,17 +48,9 @@ export function HomeTodayStrip() {
         </div>
       ) : null}
 
-      {primary ? (
-        <Link to={primary.to} className="btn-primary press flex h-14 items-center gap-3 px-4">
-          <primary.Icon className="size-5 shrink-0" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-ds-body font-semibold">{primary.label}</span>
-          <ChevronRight className="size-5 shrink-0" aria-hidden />
-        </Link>
-      ) : null}
-
-      {secondary.length > 0 ? (
+      {shortcuts.length > 0 ? (
         <div className="grid grid-cols-3 gap-[3px]">
-          {secondary.map((action) => (
+          {shortcuts.map((action) => (
             <Link
               key={action.path}
               to={action.to}
