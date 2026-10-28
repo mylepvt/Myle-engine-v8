@@ -131,6 +131,12 @@ body {
   font-weight: 600;
 }
 
+/* ── Home daily card: full-width band under the title bar ── */
+.jw-daily {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+}
+
 /* ── Flat list row (hub screens) ─────────────────────────── */
 .jw-row {
   background: var(--row-bg);
