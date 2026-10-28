@@ -56,12 +56,8 @@ const PATH_TAB: Record<string, DashboardTabId> = {
   'settings/org-tree': 'learning',
 }
 
-/** Section headings on each hub, in order. Work keeps the registry's own sections. */
-const HUB_SECTIONS: Record<Exclude<DashboardHubId, 'work'>, { label: string; paths: string[] }[]> = {
-  library: [
-    { label: 'Training', paths: ['system/training', 'system/training-progress'] },
-    { label: 'Publications', paths: ['other/downloads'] },
-  ],
+/** Section headings on each hub, in order. Work keeps the registry's own sections; Library has its own page. */
+const HUB_SECTIONS: Record<Exclude<DashboardHubId, 'work' | 'library'>, { label: string; paths: string[] }[]> = {
   meetings: [
     { label: 'Live', paths: ['other/live-session'] },
     { label: 'Daily', paths: ['other/daily-report', 'other/notice-board'] },
@@ -102,7 +98,7 @@ export function activeTabForPathname(pathname: string): DashboardTabId {
 }
 
 /** Rows for a hub page, filtered to what this role may open. */
-export function hubSections(hub: DashboardHubId, role: Role): DashboardNavSection[] {
+export function hubSections(hub: Exclude<DashboardHubId, 'library'>, role: Role): DashboardNavSection[] {
   const visible = filterDashboardNav(role)
   if (hub === 'work') {
     return visible
