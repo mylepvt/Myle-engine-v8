@@ -12,6 +12,7 @@ import { HomeLearningSections } from '@/components/home/HomeLearningSections'
 import { HomeTodayStrip } from '@/components/home/HomeTodayStrip'
 import { HomeWorkSection } from '@/components/home/HomeWorkSection'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
+import { DailyTextPage } from '@/pages/DailyTextPage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import { MeetingsPage } from '@/pages/MeetingsPage'
 import { TabHubPage } from '@/pages/TabHubPage'
@@ -105,6 +106,7 @@ export function App() {
                 </>
               }
             />
+            <Route path="daily-text" element={<DailyTextPage />} />
             {DASHBOARD_HUB_PATHS.map((hub) => (
               <Route key={hub} path={hub} element={hub === 'library' ? <LibraryPage /> : hub === 'meetings' ? <MeetingsPage /> : <TabHubPage hub={hub} />} />
             ))}

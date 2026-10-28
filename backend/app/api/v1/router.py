@@ -28,6 +28,7 @@ from app.api.v1 import (
     auth,
     capture_links,
     current_cc,
+    daily_text,
     deposits,
     media,
     certificate,
@@ -136,6 +137,7 @@ api_router.include_router(community.router, prefix="/community", tags=["communit
 api_router.include_router(rewards.router, prefix="/rewards", tags=["rewards"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(downloads.router, prefix="/downloads", tags=["downloads"])
+api_router.include_router(daily_text.router, prefix="/daily-text", tags=["daily-text"])
 api_router.include_router(verification.router, prefix="/verification", tags=["verification"])
 api_router.include_router(leader_command_center.router, tags=["leader-command-center"])
 api_router.include_router(leader_effectiveness.router, tags=["leader-effectiveness"])

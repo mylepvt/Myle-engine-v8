@@ -7,7 +7,7 @@ import { DashboardHeader } from '@/components/layout/DashboardHeader'
 import { DashboardTabBar } from '@/components/layout/DashboardTabBar'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
 import { resolveTitleForPath } from '@/config/dashboard-registry'
-import { DASHBOARD_HUB_PATHS, DASHBOARD_TABS, activeTabForPathname } from '@/config/dashboard-tabs'
+import { DASHBOARD_HUB_PATHS, DASHBOARD_TABS, EXTRA_PAGES, activeTabForPathname } from '@/config/dashboard-tabs'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
@@ -251,6 +251,8 @@ export function DashboardLayout() {
   const headerTitle = useMemo(() => {
     if (onTabRoot) return activeTab.label
     const segments = relPath.split('/')
+    const extra = EXTRA_PAGES[segments[0]]
+    if (extra) return extra.title
     for (let n = segments.length; n > 0; n--) {
       const hit = resolveTitleForPath(segments.slice(0, n).join('/'), shellRole ?? 'team')
       if (hit) return hit

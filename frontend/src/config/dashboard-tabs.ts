@@ -78,6 +78,11 @@ const WORK_SECTION_LABEL: Record<string, string> = {
   system: 'Admin',
 }
 
+/** Screens with their own route outside the registry: which tab they sit under, and their title. */
+export const EXTRA_PAGES: Record<string, { tab: DashboardTabId; title: string }> = {
+  'daily-text': { tab: 'home', title: 'Daily Text' },
+}
+
 export function tabForRegistryPath(path: string): DashboardTabId {
   return PATH_TAB[path] ?? 'work'
 }
@@ -88,6 +93,8 @@ export function activeTabForPathname(pathname: string): DashboardTabId {
   if (rel === '') return 'home'
   const hub = DASHBOARD_HUB_PATHS.find((h) => rel === h)
   if (hub) return hub
+  const extra = EXTRA_PAGES[rel.split('/')[0]]
+  if (extra) return extra.tab
   // Longest registry path that prefixes the location, e.g. work/leads/42 → work/leads.
   let best = ''
   for (const { path } of DASHBOARD_ROUTE_DEFS) {
