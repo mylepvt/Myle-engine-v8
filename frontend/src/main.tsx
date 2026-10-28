@@ -11,6 +11,7 @@ import { ThemeAndFeedbackProvider } from '@/components/providers/ThemeAndFeedbac
 import { AppErrorBoundary } from '@/components/routing/AppErrorBoundary'
 import { initPerformanceProfile, isLowEndDevice } from '@/lib/device-performance'
 import './index.css'
+import './styles/jw-theme.css'
 
 const _sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined
 if (_sentryDsn) {

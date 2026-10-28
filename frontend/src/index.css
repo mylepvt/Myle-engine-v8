@@ -517,56 +517,6 @@
     position: relative;
   }
 
-  @media (max-width: 767px) {
-    .dashboard-mobile-drawer {
-      height: 100dvh;
-      max-height: 100dvh;
-    }
-  }
-
-  /* The phone drawer slides over content, so it takes the opaque card fill and no
-     live blur: a backdrop blur is redrawn on every frame the drawer moves, which a phone
-     GPU feels. Before the redesign the drawer was solid and slid smoothly. */
-  @media (max-width: 767px) {
-    .dashboard-mobile-drawer.glass {
-      background: var(--card-bg);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
-      box-shadow: var(--glass-inset), var(--shadow-pop);
-    }
-  }
-
-  /* Desktop sidebar slides on transform only. Animating its width relaid out the
-     whole page every frame; now it leaves the flow when closed, and
-     DashboardLayout glides the content column across with a FLIP. */
-  @media (min-width: 768px) {
-    /* Nothing scrolls behind the desktop sidebar, so a live backdrop blur buys
-       nothing there but still costs a second blur layer next to the header on
-       every scroll frame (measured: about 4ms a frame with the CPU throttled 4x).
-       The denser glass fill alone reads the same over the static backdrop. */
-    .dashboard-sidebar-panel.glass {
-      background: var(--glass-bg-strong);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
-    }
-    .dashboard-sidebar-panel {
-      transition:
-        transform var(--spring-default-duration) var(--spring-default),
-        visibility 0s;
-    }
-    .dashboard-sidebar-panel--closed {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 10;
-      transform: translateX(calc(-100% - 1.5rem));
-      visibility: hidden;
-      transition:
-        transform var(--spring-default-duration) var(--spring-default),
-        visibility 0s linear var(--spring-default-duration);
-    }
-  }
-
   /* Avoid content-visibility on the dashboard <main> scroll container — it can leave
      blank regions or odd scroll extents with flex + short pages (mobile shell). */
 }
@@ -952,127 +902,6 @@
 
   /* ─── Mobile bottom tab bar ──────────────────────────────────────────────── */
 
-  /* Docked glass tab bar — the bar fills all the way to the screen bottom; the
-     iPhone home-indicator safe area is tinted bar background (NOT empty space).
-     Nav items sit in the top row, above the indicator. */
-  /* ── Floating pill tab bar (mockup style) ──────────────────────────
-     The outer bar is a transparent, in-flow container; the visible pill
-     is the __inner element, detached from the screen edges. */
-  .dashboard-mobile-tabbar {
-    position: relative;
-    isolation: isolate;
-    pointer-events: none;
-    /* Same side inset as the header pill, plus the notch inset in landscape. */
-    padding: 6px calc(env(safe-area-inset-right, 0px) + 12px)
-      calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
-      calc(env(safe-area-inset-left, 0px) + 12px);
-    background: transparent;
-    transition: opacity 0.2s ease, transform 0.22s ease;
-  }
-  /* Content scrolls under the floating pill; fade it out below and around the
-     pill so rows never show through the gap under the bar. */
-  .dashboard-mobile-tabbar::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      color-mix(in srgb, var(--background) 85%, transparent) 45%,
-      var(--background)
-    );
-  }
-
-  /* Hide tab bar when software keyboard is open (keyboard inset > 0) */
-  .dashboard-mobile-tabbar--keyboard-open {
-    display: none;
-  }
-
-  /* The pill itself: material from `.glass` (in the JSX), floating shadow here. */
-  .dashboard-mobile-tabbar__inner {
-    pointer-events: auto;
-    height: 58px;
-    border-radius: 9999px;
-    /* clip, not hidden, so the 1px specular ring in the border band survives */
-    overflow: clip;
-    overflow-clip-margin: 1px;
-    box-shadow: var(--glass-inset), var(--shadow-pop);
-  }
-
-  /* The sliding indicator: an accent-tint pill (springs live in the component). */
-  .dashboard-mobile-tabbar__indicator {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    height: 46px;
-    margin-top: -23px;
-    border-radius: 9999px;
-    z-index: 0;
-    pointer-events: none;
-    /* A solid primary pill with a glow, as before the redesign: the slide reads
-       clearly, where a pale tint barely showed it moving. */
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--primary) 88%, white),
-      var(--primary)
-    );
-    box-shadow:
-      0 8px 20px -6px color-mix(in srgb, var(--primary) 60%, transparent),
-      inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
-    will-change: transform;
-    /* Pre-redesign curve: leaves at full speed and lands with a small bounce,
-       which reads snappier than the slow-starting spring. */
-    transition:
-      transform 0.44s cubic-bezier(0.34, 1.4, 0.5, 1),
-      width 0.3s ease,
-      opacity 0.15s ease;
-  }
-  /* Follows the finger 1:1 while dragged. */
-  .dashboard-mobile-tabbar__indicator--dragging {
-    transition: none;
-  }
-  .dashboard-mobile-tabbar__tab {
-    position: relative;
-    z-index: 1;
-    border: 1px solid transparent;
-    /* Press feedback lands on touch-down and settles without overshoot. */
-    transition: transform 0.1s ease-out,
-      color 0.18s ease;
-  }
-
-  .dashboard-mobile-tabbar__tab:active {
-    transform: scale(0.94);
-  }
-
-  /* Icon + short label: new members learn the tabs without guessing icons */
-  .dashboard-mobile-tabbar__tab > span {
-    position: relative;
-    z-index: 1;
-    max-width: 100%;
-    /* 11px = ds-micro, the smallest size the type scale allows */
-    font-size: 0.6875rem;
-    line-height: 0.875rem;
-  }
-
-  .dashboard-mobile-tabbar__tab--active > span {
-    color: var(--primary-foreground);
-    font-weight: 600;
-  }
-
-  /* The active icon pops slightly as the pill lands. */
-  .dashboard-mobile-tabbar__tab--active svg {
-    position: relative;
-    z-index: 1;
-    color: var(--primary-foreground) !important;
-    transform: scale(1.05);
-    transition: transform 0.18s ease-out;
-  }
-
-  .dashboard-mobile-tabbar__tab--idle:active svg {
-    color: var(--foreground);
-  }
 
 }
 
@@ -1150,8 +979,7 @@ html.pwa-standalone #root {
   min-height: 100lvh;
 }
 
-html.pwa-standalone .dashboard-shell,
-html.pwa-standalone .dashboard-mobile-drawer {
+html.pwa-standalone .dashboard-shell {
   height: 100lvh;
   max-height: 100lvh;
 }

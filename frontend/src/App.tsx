@@ -6,7 +6,9 @@ import { PushNotificationBootstrap } from '@/components/notifications/PushNotifi
 import { InstallAppBanner } from '@/components/pwa/InstallAppBanner'
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DASHBOARD_HUB_PATHS } from '@/config/dashboard-tabs'
 import { DashboardHomePage } from '@/pages/DashboardHomePage'
+import { TabHubPage } from '@/pages/TabHubPage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
@@ -85,6 +87,9 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardHomePage />} />
+            {DASHBOARD_HUB_PATHS.map((hub) => (
+              <Route key={hub} path={hub} element={<TabHubPage hub={hub} />} />
+            ))}
             <Route
               path="*"
               element={

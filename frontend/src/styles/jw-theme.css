@@ -1,0 +1,141 @@
+/*
+ * Content-first theme: flat surfaces, square corners, one lavender accent.
+ * Loaded after index.css and unlayered, so these tokens win over the base ones.
+ * Dark: pure black page, #2a2a2a rows, #1c1c1e chrome. Light: #f1f1f1 page, white rows.
+ */
+:root {
+  --background: #f1f1f1;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --primary: #6e56b0;
+  --primary-foreground: #ffffff;
+  --accent: rgba(110, 86, 176, 0.12);
+  --accent-foreground: #5a4596;
+  --ring: #6e56b0;
+  --border: rgba(0, 0, 0, 0.1);
+  --chrome-bg: #ffffff;
+  --chrome-border: rgba(0, 0, 0, 0.12);
+  --row-bg: #ffffff;
+  --row-bg-hover: #f7f7f7;
+
+  --radius: 0.25rem;
+  --radius-card: 4px;
+  --radius-sheet: 8px;
+
+  --card-bg: var(--card);
+  --glass-bg: var(--chrome-bg);
+  --glass-bg-strong: var(--popover);
+  --glass-edge: transparent;
+  --glass-inset: 0 0 0 transparent;
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-pop: 0 12px 32px -12px rgba(0, 0, 0, 0.3);
+  --shadow-accent: none;
+  --ambient-1: transparent;
+  --ambient-2: transparent;
+  --ambient-3: transparent;
+  --ambient-4: transparent;
+}
+
+.dark {
+  --background: #000000;
+  --card: #2a2a2a;
+  --popover: #2c2c2e;
+  --primary: #b9a3e3;
+  --primary-foreground: #160f24;
+  --accent: rgba(185, 163, 227, 0.16);
+  --accent-foreground: #cdbcee;
+  --ring: #b9a3e3;
+  --border: rgba(255, 255, 255, 0.08);
+  --muted: rgba(255, 255, 255, 0.08);
+  --chrome-bg: #1c1c1e;
+  --chrome-border: rgba(255, 255, 255, 0.08);
+  --row-bg: #2a2a2a;
+  --row-bg-hover: #333336;
+
+  --card-bg: var(--card);
+  --glass-bg: var(--chrome-bg);
+  --glass-bg-strong: var(--popover);
+  --shadow-pop: 0 16px 40px -12px rgba(0, 0, 0, 0.8);
+}
+
+body {
+  background: var(--background);
+}
+
+/* Flat materials: no frost, no specular ring, no soft drop shadow. */
+.card,
+.glass,
+.surface-elevated {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.glass-pop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.card::after,
+.glass::after,
+.glass-pop::after,
+.surface-elevated::after {
+  display: none;
+}
+
+/* ── Title bar ───────────────────────────────────────────── */
+.jw-header {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+/* ── Bottom tab bar (all widths) ─────────────────────────── */
+.jw-tabbar {
+  background: var(--chrome-bg);
+  border-top: 1px solid var(--chrome-border);
+  padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.jw-tabbar--hidden {
+  display: none;
+}
+.jw-tabbar__inner {
+  display: flex;
+  align-items: stretch;
+  height: 56px;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+.jw-tabbar__tab > span {
+  max-width: 100%;
+  font-size: 0.6875rem;
+  line-height: 0.8rem;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 768px) {
+  .jw-tabbar__inner {
+    height: 48px;
+  }
+  .jw-tabbar__tab > span {
+    font-size: 0.8125rem;
+  }
+}
+.jw-tabbar__tab--idle {
+  color: var(--muted-foreground);
+}
+.jw-tabbar__tab--idle:hover {
+  color: var(--foreground);
+}
+.jw-tabbar__tab--active {
+  color: var(--primary);
+}
+.jw-tabbar__tab--active > span {
+  font-weight: 600;
+}
+
+/* ── Flat list row (hub screens) ─────────────────────────── */
+.jw-row {
+  background: var(--row-bg);
+  transition: background-color 0.12s ease;
+}
+.jw-row:hover {
+  background: var(--row-bg-hover);
+}

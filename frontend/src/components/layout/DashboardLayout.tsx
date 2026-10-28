@@ -1,14 +1,13 @@
-import { type CSSProperties, type FormEvent, type UIEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AlertTriangle, Bell, RefreshCw, WifiOff, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useShallow } from 'zustand/react/shallow'
 
 import { DashboardHeader } from '@/components/layout/DashboardHeader'
-import { DashboardMobileTabBar } from '@/components/layout/DashboardMobileTabBar'
-import { DashboardSidebar } from '@/components/layout/DashboardSidebar'
+import { DashboardTabBar } from '@/components/layout/DashboardTabBar'
 import { DashboardOutletErrorBoundary } from '@/components/routing/DashboardOutletErrorBoundary'
-import { filterDashboardNav, resolveItemLabel } from '@/config/dashboard-nav'
+import { resolveTitleForPath } from '@/config/dashboard-registry'
+import { DASHBOARD_HUB_PATHS, DASHBOARD_TABS, activeTabForPathname } from '@/config/dashboard-tabs'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
@@ -25,12 +24,8 @@ import { InstallAppGate } from '@/components/pwa/InstallAppGate'
 import { useSyncRoleFromMe } from '@/hooks/use-sync-role-from-me'
 import { prefetchDashboardPages } from '@/lib/prefetch-dashboard-pages'
 import { cn } from '@/lib/utils'
-import { authLogout } from '@/lib/auth-api'
 import { notifyDashboardMainScrolled } from '@/lib/main-scroll-gate'
-import { useAuthStore } from '@/stores/auth-store'
-import { useShellPreviewStore } from '@/stores/shell-preview-store'
-import { useShellStore } from '@/stores/shell-store'
-import { useUiFeedbackStore } from '@/stores/ui-feedback-store'
+import { roleShortLabel } from '@/types/role'
 import { OnboardingTour } from '@/components/onboarding/OnboardingTour'
 import { ONBOARDING_STEPS } from '@/lib/onboarding-steps'
 import { useCompleteTutorialMutation } from '@/hooks/use-tutorial-query'
@@ -65,24 +60,6 @@ export function DashboardLayout() {
   // Report even while an install / notification screen is blocking, so the admin sees "Using browser".
   useReportDeviceStatus(me?.authenticated === true, false)
   const { role: shellRole } = useDashboardShellRole()
-  const navigate = useNavigate()
-  const {
-    sidebarOpen,
-    mobileMenuOpen,
-    toggleSidebar,
-    setMobileMenuOpen,
-    syncForViewport,
-  } = useShellStore(
-    useShallow((s) => ({
-      sidebarOpen: s.sidebarOpen,
-      mobileMenuOpen: s.mobileMenuOpen,
-      toggleSidebar: s.toggleSidebar,
-      setMobileMenuOpen: s.setMobileMenuOpen,
-      syncForViewport: s.syncForViewport,
-    })),
-  )
-  const theme = useUiFeedbackStore((s) => s.theme)
-  const logout = useAuthStore((s) => s.logout)
   const enrollmentPending = useFlpMinBillingApprovalsPendingQuery()
   const pendingEnrollCount = enrollmentPending.data?.total ?? 0
   const approverForEnroll =
@@ -90,11 +67,9 @@ export function DashboardLayout() {
   const enrollmentAlert = useFlpMinBillingApprovalsAlertBanner(pendingEnrollCount, {
     enabled: approverForEnroll,
   })
-  const [headerSearch, setHeaderSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
-  const [isMainScrolled, setIsMainScrolled] = useState(false)
   const [viewportDebug, setViewportDebug] = useState<{
     innerH: number; vvH: number; clientH: number
     shellH: number; mainH: number; navH: number
@@ -147,50 +122,17 @@ export function DashboardLayout() {
     return () => observer.disconnect()
   })
 
-  // Desktop sidebar toggle: the content column's width changes in one step, then
-  // glides from where it was (FLIP) on the compositor, in step with the sidebar's
-  // own transform slide. Animating widths instead relaid out the page every frame.
-  const lastColumnLeft = useRef<number | null>(null)
-  useLayoutEffect(() => {
-    const column = columnRef.current
-    if (!column) return
-    // A toggle mid-glide starts from where the column is drawn, not where it was laid out.
-    const drawnLeft = column.getBoundingClientRect().left
-    for (const running of column.getAnimations()) running.cancel()
-    const left = column.getBoundingClientRect().left
-    const prev = lastColumnLeft.current
-    lastColumnLeft.current = left
-    const from = prev == null ? 0 : prev + (drawnLeft - left) - left
-    if (isMobile || Math.abs(from) < 1) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const keyframes = [{ transform: `translateX(${from}px)` }, { transform: 'none' }]
-    const styles = getComputedStyle(document.documentElement)
-    const duration = parseFloat(styles.getPropertyValue('--spring-default-duration')) || 450
-    try {
-      column.animate(keyframes, { duration, easing: styles.getPropertyValue('--spring-default').trim() })
-    } catch {
-      // Browsers without CSS linear() easing reject it; fall back to a plain ease-out.
-      column.animate(keyframes, { duration: 300, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' })
-    }
-  }, [sidebarOpen, isMobile])
-
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia('(max-width: 767px)')
     const sync = () => {
       const mobile = mq.matches
       setIsMobile(mobile)
-      syncForViewport(mobile)
     }
     sync()
     mq.addEventListener('change', sync)
     return () => mq.removeEventListener('change', sync)
-  }, [syncForViewport])
-
-  useEffect(() => {
-    if (!isMobile) return
-    setMobileMenuOpen(false)
-  }, [theme, isMobile, setMobileMenuOpen])
+  }, [])
 
   useEffect(() => {
     if (!isMobile) {
@@ -224,14 +166,6 @@ export function DashboardLayout() {
       document.removeEventListener('focusout', onFocusOut, true)
     }
   }, [isMobile])
-
-  useEffect(() => {
-    if (keyboardOpen) setMobileMenuOpen(false)
-  }, [keyboardOpen, setMobileMenuOpen])
-
-  useEffect(() => {
-    setIsMainScrolled(false)
-  }, [location.pathname])
 
   useEffect(() => {
     if (!debugViewport) { setViewportDebug(null); return }
@@ -297,15 +231,8 @@ export function DashboardLayout() {
     }
   }, [isMobile, location.pathname, shellProbe])
 
-  function submitHeaderSearch(e: FormEvent) {
-    e.preventDefault()
-    const q = headerSearch.trim()
-    navigate(q ? `/dashboard/work/leads?q=${encodeURIComponent(q)}` : '/dashboard/work/leads')
-  }
-
-  function handleMainScroll(e: UIEvent<HTMLElement>) {
+  function handleMainScroll() {
     notifyDashboardMainScrolled()
-    setIsMainScrolled(e.currentTarget.scrollTop > 8)
   }
 
   const trainingStatusLc = (me?.training_status ?? '').toLowerCase()
@@ -316,24 +243,26 @@ export function DashboardLayout() {
     location.pathname === '/dashboard/system/training' ||
     location.pathname.startsWith('/dashboard/system/training/')
 
-  const sections = useMemo(() => {
-    if (shellRole == null) return []
-    const capped = filterDashboardNav(shellRole)
-    if (!trainingLocked) return capped
-    const flat = capped.flatMap((s) => s.items)
-    const tr = flat.find((i) => i.path === 'system/training')
-    return tr ? [{ id: 'training-only', label: '', items: [tr] }] : capped
-  }, [shellRole, trainingLocked])
-
-  const currentPageLabel = useMemo(() => {
-    const rel = location.pathname.replace('/dashboard/', '')
-    const all = sections.flatMap((s) => s.items)
-    const hit = all.find((item) => {
-      if (item.path === '') return location.pathname === '/dashboard'
-      return rel === item.path || rel.startsWith(`${item.path}/`)
-    })
-    return hit ? resolveItemLabel(hit, shellRole ?? 'team') : 'Dashboard'
-  }, [location.pathname, sections, shellRole])
+  // Header: a tab's own root shows the tab name; any screen under it shows its
+  // own title, the tab name underneath, and a back chevron to the tab.
+  const activeTab = DASHBOARD_TABS.find((t) => t.id === activeTabForPathname(location.pathname)) ?? DASHBOARD_TABS[0]
+  const relPath = location.pathname.replace(/^\/dashboard\/?/, '').replace(/\/$/, '')
+  const onTabRoot = relPath === '' || (DASHBOARD_HUB_PATHS as readonly string[]).includes(relPath)
+  const headerTitle = useMemo(() => {
+    if (onTabRoot) return activeTab.label
+    const segments = relPath.split('/')
+    for (let n = segments.length; n > 0; n--) {
+      const hit = resolveTitleForPath(segments.slice(0, n).join('/'), shellRole ?? 'team')
+      if (hit) return hit
+    }
+    return activeTab.label
+  }, [onTabRoot, activeTab.label, relPath, shellRole])
+  const headerSubtitle = onTabRoot
+    ? (me?.username ?? (shellRole ? roleShortLabel(shellRole) : undefined))
+    : activeTab.label
+  const headerBackTo = onTabRoot || trainingLocked
+    ? undefined
+    : activeTab.path ? `/dashboard/${activeTab.path}` : '/dashboard'
 
   const completeTutorial = useCompleteTutorialMutation()
 
@@ -356,21 +285,6 @@ export function DashboardLayout() {
     )
   }
 
-  const displayInitial =
-    me?.fbo_id?.[0]?.toUpperCase() ??
-    me?.username?.[0]?.toUpperCase() ??
-    me?.email?.[0]?.toUpperCase() ??
-    me?.role?.[0]?.toUpperCase() ??
-    shellRole?.[0]?.toUpperCase() ??
-    '?'
-
-  async function handleLogout() {
-    try { await authLogout() } catch { /* still clear local session */ }
-    useShellPreviewStore.getState().setViewAsRole(null)
-    logout()
-    navigate('/login', { replace: true })
-  }
-
   return (
     <InstallAppGate allowSkip={!mustSetUpApp}>
     <PushNotificationGate allowSkip={!mustSetUpApp}>
@@ -378,41 +292,20 @@ export function DashboardLayout() {
       className="dashboard-shell flex min-h-0 w-full min-w-0 max-w-full flex-1 overflow-hidden bg-transparent"
       style={shellStyle}
     >
-      <DashboardSidebar
-        sections={sections}
-        sidebarOpen={sidebarOpen}
-        mobileMenuOpen={mobileMenuOpen}
-        isMobile={isMobile}
-        setMobileMenuOpen={setMobileMenuOpen}
-        pendingEnrollCount={pendingEnrollCount}
-        onLogout={handleLogout}
-      />
-
       <div
         ref={columnRef}
         className="relative flex h-full min-w-0 max-w-full flex-1 flex-col overflow-hidden pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
       >
         <div
           ref={topChromeRef}
-          className={cn(
-            'shell-top-chrome absolute left-[env(safe-area-inset-left,0px)] right-[env(safe-area-inset-right,0px)] top-[env(safe-area-inset-top,0px)] z-30',
-            isMainScrolled && 'shell-top-chrome--scrolled',
-          )}
+          className="absolute left-[env(safe-area-inset-left,0px)] right-[env(safe-area-inset-right,0px)] top-[env(safe-area-inset-top,0px)] z-30"
         >
-        <DashboardHeader
-          isMobile={isMobile}
-          sidebarOpen={sidebarOpen}
-          mobileMenuOpen={mobileMenuOpen}
-          toggleSidebar={toggleSidebar}
-          setMobileMenuOpen={setMobileMenuOpen}
-          headerSearch={headerSearch}
-          setHeaderSearch={setHeaderSearch}
-          onSubmitSearch={submitHeaderSearch}
-          currentPageLabel={currentPageLabel}
-          trainingLocked={trainingLocked}
-          displayInitial={displayInitial}
-        />
-
+          <DashboardHeader
+            title={headerTitle}
+            subtitle={headerSubtitle}
+            backTo={headerBackTo}
+            trainingLocked={trainingLocked}
+          />
         </div>
 
         <main
@@ -561,16 +454,8 @@ export function DashboardLayout() {
         </main>
         <DepositReceiptHost />
 
-        <div ref={bottomChromeRef} className="pointer-events-none absolute inset-x-0 bottom-0 z-30">
-          {shellRole != null ? (
-            <DashboardMobileTabBar
-              role={shellRole}
-              trainingLocked={trainingLocked}
-              onOpenMenu={() => setMobileMenuOpen(true)}
-              keyboardOpen={keyboardOpen}
-              scrolled={isMainScrolled}
-            />
-          ) : null}
+        <div ref={bottomChromeRef} className="absolute inset-x-0 bottom-0 z-30">
+          <DashboardTabBar trainingLocked={trainingLocked} keyboardOpen={keyboardOpen} />
         </div>
         {debugViewport && viewportDebug ? (
           <div className="fixed left-2 top-[60px] z-[120] rounded-md border border-warning/60 bg-black/80 px-2 py-1 text-ds-micro leading-tight text-warning-ink md:hidden">
