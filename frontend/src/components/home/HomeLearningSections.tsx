@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, FileText, GraduationCap, Megaphone, PlayCircle, Video } from 'lucide-react'
+import { FileText, GraduationCap, Megaphone, PlayCircle, Video } from 'lucide-react'
 
+import { Cover, Rail, Tile } from '@/components/library/MediaRail'
 import { CONTENT_VIDEO_LABELS } from '@/config/content-links'
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
@@ -9,19 +10,14 @@ import { getDownloadFileUrl, useDownloadsQuery } from '@/hooks/use-downloads-que
 import { useNoticeBoardQuery } from '@/hooks/use-notice-board-query'
 import { useSkillsTrainingQuery, type SkillLesson } from '@/hooks/use-skills-training-query'
 import { useTrainingQuery } from '@/hooks/use-training-query'
-import { extractYouTubeId } from '@/lib/youtube'
-
-const TRAINING = '/dashboard/system/training'
-
-function thumbFor(url: string | null | undefined): string | null {
-  const id = url ? extractYouTubeId(url) : null
-  return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : null
-}
-
-/** "Day 3 · Prospecting", unless the title already names its day. */
-function dayCaption(day: number, title: string): string {
-  return /^day\s*\d/i.test(title.trim()) ? title : `Day ${day} · ${title}`
-}
+import {
+  TRAINING_PATH as TRAINING,
+  dayCaption,
+  downloadCoverUrl,
+  lessonThumbUrl,
+  thumbFor,
+  trainingDayThumbUrl,
+} from '@/lib/media'
 
 function ago(iso: string): string {
   const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000)
@@ -30,64 +26,11 @@ function ago(iso: string): string {
   return `${days} days ago`
 }
 
-function Rail({ title, more, children }: { title: string; more?: { to: string; label: string }; children: ReactNode }) {
-  return (
-    <section className="space-y-2.5">
-      <div className="flex items-end justify-between gap-3">
-        <h2 className="text-ds-h2 font-bold text-foreground">{title}</h2>
-        {more ? (
-          <Link to={more.to} className="text-sm text-primary hover:opacity-80">
-            {more.label}
-          </Link>
-        ) : null}
-      </div>
-      <ul className="no-scrollbar -mx-4 flex gap-[3px] overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">{children}</ul>
-    </section>
-  )
-}
-
-/** Square thumbnail tile with a caption underneath. */
-function Tile({ to, href, thumb, icon, badge, done, caption }: {
+/** Wide card: thumbnail on the left, kind / title / meta on the right. */
+function NewsCard({ to, href, thumb, icon, kind, title, meta }: {
   to?: string
   href?: string
   thumb?: string | null
-  icon: ReactNode
-  badge?: string
-  done?: boolean
-  caption: string
-}) {
-  const body = (
-    <>
-      <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-card text-foreground/70">
-        {thumb ? <img src={thumb} alt="" loading="lazy" className="size-full object-cover" /> : icon}
-        {badge ? (
-          <span className="absolute left-1 top-1 bg-black/70 px-1 text-ds-micro font-medium text-white">▶ {badge}</span>
-        ) : null}
-        {done ? <CheckCircle2 className="absolute bottom-1 right-1 size-4 text-success-ink" aria-label="Completed" /> : null}
-      </span>
-      <span className="mt-1.5 line-clamp-2 text-ds-caption leading-snug text-foreground">{caption}</span>
-    </>
-  )
-  const cls = 'press block w-[112px] shrink-0 md:w-[128px]'
-  return (
-    <li className="shrink-0">
-      {href ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
-          {body}
-        </a>
-      ) : (
-        <Link to={to ?? TRAINING} className={cls}>
-          {body}
-        </Link>
-      )}
-    </li>
-  )
-}
-
-/** Wide card: thumbnail on the left, kind / title / meta on the right. */
-function NewsCard({ to, href, icon, kind, title, meta }: {
-  to?: string
-  href?: string
   icon: ReactNode
   kind: string
   title: string
@@ -95,7 +38,7 @@ function NewsCard({ to, href, icon, kind, title, meta }: {
 }) {
   const body = (
     <>
-      <span className="flex w-24 shrink-0 items-center justify-center bg-muted text-foreground/70">{icon}</span>
+      <Cover thumb={thumb} icon={icon} className="w-24 shrink-0" />
       <span className="flex min-w-0 flex-1 flex-col justify-between p-2.5">
         <span className="min-w-0">
           <span className="block truncate text-ds-caption text-muted-foreground">{kind}</span>
@@ -156,7 +99,7 @@ export function HomeLearningSections() {
   const docs = (downloads.data ?? []).filter((d) => d.available)
 
   const news = [
-    ...docs.map((d) => ({ at: d.created_at, key: `d${d.id}`, kind: 'Publication', title: d.title, href: getDownloadFileUrl(d.id), icon: <FileText className="size-8" strokeWidth={1.25} /> })),
+    ...docs.map((d) => ({ at: d.created_at, key: `d${d.id}`, kind: 'Publication', title: d.title, href: getDownloadFileUrl(d.id), thumb: downloadCoverUrl(d), icon: <FileText className="size-8" strokeWidth={1.25} /> })),
     ...(notices.data?.items ?? []).map((n) => ({ at: n.created_at, key: `n${n.id}`, kind: 'Notice', title: n.message || 'Voice note', to: '/dashboard/other/notice-board', icon: <Megaphone className="size-8" strokeWidth={1.25} /> })),
   ]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
@@ -167,12 +110,12 @@ export function HomeLearningSections() {
       {nextDay || nextLesson ? (
         <Rail title="Continue Learning">
           {nextDay ? (
-            <Tile thumb={thumbFor(nextDay.youtube_url)} icon={<GraduationCap className="size-9" strokeWidth={1.25} />} caption={dayCaption(nextDay.day_number, nextDay.title)} />
+            <Tile thumb={nextDay.has_video === false ? null : trainingDayThumbUrl(nextDay.day_number)} icon={<GraduationCap className="size-9" strokeWidth={1.25} />} caption={dayCaption(nextDay.day_number, nextDay.title)} />
           ) : null}
           {nextLesson ? (
             <Tile
               to={`${TRAINING}?lesson=${nextLesson.id}`}
-              thumb={thumbFor(nextLesson.youtube_url)}
+              thumb={nextLesson.has_video ? lessonThumbUrl(nextLesson.id) : null}
               icon={<PlayCircle className="size-9" strokeWidth={1.25} />}
               badge={nextLesson.duration_minutes ? `${nextLesson.duration_minutes} min` : undefined}
               caption={nextLesson.title}
@@ -188,7 +131,7 @@ export function HomeLearningSections() {
                 <Tile
                   key={l.id}
                   to={`${TRAINING}?lesson=${l.id}`}
-                  thumb={thumbFor(l.youtube_url)}
+                  thumb={l.has_video ? lessonThumbUrl(l.id) : null}
                   icon={<PlayCircle className="size-9" strokeWidth={1.25} />}
                   badge={l.duration_minutes ? `${l.duration_minutes} min` : undefined}
                   done={l.completed}
@@ -198,7 +141,7 @@ export function HomeLearningSections() {
             : days.map((v) => (
                 <Tile
                   key={v.day_number}
-                  thumb={v.unlocked === false ? null : thumbFor(v.youtube_url)}
+                  thumb={v.unlocked === false || v.has_video === false ? null : trainingDayThumbUrl(v.day_number)}
                   icon={<GraduationCap className="size-9" strokeWidth={1.25} />}
                   done={doneDays.has(v.day_number)}
                   caption={dayCaption(v.day_number, v.title)}
@@ -213,7 +156,7 @@ export function HomeLearningSections() {
             <Tile key={l.key} href={l.url} thumb={thumbFor(l.url)} icon={<Video className="size-9" strokeWidth={1.25} />} caption={l.label} />
           ))}
           {docs.map((d) => (
-            <Tile key={d.id} href={getDownloadFileUrl(d.id)} icon={<FileText className="size-9" strokeWidth={1.25} />} caption={d.title} />
+            <Tile key={d.id} href={getDownloadFileUrl(d.id)} thumb={downloadCoverUrl(d)} icon={<FileText className="size-9" strokeWidth={1.25} />} caption={d.title} />
           ))}
         </Rail>
       ) : null}
@@ -221,7 +164,7 @@ export function HomeLearningSections() {
       {news.length > 0 ? (
         <Rail title="What's New">
           {news.map((n) => (
-            <NewsCard key={n.key} to={'to' in n ? n.to : undefined} href={'href' in n ? n.href : undefined} icon={n.icon} kind={n.kind} title={n.title} meta={ago(n.at)} />
+            <NewsCard key={n.key} to={'to' in n ? n.to : undefined} href={'href' in n ? n.href : undefined} thumb={'thumb' in n ? n.thumb : null} icon={n.icon} kind={n.kind} title={n.title} meta={ago(n.at)} />
           ))}
         </Rail>
       ) : null}

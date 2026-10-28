@@ -8,7 +8,7 @@ from typing import Annotated
 
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status as http_status
@@ -32,6 +32,7 @@ from app.schemas.training_test import (
     TrainingTestSubmitBody,
 )
 from app.core.realtime_hub import notify_topics
+from app.services.media_covers import fetch_youtube_thumbnail, youtube_video_id
 from app.services.member_compliance import start_practice_window
 from app.services.training_certificate_storage import save_training_certificate_bytes
 from app.services.training_surface import build_training_surface, training_day_unlock_date
@@ -150,6 +151,24 @@ async def training_day_embed(
     params = "controls=0&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3"
     embed_url = f"https://www.youtube.com/embed/{vid_id}?{params}"
     return RedirectResponse(url=embed_url, status_code=302)
+
+
+@router.get("/training/day/{day_number}/thumbnail")
+async def training_day_thumbnail(
+    day_number: int,
+    user: Annotated[AuthUser, Depends(require_auth_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """The day's YouTube thumbnail, fetched server-side so the link stays hidden."""
+    _ = user
+    row = (
+        await session.execute(select(TrainingVideo).where(TrainingVideo.day_number == day_number))
+    ).scalar_one_or_none()
+    video_id = youtube_video_id(row.youtube_url) if row else None
+    data = await fetch_youtube_thumbnail(video_id) if video_id else None
+    if data is None:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="No thumbnail")
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @router.post("/training/days/{day_number}/notes")

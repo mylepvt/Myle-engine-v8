@@ -11,6 +11,7 @@ import { DASHBOARD_HUB_PATHS, DASHBOARD_TABS, EXTRA_PAGES, activeTabForPathname 
 import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { useFlpMinBillingApprovalsAlertBanner } from '@/hooks/use-flp-min-billing-approvals-alert'
+import { LIBRARY_COLLECTION_TITLES } from '@/hooks/use-library-collections'
 import { useFlpMinBillingApprovalsPendingQuery } from '@/hooks/use-team-query'
 import { useOnline } from '@/hooks/use-online'
 import { useAppUpdate } from '@/hooks/use-app-update'
@@ -253,6 +254,9 @@ export function DashboardLayout() {
     const segments = relPath.split('/')
     const extra = EXTRA_PAGES[segments[0]]
     if (extra) return extra.title
+    if (segments[0] === 'library' && segments[1]) {
+      return LIBRARY_COLLECTION_TITLES[segments[1] as keyof typeof LIBRARY_COLLECTION_TITLES] ?? activeTab.label
+    }
     for (let n = segments.length; n > 0; n--) {
       const hit = resolveTitleForPath(segments.slice(0, n).join('/'), shellRole ?? 'team')
       if (hit) return hit
