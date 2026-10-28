@@ -5,7 +5,6 @@
  */
 import type { LucideIcon } from 'lucide-react'
 import {
-  Activity,
   ClipboardCheck,
   ClipboardList,
   FileBarChart,
@@ -43,7 +42,6 @@ const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'system/training',
   'other/daily-report',
   'team/my-team',
-  'team/current-cc',
   'team/flp-min-billing',
   'system/lead-control',
   'team/reports',
@@ -61,7 +59,6 @@ const PATH_ICONS: Partial<Record<string, LucideIcon>> = {
   'system/training': GraduationCap,
   'other/daily-report': ClipboardList,
   'team/my-team': UsersRound,
-  'team/current-cc': Activity,
   'team/flp-min-billing': ClipboardCheck,
   'system/lead-control': Shield,
   'team/reports': FileBarChart,
@@ -82,16 +79,9 @@ export function getHomeQuickActions(
   role: Role,
   opts: { poolTotal: number },
 ): HomeQuickAction[] {
-  // Leader & team see the Tracking Report shortcut first (top of the grid).
-  const paths =
-    role === 'leader' || role === 'team'
-      ? [
-          'team/current-cc',
-          ...HOME_QUICK_ACTION_PATHS.filter((p) => p !== 'team/current-cc'),
-        ]
-      : HOME_QUICK_ACTION_PATHS
+  // Tracking Report is not a Home shortcut: it lives in the Work tab.
   const out: HomeQuickAction[] = []
-  for (const path of paths) {
+  for (const path of HOME_QUICK_ACTION_PATHS) {
     const def = getDashboardChildRoute(path)
     if (!def) continue
     if (!routeDefAccessible(def, role)) continue
