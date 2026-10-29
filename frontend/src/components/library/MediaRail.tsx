@@ -1,23 +1,26 @@
-import { useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Lock } from 'lucide-react'
 
 import { TRAINING_PATH } from '@/lib/media'
+import { topicFor } from '@/lib/topics'
 import { cn } from '@/lib/utils'
 
-/** A picture box: the cover when it loads, otherwise the icon on a soft accent wash. */
-export function Cover({ thumb, icon, className }: { thumb?: string | null; icon: ReactNode; className?: string }) {
-  const [broken, setBroken] = useState(false)
-  const show = Boolean(thumb) && !broken
+/** Picture box for a tile: the topic's icon on a wash of its colour (a lock while locked). */
+export function TopicArt({ topic, locked = false, iconClassName = 'size-9', className }: {
+  topic: string
+  locked?: boolean
+  iconClassName?: string
+  className?: string
+}) {
+  const { icon: Icon, tone } = topicFor(topic)
   return (
-    <span
-      className={cn(
-        'relative flex items-center justify-center overflow-hidden text-foreground/70',
-        show ? 'bg-card' : 'jw-cover-fallback',
-        className,
+    <span className={cn('jw-topic relative flex items-center justify-center overflow-hidden', tone, className)}>
+      {locked ? (
+        <Lock className={cn(iconClassName, 'opacity-70')} strokeWidth={1.25} aria-hidden />
+      ) : (
+        <Icon className={iconClassName} strokeWidth={1.25} aria-hidden />
       )}
-    >
-      {show ? <img src={thumb!} alt="" loading="lazy" onError={() => setBroken(true)} className="size-full object-cover" /> : icon}
     </span>
   )
 }
@@ -39,12 +42,12 @@ export function Rail({ title, more, children }: { title: string; more?: { to: st
   )
 }
 
-/** Thumbnail tile with a caption underneath: square, or 16:9 (`wide`) for video shelves. */
-export function Tile({ to, href, thumb, icon, badge, done, caption, wide = false }: {
+/** Topic tile with a caption underneath: square, or 16:9 (`wide`) for video shelves. */
+export function Tile({ to, href, topic, locked, badge, done, caption, wide = false }: {
   to?: string
   href?: string
-  thumb?: string | null
-  icon: ReactNode
+  topic: string
+  locked?: boolean
   badge?: string
   done?: boolean
   caption: string
@@ -53,7 +56,7 @@ export function Tile({ to, href, thumb, icon, badge, done, caption, wide = false
   const body = (
     <>
       <span className="relative block w-full">
-        <Cover thumb={thumb} icon={icon} className={cn('w-full', wide ? 'aspect-video' : 'aspect-square')} />
+        <TopicArt topic={topic} locked={locked} className={cn('w-full', wide ? 'aspect-video' : 'aspect-square')} />
         {badge ? (
           <span className="absolute left-1 top-1 bg-black/70 px-1 text-ds-micro font-medium text-white">▶ {badge}</span>
         ) : null}

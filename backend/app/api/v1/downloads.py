@@ -13,9 +13,7 @@ from pathlib import Path
 from urllib.parse import quote
 from typing import Annotated
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.concurrency import run_in_threadpool
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select, desc
@@ -24,12 +22,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AuthUser, get_db, require_auth_user
 from app.models.download import Download
-from app.services.media_covers import cache_drop, cache_get, cache_put, render_cover
 from app.services.r2_storage import delete_from_r2, presign_get_url, r2_enabled, upload_to_r2
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".png", ".jpg", ".jpeg", ".mp4", ".zip"}
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".png", ".jpg", ".jpeg", ".mp4", ".zip",
+    # Audio for the Library › Audio tab
+    ".mp3", ".m4a", ".aac", ".wav", ".ogg",
+}
+# Audio is always kept in Postgres (owner's choice), even when R2 is configured.
+AUDIO_EXTENSIONS = {".mp3", ".m4a", ".aac", ".wav", ".ogg"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 _R2_PREFIX = "r2:"
 _DB_PATH = "db:"
@@ -83,6 +86,11 @@ def _guess_mime(filename: str) -> str:
         ".jpeg": "image/jpeg",
         ".mp4": "video/mp4",
         ".zip": "application/zip",
+        ".mp3": "audio/mpeg",
+        ".m4a": "audio/mp4",
+        ".aac": "audio/aac",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
     }
     return m.get(ext, "application/octet-stream")
 
@@ -122,7 +130,7 @@ async def upload_download(
 
     safe_name = f"{uuid.uuid4().hex}{ext}"
     mime = _guess_mime(file.filename)
-    if r2_enabled():
+    if r2_enabled() and ext not in AUDIO_EXTENSIONS:
         key = f"downloads/{safe_name}"
         await upload_to_r2(data=content, key=key, content_type=mime)
         stored_path = f"{_R2_PREFIX}{key}"
@@ -145,11 +153,32 @@ async def upload_download(
     return _to_item(row)
 
 
+def _parse_range(header: str | None, size: int) -> tuple[int, int] | None:
+    """(start, end) inclusive for a single ``bytes=a-b`` / ``bytes=a-`` / ``bytes=-n`` range, else None."""
+    if not header or not header.startswith("bytes=") or "," in header or size == 0:
+        return None
+    first, _, last = header[len("bytes="):].strip().partition("-")
+    try:
+        if first == "":
+            length = int(last)
+            if length <= 0:
+                return None
+            return max(size - length, 0), size - 1
+        start = int(first)
+        end = int(last) if last else size - 1
+    except ValueError:
+        return None
+    if start >= size or start > end:
+        return None
+    return start, min(end, size - 1)
+
+
 @router.get("/{download_id}/file", response_model=None)
 async def serve_download_file(
     download_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    range_header: Annotated[str | None, Header(alias="Range")] = None,
 ) -> FileResponse | RedirectResponse | Response:
     row = await db.get(Download, download_id, options=[undefer(Download.content)])
     if not row:
@@ -159,11 +188,19 @@ async def serve_download_file(
         if row.content is None:
             raise HTTPException(status_code=404, detail="File not found.")
         disposition = f"attachment; filename*=UTF-8''{quote(row.filename)}"
-        return Response(
-            content=row.content,
-            media_type=row.mime_type,
-            headers={"Content-Disposition": disposition},
-        )
+        headers = {"Content-Disposition": disposition, "Accept-Ranges": "bytes"}
+        # Audio players (iOS Safari especially) need byte ranges to play and seek.
+        byte_range = _parse_range(range_header, len(row.content))
+        if byte_range is not None:
+            start, end = byte_range
+            headers["Content-Range"] = f"bytes {start}-{end}/{len(row.content)}"
+            return Response(
+                content=row.content[start : end + 1],
+                status_code=206,
+                media_type=row.mime_type,
+                headers=headers,
+            )
+        return Response(content=row.content, media_type=row.mime_type, headers=headers)
 
     key = _r2_key(row)
     if key is not None:
@@ -182,48 +219,6 @@ async def serve_download_file(
         filename=row.filename,
         media_type=row.mime_type,
     )
-
-
-_COVER_HEADERS = {"Cache-Control": "private, max-age=86400"}
-
-
-async def _file_bytes(row: Download) -> bytes | None:
-    """The stored file's bytes wherever it lives (Postgres, R2 or legacy disk), or None."""
-    if row.file_path == _DB_PATH:
-        return row.content
-    key = _r2_key(row)
-    if key is not None:
-        url = await presign_get_url(key=key, expires_seconds=120)
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                res = await client.get(url)
-        except httpx.HTTPError:
-            return None
-        return res.content if res.status_code == 200 else None
-    path = Path(row.file_path)
-    return path.read_bytes() if path.exists() else None
-
-
-@router.get("/{download_id}/cover", response_model=None)
-async def download_cover(
-    download_id: int,
-    user: Annotated[AuthUser, Depends(require_auth_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> Response:
-    """Small JPEG cover: a PDF's first page or a resized image. 404 for other file types."""
-    _ = user
-    cache_key = f"dl:{download_id}"
-    hit, cover = cache_get(cache_key)
-    if not hit:
-        row = await db.get(Download, download_id, options=[undefer(Download.content)])
-        if not row:
-            raise HTTPException(status_code=404, detail="File not found.")
-        data = await _file_bytes(row)
-        cover = await run_in_threadpool(render_cover, data, row.mime_type, row.filename) if data else None
-        cache_put(cache_key, cover)
-    if cover is None:
-        raise HTTPException(status_code=404, detail="No cover for this file.")
-    return Response(content=cover, media_type="image/jpeg", headers=_COVER_HEADERS)
 
 
 @router.delete("/{download_id}", status_code=204)
@@ -249,4 +244,3 @@ async def delete_download(
 
     await db.delete(row)
     await db.commit()
-    cache_drop(f"dl:{download_id}")

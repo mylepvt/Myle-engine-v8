@@ -3,14 +3,15 @@ import { useAuthMeQuery } from '@/hooks/use-auth-me-query'
 import { useContentLinksQuery } from '@/hooks/use-content-links-query'
 import { useSkillsTrainingQuery, type SkillCategory } from '@/hooks/use-skills-training-query'
 import { useTrainingQuery } from '@/hooks/use-training-query'
-import { TRAINING_PATH, dayCaption, lessonThumbUrl, thumbFor, trainingDayThumbUrl } from '@/lib/media'
+import { TRAINING_PATH, dayCaption } from '@/lib/media'
 
 export type LibraryItem = {
   key: string
   caption: string
   to?: string
   href?: string
-  thumb: string | null
+  /** Topic key for the tile's icon and colour (see lib/topics). */
+  topic: string
   badge?: string
   done?: boolean
   locked?: boolean
@@ -21,6 +22,8 @@ export type LibrarySection = { title: string; items: LibraryItem[] }
 export type LibraryCollection = {
   id: 'onboarding' | 'personal-development' | 'academy' | 'prospect'
   title: string
+  /** Topic key for the banner's icon and colour. */
+  topic: string
   /** Shown on the inner page when there is nothing to list (locked / empty). */
   note?: string
   /** Not open to this member yet (onboarding unfinished). */
@@ -41,7 +44,7 @@ function lessonItems(category: SkillCategory): LibraryItem[] {
     key: `l${l.id}`,
     caption: l.title,
     to: `${TRAINING_PATH}?lesson=${l.id}`,
-    thumb: l.has_video ? lessonThumbUrl(l.id) : null,
+    topic: category.key,
     badge: l.duration_minutes ? `${l.duration_minutes} min` : undefined,
     done: l.completed,
   }))
@@ -63,6 +66,7 @@ export function useLibraryCollections() {
     collections.push({
       id: 'onboarding',
       title: LIBRARY_COLLECTION_TITLES.onboarding,
+      topic: 'onboarding',
       sections: [
         {
           title: 'Onboarding Days',
@@ -70,7 +74,7 @@ export function useLibraryCollections() {
             key: `d${v.day_number}`,
             caption: dayCaption(v.day_number, v.title),
             to: TRAINING_PATH,
-            thumb: v.unlocked === false || v.has_video === false ? null : trainingDayThumbUrl(v.day_number),
+            topic: 'onboarding',
             done: done.has(v.day_number),
             locked: v.unlocked === false,
           })),
@@ -86,6 +90,7 @@ export function useLibraryCollections() {
     collections.push({
       id: 'personal-development',
       title: LIBRARY_COLLECTION_TITLES['personal-development'],
+      topic: 'personal_development',
       locked,
       note: locked ? lockedNote : pd.lessons.length === 0 ? 'Lessons are coming soon.' : undefined,
       sections: pd.lessons.length > 0 ? [{ title: 'Lessons', items: lessonItems(pd) }] : [],
@@ -94,6 +99,7 @@ export function useLibraryCollections() {
     collections.push({
       id: 'academy',
       title: LIBRARY_COLLECTION_TITLES.academy,
+      topic: 'academy',
       locked,
       note: locked ? lockedNote : cats.every((c) => c.lessons.length === 0) ? 'Lessons are coming soon.' : undefined,
       sections: cats
@@ -105,10 +111,10 @@ export function useLibraryCollections() {
   if (canSeeLinks) {
     const items = CONTENT_VIDEO_LABELS.flatMap(({ key, label }) => {
       const url = links.data?.[key]
-      return url ? [{ key, caption: label, href: url, thumb: thumbFor(url) }] : []
+      return url ? [{ key, caption: label, href: url, topic: 'prospect_video' }] : []
     })
     if (items.length > 0) {
-      collections.push({ id: 'prospect', title: LIBRARY_COLLECTION_TITLES.prospect, sections: [{ title: 'Share with Prospects', items }] })
+      collections.push({ id: 'prospect', title: LIBRARY_COLLECTION_TITLES.prospect, topic: 'prospect_video', sections: [{ title: 'Share with Prospects', items }] })
     }
   }
 

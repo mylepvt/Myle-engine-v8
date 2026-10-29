@@ -178,7 +178,21 @@ body {
   background: linear-gradient(to right, var(--row-bg) 0%, color-mix(in srgb, var(--row-bg) 40%, transparent) 45%, transparent 100%);
 }
 
-/* Tile without a picture: a soft accent wash behind the icon. */
-.jw-cover-fallback {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 22%, var(--card)) 0%, var(--card) 70%);
+/* Topic tints for icon tiles (Library / Home): the icon takes the tone, the
+   tile a soft wash of it. */
+.jw-tone-lavender { --tone: #b9a3e3; }
+.jw-tone-green { --tone: #7fc8a0; }
+.jw-tone-blue { --tone: #7fa8e8; }
+.jw-tone-cyan { --tone: #6cc7d8; }
+.jw-tone-amber { --tone: #e8b26a; }
+.jw-tone-pink { --tone: #e79ab8; }
+.jw-tone-red { --tone: #e88a80; }
+.jw-tone-gold { --tone: #e2c66b; }
+.jw-tone-slate { --tone: #9aa3b2; }
+:root:not(.dark) :is(.jw-tone-lavender, .jw-tone-green, .jw-tone-blue, .jw-tone-cyan, .jw-tone-amber, .jw-tone-pink, .jw-tone-red, .jw-tone-gold, .jw-tone-slate) {
+  --tone-ink: color-mix(in srgb, var(--tone) 70%, black);
+}
+.jw-topic {
+  color: var(--tone-ink, var(--tone, var(--primary)));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--tone, var(--primary)) 24%, var(--card)) 0%, var(--card) 75%);
 }
