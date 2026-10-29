@@ -48,3 +48,31 @@ async def test_other_audio_types_and_rejects(admin_client, monkeypatch):
         r = await _upload(admin_client, name, b"x")
         assert r.status_code == 201 and r.json()["mime_type"] == mime
     assert (await _upload(admin_client, "evil.exe", b"x")).status_code == 400
+
+
+async def test_audio_is_stored_in_postgres_even_with_r2(admin_client, engine, monkeypatch):
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from sqlalchemy.orm import undefer
+    from app.models.download import Download
+
+    uploaded: list[str] = []
+
+    async def fake_upload(*, data: bytes, key: str, content_type: str) -> str:
+        uploaded.append(key)
+        return f"https://r2.test/{key}"
+
+    monkeypatch.setattr(downloads_api, "r2_enabled", lambda: True)
+    monkeypatch.setattr(downloads_api, "upload_to_r2", fake_upload)
+
+    r = await _upload(admin_client, "talk.mp3", AUDIO)
+    assert r.status_code == 201
+    assert uploaded == []  # audio never goes to R2
+
+    Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with Session() as s:
+        row = await s.get(Download, r.json()["id"], options=[undefer(Download.content)])
+        assert row.file_path == "db:" and row.content == AUDIO
+
+    # Documents still go to R2 when it is configured.
+    assert (await _upload(admin_client, "guide.pdf", b"%PDF-1.4")).status_code == 201
+    assert len(uploaded) == 1 and uploaded[0].endswith(".pdf")

@@ -31,6 +31,8 @@ ALLOWED_EXTENSIONS = {
     # Audio for the Library › Audio tab
     ".mp3", ".m4a", ".aac", ".wav", ".ogg",
 }
+# Audio is always kept in Postgres (owner's choice), even when R2 is configured.
+AUDIO_EXTENSIONS = {".mp3", ".m4a", ".aac", ".wav", ".ogg"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 _R2_PREFIX = "r2:"
 _DB_PATH = "db:"
@@ -128,7 +130,7 @@ async def upload_download(
 
     safe_name = f"{uuid.uuid4().hex}{ext}"
     mime = _guess_mime(file.filename)
-    if r2_enabled():
+    if r2_enabled() and ext not in AUDIO_EXTENSIONS:
         key = f"downloads/{safe_name}"
         await upload_to_r2(data=content, key=key, content_type=mime)
         stored_path = f"{_R2_PREFIX}{key}"
