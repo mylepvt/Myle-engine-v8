@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import quote
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select, desc
@@ -26,7 +26,11 @@ from app.services.r2_storage import delete_from_r2, presign_get_url, r2_enabled,
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".png", ".jpg", ".jpeg", ".mp4", ".zip"}
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".png", ".jpg", ".jpeg", ".mp4", ".zip",
+    # Audio for the Library › Audio tab
+    ".mp3", ".m4a", ".aac", ".wav", ".ogg",
+}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 _R2_PREFIX = "r2:"
 _DB_PATH = "db:"
@@ -80,6 +84,11 @@ def _guess_mime(filename: str) -> str:
         ".jpeg": "image/jpeg",
         ".mp4": "video/mp4",
         ".zip": "application/zip",
+        ".mp3": "audio/mpeg",
+        ".m4a": "audio/mp4",
+        ".aac": "audio/aac",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
     }
     return m.get(ext, "application/octet-stream")
 
@@ -142,11 +151,32 @@ async def upload_download(
     return _to_item(row)
 
 
+def _parse_range(header: str | None, size: int) -> tuple[int, int] | None:
+    """(start, end) inclusive for a single ``bytes=a-b`` / ``bytes=a-`` / ``bytes=-n`` range, else None."""
+    if not header or not header.startswith("bytes=") or "," in header or size == 0:
+        return None
+    first, _, last = header[len("bytes="):].strip().partition("-")
+    try:
+        if first == "":
+            length = int(last)
+            if length <= 0:
+                return None
+            return max(size - length, 0), size - 1
+        start = int(first)
+        end = int(last) if last else size - 1
+    except ValueError:
+        return None
+    if start >= size or start > end:
+        return None
+    return start, min(end, size - 1)
+
+
 @router.get("/{download_id}/file", response_model=None)
 async def serve_download_file(
     download_id: int,
     user: Annotated[AuthUser, Depends(require_auth_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    range_header: Annotated[str | None, Header(alias="Range")] = None,
 ) -> FileResponse | RedirectResponse | Response:
     row = await db.get(Download, download_id, options=[undefer(Download.content)])
     if not row:
@@ -156,11 +186,19 @@ async def serve_download_file(
         if row.content is None:
             raise HTTPException(status_code=404, detail="File not found.")
         disposition = f"attachment; filename*=UTF-8''{quote(row.filename)}"
-        return Response(
-            content=row.content,
-            media_type=row.mime_type,
-            headers={"Content-Disposition": disposition},
-        )
+        headers = {"Content-Disposition": disposition, "Accept-Ranges": "bytes"}
+        # Audio players (iOS Safari especially) need byte ranges to play and seek.
+        byte_range = _parse_range(range_header, len(row.content))
+        if byte_range is not None:
+            start, end = byte_range
+            headers["Content-Range"] = f"bytes {start}-{end}/{len(row.content)}"
+            return Response(
+                content=row.content[start : end + 1],
+                status_code=206,
+                media_type=row.mime_type,
+                headers=headers,
+            )
+        return Response(content=row.content, media_type=row.mime_type, headers=headers)
 
     key = _r2_key(row)
     if key is not None:

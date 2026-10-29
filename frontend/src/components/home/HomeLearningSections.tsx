@@ -9,7 +9,7 @@ import { useNoticeBoardQuery } from '@/hooks/use-notice-board-query'
 import { useSkillsTrainingQuery } from '@/hooks/use-skills-training-query'
 import { useTrainingQuery } from '@/hooks/use-training-query'
 import { TRAINING_PATH as TRAINING, dayCaption } from '@/lib/media'
-import { documentTopicKey } from '@/lib/topics'
+import { documentTopicKey, isAudioDownload } from '@/lib/topics'
 
 function ago(iso: string): string {
   const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000)
@@ -92,10 +92,13 @@ export function HomeLearningSections() {
         return url ? [{ key, label, url }] : []
       })
     : []
-  const docs = (downloads.data ?? []).filter((d) => d.available)
+  const available = (downloads.data ?? []).filter((d) => d.available)
+  const docs = available.filter((d) => !isAudioDownload(d))
+  const audio = available.filter((d) => isAudioDownload(d))
 
   const news = [
     ...docs.map((d) => ({ at: d.created_at, key: `d${d.id}`, kind: 'Publication', title: d.title, href: getDownloadFileUrl(d.id), topic: documentTopicKey(d) })),
+    ...audio.map((d) => ({ at: d.created_at, key: `a${d.id}`, kind: 'Audio', title: d.title, to: '/dashboard/library?tab=audio', topic: 'audio' })),
     ...(notices.data?.items ?? []).map((n) => ({ at: n.created_at, key: `n${n.id}`, kind: 'Notice', title: n.message || 'Voice note', to: '/dashboard/other/notice-board', topic: 'notice' })),
   ]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))

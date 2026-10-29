@@ -4,6 +4,7 @@ import {
   FileVideo,
   GraduationCap,
   Handshake,
+  Headphones,
   Megaphone,
   MessageCircleWarning,
   PhoneCall,
@@ -38,6 +39,7 @@ const TOPICS: Record<string, Topic> = {
   document: { icon: FileText, tone: 'jw-tone-slate' },
   image: { icon: FileImage, tone: 'jw-tone-slate' },
   video_file: { icon: FileVideo, tone: 'jw-tone-slate' },
+  audio: { icon: Headphones, tone: 'jw-tone-cyan' },
 }
 
 export function topicFor(key: string): Topic {
@@ -56,8 +58,14 @@ const TITLE_TOPICS: [RegExp, string][] = [
   [/onboard|training|day\s*\d/i, 'onboarding'],
 ]
 
-/** Topic key for a download: a skill topic its title names, else its file type. */
+/** Audio files live in Library › Audio, not with the documents. */
+export function isAudioDownload(item: { mime_type: string; filename: string }): boolean {
+  return item.mime_type.startsWith('audio/') || /\.(mp3|m4a|aac|wav|ogg)$/i.test(item.filename)
+}
+
+/** Topic key for a download: audio, else a skill topic its title names, else its file type. */
 export function documentTopicKey(item: { title?: string; mime_type: string; filename: string }): string {
+  if (isAudioDownload(item)) return 'audio'
   const title = item.title ?? ''
   const hit = TITLE_TOPICS.find(([re]) => re.test(title))
   if (hit) return hit[1]

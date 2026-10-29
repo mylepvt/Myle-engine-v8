@@ -1,24 +1,22 @@
-import { useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ChevronRight,
   CloudOff,
   FileText,
   GraduationCap,
-  Headphones,
   Lock,
   Settings2,
 } from 'lucide-react'
 
+import { LibraryAudio } from '@/components/library/LibraryAudio'
 import { TopicArt } from '@/components/library/MediaRail'
 import { ErrorState } from '@/components/ui/states'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardShellRole } from '@/hooks/use-dashboard-shell-role'
 import { getDownloadFileUrl, useDownloadsQuery, type DownloadItem } from '@/hooks/use-downloads-query'
 import { useLibraryCollections } from '@/hooks/use-library-collections'
-import { useTrainingQuery } from '@/hooks/use-training-query'
-import { apiUrl } from '@/lib/api'
-import { documentTopicKey } from '@/lib/topics'
+import { documentTopicKey, isAudioDownload } from '@/lib/topics'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -78,9 +76,10 @@ function Loading() {
 }
 
 function Publications() {
-  const { data, isPending, isError, error, refetch } = useDownloadsQuery()
-  if (isPending) return <Loading />
-  if (isError) return <ErrorState title="Could not load publications" message={error.message} onRetry={() => void refetch()} />
+  const query = useDownloadsQuery()
+  if (query.isPending) return <Loading />
+  if (query.isError) return <ErrorState title="Could not load publications" message={query.error.message} onRetry={() => void query.refetch()} />
+  const data = query.data.filter((d) => !isAudioDownload(d))
   if (data.length === 0) return <Empty icon={<FileText className="size-10" strokeWidth={1.25} />} text="No publications have been added yet." />
 
   const open = (item: DownloadItem) => {
@@ -148,33 +147,6 @@ function VideoCollections() {
   )
 }
 
-function Audio() {
-  const { data, isPending, isError, error, refetch } = useTrainingQuery()
-  const [playing, setPlaying] = useState<number | null>(null)
-  if (isPending) return <Loading />
-  if (isError) return <ErrorState title="Could not load audio" message={error.message} onRetry={() => void refetch()} />
-  const tracks = data.videos.filter((v) => v.audio_url && v.unlocked !== false).sort((a, b) => a.day_number - b.day_number)
-  if (tracks.length === 0) return <Empty icon={<Headphones className="size-10" strokeWidth={1.25} />} text="No audio lessons yet." />
-
-  return (
-    <Section title="Onboarding audio">
-      {tracks.map((v) => {
-        const src = v.audio_url!.startsWith('http') ? v.audio_url! : apiUrl(v.audio_url!)
-        return (
-          <li key={v.day_number} className="jw-row">
-            <button type="button" className={cn(rowClass, 'press bg-transparent')} onClick={() => setPlaying(playing === v.day_number ? null : v.day_number)}>
-              <RowBody icon={<Headphones className="size-7" strokeWidth={1.25} />} title={v.title} meta={`Day ${v.day_number}`} />
-            </button>
-            {playing === v.day_number ? (
-              <audio className="w-full px-4 pb-3" src={src} controls autoPlay preload="none" />
-            ) : null}
-          </li>
-        )
-      })}
-    </Section>
-  )
-}
-
 /** Library tab: learning content by type, like a publications library. */
 export function LibraryPage() {
   const [params, setParams] = useSearchParams()
@@ -204,7 +176,7 @@ export function LibraryPage() {
 
       {tab === 'publications' ? <Publications /> : null}
       {tab === 'video' ? <VideoCollections /> : null}
-      {tab === 'audio' ? <Audio /> : null}
+      {tab === 'audio' ? <LibraryAudio /> : null}
       {tab === 'downloaded' ? (
         <Empty
           icon={<CloudOff className="size-10" strokeWidth={1.25} />}
