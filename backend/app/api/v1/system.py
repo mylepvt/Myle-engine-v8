@@ -61,6 +61,22 @@ async def _all_training_days_done(session: AsyncSession, user_id: int) -> bool:
     return all(d in done for d in catalog)
 
 
+async def _unlock_if_no_quiz(session: AsyncSession, user_id: int) -> bool:
+    """All 7 days done but no quiz configured → unlock (otherwise user stays locked forever)."""
+    urow = await session.get(User, user_id)
+    if urow is None or urow.training_status in ("completed", "not_required"):
+        return False
+    if not urow.training_required and urow.training_status != "all_days_done":
+        return False
+    has_quiz = (await session.execute(select(TrainingQuestion.id).limit(1))).first() is not None
+    if has_quiz or not await _all_training_days_done(session, user_id):
+        return False
+    start_practice_window(urow)
+    urow.training_status = "completed"
+    urow.training_required = False
+    return True
+
+
 async def _quiz_attempts_today(session: AsyncSession, user_id: int) -> int:
     start_ist = datetime.now(IST).replace(hour=0, minute=0, second=0, microsecond=0)
     start_utc = start_ist.astimezone(timezone.utc)
@@ -122,6 +138,8 @@ async def system_training(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TrainingSurfaceResponse:
     """7-day training catalog + caller's completion rows (legacy training home data)."""
+    if await _unlock_if_no_quiz(session, user.user_id):
+        await session.commit()
     return await build_training_surface(session, user.user_id)
 
 
@@ -284,6 +302,7 @@ async def mark_training_day(
             if urow is not None and urow.training_status != "completed":
                 # Mark all days done — awaiting certificate upload to fully unlock
                 urow.training_status = "all_days_done"
+    await _unlock_if_no_quiz(session, user.user_id)
 
     await session.commit()
     return await build_training_surface(session, user.user_id)

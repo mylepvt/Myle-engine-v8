@@ -158,6 +158,7 @@ export function useMarkTrainingDayMutation() {
     mutationFn: markTrainingDay,
     onSuccess: (data) => {
       queryClient.setQueryData(['training', 'surface'], data)
+      void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
   })
 }
