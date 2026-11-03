@@ -31,16 +31,16 @@ export const DASHBOARD_HOME_OVERVIEW_TITLE: Record<Role, string> = {
   team: 'Your workspace',
 }
 
-/** Display order — spine: leads → workboard → pool → wallet → recharge → training → report → approvals → team reports → notice. */
+/** Display order — spine: leads → workboard → report → wallet → recharge → training → pool → approvals → team reports → notice. */
 const HOME_QUICK_ACTION_PATHS: readonly string[] = [
   'work/leads',
   'work/workboard',
-  'work/lead-pool',
-  'work/lead-pool-admin',
+  'other/daily-report',
   'finance/wallet',
   'finance/recharge-request',
   'system/training',
-  'other/daily-report',
+  'work/lead-pool',
+  'work/lead-pool-admin',
   'team/my-team',
   'team/flp-min-billing',
   'system/lead-control',
