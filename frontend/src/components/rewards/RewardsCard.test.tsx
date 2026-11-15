@@ -8,6 +8,7 @@ import { RewardsCard } from './RewardsCard'
 const state = vi.hoisted(() => ({
   data: {
     eligible: true,
+    cash_prizes: true,
     points_today: 130,
     points_total: 900,
     tickets: 2,
@@ -49,6 +50,19 @@ describe('RewardsCard', () => {
     expect(screen.getByText('+25')).toBeInTheDocument()
     fireEvent.click(screen.getByText('How to earn MP'))
     expect(screen.getByText('Closing — converted')).toBeInTheDocument()
+  })
+
+  it('shows no jackpot, tickets or wheel when automatic prizes are off', () => {
+    state.data = { ...state.data, cash_prizes: false }
+    render(<MemoryRouter><RewardsCard /></MemoryRouter>)
+    expect(screen.getByText('MYLE Points')).toBeInTheDocument()
+    expect(screen.getByText('900 MP total')).toBeInTheDocument()
+    expect(screen.queryByText('Daily Jackpot')).not.toBeInTheDocument()
+    expect(screen.queryByText('₹300')).not.toBeInTheDocument()
+    expect(screen.queryByText(/tickets/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Last draw/)).not.toBeInTheDocument()
+    expect(screen.getByText('Your pipeline: ₹13,000')).toBeInTheDocument()
+    state.data = { ...state.data, cash_prizes: true }
   })
 
   it('is hidden for admins', () => {

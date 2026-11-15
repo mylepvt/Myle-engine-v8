@@ -347,14 +347,15 @@ async def job_star_alert() -> None:
 
 async def job_process_rewards_scan() -> None:
     """Every 10 min — MYLE Points for freshly verified process steps."""
-    from app.services.process_rewards import scan
+    from app.services.process_rewards import AUTO_CASH_PRIZES, scan
 
     from app.services.rewards_extras import grant_scratch_cards
 
     try:
         async with AsyncSessionLocal() as session:
             result = await scan(session)
-            result["scratch_cards"] = await grant_scratch_cards(session, datetime.now(timezone.utc))
+            if AUTO_CASH_PRIZES:
+                result["scratch_cards"] = await grant_scratch_cards(session, datetime.now(timezone.utc))
             for uid, label in result.get("level_ups", []):
                 try:
                     await send_push_to_user(
@@ -374,6 +375,8 @@ async def job_jackpot_draw() -> None:
     """21:00 IST — last scan, then today's jackpot draw; push the winner and the players."""
     from app.services import process_rewards as pr
 
+    if not pr.AUTO_CASH_PRIZES:
+        return
     now = datetime.now(timezone.utc)
     draw_date = now.astimezone(pr.IST).date()
     try:
@@ -426,7 +429,9 @@ async def job_power_hour_alert() -> None:
             await session.commit()
             _, end = pr.power_hour_window(cfg, now.astimezone(pr.IST).date())
             title = "⚡ Power Hour is on — points count double"
-            body = f"Every verified step until {end.strftime('%-I:%M %p')} counts 2× for tonight's jackpot."
+            body = f"Every verified step until {end.strftime('%-I:%M %p')} counts 2×" + (
+                " for tonight's jackpot." if pr.AUTO_CASH_PRIZES else "."
+            )
             users = await _get_eligible_users(session)
             sent = 0
             for user in users:
@@ -441,6 +446,8 @@ async def job_league_settle() -> None:
     """Monday 00:10 IST — close last week's Team League and pay the winners."""
     from app.services import rewards_extras as rx
 
+    if not rx.pr.AUTO_CASH_PRIZES:
+        return
     now = datetime.now(timezone.utc)
     week = rx.week_start_for(now) - timedelta(days=7)
     try:
@@ -465,6 +472,8 @@ async def job_season_settle() -> None:
     """1st of the month 00:20 IST — record last month's Season winners and tell them."""
     from app.services import rewards_extras as rx
 
+    if not rx.pr.AUTO_CASH_PRIZES:
+        return
     now = datetime.now(timezone.utc)
     month = rx._prev_month(rx.month_start_for(now))
     try:

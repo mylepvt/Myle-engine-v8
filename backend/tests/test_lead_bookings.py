@@ -14,6 +14,7 @@ from app.core.time_ist import today_ist
 from app.db.base import Base
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
+from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.lead_booking import LeadBooking
 from app.models.user import User
 from app.services.lead_booking_service import SKIP_LOW_WALLET, SKIP_UNCOVERED, fulfill_open_bookings
@@ -88,7 +89,14 @@ async def test_pool_load_fills_bookings_fifo_onto_today_tab(ctx):
     now = datetime.now(timezone.utc)
     await _book_today(Session, A, 3, now - timedelta(hours=2))  # booked first
     await _book_today(Session, B, 3, now - timedelta(hours=1))
-    await _add_pool(Session, 4)
+    async with Session() as s:
+        s.add_all([WalletLedgerEntry(user_id=u, amount_cents=10_000, currency="INR",
+                                     idempotency_key=f"t_topup_{u}", note="test") for u in (A, B)])
+        await s.commit()
+    await _add_pool(Session, 2)  # ₹0 leads are never handed out on their own
+    async with Session() as s:
+        assert (await fulfill_open_bookings(s))["leads_assigned"] == 0
+    await _add_pool(Session, 4, price_cents=100)
 
     async with Session() as s:
         result = await fulfill_open_bookings(s)
@@ -108,7 +116,7 @@ async def test_pool_load_fills_bookings_fifo_onto_today_tab(ctx):
     assert r.json()["total"] == 3
 
     # More leads later the same day top up the rest.
-    await _add_pool(Session, 5)
+    await _add_pool(Session, 5, price_cents=100)
     async with Session() as s:
         await fulfill_open_bookings(s)
     async with Session() as s:

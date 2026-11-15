@@ -268,7 +268,8 @@ export function LeadPoolWorkPage({ title }: Props) {
           <p className="font-medium text-foreground">Default claim price (new pool leads)</p>
           <p className="text-ds-caption text-muted-foreground">
             Set once here — it stays until you change it again. Every Excel import uses this price for new rows.
-            You can still override individual leads below.
+            You can still override individual leads below. Members can only claim leads that have a price — a ₹0
+            lead stays in the pool until you give it with "Give free leads".
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor="lead-pool-default-price">
@@ -297,7 +298,7 @@ export function LeadPoolWorkPage({ title }: Props) {
             <p className="text-xs text-muted-foreground" aria-live="polite">
               Saved:{' '}
               {poolDefaults.default_pool_price_cents === 0
-                ? 'Free (₹0)'
+                ? '₹0 — members cannot claim these; give them free yourself'
                 : formatRupees(poolDefaults.default_pool_price_cents)}
             </p>
           ) : null}

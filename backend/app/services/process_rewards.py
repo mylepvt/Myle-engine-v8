@@ -108,6 +108,11 @@ EARLY_DAILY_CAP = 100
 MP_PER_TICKET = 50
 MAX_TICKETS_PER_DAY = 10
 DAILY_POT_CENTS = 15_000  # ₹150
+# Off: nothing credits a wallet or promises prize money on its own — no jackpot draw, no
+# Team League payout, no Season prizes, no scratch cards. Free money only comes from an
+# admin (free recharge request approval / wallet adjustment). Points, levels, streaks,
+# leaderboards and badges keep working.
+AUTO_CASH_PRIZES = False
 DRAW_TIME = time(21, 0)
 EARNING_ROLES = ("team", "leader")
 
@@ -926,6 +931,7 @@ async def my_rewards(session: AsyncSession, user: User, now: datetime | None = N
     ph_start, ph_end = power_hour_window(power, _ist_date(now))
     return {
         "eligible": eligible,
+        "cash_prizes": AUTO_CASH_PRIZES,
         "points_today": my_points,
         "points_total": int(total or 0),
         "level": level_for(int(total or 0)),

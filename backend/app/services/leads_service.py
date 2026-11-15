@@ -112,12 +112,15 @@ def _format_rupees_exact(cents: int) -> str:
     return f"₹{cents / 100:,.2f}"
 
 
-def _lead_pool_available_clause() -> Any:
+def _lead_pool_available_clause(role: str) -> Any:
+    """Pool leads this role can claim. Members only get priced leads — a ₹0 lead is free,
+    and free leads only come from an admin (Give free leads)."""
     return and_(
         Lead.in_pool.is_(True),
         Lead.pool_type == "paid",
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
+        *(() if role == "admin" else (Lead.pool_price_cents > 0,)),
     )
 
 
@@ -603,7 +606,7 @@ class LeadsService:
             raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
         cap = max(1, min(int(count), 50))
-        cond = _lead_pool_available_clause()
+        cond = _lead_pool_available_clause(user.role)
         total_available = int(
             (
                 await self._session.execute(
@@ -656,7 +659,7 @@ class LeadsService:
         cap = max(1, min(int(count), 50))
         stmt = (
             select(Lead)
-            .where(_lead_pool_available_clause())
+            .where(_lead_pool_available_clause(user.role))
             .order_by(Lead.created_at.asc(), Lead.id.asc())
             .limit(cap)
             # Concurrent claimers take different leads instead of queueing on the same rows.

@@ -79,11 +79,18 @@ export function AdminRewardsSettings() {
     <div className="space-y-3">
       <PowerHourForm initial={data.power_hour} />
 
-      <p className="flex items-center gap-1.5 text-ds-caption text-muted-foreground">
-        <Gift className="size-3.5 text-warning-ink" aria-hidden />
-        Scratch cards paid: {rupees(data.scratch.today_rupees)} / {rupees(data.scratch.daily_cap_rupees)} today ·{' '}
-        {rupees(data.scratch.month_rupees)} / {rupees(data.scratch.monthly_cap_rupees)} this month
-      </p>
+      {data.cash_prizes ? (
+        <p className="flex items-center gap-1.5 text-ds-caption text-muted-foreground">
+          <Gift className="size-3.5 text-warning-ink" aria-hidden />
+          Scratch cards paid: {rupees(data.scratch.today_rupees)} / {rupees(data.scratch.daily_cap_rupees)} today ·{' '}
+          {rupees(data.scratch.month_rupees)} / {rupees(data.scratch.monthly_cap_rupees)} this month
+        </p>
+      ) : (
+        <p className="text-ds-caption text-muted-foreground">
+          Automatic prizes are off — no jackpot, league or season money and no scratch cards. Free money goes
+          only through a free recharge request you approve, or a wallet credit you add.
+        </p>
+      )}
 
       <div>
         <p className="mb-1 flex items-center gap-1.5 text-ds-caption font-semibold">
@@ -129,7 +136,7 @@ export function AdminRewardsSettings() {
                 {t.rank}. {t.name}
               </span>
               <span className="tabular-nums text-muted-foreground">
-                {t.points} MP · {rupees(t.prize_rupees)}
+                {t.points} MP{data.cash_prizes ? ` · ${rupees(t.prize_rupees)}` : ''}
               </span>
             </li>
           ))}

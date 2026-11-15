@@ -41,6 +41,8 @@ export type MpLevel = {
 
 export type MyRewards = {
   eligible: boolean
+  /** False: no jackpot, league / season prizes or scratch cards — free money only via admin. */
+  cash_prizes?: boolean
   points_today: number
   points_total: number
   /** Level from lifetime MYLE Points (replaces the old XP level). */
@@ -120,6 +122,7 @@ export type JackpotWheelData = {
 export type PowerHourConfig = { enabled: boolean; start: string; end: string }
 
 export type RewardsAdminOverview = {
+  cash_prizes?: boolean
   power_hour: PowerHourConfig
   scratch: { today_rupees: number; month_rupees: number; daily_cap_rupees: number; monthly_cap_rupees: number }
   league: { week_start: string; pot_rupees: number; winner: string | null; paid_to: number }[]
