@@ -12,6 +12,7 @@ vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 afterEach(cleanup)
 
 const data = {
+  cash_prizes: true,
   streak: { days: 7, goal: 7, doubled: true },
   power_hour: {
     enabled: true,

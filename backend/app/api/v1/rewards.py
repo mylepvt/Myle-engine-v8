@@ -52,7 +52,10 @@ async def jackpot_wheel(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Who is on tonight's wheel (tickets = slice size); after 9 PM, the winner it lands on."""
-    return await pr.jackpot_wheel(session)
+    wheel = await pr.jackpot_wheel(session)
+    if not pr.AUTO_CASH_PRIZES:  # no draw tonight → nothing to show
+        return {**wheel, "entries": [], "pot_rupees": 0}
+    return wheel
 
 
 @router.post("/scratch/{card_id}")

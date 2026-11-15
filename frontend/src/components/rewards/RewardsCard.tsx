@@ -13,7 +13,8 @@ import { cn, formatRelativeTimeShort } from '@/lib/utils'
 import { JackpotWheel } from './JackpotWheel'
 import { RewardsExtras, StreakPowerLines } from './RewardsExtras'
 
-/** MYLE Points → tonight's jackpot tickets, plus what the member's pipeline is worth. */
+/** MYLE Points and what the member's pipeline is worth. The jackpot (tickets, wheel, pot)
+ * shows only while automatic cash prizes are on. */
 export function RewardsCard() {
   const { data, isPending, isError } = useMyRewardsQuery()
   const [now, setNow] = useState(() => Date.now())
@@ -40,8 +41,8 @@ export function RewardsCard() {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-ds-h3">
           <Trophy className="size-4 text-warning-ink" aria-hidden />
-          <span>Daily Jackpot</span>
-          {data ? (
+          <span>{data?.cash_prizes ? 'Daily Jackpot' : 'MYLE Points'}</span>
+          {data?.cash_prizes ? (
             <span className="ml-auto rounded-full bg-warning/15 px-2.5 py-0.5 text-ds-caption font-bold text-warning-ink">
               {rupees(data.pot_rupees)}
             </span>
@@ -57,39 +58,51 @@ export function RewardsCard() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">
-              Draw in <span className="font-semibold text-foreground">{untilDraw(data.draw_at, now)}</span> · 9 PM ·
-              winner gets it in the wallet
-            </p>
+            {data.cash_prizes ? (
+              <p className="text-sm text-muted-foreground">
+                Draw in <span className="font-semibold text-foreground">{untilDraw(data.draw_at, now)}</span> · 9 PM ·
+                winner gets it in the wallet
+              </p>
+            ) : null}
 
             <div className="rounded-2xl bg-muted px-3 py-2.5">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-ds-caption font-semibold text-foreground">
                   <span className="text-lg font-bold tabular-nums">{data.points_today}</span> MP today
                 </p>
-                <p className="flex items-center gap-1 text-ds-caption font-semibold text-warning-ink">
-                  <Ticket className="size-3.5" aria-hidden />
-                  {data.tickets} / {data.max_tickets} tickets
-                </p>
+                {data.cash_prizes ? (
+                  <p className="flex items-center gap-1 text-ds-caption font-semibold text-warning-ink">
+                    <Ticket className="size-3.5" aria-hidden />
+                    {data.tickets} / {data.max_tickets} tickets
+                  </p>
+                ) : (
+                  <p className="text-ds-caption text-muted-foreground tabular-nums">
+                    {data.points_total.toLocaleString('en-IN')} MP total
+                  </p>
+                )}
               </div>
-              <div className="mt-2 flex gap-1" aria-hidden>
-                {Array.from({ length: data.max_tickets }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={cn('h-2 flex-1 rounded-full', i < data.tickets ? 'bg-warning' : 'bg-border')}
-                  />
-                ))}
-              </div>
-              <p className="mt-1.5 text-ds-micro text-muted-foreground">
-                {ticketLine(data)} · {data.mp_per_ticket} MP = 1 ticket
-              </p>
+              {data.cash_prizes ? (
+                <>
+                  <div className="mt-2 flex gap-1" aria-hidden>
+                    {Array.from({ length: data.max_tickets }).map((_, i) => (
+                      <span
+                        key={i}
+                        className={cn('h-2 flex-1 rounded-full', i < data.tickets ? 'bg-warning' : 'bg-border')}
+                      />
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-ds-micro text-muted-foreground">
+                    {ticketLine(data)} · {data.mp_per_ticket} MP = 1 ticket
+                  </p>
+                </>
+              ) : null}
             </div>
 
             <StreakPowerLines data={data} now={now} />
 
-            <JackpotWheel myTickets={data.tickets} />
+            {data.cash_prizes ? <JackpotWheel myTickets={data.tickets} /> : null}
 
-            {data.last_draw ? (
+            {data.cash_prizes && data.last_draw ? (
               <p className="text-ds-caption text-muted-foreground">
                 {data.last_draw.winner_name
                   ? `Last draw: ${data.last_draw.winner_name} won ${rupees(data.last_draw.pot_rupees)}`

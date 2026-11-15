@@ -82,9 +82,10 @@ async def test_every_hand_over_is_recorded_paid_or_free(ctx):
         inv = (await s.execute(select(Invoice).where(Invoice.user_id == A, Invoice.doc_type == "tax_invoice"))).scalar_one()
     by = sorted((r.kind, r.source, r.price_cents, r.reason, r.given_by_user_id) for r in recs)
     assert by == sorted([
+        # The ₹0 pool lead is skipped on a member's claim — only the admin can give it.
         ("paid", "pool", PRICE, None, None),
         ("paid", "pool", PRICE, None, None),
-        ("free", "free_pool", 0, None, None),
+        ("paid", "pool", PRICE, None, None),
         ("free", "admin_gift", 0, "New joiner", ADMIN),
         ("free", "admin_gift", 0, "New joiner", ADMIN),
     ])
@@ -97,13 +98,13 @@ async def test_every_hand_over_is_recorded_paid_or_free(ctx):
     _as(who, LEADER, "leader")
     rep = (await client.get("/api/v1/team/my-team/claims", params={"period": "today"})).json()
     t = rep["totals"]
-    assert (t["taken"], t["paid"], t["free"], t["free_admin"], t["free_pool"]) == (5, 2, 3, 2, 1)
-    assert t["paid_cents"] == 2 * PRICE and t["refunded"] == 1 and t["net_paid_cents"] == PRICE
+    assert (t["taken"], t["paid"], t["free"], t["free_admin"], t["free_pool"]) == (5, 3, 2, 2, 0)
+    assert t["paid_cents"] == 3 * PRICE and t["refunded"] == 1 and t["net_paid_cents"] == 2 * PRICE
     assert t["members_taking"] == 1
     asha = next(m for m in rep["members"] if m["user_id"] == A)
     assert asha["taken"] == 5 and asha["active_days"] == 1
     assert {m["user_id"] for m in rep["members"]} == {LEADER, A}
-    assert rep["days"][0]["paid"] == 2 and rep["days"][0]["free"] == 3
+    assert rep["days"][0]["paid"] == 3 and rep["days"][0]["free"] == 2
 
     detail = (await client.get(f"/api/v1/team/my-team/{A}/claims", params={"period": "all"})).json()
     assert len(detail["claims"]) == 5

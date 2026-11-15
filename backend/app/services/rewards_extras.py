@@ -308,6 +308,8 @@ class ScratchError(Exception):
 
 async def scratch(session: AsyncSession, card_id: int, user_id: int, now: datetime, rand_below=secrets.randbelow) -> ScratchCard:
     """Reveal a card (server decides the prize). Commits."""
+    if not pr.AUTO_CASH_PRIZES:
+        raise ScratchError("Scratch cards are closed")
     card = await session.get(ScratchCard, card_id, with_for_update=True)
     if card is None or card.user_id != user_id:
         raise ScratchError("Card not found")
@@ -427,6 +429,8 @@ async def my_extras(session: AsyncSession, user: User, base: dict, now: datetime
     month = month_start_for(now)
     season = await season_standings(session, month)
     me_rank = next((t for t in season["top"] if t["user_id"] == user.id), None)
+    if not pr.AUTO_CASH_PRIZES:  # no prize money: only the badges stay
+        return {"scratch_cards": [], "badges": await badges(session, user.id, base["streak"]["days"], base["points_total"])}
     return {
         "league": {
             "week_start": week.isoformat(),
@@ -473,6 +477,7 @@ async def admin_overview(session: AsyncSession, now: datetime | None = None) -> 
         ).scalars().all()
     }
     return {
+        "cash_prizes": pr.AUTO_CASH_PRIZES,
         "power_hour": await pr.power_hour_config(session),
         "scratch": {
             "today_rupees": day_spent // 100,

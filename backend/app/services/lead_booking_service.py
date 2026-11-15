@@ -90,6 +90,7 @@ def _paid_pool_available():
     return (
         Lead.in_pool.is_(True),
         Lead.pool_type == "paid",
+        Lead.pool_price_cents > 0,  # ₹0 leads are free — only an admin gives those
         Lead.deleted_at.is_(None),
         Lead.archived_at.is_(None),
     )

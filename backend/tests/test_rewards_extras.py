@@ -55,6 +55,12 @@ async def _seed(s: AsyncSession) -> None:
     await s.flush()
 
 
+@pytest.fixture
+def cash_on(monkeypatch):
+    """The old automatic prizes (off in the app: free money needs an admin)."""
+    monkeypatch.setattr(pr, "AUTO_CASH_PRIZES", True)
+
+
 def _pt(uid: int, lead: int, step: str, pts: int, at: datetime, mult: int = 1) -> ProcessPoint:
     return ProcessPoint(user_id=uid, lead_id=lead, step=step, points=pts, created_at=at, multiplier=mult)
 
@@ -164,7 +170,7 @@ async def test_season_top3_and_most_improved(Session):
 # ── Scratch cards ───────────────────────────────────────────────────────────────
 
 
-async def test_scratch_cards_granted_paid_and_capped(Session):
+async def test_scratch_cards_granted_paid_and_capped(Session, cash_on):
     async with Session() as s:
         await _seed(s)
         s.add_all([
@@ -199,7 +205,7 @@ async def test_scratch_cards_granted_paid_and_capped(Session):
         assert bonus.revoked_at is None
 
 
-async def test_scratch_card_void_when_step_undone(Session):
+async def test_scratch_card_void_when_step_undone(Session, cash_on):
     async with Session() as s:
         await _seed(s)
         point = _pt(PRIYA, 2, "enrolled", 50, NOW)
@@ -225,7 +231,7 @@ def test_scratch_table_budget_is_sane():
 # ── Badges + /me ────────────────────────────────────────────────────────────────
 
 
-async def test_badges_and_my_extras(Session):
+async def test_badges_and_my_extras(Session, cash_on):
     async with Session() as s:
         await _seed(s)
         s.add_all([_pt(PRIYA, 2, "enrolled", 50, NOW), _pt(PRIYA, 7, "converted", 150, NOW)])
@@ -240,9 +246,42 @@ async def test_badges_and_my_extras(Session):
         assert extras["season"]["my_rank"] == 1
 
 
-async def test_me_endpoint_includes_extras(team_client):
+async def test_me_endpoint_includes_extras(team_client, cash_on):
     body = (await team_client.get("/api/v1/rewards/me")).json()
     assert {"league", "season", "scratch_cards", "badges", "streak", "power_hour"} <= set(body)
+
+
+async def test_no_automatic_money_by_default(Session, team_client):
+    """Nothing pays or promises money on its own: no scratch prize, no league / season
+    prizes shown, an empty wheel."""
+    async with Session() as s:
+        await _seed(s)
+        s.add(_pt(PRIYA, 2, "enrolled", 50, NOW))
+        s.add(ScratchCard(id=1, user_id=PRIYA, lead_id=2, source_step="enrolled", created_at=NOW))
+        await s.commit()
+        with pytest.raises(rx.ScratchError):
+            await rx.scratch(s, 1, PRIYA, NOW, lambda n: sum(w for _, w in rx.SCRATCH_TABLE) - 1)
+        assert (await s.execute(select(WalletLedgerEntry))).scalars().all() == []
+        priya = await s.get(User, PRIYA)
+        extras = await rx.my_extras(s, priya, await pr.my_rewards(s, priya, NOW), NOW)
+        assert set(extras) == {"scratch_cards", "badges"} and extras["scratch_cards"] == []
+
+    me = (await team_client.get("/api/v1/rewards/me")).json()
+    assert me["cash_prizes"] is False and "league" not in me and "season" not in me
+    wheel = (await team_client.get("/api/v1/rewards/jackpot/wheel")).json()
+    assert wheel["entries"] == [] and wheel["pot_rupees"] == 0
+
+
+async def test_prize_jobs_do_nothing_by_default(monkeypatch):
+    from app.services import scheduled_jobs as jobs
+
+    def boom(*a, **k):
+        raise AssertionError("a prize job opened a session")
+
+    monkeypatch.setattr(jobs, "AsyncSessionLocal", boom)
+    await jobs.job_jackpot_draw()
+    await jobs.job_league_settle()
+    await jobs.job_season_settle()
 
 
 async def test_admin_power_hour(admin_client):

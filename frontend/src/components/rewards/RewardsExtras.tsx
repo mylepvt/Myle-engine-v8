@@ -8,12 +8,12 @@ import { playAppSound } from '@/lib/app-sounds'
 import { monthName, powerHourLine, rupees, streakLine } from '@/lib/rewards'
 import { cn } from '@/lib/utils'
 
-/** Streak + Power Hour, shown under the ticket bar. */
+/** Streak (it doubles jackpot tickets, so only with cash prizes on) + Power Hour. */
 export function StreakPowerLines({ data, now }: { data: MyRewards; now: number }) {
   const power = data.power_hour ? powerHourLine(data.power_hour, now) : null
   return (
     <>
-      {data.streak ? (
+      {data.streak && data.cash_prizes ? (
         <p
           className={cn(
             'flex items-center gap-1.5 text-ds-caption',

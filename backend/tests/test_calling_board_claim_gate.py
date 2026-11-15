@@ -12,6 +12,7 @@ from app.api.deps import AuthUser, get_db, require_auth_user
 from app.db.base import Base
 from app.models.activity_log import ActivityLog
 from app.models.lead import Lead
+from app.models.wallet_ledger import WalletLedgerEntry
 from app.models.user import User
 from app.services.execution_enforcement import auto_archive_general_pipeline_leads
 
@@ -78,7 +79,9 @@ async def _claimed_lead(Session, *, name: str, status: str, claimed_days_ago: in
 async def _pool_lead(Session) -> None:
     async with Session() as s:
         s.add(Lead(name="Pool Lead", status="new_lead", created_by_user_id=MEMBER_ID,
-                   in_pool=True, pool_type="paid", pool_price_cents=0, outcome="active"))
+                   in_pool=True, pool_type="paid", pool_price_cents=100, outcome="active"))
+        s.add(WalletLedgerEntry(user_id=MEMBER_ID, amount_cents=100, currency="INR",
+                                idempotency_key="t_topup", note="test"))
         await s.commit()
 
 
